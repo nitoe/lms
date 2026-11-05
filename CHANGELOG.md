@@ -1,5 +1,13 @@
 # CHANGELOG
 
+## 0.3.0 — Fase 1b: Materi pembelajaran
+
+- Tab **Materi** di halaman kelas: unggah PDF/gambar/video, tautan YouTube, dan tautan umum.
+- Pengelompokan materi menurut **Tujuan Pembelajaran (TP)** dari koleksi `tp_kktp` (aplikasi Penilaian), plus label bab/unit opsional.
+- Koleksi Firestore `lms_materi` + path Storage `lms/materi/{kelas}/…`.
+- Batas ukuran: PDF/gambar 10 MB, video 50 MB.
+- **firestore.rules** dan **storage.rules** (versi lengkap) memuat aturan LMS; deploy dari repo Penilaian / shared rules.
+
 ## 0.2.0 — Fase 1a: Daftar ruang kelas + halaman kelas
 
 - Daftar ruang kelas dari penugasan / waliKelas profil guru (`src/lib/kelasLms.ts`).
@@ -10,8 +18,4 @@
 ## 0.1.0 — Fase 0: Fondasi
 
 - Inisialisasi proyek Vite + React 19 + TypeScript + Tailwind CSS v4 + Firebase.
-- Halaman masuk staf (`/masuk`), siswa (`/siswa/masuk`), dan orang tua (`/orangtua/masuk`) dengan desain auth-shell menarik (mengikuti pola Perpustakaan).
-- Auth staf & orang tua lewat Firebase Auth + profil `users/{uid}` (shared).
-- Login siswa lewat kelas + nama + NISN (sessionStorage, tanpa akun Firebase baru).
-- Routing peran: dashboard staf, shell siswa, dashboard orang tua.
-- Dokumentasi: README, RANCANGAN, DATA_MODEL, DEPLOY, ANTIREGRESI.
+- Halaman masuk staf, siswa, dan orang tua; auth shared; login siswa kelas+nama+NISN.

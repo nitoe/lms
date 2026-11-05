@@ -43,3 +43,16 @@ Catatan agar error yang pernah terjadi (atau berpotensi) tidak terulang.
 - Saat menambah rute baru di `Layout.tsx`, masukkan path-nya ke array `HALAMAN_LEBAR` jika itu halaman daftar/grid.
 
 Referensi implementasi: `src/components/Layout.tsx` (LMS) dan `src/components/Layout.tsx` (Penilaian).
+
+
+## 7. Materi LMS & index Firestore
+
+- Query `lms_materi` memakai `where kelas + mapel` + `orderBy urutan`. Jika muncul error index, buat composite index di Firebase Console (link biasanya ada di pesan error), atau app sudah punya fallback tanpa `orderBy`.
+- Nama `mapel` di `lms_materi` harus **sama persis** dengan penugasan / `tp_kktp` (termasuk spasi dan kapitalisasi), supaya `tulisMapelKelas` di rules lolos.
+- Jangan mengizinkan klien mengubah `kelas`, `mapel`, atau `dibuatOleh` saat update (dicek di rules).
+
+## 8. Rules bersama (deploy)
+
+- `firestore.rules` dan `storage.rules` di repo LMS adalah salinan lengkap yang sudah digabung dengan aturan Penilaian/Perpustakaan/Sarpras + blok LMS.
+- Deploy rules dari satu tempat (biasanya repo Penilaian) agar tidak saling menimpa: `firebase deploy --only firestore:rules,storage`.
+- Setelah menambah koleksi `lms_*` baru, selalu kirim **file rules lengkap**, bukan patch saja.

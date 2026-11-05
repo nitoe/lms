@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { daftarRuangKelas, parseRuangId } from '../lib/kelasLms'
+import MateriPanel from '../components/MateriPanel'
 
 type TabId = 'pengumuman' | 'materi' | 'tugas'
 
@@ -14,11 +15,12 @@ const TABS: { id: TabId; label: string }[] = [
 export default function KelasDetail() {
   const { ruangId = '' } = useParams()
   const { profil } = useAuth()
-  const [tab, setTab] = useState<TabId>('pengumuman')
+  const [tab, setTab] = useState<TabId>('materi')
 
-  const parsed = useMemo(() => parseRuangId(decodeURIComponent(ruangId)), [ruangId])
+  const decoded = decodeURIComponent(ruangId)
+  const parsed = useMemo(() => parseRuangId(decoded), [decoded])
   const ruangList = useMemo(() => daftarRuangKelas(profil), [profil])
-  const ruang = ruangList.find((r) => r.id === decodeURIComponent(ruangId))
+  const ruang = ruangList.find((r) => r.id === decoded)
 
   if (!parsed) {
     return (
@@ -51,7 +53,6 @@ export default function KelasDetail() {
         </div>
       </div>
 
-      {/* Tabs */}
       <div className="flex gap-1 border-b border-border">
         {TABS.map((t) => (
           <button
@@ -71,16 +72,10 @@ export default function KelasDetail() {
 
       {tab === 'pengumuman' && (
         <div className="card-soft p-5 text-sm text-muted">
-          Belum ada pengumuman. Fitur pengumuman kelas akan ditambahkan di langkah berikutnya
-          (bersama materi dan tugas).
+          Belum ada pengumuman. Fitur pengumuman kelas akan ditambahkan kemudian.
         </div>
       )}
-      {tab === 'materi' && (
-        <div className="card-soft p-5 text-sm text-muted">
-          Daftar materi pembelajaran (PDF, gambar, video, tautan YouTube) akan muncul di sini.
-          Unggah dan pengelompokan per bab/TP menyusul di Fase 1b.
-        </div>
-      )}
+      {tab === 'materi' && <MateriPanel kelas={judulKelas} mapel={judulMapel} />}
       {tab === 'tugas' && (
         <div className="card-soft p-5 text-sm text-muted">
           Daftar tugas, pengumpulan siswa, dan penilaian akan muncul di sini (Fase 1c).
