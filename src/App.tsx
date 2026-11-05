@@ -11,6 +11,7 @@ import KelasDetail from './pages/KelasDetail'
 import SiswaMasuk from './pages/siswa/SiswaMasuk'
 import SiswaLayout from './pages/siswa/SiswaLayout'
 import SiswaBeranda from './pages/siswa/SiswaBeranda'
+import SiswaMateri from './pages/siswa/SiswaMateri'
 import SiswaPlaceholder from './pages/siswa/SiswaPlaceholder'
 import OrangtuaBeranda from './pages/OrangtuaBeranda'
 import { isStaf } from './lib/peran'
@@ -54,25 +55,15 @@ export default function App() {
         }
       >
         <Route index element={<SiswaBeranda />} />
-        <Route
-          path="materi"
-          element={
-            <SiswaPlaceholder
-              judul="Materi Pelajaran"
-              emoji="📚"
-              deskripsi="Materi dari gurumu akan muncul di sini. Nanti kamu bisa baca PDF, lihat gambar, dan tonton video."
-              warna="bg-sky-50"
-            />
-          }
-        />
+        <Route path="materi" element={<SiswaMateri />} />
         <Route
           path="tugas"
           element={
             <SiswaPlaceholder
               judul="Tugas"
-              emoji="✏️"
+              icon="pencil"
               deskripsi="Tugas dari guru akan tampil di sini. Kamu bisa mengerjakan, mengunggah foto atau file, lalu mengirimnya."
-              warna="bg-amber-50"
+              tone="bg-amber-50 text-amber-700"
             />
           }
         />
@@ -81,9 +72,9 @@ export default function App() {
           element={
             <SiswaPlaceholder
               judul="Kuis"
-              emoji="🎯"
+              icon="target"
               deskripsi="Latihan soal dan kuis seru akan hadir di sini. Jawab dengan tenang dan rajin berlatih ya!"
-              warna="bg-violet-50"
+              tone="bg-violet-50 text-violet-700"
             />
           }
         />
@@ -92,9 +83,9 @@ export default function App() {
           element={
             <SiswaPlaceholder
               judul="Pencapaian"
-              emoji="⭐"
+              icon="star"
               deskripsi="Bintang, lencana, dan catatan belajarmu akan dikumpulkan di sini. Terus semangat!"
-              warna="bg-emerald-50"
+              tone="bg-emerald-50 text-emerald-700"
             />
           }
         />

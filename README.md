@@ -17,7 +17,7 @@ Learning Management System untuk guru, siswa, dan orang tua.
 
 ## Status
 
-**Fase 0 selesai.** **Fase 1a selesai di kode:** daftar ruang kelas dari penugasan + halaman kelas (tab skeleton). Layout lebar penuh mengikuti pola Penilaian.
+**Fase 0 dan Fase 1a–1b selesai di kode:** ruang kelas dari penugasan dan materi per Tujuan Pembelajaran. **Overhaul UI modern:** area guru (v0.4.0–0.4.1) dan area siswa (v0.4.2, termasuk Materi siswa) selesai. Berikutnya: fitur Tugas (v0.5.0). Riwayat lengkap di [CHANGELOG.md](CHANGELOG.md).
 
 ## Menjalankan di komputer
 

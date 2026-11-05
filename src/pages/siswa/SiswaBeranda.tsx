@@ -1,49 +1,52 @@
 import { Link } from 'react-router-dom'
 import { useSiswa } from '../../context/SiswaContext'
+import SiswaIcon, { type SiswaIconName } from './SiswaIcon'
 
-/** Menu utama beranda siswa — ikon besar, warna lembut, target sentuh besar. */
-const MENU = [
+type MenuItem = {
+  to: string
+  label: string
+  deskripsi: string
+  icon: SiswaIconName
+  /** Kelas Tailwind untuk kotak ikon (warna lembut + teks). */
+  tone: string
+  segera: boolean
+}
+
+/** Menu utama beranda siswa — kartu besar, ikon jelas, target sentuh nyaman. */
+const MENU: MenuItem[] = [
   {
     to: '/siswa/materi',
     label: 'Materi',
     deskripsi: 'Baca & tonton pelajaran',
-    emoji: '📚',
-    bg: 'bg-sky-50',
-    border: 'border-sky-100',
-    accent: 'text-sky-700',
+    icon: 'book',
+    tone: 'bg-sky-50 text-sky-700',
     segera: false,
   },
   {
     to: '/siswa/tugas',
     label: 'Tugas',
     deskripsi: 'Kerjakan & kumpulkan',
-    emoji: '✏️',
-    bg: 'bg-amber-50',
-    border: 'border-amber-100',
-    accent: 'text-amber-700',
+    icon: 'pencil',
+    tone: 'bg-amber-50 text-amber-700',
     segera: true,
   },
   {
     to: '/siswa/kuis',
     label: 'Kuis',
     deskripsi: 'Latihan soal seru',
-    emoji: '🎯',
-    bg: 'bg-violet-50',
-    border: 'border-violet-100',
-    accent: 'text-violet-700',
+    icon: 'target',
+    tone: 'bg-violet-50 text-violet-700',
     segera: true,
   },
   {
     to: '/siswa/pencapaian',
     label: 'Pencapaian',
     deskripsi: 'Bintang & lencana',
-    emoji: '⭐',
-    bg: 'bg-emerald-50',
-    border: 'border-emerald-100',
-    accent: 'text-emerald-700',
+    icon: 'star',
+    tone: 'bg-emerald-50 text-emerald-700',
     segera: true,
   },
-] as const
+]
 
 function sapaanWaktu(): string {
   const jam = new Date().getHours()
@@ -58,65 +61,62 @@ export default function SiswaBeranda() {
   const namaPanggil = sesi?.nama?.split(' ')[0] || 'Siswa'
 
   return (
-    <div className="siswa-page space-y-6">
-      {/* Sapaan */}
-      <section className="siswa-hero-card">
-        <div className="flex items-center gap-3">
+    <div className="space-y-6">
+      {/* Sapaan — gradien merek, selaras hero guru */}
+      <section className="lms-hero">
+        <div className="relative z-10 flex min-w-0 items-center gap-3.5">
           <div
-            className="siswa-avatar"
+            className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-white/15 text-xl font-bold text-white ring-1 ring-white/25"
             aria-hidden
-            title={sesi?.nama}
           >
             {namaPanggil.charAt(0).toUpperCase()}
           </div>
           <div className="min-w-0">
-            <p className="text-xs font-medium text-muh-600/90">{sapaanWaktu()}</p>
-            <h1 className="truncate text-lg font-bold tracking-tight text-muh-900">
+            <p className="text-xs font-medium text-white/80">{sapaanWaktu()}</p>
+            <h1 className="truncate text-xl font-bold tracking-tight text-white sm:text-2xl">
               Halo, {namaPanggil}!
             </h1>
-            <p className="text-xs text-muted">
-              Kelas {sesi?.kelas} · Siap belajar hari ini?
-            </p>
+            <p className="mt-0.5 text-xs text-white/80">Siap belajar hari ini?</p>
+          </div>
+        </div>
+        <div className="lms-hero-stats">
+          <div className="lms-hero-stat">
+            <span className="text-2xl font-bold leading-none text-white">{sesi?.kelas}</span>
+            <span className="mt-1 text-[11px] font-medium text-white/80">Kelasmu</span>
           </div>
         </div>
       </section>
 
-      {/* Menu utama — grid 2 kolom, kartu besar */}
+      {/* Menu belajar */}
       <section>
-        <h2 className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted">
-          Menu belajar
-        </h2>
-        <div className="grid grid-cols-2 gap-3">
+        <h2 className="sw-section-title">Menu belajar</h2>
+        <div className="sw-menu-grid">
           {MENU.map((item) => (
             <Link
               key={item.to}
               to={item.to}
-              className={`siswa-menu-card ${item.bg} ${item.border} ${
-                item.segera ? 'siswa-menu-card--soon' : ''
-              }`}
+              className={`sw-menu-card ${item.segera ? 'sw-menu-card--soon' : ''}`}
             >
-              <span className="siswa-menu-emoji" aria-hidden>
-                {item.emoji}
+              {item.segera && <span className="sw-soon-pill">Segera</span>}
+              <span className={`sw-menu-icon ${item.tone}`}>
+                <SiswaIcon name={item.icon} size={28} />
               </span>
-              <span className={`text-[15px] font-bold leading-tight ${item.accent}`}>
+              <span className="text-base font-bold leading-tight text-slate-900">
                 {item.label}
               </span>
-              <span className="text-[11px] leading-snug text-slate-600">
-                {item.segera ? 'Segera hadir' : item.deskripsi}
-              </span>
+              <span className="text-xs leading-snug text-muted">{item.deskripsi}</span>
             </Link>
           ))}
         </div>
       </section>
 
-      {/* Tips singkat */}
-      <section className="siswa-tip">
+      <section className="sw-tip">
         <span className="text-base" aria-hidden>
           💡
         </span>
         <p className="text-xs leading-relaxed text-slate-700">
-          Tekan kartu di atas untuk membuka materi atau tugas. Kalau ada yang sulit, tanya guru
-          atau orang tua ya.
+          Tekan kartu <strong>Materi</strong> untuk membuka pelajaran dari gurumu. Kalau ada yang
+          sulit, tanya guru atau orang tua ya.
         </p>
       </section>
     </div>

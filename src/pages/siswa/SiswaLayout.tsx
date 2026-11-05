@@ -1,21 +1,20 @@
-import { NavLink, Outlet, useNavigate } from 'react-router-dom'
+import { NavLink, Navigate, Outlet, useNavigate } from 'react-router-dom'
 import { useSiswa } from '../../context/SiswaContext'
+import SiswaIcon, { type SiswaIconName } from './SiswaIcon'
 
-const NAV = [
-  { to: '/siswa', end: true, label: 'Beranda', emoji: '🏠' },
-  { to: '/siswa/materi', end: false, label: 'Materi', emoji: '📚' },
-  { to: '/siswa/tugas', end: false, label: 'Tugas', emoji: '✏️' },
-  { to: '/siswa/kuis', end: false, label: 'Kuis', emoji: '🎯' },
-] as const
+const NAV: { to: string; end: boolean; label: string; icon: SiswaIconName }[] = [
+  { to: '/siswa', end: true, label: 'Beranda', icon: 'home' },
+  { to: '/siswa/materi', end: false, label: 'Materi', icon: 'book' },
+  { to: '/siswa/tugas', end: false, label: 'Tugas', icon: 'pencil' },
+  { to: '/siswa/kuis', end: false, label: 'Kuis', icon: 'target' },
+]
 
 export default function SiswaLayout() {
   const { sesi, keluar } = useSiswa()
   const navigate = useNavigate()
 
-  if (!sesi) {
-    navigate('/siswa/masuk', { replace: true })
-    return null
-  }
+  // Jangan memanggil navigate() saat render (lihat ANTIREGRESI §12).
+  if (!sesi) return <Navigate to="/siswa/masuk" replace />
 
   function handleKeluar() {
     keluar()
@@ -23,25 +22,22 @@ export default function SiswaLayout() {
   }
 
   return (
-    <div className="siswa-shell min-h-full flex flex-col bg-surface-2">
-      {/* Header ringkas */}
-      <header className="siswa-header sticky top-0 z-20 border-b border-border bg-white/95 backdrop-blur-sm">
-        <div className="mx-auto flex max-w-lg items-center justify-between gap-3 px-4 py-3">
-          <div className="flex min-w-0 items-center gap-2.5">
-            <img
-              src="/logo-sdm.png"
-              alt=""
-              className="h-9 w-9 shrink-0 object-contain"
-            />
+    <div className="sw-app">
+      <header className="sw-header">
+        <div className="sw-header-inner">
+          <div className="flex min-w-0 items-center gap-3">
+            <img src="/logo-sdm.png" alt="" className="h-9 w-9 shrink-0 object-contain" />
             <div className="min-w-0">
-              <div className="truncate text-sm font-bold text-muh-800">{sesi.nama}</div>
-              <div className="text-xs font-medium text-muted">Kelas {sesi.kelas}</div>
+              <div className="truncate text-sm font-bold text-muh-900">{sesi.nama}</div>
+              <div className="truncate text-xs font-medium text-muted">
+                Kelas {sesi.kelas} · SDM 01 Kukusan
+              </div>
             </div>
           </div>
           <button
             type="button"
             onClick={handleKeluar}
-            className="siswa-btn-keluar shrink-0"
+            className="sw-btn-keluar"
             aria-label="Keluar dari akun siswa"
           >
             Keluar
@@ -49,30 +45,23 @@ export default function SiswaLayout() {
         </div>
       </header>
 
-      {/* Konten */}
-      <main className="siswa-main flex-1 mx-auto w-full max-w-lg px-4 py-5 pb-24">
+      <main className="sw-main">
         <Outlet />
       </main>
 
-      {/* Bottom navigation — ikon besar, target sentuh nyaman */}
-      <nav
-        className="siswa-bottom-nav fixed bottom-0 inset-x-0 z-20 border-t border-border bg-white/95 backdrop-blur-sm"
-        aria-label="Menu utama siswa"
-      >
-        <div className="mx-auto flex max-w-lg justify-around px-1 pb-[env(safe-area-inset-bottom)]">
+      <nav className="sw-nav" aria-label="Menu utama siswa">
+        <div className="sw-nav-inner">
           {NAV.map((item) => (
             <NavLink
               key={item.to}
               to={item.to}
               end={item.end}
               className={({ isActive }) =>
-                `siswa-nav-item ${isActive ? 'siswa-nav-item--active' : ''}`
+                `sw-nav-item ${isActive ? 'sw-nav-item--active' : ''}`
               }
             >
-              <span className="siswa-nav-emoji" aria-hidden>
-                {item.emoji}
-              </span>
-              <span className="siswa-nav-label">{item.label}</span>
+              <SiswaIcon name={item.icon} size={24} />
+              <span className="sw-nav-label">{item.label}</span>
             </NavLink>
           ))}
         </div>

@@ -56,3 +56,32 @@ Referensi implementasi: `src/components/Layout.tsx` (LMS) dan `src/components/La
 - `firestore.rules` dan `storage.rules` di repo LMS adalah salinan lengkap yang sudah digabung dengan aturan Penilaian/Perpustakaan/Sarpras + blok LMS.
 - Deploy rules dari satu tempat (biasanya repo Penilaian) agar tidak saling menimpa: `firebase deploy --only firestore:rules,storage`.
 - Setelah menambah koleksi `lms_*` baru, selalu kirim **file rules lengkap**, bukan patch saja.
+
+## 9. Siswa membaca data LMS tanpa Firebase Auth
+
+**Gejala:** Halaman Materi siswa menampilkan «Materi belum bisa dibuka» (error Firestore `permission-denied`), padahal guru melihat materi normal.
+
+**Penyebab:** Siswa tidak login Firebase (§3), jadi request dari area siswa memiliki `request.auth == null`. Rules yang mensyaratkan login menolaknya.
+
+**Aturan:**
+
+- Setiap koleksi `lms_*` yang dibaca siswa (saat ini `lms_materi`) butuh `allow read` yang tidak mensyaratkan `request.auth`. `write` tetap hanya untuk guru/admin; jangan membuka `write`.
+- Tulis oleh siswa (mis. pengumpulan tugas) **tidak boleh** memakai `allow write: if true`. Rancang pengamanannya terlebih dahulu sebelum koleksinya dibuat.
+- Perubahan rules selalu dikirim sebagai file **lengkap** (§4, §8).
+
+## 10. Query area siswa & composite index
+
+- Query siswa hanya memakai satu filter `where kelas ==` (`src/lib/materiSiswa.ts`); pengelompokan per mapel dan pengurutan dilakukan di klien, sehingga tidak butuh composite index.
+- Jangan menambah `where mapel` + `orderBy` di sisi siswa tanpa membuat index terlebih dahulu: siswa tidak bisa melihat tautan pembuatan index di konsol, hanya pesan gagal umum. Untuk sisi guru lihat §7.
+
+## 11. Pengurutan TP harus numerik
+
+**Gejala:** «TP 10» tampil sebelum «TP 2».
+
+**Penyebab:** Mengurutkan label teks dengan `localeCompare` tanpa opsi numerik membandingkan karakter «1» dengan «2».
+
+**Aturan:** Urutkan kelompok TP menurut `tpNomor` (angka), bukan menurut label. Pakai helper `kelompokkanMateri` di `src/lib/materiUi.ts`. Catatan: `MateriPanel.tsx` (sisi guru) masih mengurutkan menurut label; samakan saat file itu disentuh berikutnya.
+
+## 12. Jangan memanggil `navigate()` saat render
+
+- Pengalihan karena sesi kosong memakai komponen `<Navigate to="..." replace />` (contoh: `SiswaLayout.tsx`), bukan `navigate()` di badan komponen. Pemanggilan saat render memicu peringatan React dan bisa mengalihkan dua kali.

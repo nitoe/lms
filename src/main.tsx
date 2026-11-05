@@ -5,6 +5,7 @@ import { AuthProvider } from './context/AuthContext'
 import { SiswaProvider } from './context/SiswaContext'
 import App from './App'
 import './index.css'
+import './styles/siswa.css'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

@@ -1,5 +1,20 @@
 # CHANGELOG
 
+## 0.4.2 — Overhaul UI siswa tahap 3 (area siswa modern + Materi siswa)
+
+Area siswa memakai bahasa visual yang sama dengan area guru (hero gradien, kartu bercover, chip), dengan target sentuh besar untuk anak SD.
+
+- **Shell siswa:** header ringkas (logo, nama, kelas, Keluar) + **navigasi bawah** dengan ikon SVG dan penanda aktif berbentuk pil (target sentuh ≥ 3.75rem, safe-area HP). Lebar `max-w-[1600px]` untuk header dan konten (ANTIREGRESI §6).
+- **Beranda siswa:** hero gradien merek (sapaan waktu, nama panggilan, kelas) + kartu menu besar (Materi, Tugas, Kuis, Pencapaian) dengan kotak ikon berwarna dan label «Segera» untuk fitur yang belum aktif. Grid 2 kolom di HP, 4 kolom di layar lebar.
+- **Materi siswa** (`/siswa/materi`) kini berfungsi, tidak lagi placeholder: kartu pelajaran bercover (warna deterministik per mapel, sama dengan kartu guru) → materi dikelompokkan per Tujuan Pembelajaran, tombol Buka besar. Pilihan pelajaran disimpan di URL (`?mapel=`) agar tombol kembali HP berfungsi. Pelajaran yang tampil = mapel yang sudah punya materi di kelas siswa.
+- Placeholder Tugas/Kuis/Pencapaian memakai ikon SVG dan label «Segera hadir».
+- **Perbaikan:** `SiswaLayout` tidak lagi memanggil `navigate()` saat render (diganti `<Navigate>`; ANTIREGRESI §12).
+- File baru: `src/styles/siswa.css` (kelas `sw-*`), `src/pages/siswa/SiswaMateri.tsx`, `SiswaIcon.tsx`, `src/components/JenisIcon.tsx`, `src/lib/materiSiswa.ts`, `src/lib/materiUi.ts`.
+- Kelas `.siswa-*` lama di `index.css` tidak lagi dipakai (dibiarkan agar tidak menyentuh file besar; boleh dibersihkan di rilis lain).
+- **Syarat deploy:** siswa membaca `lms_materi` tanpa login Firebase, sehingga rules harus mengizinkan `read` tanpa `request.auth` untuk koleksi itu (ANTIREGRESI §9). Jika belum, halaman Materi siswa menampilkan «Materi belum bisa dibuka».
+
+Tahap berikutnya: fitur Tugas (data + UI pengumpulan & nilai), v0.5.0.
+
 ## 0.4.1 — Overhaul UI guru tahap 2 (detail kelas + materi)
 
 - **Header ruang kelas:** cover gradien per mapel, badge kelas/wali, judul besar (selaras kartu daftar).
