@@ -1,0 +1,8 @@
+{
+  "projects": { "default": "sdm01kukusan-2e735" },
+  "targets": {
+    "sdm01kukusan-2e735": {
+      "hosting": { "lms": ["sdm01-lms"] }
+    }
+  }
+}
