@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { daftarRuangKelas, parseRuangId } from '../lib/kelasLms'
+import { aksenMapel, inisialMapel } from '../lib/uiAksen'
 import MateriPanel from '../components/MateriPanel'
 
 type TabId = 'pengumuman' | 'materi' | 'tugas'
@@ -25,7 +26,7 @@ export default function KelasDetail() {
   if (!parsed) {
     return (
       <div className="space-y-3">
-        <Link to="/kelas" className="text-sm font-medium text-muh-600 hover:underline">
+        <Link to="/kelas" className="text-sm font-semibold text-muh-600 hover:underline">
           ← Kembali ke daftar kelas
         </Link>
         <div className="lms-empty">Tautan ruang kelas tidak valid.</div>
@@ -35,23 +36,38 @@ export default function KelasDetail() {
 
   const judulMapel = ruang?.mapel ?? parsed.mapel
   const judulKelas = ruang?.kelas ?? parsed.kelas
+  const a = aksenMapel(judulMapel)
 
   return (
     <div className="space-y-5">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <Link to="/kelas" className="text-xs font-semibold text-muh-600 hover:underline">
+      {/* Header cover ruang kelas */}
+      <section className="kelas-hero" style={{ background: a.cover }}>
+        <div className="kelas-hero-deco" aria-hidden />
+        <div className="kelas-hero-inner">
+          <Link to="/kelas" className="kelas-hero-back">
             ← Semua ruang kelas
           </Link>
-          <h2 className="mt-1.5 text-xl font-semibold tracking-tight text-slate-900">
-            {judulMapel}
-          </h2>
-          <p className="mt-0.5 text-sm text-muted">
-            Kelas {judulKelas}
-            {ruang?.sebagaiWali ? ' · Anda wali kelas di rombel ini' : ''}
-          </p>
+          <div className="mt-3 flex flex-wrap items-end justify-between gap-3">
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="kelas-hero-badge">Kelas {judulKelas}</span>
+                {ruang?.sebagaiWali && (
+                  <span className="kelas-hero-badge kelas-hero-badge--wali">Wali kelas</span>
+                )}
+              </div>
+              <h2 className="mt-2 text-xl font-bold tracking-tight text-white sm:text-2xl">
+                {judulMapel}
+              </h2>
+              <p className="mt-1 text-sm text-white/80">
+                Materi, tugas, dan pengumuman untuk rombel ini
+              </p>
+            </div>
+            <div className="kelas-hero-mark" style={{ color: a.coverFg }} aria-hidden>
+              {inisialMapel(judulMapel)}
+            </div>
+          </div>
         </div>
-      </div>
+      </section>
 
       <div className="lms-tabs" role="tablist" aria-label="Bag ruang kelas">
         {TABS.map((t) => (
@@ -64,19 +80,26 @@ export default function KelasDetail() {
             className={`lms-tab ${tab === t.id ? 'lms-tab--active' : ''}`}
           >
             {t.label}
+            {t.id === 'tugas' && (
+              <span className="lms-tab-soon">Segera</span>
+            )}
           </button>
         ))}
       </div>
 
       {tab === 'pengumuman' && (
         <div className="lms-empty">
-          Belum ada pengumuman. Fitur pengumuman kelas akan ditambahkan kemudian.
+          <p className="font-medium text-slate-700">Belum ada pengumuman</p>
+          <p className="mt-1">Fitur pengumuman kelas akan ditambahkan kemudian.</p>
         </div>
       )}
       {tab === 'materi' && <MateriPanel kelas={judulKelas} mapel={judulMapel} />}
       {tab === 'tugas' && (
         <div className="lms-empty">
-          Daftar tugas, pengumpulan siswa, dan penilaian akan muncul di sini (Fase 1c).
+          <p className="font-medium text-slate-700">Tugas segera hadir</p>
+          <p className="mt-1">
+            Buat tugas, pantau pengumpulan siswa, beri nilai dan komentar (Fase 1c).
+          </p>
         </div>
       )}
     </div>

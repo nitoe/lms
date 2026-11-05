@@ -1,5 +1,15 @@
 # CHANGELOG
 
+## 0.4.1 — Overhaul UI guru tahap 2 (detail kelas + materi)
+
+- **Header ruang kelas:** cover gradien per mapel, badge kelas/wali, judul besar (selaras kartu daftar).
+- **Tab** dengan indikator «Segera» pada Tugas.
+- **Panel Materi:** toolbar (jumlah + pencarian + aksi File/YouTube/Tautan).
+- Form tambah materi dalam kartu putih rapi; daftar TP sebagai listbox modern.
+- **Item materi:** ikon jenis berwarna, chip jenis, meta file, aksi Buka/Hapus.
+- Empty state dan loading konsisten dengan shell `.lms-empty`.
+- Kelas CSS `.kelas-hero*`, `.materi-*`.
+
 ## 0.4.0 — Overhaul UI guru tahap 1 (shell LMS modern)
 
 Pola mengacu referensi LMS profesional (sidebar + grid kartu konten), disesuaikan merek SDM 01 Kukusan.
