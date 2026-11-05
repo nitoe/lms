@@ -1,5 +1,13 @@
 # CHANGELOG
 
+## 0.3.3 — Visual guru profesional (beranda & daftar kelas)
+
+- Banner sapaan beranda dengan gradien merek + ringkasan jumlah ruang kelas.
+- Kartu ruang kelas: bilah aksen warna per mapel, inisial mapel, hover naik tipis.
+- Pintasan fitur dengan ikon SVG (bukan emoji) dan badge status (Segera / Fase 2).
+- Navigasi header guru lebih tegas (state aktif).
+- Kelas CSS `.guru-*`, `.ruang-card`, `.fitur-tile` di `index.css`.
+
 ## 0.3.2 — UI/UX siswa ramah anak + polish beranda guru
 
 - **Area siswa:** beranda dengan sapaan waktu, avatar inisial, dan kartu menu besar berwarna (Materi, Tugas, Kuis, Pencapaian).

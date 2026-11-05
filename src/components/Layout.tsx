@@ -26,27 +26,26 @@ export default function Layout() {
 
   return (
     <div className="min-h-full flex flex-col bg-surface-2">
-      <header className="border-b border-border bg-white">
+      <header className="guru-header border-b border-border bg-white">
         <div
           className={`mx-auto flex w-full items-center justify-between gap-4 px-4 py-3 ${
             lebarPenuh ? 'max-w-[1600px]' : 'max-w-6xl'
           }`}
         >
-          <div className="flex items-center gap-3 min-w-0">
-            <img src="/logo-sdm.png" alt="" className="h-9 w-9 object-contain shrink-0" />
+          <div className="flex min-w-0 items-center gap-3">
+            <img src="/logo-sdm.png" alt="" className="h-9 w-9 shrink-0 object-contain" />
             <div className="min-w-0">
-              <div className="text-sm font-semibold text-muh-800 truncate">LMS Sekolah</div>
-              <div className="text-xs text-muted truncate">SD Muhammadiyah 01 Kukusan</div>
+              <div className="truncate text-sm font-semibold text-muh-800">LMS Sekolah</div>
+              <div className="truncate text-xs text-muted">SD Muhammadiyah 01 Kukusan</div>
             </div>
           </div>
-          <nav className="hidden items-center gap-1 sm:flex">
+
+          <nav className="hidden items-center gap-1 sm:flex" aria-label="Menu utama">
             <NavLink
               to="/"
               end
               className={({ isActive }) =>
-                `rounded-md px-3 py-1.5 text-sm font-medium ${
-                  isActive ? 'bg-muh-50 text-muh-700' : 'text-muted hover:bg-surface-2'
-                }`
+                `guru-nav-link ${isActive ? 'guru-nav-link--active' : ''}`
               }
             >
               Beranda
@@ -54,23 +53,22 @@ export default function Layout() {
             <NavLink
               to="/kelas"
               className={({ isActive }) =>
-                `rounded-md px-3 py-1.5 text-sm font-medium ${
-                  isActive ? 'bg-muh-50 text-muh-700' : 'text-muted hover:bg-surface-2'
-                }`
+                `guru-nav-link ${isActive ? 'guru-nav-link--active' : ''}`
               }
             >
               Kelas
             </NavLink>
           </nav>
-          <div className="flex items-center gap-3 shrink-0">
-            <div className="text-right hidden sm:block">
-              <div className="text-sm font-medium truncate max-w-[12rem]">{profil?.nama}</div>
+
+          <div className="flex shrink-0 items-center gap-3">
+            <div className="hidden text-right sm:block">
+              <div className="max-w-[12rem] truncate text-sm font-medium">{profil?.nama}</div>
               <div className="text-xs text-muted">{peran ? NAMA_PERAN[peran] : '—'}</div>
             </div>
             <button
               type="button"
               onClick={() => void keluar()}
-              className="rounded-md border border-border px-3 py-1.5 text-sm font-medium text-muted hover:bg-surface-2"
+              className="rounded-lg border border-border bg-white px-3 py-1.5 text-sm font-medium text-muted transition hover:border-muh-200 hover:bg-muh-50 hover:text-muh-800"
             >
               Keluar
             </button>
@@ -78,12 +76,8 @@ export default function Layout() {
         </div>
       </header>
 
-      <main className="flex-1 w-full px-4 py-5 sm:py-6">
-        <div
-          className={`mx-auto w-full ${
-            lebarPenuh ? 'max-w-[1600px]' : 'max-w-6xl'
-          }`}
-        >
+      <main className="w-full flex-1 px-4 py-5 sm:py-6">
+        <div className={`mx-auto w-full ${lebarPenuh ? 'max-w-[1600px]' : 'max-w-6xl'}`}>
           <Outlet />
         </div>
       </main>
