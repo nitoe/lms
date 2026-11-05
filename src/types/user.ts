@@ -1,6 +1,12 @@
 /** Peran di aplikasi LMS. */
 export type PeranLms = 'admin' | 'guru' | 'siswa' | 'orangtua'
 
+/** Satu baris penugasan mapel (dari aplikasi Penilaian). */
+export interface PenugasanMapel {
+  kelas: string
+  mapel: string
+}
+
 /** Profil di koleksi users/{uid} (dibagi dengan Penilaian, Perpustakaan, Sarpras). */
 export interface AppUser {
   uid: string
@@ -12,9 +18,10 @@ export interface AppUser {
   /** Peran khusus aplikasi LMS (opsional). Admin Penilaian otomatis admin LMS. */
   peranLms?: PeranLms
   aktif?: boolean
-  /** Field penugasan dari Penilaian (untuk guru). */
-  penugasan?: unknown
+  /** Penugasan mapel (guru akademik) — sumber daftar ruang kelas. */
+  penugasan?: PenugasanMapel[]
   penugasanKelas?: string[]
+  /** Format "KELAS::MAPEL", mis. "4A::Matematika". */
   penugasanKelasMapel?: string[]
   waliKelas?: string[]
   kelasAmpu?: string[]

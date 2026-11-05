@@ -17,7 +17,7 @@ Learning Management System untuk guru, siswa, dan orang tua.
 
 ## Status
 
-**Fase 0 selesai di kode:** fondasi auth, peran (admin/guru/siswa/orang tua), shell, halaman masuk menarik (gaya Perpustakaan), dashboard kosong.
+**Fase 0 selesai.** **Fase 1a selesai di kode:** daftar ruang kelas dari penugasan + halaman kelas (tab skeleton). Layout lebar penuh mengikuti pola Penilaian.
 
 ## Menjalankan di komputer
 

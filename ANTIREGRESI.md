@@ -28,3 +28,18 @@ Catatan agar error yang pernah terjadi (atau berpotensi) tidak terulang.
 ## 5. Hero & aset
 
 - `public/hero-lms.png` dan `public/logo-sdm.png` wajib ada sebelum deploy (logo bisa disalin dari repo Perpustakaan/Penilaian).
+
+## 6. Lebar halaman — ruang kosong kiri/kanan saat zoom-out (regresi berulang)
+
+**Gejala:** Halaman baru memakai `max-w-6xl` (atau lebih sempit) di dalam shell, sehingga di layar lebar / zoom-out muncul strip kosong besar di kiri dan kanan.
+
+**Penyebab:** Konten dibatasi terlalu sempit untuk halaman daftar/dashboard yang seharusnya mengisi viewport.
+
+**Aturan (ikuti pola Penilaian `HALAMAN_LEBAR`):**
+
+- Halaman **daftar / dashboard / grid** (`/`, `/kelas`, dan kelak daftar materi/tugas): shell + konten memakai **`max-w-[1600px]`**.
+- Halaman **form ringkas** saja: boleh `max-w-xl` atau `max-w-6xl`.
+- Header dan `<main>` harus memakai kelas lebar yang **sama** agar header tidak “melayang” lebih sempit/lebar dari konten.
+- Saat menambah rute baru di `Layout.tsx`, masukkan path-nya ke array `HALAMAN_LEBAR` jika itu halaman daftar/grid.
+
+Referensi implementasi: `src/components/Layout.tsx` (LMS) dan `src/components/Layout.tsx` (Penilaian).
