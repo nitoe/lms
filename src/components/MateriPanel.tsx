@@ -221,33 +221,65 @@ export default function MateriPanel({ kelas, mapel }: Props) {
                 maxLength={200}
               />
             </label>
-            <label className="block text-sm">
-              <span className="mb-1 block text-xs font-medium text-muted">Tujuan Pembelajaran</span>
-              <select
-                required
-                value={tpId}
-                onChange={(e) => {
-                  setTpId(e.target.value)
-                  const t = tpList.find((x) => x.id === e.target.value)
-                  if (t && !bab) setBab(`TP ${t.nomorTp}`)
-                }}
-                className="w-full rounded-md border border-border bg-white px-3 py-2 text-sm"
-              >
-                <option value="">— Pilih TP (wajib) —</option>
-                {tpList.map((t) => (
-                  <option key={t.id} value={t.id}>
-                    TP {t.nomorTp}. {t.namaTp}
-                  </option>
-                ))}
-              </select>
-              {tpList.length === 0 && (
-                <span className="mt-1 block text-[11px] text-amber-800">
-                  Belum ada TP di Penilaian untuk <strong>{mapel}</strong> · {kelas}.
-                  Buat TP di aplikasi Penilaian (Setup TP) sebelum menambah materi.
-                </span>
+            <div className="block text-sm sm:col-span-2">
+              <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
+                <span className="text-xs font-medium text-muted">Tujuan Pembelajaran (wajib)</span>
+                {tpId && (
+                  <span className="text-[11px] font-medium text-muh-700">
+                    Terpilih: TP {tpList.find((x) => x.id === tpId)?.nomorTp ?? '—'}
+                  </span>
+                )}
+              </div>
+              {tpList.length === 0 ? (
+                <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-[12px] text-amber-900">
+                  Belum ada TP di Penilaian untuk <strong>{mapel}</strong> · {kelas}. Buat TP di
+                  aplikasi Penilaian (Setup TP) sebelum menambah materi.
+                </div>
+              ) : (
+                <div
+                  role="listbox"
+                  aria-label="Pilih Tujuan Pembelajaran"
+                  className="max-h-56 overflow-y-auto rounded-md border border-border bg-white divide-y divide-border"
+                >
+                  {tpList.map((t) => {
+                    const aktif = tpId === t.id
+                    return (
+                      <button
+                        key={t.id}
+                        type="button"
+                        role="option"
+                        aria-selected={aktif}
+                        onClick={() => {
+                          setTpId(t.id)
+                          if (!bab) setBab(`TP ${t.nomorTp}`)
+                        }}
+                        className={`flex w-full items-start gap-2 px-3 py-2.5 text-left transition ${
+                          aktif ? 'bg-muh-50' : 'hover:bg-surface-2'
+                        }`}
+                      >
+                        <span
+                          className={`mt-0.5 inline-flex h-5 min-w-5 shrink-0 items-center justify-center rounded px-1 text-[11px] font-bold ${
+                            aktif ? 'bg-muh-600 text-white' : 'bg-slate-100 text-slate-600'
+                          }`}
+                        >
+                          {t.nomorTp}
+                        </span>
+                        <span
+                          className={`text-[13px] leading-snug ${
+                            aktif ? 'font-medium text-muh-900' : 'text-slate-800'
+                          }`}
+                        >
+                          {t.namaTp}
+                        </span>
+                      </button>
+                    )
+                  })}
+                </div>
               )}
-            </label>
-            <label className="block text-sm">
+              {/* nilai tersembunyi agar validasi HTML required tetap bisa dipakai bila perlu */}
+              <input type="hidden" value={tpId} required readOnly />
+            </div>
+            <label className="block text-sm sm:col-span-2">
               <span className="mb-1 block text-xs font-medium text-muted">Bab / unit (opsional)</span>
               <input
                 value={bab}
@@ -332,7 +364,7 @@ export default function MateriPanel({ kelas, mapel }: Props) {
 
       {kelompok.map((g) => (
         <section key={g.key} className="space-y-2">
-          <h3 className="text-xs font-semibold uppercase tracking-wide text-muh-700">{g.label}</h3>
+          <h3 className="text-[13px] font-semibold leading-snug text-muh-800">{g.label}</h3>
           <ul className="space-y-2">
             {g.items.map((m) => (
               <li
