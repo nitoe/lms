@@ -28,7 +28,7 @@ export default function KelasDetail() {
         <Link to="/kelas" className="text-sm font-medium text-muh-600 hover:underline">
           ← Kembali ke daftar kelas
         </Link>
-        <div className="card-soft p-5 text-sm text-muted">Tautan ruang kelas tidak valid.</div>
+        <div className="lms-empty">Tautan ruang kelas tidak valid.</div>
       </div>
     )
   }
@@ -40,30 +40,28 @@ export default function KelasDetail() {
     <div className="space-y-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <Link to="/kelas" className="text-xs font-medium text-muh-600 hover:underline">
+          <Link to="/kelas" className="text-xs font-semibold text-muh-600 hover:underline">
             ← Semua ruang kelas
           </Link>
-          <h1 className="mt-1 text-xl font-semibold text-muh-900 tracking-tight">
+          <h2 className="mt-1.5 text-xl font-semibold tracking-tight text-slate-900">
             {judulMapel}
-            <span className="text-muted font-normal"> · Kelas {judulKelas}</span>
-          </h1>
-          {ruang?.sebagaiWali && (
-            <p className="mt-0.5 text-xs text-amber-700">Anda wali kelas di rombel ini</p>
-          )}
+          </h2>
+          <p className="mt-0.5 text-sm text-muted">
+            Kelas {judulKelas}
+            {ruang?.sebagaiWali ? ' · Anda wali kelas di rombel ini' : ''}
+          </p>
         </div>
       </div>
 
-      <div className="flex gap-1 border-b border-border">
+      <div className="lms-tabs" role="tablist" aria-label="Bag ruang kelas">
         {TABS.map((t) => (
           <button
             key={t.id}
             type="button"
+            role="tab"
+            aria-selected={tab === t.id}
             onClick={() => setTab(t.id)}
-            className={`relative px-3.5 py-2 text-sm font-medium transition-colors ${
-              tab === t.id
-                ? 'text-muh-700 after:absolute after:inset-x-2 after:bottom-0 after:h-0.5 after:rounded-full after:bg-muh-600'
-                : 'text-muted hover:text-slate-800'
-            }`}
+            className={`lms-tab ${tab === t.id ? 'lms-tab--active' : ''}`}
           >
             {t.label}
           </button>
@@ -71,13 +69,13 @@ export default function KelasDetail() {
       </div>
 
       {tab === 'pengumuman' && (
-        <div className="card-soft p-5 text-sm text-muted">
+        <div className="lms-empty">
           Belum ada pengumuman. Fitur pengumuman kelas akan ditambahkan kemudian.
         </div>
       )}
       {tab === 'materi' && <MateriPanel kelas={judulKelas} mapel={judulMapel} />}
       {tab === 'tugas' && (
-        <div className="card-soft p-5 text-sm text-muted">
+        <div className="lms-empty">
           Daftar tugas, pengumpulan siswa, dan penilaian akan muncul di sini (Fase 1c).
         </div>
       )}

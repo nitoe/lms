@@ -1,5 +1,18 @@
 # CHANGELOG
 
+## 0.4.0 — Overhaul UI guru tahap 1 (shell LMS modern)
+
+Pola mengacu referensi LMS profesional (sidebar + grid kartu konten), disesuaikan merek SDM 01 Kukusan.
+
+- **Shell guru:** sidebar kiri (menu, avatar, keluar) + topbar + area konten; mobile dengan drawer.
+- **Kartu ruang kelas:** cover gradien dekoratif, badge kelas, judul mapel, chip, hover naik — grid responsif 1–4 kolom.
+- **Beranda:** hero + statistik, pencarian mapel/kelas, modul status (Materi aktif / Tugas segera / Kuis fase 2).
+- **Daftar kelas:** filter chip per kelas + pencarian.
+- Komponen baru: `RuangCard`, helper `uiAksen.ts`.
+- Kelas CSS `.lms-*` (shell, card, toolbar, module tile).
+
+Tahap berikutnya: detail ruang kelas & panel materi; lalu area siswa dengan bahasa visual yang sama.
+
 ## 0.3.3 — Visual guru profesional (beranda & daftar kelas)
 
 - Banner sapaan beranda dengan gradien merek + ringkasan jumlah ruang kelas.
