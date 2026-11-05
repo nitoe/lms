@@ -36,21 +36,24 @@ export function parseRuangId(id: string) {
   return parseSlug(id)
 }
 
-/**
- * Daftar ruang kelas (kelas × mapel) yang diampu guru.
- * - Dari penugasan mapel
- * - Wali kelas tanpa penugasan mapel spesifik tetap muncul sebagai "Wali kelas" (mapel khusus)
- * Admin tanpa penugasan: daftar kosong (bisa diperluas nanti).
- */
-export function daftarRuangKelas(profil: AppUser | null): RuangKelas[] {
-  if (!profil) return []
+export function buatRuangId(kelas: string, mapel: string): string {
+  return slug(kelas, mapel)
+}
 
-  const waliSet = new Set(profil.waliKelas ?? [])
+function urutRuang(list: RuangKelas[]): RuangKelas[] {
+  return [...list].sort((a, b) => {
+    const ia = DAFTAR_KELAS_SD.indexOf(a.kelas as (typeof DAFTAR_KELAS_SD)[number])
+    const ib = DAFTAR_KELAS_SD.indexOf(b.kelas as (typeof DAFTAR_KELAS_SD)[number])
+    if (ia !== ib) return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib)
+    return a.mapel.localeCompare(b.mapel, 'id')
+  })
+}
+
+function penugasanDariProfil(profil: AppUser): PenugasanMapel[] {
   const penugasan: PenugasanMapel[] = Array.isArray(profil.penugasan)
     ? profil.penugasan.filter((p) => p && typeof p.kelas === 'string' && typeof p.mapel === 'string')
     : []
 
-  // Fallback: bangun dari penugasanKelasMapel jika penugasan array kosong
   if (penugasan.length === 0 && Array.isArray(profil.penugasanKelasMapel)) {
     for (const key of profil.penugasanKelasMapel) {
       const sep = key.indexOf('::')
@@ -59,10 +62,22 @@ export function daftarRuangKelas(profil: AppUser | null): RuangKelas[] {
       }
     }
   }
+  return penugasan
+}
 
+/**
+ * Daftar ruang kelas (kelas × mapel) dari penugasan saja.
+ * Tidak lagi membuat kartu fiktif "Wali kelas" — materi/TP butuh nama mapel sungguhan.
+ */
+export function daftarRuangKelas(profil: AppUser | null): RuangKelas[] {
+  if (!profil) return []
+
+  const waliSet = new Set(profil.waliKelas ?? [])
+  const penugasan = penugasanDariProfil(profil)
   const map = new Map<string, RuangKelas>()
 
   for (const p of penugasan) {
+    if (!p.mapel || p.mapel === 'Wali kelas') continue
     const id = slug(p.kelas, p.mapel)
     if (map.has(id)) continue
     map.set(id, {
@@ -73,21 +88,46 @@ export function daftarRuangKelas(profil: AppUser | null): RuangKelas[] {
     })
   }
 
-  // Wali kelas yang belum punya kartu mapel: tampilkan kartu "Wali kelas"
-  for (const k of waliSet) {
-    const sudahAda = [...map.values()].some((r) => r.kelas === k)
-    if (!sudahAda) {
-      const id = slug(k, 'Wali kelas')
-      map.set(id, { id, kelas: k, mapel: 'Wali kelas', sebagaiWali: true })
+  return urutRuang([...map.values()])
+}
+
+/**
+ * Kelas yang diwalikan tetapi belum punya satu pun kartu mapel dari penugasan.
+ * Dipakai UI untuk menawarkan pilih mapel dari master `mapel`.
+ */
+export function kelasWaliTanpaMapel(profil: AppUser | null): string[] {
+  if (!profil?.waliKelas?.length) return []
+  const ruang = daftarRuangKelas(profil)
+  const kelasDenganMapel = new Set(ruang.map((r) => r.kelas))
+  return [...new Set(profil.waliKelas)].filter((k) => !kelasDenganMapel.has(k)).sort((a, b) => {
+    const ia = DAFTAR_KELAS_SD.indexOf(a as (typeof DAFTAR_KELAS_SD)[number])
+    const ib = DAFTAR_KELAS_SD.indexOf(b as (typeof DAFTAR_KELAS_SD)[number])
+    return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib)
+  })
+}
+
+/**
+ * Perluas daftar: untuk setiap kelas wali tanpa penugasan mapel,
+ * tambahkan satu kartu per mapel dari master (agar wali bisa kelola semua mapel di kelasnya).
+ */
+export function perluasDenganMapelMaster(
+  profil: AppUser | null,
+  daftarMapel: string[],
+): RuangKelas[] {
+  const dasar = daftarRuangKelas(profil)
+  if (!profil) return dasar
+
+  const waliKosong = kelasWaliTanpaMapel(profil)
+  if (!waliKosong.length || !daftarMapel.length) return dasar
+
+  const map = new Map(dasar.map((r) => [r.id, r]))
+  for (const kelas of waliKosong) {
+    for (const mapel of daftarMapel) {
+      if (!mapel || mapel === 'Wali kelas') continue
+      const id = slug(kelas, mapel)
+      if (map.has(id)) continue
+      map.set(id, { id, kelas, mapel, sebagaiWali: true })
     }
   }
-
-  const list = [...map.values()]
-  list.sort((a, b) => {
-    const ia = DAFTAR_KELAS_SD.indexOf(a.kelas as (typeof DAFTAR_KELAS_SD)[number])
-    const ib = DAFTAR_KELAS_SD.indexOf(b.kelas as (typeof DAFTAR_KELAS_SD)[number])
-    if (ia !== ib) return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib)
-    return a.mapel.localeCompare(b.mapel, 'id')
-  })
-  return list
+  return urutRuang([...map.values()])
 }

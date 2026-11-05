@@ -118,7 +118,13 @@ export default function MateriPanel({ kelas, mapel }: Props) {
     setBusy(true)
     setError('')
     try {
+      if (!mapel || mapel === 'Wali kelas') {
+        throw new Error('Pilih ruang kelas dengan mata pelajaran yang valid, bukan «Wali kelas».')
+      }
       const tp = tpList.find((t) => t.id === tpId)
+      if (!tp) {
+        throw new Error('Tujuan Pembelajaran wajib dipilih. Buat TP di aplikasi Penilaian jika daftar kosong.')
+      }
       await tambahMateri({
         kelas,
         mapel,
@@ -160,26 +166,30 @@ export default function MateriPanel({ kelas, mapel }: Props) {
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-sm text-muted">
-          Materi dikelompokkan menurut Tujuan Pembelajaran (TP) dari aplikasi Penilaian.
+          Materi untuk <strong>{mapel}</strong> · kelas {kelas}. Setiap materi wajib terhubung ke TP.
         </p>
         <div className="flex flex-wrap gap-1.5">
           <button
             type="button"
-            className="rounded-md bg-muh-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-muh-700"
+            disabled={tpList.length === 0}
+            title={tpList.length === 0 ? 'Buat TP di Penilaian terlebih dahulu' : undefined}
+            className="rounded-md bg-muh-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-muh-700 disabled:opacity-50"
             onClick={() => setMode(mode === 'file' ? 'tutup' : 'file')}
           >
             + File
           </button>
           <button
             type="button"
-            className="rounded-md border border-border bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-surface-2"
+            disabled={tpList.length === 0}
+            className="rounded-md border border-border bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-surface-2 disabled:opacity-50"
             onClick={() => setMode(mode === 'youtube' ? 'tutup' : 'youtube')}
           >
             + YouTube
           </button>
           <button
             type="button"
-            className="rounded-md border border-border bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-surface-2"
+            disabled={tpList.length === 0}
+            className="rounded-md border border-border bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-surface-2 disabled:opacity-50"
             onClick={() => setMode(mode === 'tautan' ? 'tutup' : 'tautan')}
           >
             + Tautan
@@ -214,6 +224,7 @@ export default function MateriPanel({ kelas, mapel }: Props) {
             <label className="block text-sm">
               <span className="mb-1 block text-xs font-medium text-muted">Tujuan Pembelajaran</span>
               <select
+                required
                 value={tpId}
                 onChange={(e) => {
                   setTpId(e.target.value)
@@ -222,7 +233,7 @@ export default function MateriPanel({ kelas, mapel }: Props) {
                 }}
                 className="w-full rounded-md border border-border bg-white px-3 py-2 text-sm"
               >
-                <option value="">— Pilih TP (opsional) —</option>
+                <option value="">— Pilih TP (wajib) —</option>
                 {tpList.map((t) => (
                   <option key={t.id} value={t.id}>
                     TP {t.nomorTp}. {t.namaTp}
@@ -230,8 +241,9 @@ export default function MateriPanel({ kelas, mapel }: Props) {
                 ))}
               </select>
               {tpList.length === 0 && (
-                <span className="mt-1 block text-[11px] text-muted">
-                  Belum ada TP di Penilaian untuk {mapel} · {kelas}.
+                <span className="mt-1 block text-[11px] text-amber-800">
+                  Belum ada TP di Penilaian untuk <strong>{mapel}</strong> · {kelas}.
+                  Buat TP di aplikasi Penilaian (Setup TP) sebelum menambah materi.
                 </span>
               )}
             </label>

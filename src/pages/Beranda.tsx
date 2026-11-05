@@ -1,11 +1,37 @@
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
-import { daftarRuangKelas } from '../lib/kelasLms'
+import {
+  daftarRuangKelas,
+  kelasWaliTanpaMapel,
+  perluasDenganMapelMaster,
+  type RuangKelas,
+} from '../lib/kelasLms'
+import { getDaftarMapel } from '../lib/mapelData'
 import { NAMA_PERAN } from '../lib/peran'
 
 export default function Beranda() {
   const { profil, peran } = useAuth()
-  const ruang = daftarRuangKelas(profil)
+  const [ruang, setRuang] = useState<RuangKelas[]>(() => daftarRuangKelas(profil))
+
+  useEffect(() => {
+    const dasar = daftarRuangKelas(profil)
+    setRuang(dasar)
+    if (!kelasWaliTanpaMapel(profil).length) return
+    let batal = false
+    ;(async () => {
+      try {
+        const mapel = await getDaftarMapel()
+        if (!batal && mapel.length) setRuang(perluasDenganMapelMaster(profil, mapel))
+      } catch {
+        /* biarkan daftar dasar */
+      }
+    })()
+    return () => {
+      batal = true
+    }
+  }, [profil])
+
   const preview = ruang.slice(0, 4)
 
   return (
@@ -31,7 +57,8 @@ export default function Beranda() {
 
         {preview.length === 0 ? (
           <div className="card-soft p-5 text-sm text-muted">
-            Belum ada kelas/mapel yang terhubung. Pastikan penugasan sudah diisi di aplikasi Penilaian.
+            Belum ada kelas/mapel yang terhubung. Pastikan penugasan mapel sudah diisi di aplikasi
+            Penilaian (menu admin / kelola akun).
           </div>
         ) : (
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -54,7 +81,7 @@ export default function Beranda() {
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         <div className="card-soft p-4 opacity-70">
           <div className="text-sm font-semibold text-muh-800">Materi pembelajaran</div>
-          <p className="mt-1 text-xs text-muted">Segera — unggah PDF, gambar, video, tautan.</p>
+          <p className="mt-1 text-xs text-muted">Unggah PDF, gambar, video, tautan — hubungkan ke TP.</p>
         </div>
         <div className="card-soft p-4 opacity-70">
           <div className="text-sm font-semibold text-muh-800">Tugas</div>

@@ -1,19 +1,73 @@
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
-import { daftarRuangKelas } from '../lib/kelasLms'
+import {
+  daftarRuangKelas,
+  kelasWaliTanpaMapel,
+  perluasDenganMapelMaster,
+  type RuangKelas,
+} from '../lib/kelasLms'
+import { getDaftarMapel } from '../lib/mapelData'
 
 export default function KelasList() {
   const { profil, peran } = useAuth()
-  const ruang = daftarRuangKelas(profil)
+  const [ruang, setRuang] = useState<RuangKelas[]>(() => daftarRuangKelas(profil))
+  const [catatan, setCatatan] = useState('')
+
+  useEffect(() => {
+    const dasar = daftarRuangKelas(profil)
+    setRuang(dasar)
+
+    const waliKosong = kelasWaliTanpaMapel(profil)
+    if (!waliKosong.length) {
+      setCatatan('')
+      return
+    }
+
+    let batal = false
+    ;(async () => {
+      try {
+        const mapel = await getDaftarMapel()
+        if (batal) return
+        if (!mapel.length) {
+          setCatatan(
+            `Anda wali kelas ${waliKosong.join(', ')} tetapi belum ada penugasan mapel. ` +
+              'Isi penugasan di aplikasi Penilaian, atau pastikan master mapel sudah ada.',
+          )
+          return
+        }
+        setRuang(perluasDenganMapelMaster(profil, mapel))
+        setCatatan(
+          `Sebagai wali ${waliKosong.join(', ')}, ditampilkan semua mata pelajaran agar Anda dapat mengelola materi per mapel.`,
+        )
+      } catch {
+        if (!batal) {
+          setCatatan(
+            `Anda wali kelas ${waliKosong.join(', ')} tanpa penugasan mapel. Gagal memuat daftar mapel — coba muat ulang.`,
+          )
+        }
+      }
+    })()
+
+    return () => {
+      batal = true
+    }
+  }, [profil])
 
   return (
     <div className="space-y-5">
       <div>
         <h1 className="text-xl font-semibold text-muh-900 tracking-tight">Ruang kelas</h1>
         <p className="mt-1 text-sm text-muted">
-          Kelas dan mata pelajaran yang Anda ampu. Klik kartu untuk membuka ruang kelas digital.
+          Setiap kartu = satu mata pelajaran di satu kelas. Materi dan TP terhubung ke mapel tersebut.
         </p>
       </div>
+
+      {catatan && (
+        <div className="rounded-md border border-muh-100 bg-muh-50 px-3 py-2 text-sm text-muh-800">
+          {catatan}
+        </div>
+      )}
 
       {ruang.length === 0 ? (
         <div className="card-soft p-6 text-sm text-muted">
@@ -22,12 +76,11 @@ export default function KelasList() {
               Akun admin belum memiliki penugasan mapel. Daftar ruang kelas diisi dari field{' '}
               <code className="text-xs bg-surface-2 px-1 rounded">penugasan</code> /{' '}
               <code className="text-xs bg-surface-2 px-1 rounded">waliKelas</code> di profil guru.
-              Guru yang sudah punya penugasan di aplikasi Penilaian akan melihat kartunya di sini.
             </>
           ) : (
             <>
               Belum ada kelas atau mapel yang terhubung ke akun Anda.
-              Pastikan penugasan sudah diisi di aplikasi Penilaian (menu admin / kelola akun).
+              Pastikan penugasan mapel sudah diisi di aplikasi Penilaian (bukan hanya wali kelas).
             </>
           )}
         </div>

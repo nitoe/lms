@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## 0.3.1 — Perbaikan ruang kelas wali & TP wajib
+
+- Kartu fiktif «Wali kelas» dihapus; materi selalu per **mapel × kelas**.
+- Wali tanpa penugasan mapel: daftar diperluas dari master `mapel` (satu kartu per mapel).
+- **TP wajib** saat menambah materi (bukan opsional).
+
 ## 0.3.0 — Fase 1b: Materi pembelajaran
 
 - Tab **Materi** di halaman kelas: unggah PDF/gambar/video, tautan YouTube, dan tautan umum.
