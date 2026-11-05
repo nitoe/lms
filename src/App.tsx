@@ -11,6 +11,7 @@ import KelasDetail from './pages/KelasDetail'
 import SiswaMasuk from './pages/siswa/SiswaMasuk'
 import SiswaLayout from './pages/siswa/SiswaLayout'
 import SiswaBeranda from './pages/siswa/SiswaBeranda'
+import SiswaPlaceholder from './pages/siswa/SiswaPlaceholder'
 import OrangtuaBeranda from './pages/OrangtuaBeranda'
 import { isStaf } from './lib/peran'
 
@@ -53,7 +54,52 @@ export default function App() {
         }
       >
         <Route index element={<SiswaBeranda />} />
-        <Route path="kelas" element={<div className="text-sm text-muted p-4">Daftar kelas siswa — segera (Fase 1).</div>} />
+        <Route
+          path="materi"
+          element={
+            <SiswaPlaceholder
+              judul="Materi Pelajaran"
+              emoji="📚"
+              deskripsi="Materi dari gurumu akan muncul di sini. Nanti kamu bisa baca PDF, lihat gambar, dan tonton video."
+              warna="bg-sky-50"
+            />
+          }
+        />
+        <Route
+          path="tugas"
+          element={
+            <SiswaPlaceholder
+              judul="Tugas"
+              emoji="✏️"
+              deskripsi="Tugas dari guru akan tampil di sini. Kamu bisa mengerjakan, mengunggah foto atau file, lalu mengirimnya."
+              warna="bg-amber-50"
+            />
+          }
+        />
+        <Route
+          path="kuis"
+          element={
+            <SiswaPlaceholder
+              judul="Kuis"
+              emoji="🎯"
+              deskripsi="Latihan soal dan kuis seru akan hadir di sini. Jawab dengan tenang dan rajin berlatih ya!"
+              warna="bg-violet-50"
+            />
+          }
+        />
+        <Route
+          path="pencapaian"
+          element={
+            <SiswaPlaceholder
+              judul="Pencapaian"
+              emoji="⭐"
+              deskripsi="Bintang, lencana, dan catatan belajarmu akan dikumpulkan di sini. Terus semangat!"
+              warna="bg-emerald-50"
+            />
+          }
+        />
+        {/* Alias lama */}
+        <Route path="kelas" element={<Navigate to="/siswa/materi" replace />} />
       </Route>
 
       <Route

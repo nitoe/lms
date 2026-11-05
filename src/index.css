@@ -401,6 +401,166 @@ td, th, input[type='number'], .tabular { font-variant-numeric: tabular-nums; }
   }
 }
 
+
+
+/* ── Area siswa (ramah anak, target sentuh besar) ── */
+.siswa-shell {
+  /* pastikan konten tidak tertutup bottom nav */
+}
+
+.siswa-header {
+  /* sticky already in component */
+}
+
+.siswa-btn-keluar {
+  border-radius: 0.5rem;
+  border: 1px solid var(--color-border);
+  background: #fff;
+  padding: 0.4rem 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-muted);
+  min-height: 2.25rem;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+.siswa-btn-keluar:hover {
+  background: var(--color-surface-2);
+  border-color: #c5cad8;
+}
+
+.siswa-hero-card {
+  background: linear-gradient(135deg, #eff0fa 0%, #ffffff 55%, #f8f9fc 100%);
+  border: 1px solid var(--color-border);
+  border-radius: 1rem;
+  padding: 1rem 1.1rem;
+  box-shadow: 0 1px 3px rgba(23, 23, 57, 0.05);
+}
+
+.siswa-avatar {
+  display: flex;
+  height: 3rem;
+  width: 3rem;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  background: var(--color-muh-600);
+  color: #fff;
+  font-size: 1.15rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  box-shadow: 0 2px 6px rgba(49, 48, 131, 0.25);
+}
+
+.siswa-menu-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.35rem;
+  min-height: 7.5rem;
+  padding: 1rem 0.9rem;
+  border-radius: 1rem;
+  border-width: 1px;
+  border-style: solid;
+  text-decoration: none;
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+  box-shadow: 0 1px 2px rgba(23, 23, 57, 0.04);
+  -webkit-tap-highlight-color: transparent;
+}
+.siswa-menu-card:active {
+  transform: scale(0.97);
+}
+.siswa-menu-card:hover {
+  box-shadow: 0 4px 12px rgba(23, 23, 57, 0.08);
+}
+.siswa-menu-card--soon {
+  opacity: 0.88;
+}
+.siswa-menu-emoji {
+  font-size: 1.75rem;
+  line-height: 1;
+  margin-bottom: 0.15rem;
+}
+
+.siswa-tip {
+  display: flex;
+  gap: 0.65rem;
+  align-items: flex-start;
+  border-radius: 0.75rem;
+  border: 1px dashed #c5cad8;
+  background: #fff;
+  padding: 0.85rem 1rem;
+}
+
+.siswa-btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.75rem;
+  padding: 0.55rem 1.25rem;
+  border-radius: 0.75rem;
+  border: none;
+  background: var(--color-muh-600);
+  color: #fff;
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background 0.15s;
+  -webkit-tap-highlight-color: transparent;
+}
+.siswa-btn-primary:hover {
+  background: var(--color-muh-700);
+}
+.siswa-btn-primary:active {
+  background: var(--color-muh-800);
+}
+
+/* Bottom nav siswa */
+.siswa-bottom-nav {
+  /* safe-area handled in padding */
+}
+.siswa-nav-item {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.15rem;
+  min-height: 3.5rem;
+  padding: 0.45rem 0.25rem;
+  text-decoration: none;
+  color: var(--color-muted);
+  font-weight: 500;
+  border-radius: 0.5rem;
+  transition: color 0.12s, background 0.12s;
+  -webkit-tap-highlight-color: transparent;
+}
+.siswa-nav-item--active {
+  color: var(--color-muh-700);
+  font-weight: 700;
+}
+.siswa-nav-item--active .siswa-nav-emoji {
+  transform: scale(1.08);
+}
+.siswa-nav-emoji {
+  font-size: 1.35rem;
+  line-height: 1;
+  transition: transform 0.12s ease;
+}
+.siswa-nav-label {
+  font-size: 0.65rem;
+  letter-spacing: 0.01em;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .siswa-menu-card,
+  .siswa-nav-emoji {
+    transition: none;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
 }

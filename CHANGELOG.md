@@ -1,5 +1,13 @@
 # CHANGELOG
 
+## 0.3.2 — UI/UX siswa ramah anak + polish beranda guru
+
+- **Area siswa:** beranda dengan sapaan waktu, avatar inisial, dan kartu menu besar berwarna (Materi, Tugas, Kuis, Pencapaian).
+- **Navigasi bawah siswa:** ikon + label, target sentuh ≥ 3.5rem, safe-area untuk HP.
+- Placeholder ramah anak untuk rute `/siswa/materi`, `/tugas`, `/kuis`, `/pencapaian` agar menu tidak “mati”.
+- Gaya khusus `.siswa-*` di `index.css` (kartu, tip, tombol, bottom nav).
+- **Beranda guru:** kartu fitur dengan ikon, empty state lebih jelas, hover konsisten dengan daftar kelas.
+
 ## 0.3.1 — Perbaikan ruang kelas wali & TP wajib
 
 - Kartu fiktif «Wali kelas» dihapus; materi selalu per **mapel × kelas**.
