@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { logout } from '../lib/auth'
@@ -18,6 +18,20 @@ const NAV_UTAMA: NavItem[] = [
   { to: '/kelas', label: 'Tugas', icon: 'task', soon: true },
   { to: '/kelas', label: 'Kuis', icon: 'quiz', soon: true },
 ]
+
+const LS_SIDEBAR = 'lms-sidebar-collapsed'
+
+function bacaCollapsedAwal(pathname: string): boolean {
+  try {
+    const v = localStorage.getItem(LS_SIDEBAR)
+    if (v === '1') return true
+    if (v === '0') return false
+  } catch {
+    /* ignore */
+  }
+  // Default: ciut di editor soal agar ruang kerja maksimal
+  return pathname.includes('/soal/')
+}
 
 function Icon({ name }: { name: NavItem['icon'] }) {
   const common = {
@@ -67,7 +81,18 @@ export default function Layout() {
   const { profil, peran } = useAuth()
   const navigate = useNavigate()
   const { pathname } = useLocation()
+  /** Drawer mobile */
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  /** Desktop: hanya ikon */
+  const [collapsed, setCollapsed] = useState(() => bacaCollapsedAwal(pathname))
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(LS_SIDEBAR, collapsed ? '1' : '0')
+    } catch {
+      /* ignore */
+    }
+  }, [collapsed])
 
   async function keluar() {
     await logout()
@@ -81,8 +106,7 @@ export default function Layout() {
     : 'Beranda'
 
   return (
-    <div className="lms-app">
-      {/* Overlay mobile */}
+    <div className={`lms-app ${collapsed ? 'lms-app--nav-ciut' : ''}`}>
       {sidebarOpen && (
         <button
           type="button"
@@ -92,32 +116,63 @@ export default function Layout() {
         />
       )}
 
-      {/* Sidebar */}
-      <aside className={`lms-sidebar ${sidebarOpen ? 'lms-sidebar--open' : ''}`}>
+      <aside
+        className={[
+          'lms-sidebar',
+          sidebarOpen ? 'lms-sidebar--open' : '',
+          collapsed ? 'lms-sidebar--ciut' : '',
+        ].filter(Boolean).join(' ')}
+        aria-label="Navigasi utama"
+      >
         <div className="lms-sidebar-brand">
-          <img src="/logo-sdm.png" alt="" className="h-9 w-9 object-contain" />
-          <div className="min-w-0">
+          <img src="/logo-sdm.png" alt="" className="lms-sidebar-logo" />
+          <div className="lms-sidebar-brand-teks min-w-0 flex-1">
             <div className="truncate text-sm font-bold text-muh-900">LMS Sekolah</div>
             <div className="truncate text-[11px] text-muted">SDM 01 Kukusan</div>
           </div>
+          <button
+            type="button"
+            className="lms-sidebar-toggle"
+            aria-label={collapsed ? 'Perluas menu' : 'Ciutkan menu'}
+            aria-pressed={collapsed}
+            title={collapsed ? 'Perluas menu' : 'Ciutkan menu (ikon saja)'}
+            onClick={() => setCollapsed((v) => !v)}
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              {collapsed ? (
+                <>
+                  <polyline points="9 18 15 12 9 6" />
+                </>
+              ) : (
+                <>
+                  <polyline points="15 18 9 12 15 6" />
+                </>
+              )}
+            </svg>
+          </button>
         </div>
 
-        <nav className="lms-sidebar-nav" aria-label="Menu utama">
-          <p className="lms-sidebar-section">Menu</p>
+        <nav className="lms-sidebar-nav">
+          <div className="lms-sidebar-section">Menu</div>
           {NAV_UTAMA.map((item) =>
             item.soon ? (
-              <div key={item.label} className="lms-side-link lms-side-link--soon" title="Segera hadir">
+              <div
+                key={item.label + item.to}
+                className="lms-side-link lms-side-link--soon"
+                title={`${item.label} (segera)`}
+              >
                 <span className="lms-side-icon">
                   <Icon name={item.icon} />
                 </span>
-                <span className="flex-1">{item.label}</span>
-                <span className="lms-soon-pill">Segera</span>
+                <span className="lms-side-label">{item.label}</span>
+                <span className="lms-soon-pill">Soon</span>
               </div>
             ) : (
               <NavLink
                 key={item.label + item.to}
                 to={item.to}
                 end={item.end}
+                title={item.label}
                 onClick={() => setSidebarOpen(false)}
                 className={({ isActive }) =>
                   `lms-side-link ${isActive ? 'lms-side-link--active' : ''}`
@@ -126,31 +181,42 @@ export default function Layout() {
                 <span className="lms-side-icon">
                   <Icon name={item.icon} />
                 </span>
-                <span>{item.label}</span>
+                <span className="lms-side-label">{item.label}</span>
               </NavLink>
             ),
           )}
         </nav>
 
         <div className="lms-sidebar-footer">
-          <div className="lms-sidebar-user">
+          <div className="lms-sidebar-user" title={profil?.nama || undefined}>
             <div className="lms-avatar" aria-hidden>
               {(profil?.nama || '?').charAt(0).toUpperCase()}
             </div>
-            <div className="min-w-0 flex-1">
+            <div className="lms-sidebar-user-teks min-w-0 flex-1">
               <div className="truncate text-xs font-semibold text-slate-800">{profil?.nama}</div>
               <div className="truncate text-[11px] text-muted">
                 {peran ? NAMA_PERAN[peran] : '—'}
               </div>
             </div>
           </div>
-          <button type="button" onClick={() => void keluar()} className="lms-btn-ghost w-full">
-            Keluar
+          <button
+            type="button"
+            onClick={() => void keluar()}
+            className="lms-btn-ghost w-full lms-sidebar-keluar"
+            title="Keluar"
+          >
+            <span className="lms-sidebar-keluar-teks">Keluar</span>
+            <span className="lms-sidebar-keluar-ikon" aria-hidden>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                <polyline points="16 17 21 12 16 7" />
+                <line x1="21" y1="12" x2="9" y2="12" />
+              </svg>
+            </span>
           </button>
         </div>
       </aside>
 
-      {/* Main column */}
       <div className="lms-main">
         <header className="lms-topbar">
           <div className="flex min-w-0 items-center gap-3">
@@ -164,6 +230,18 @@ export default function Layout() {
                 <line x1="4" y1="6" x2="20" y2="6" />
                 <line x1="4" y1="12" x2="20" y2="12" />
                 <line x1="4" y1="18" x2="20" y2="18" />
+              </svg>
+            </button>
+            <button
+              type="button"
+              className="lms-icon-btn hidden lg:inline-flex"
+              aria-label={collapsed ? 'Perluas menu' : 'Ciutkan menu'}
+              title={collapsed ? 'Perluas menu' : 'Ciutkan menu'}
+              onClick={() => setCollapsed((v) => !v)}
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                <rect x="3" y="3" width="18" height="18" rx="2" />
+                <line x1="9" y1="3" x2="9" y2="21" />
               </svg>
             </button>
             <div className="min-w-0">

@@ -3,6 +3,12 @@
 > Append-only: entri baru ditambahkan di BAWAH, entri lama tidak diubah.
 > Versi mengacu ke `package.json` (saat ini `0.1.0`); belum ada rilis bertag.
 
+## 2026-11-08 — Sidebar dapat diciutkan (ikon saja)
+
+- Menu kiri desktop bisa diciutkan: hanya ikon navigasi, ruang konten (editor soal) lebih lebar.
+- Tombol ciut di brand sidebar dan di topbar; preferensi disimpan di `localStorage`.
+- Default ciut saat membuka editor soal bila belum ada preferensi.
+
 ## 2026-11-08 — AI per-soal, deskripsi ilustrasi, daftar soal rapi
 
 - Generate AI dipindah ke kartu soal aktif: satu nomor per generate (tipe + kompleksitas yang dipilih guru + fokus materi).

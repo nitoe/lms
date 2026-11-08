@@ -876,7 +876,91 @@ td, th, input[type='number'], .tabular { font-variant-numeric: tabular-nums; }
   font-weight: 700;
 }
 
+
+/* —— Sidebar ciut (desktop: ikon saja) —— */
+.lms-sidebar-toggle {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 1.85rem;
+  height: 1.85rem;
+  flex-shrink: 0;
+  border: 1px solid var(--color-border);
+  border-radius: 0.45rem;
+  background: #fff;
+  color: #4b5568;
+  cursor: pointer;
+}
+.lms-sidebar-toggle:hover {
+  background: #f4f5f9;
+  color: #1a1d33;
+}
+@media (min-width: 1024px) {
+  .lms-sidebar-toggle { display: inline-flex; }
+}
+
+.lms-side-label { min-width: 0; }
+.lms-sidebar-keluar-ikon { display: none; }
+.lms-sidebar {
+  transition: width 0.2s ease, transform 0.2s ease;
+}
+
+@media (min-width: 1024px) {
+  .lms-sidebar--ciut {
+    width: 4.25rem;
+  }
+  .lms-sidebar--ciut .lms-sidebar-brand {
+    flex-direction: column;
+    gap: 0.45rem;
+    padding: 0.75rem 0.5rem;
+  }
+  .lms-sidebar--ciut .lms-sidebar-brand-teks,
+  .lms-sidebar--ciut .lms-sidebar-section,
+  .lms-sidebar--ciut .lms-side-label,
+  .lms-sidebar--ciut .lms-soon-pill,
+  .lms-sidebar--ciut .lms-sidebar-user-teks,
+  .lms-sidebar--ciut .lms-sidebar-keluar-teks {
+    display: none;
+  }
+  .lms-sidebar--ciut .lms-sidebar-nav {
+    padding: 0.55rem 0.4rem;
+  }
+  .lms-sidebar--ciut .lms-side-link {
+    justify-content: center;
+    padding: 0.65rem 0.4rem;
+    gap: 0;
+  }
+  .lms-sidebar--ciut .lms-sidebar-footer {
+    padding: 0.55rem 0.4rem;
+    align-items: center;
+  }
+  .lms-sidebar--ciut .lms-sidebar-user {
+    justify-content: center;
+    padding: 0.25rem 0;
+  }
+  .lms-sidebar--ciut .lms-sidebar-keluar {
+    width: 2.35rem !important;
+    min-height: 2.35rem;
+    padding: 0;
+  }
+  .lms-sidebar--ciut .lms-sidebar-keluar-ikon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .lms-sidebar-logo {
+    width: 2.15rem;
+    height: 2.15rem;
+    object-fit: contain;
+    flex-shrink: 0;
+  }
+  .lms-sidebar--ciut .lms-sidebar-logo {
+    margin: 0 auto;
+  }
+}
+
 /* —— Main column —— */
+
 .lms-main {
   display: flex;
   min-width: 0;
