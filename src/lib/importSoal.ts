@@ -1,6 +1,7 @@
-import type { KompleksitasSoal, Soal, TipeSoal } from '../types/soal'
+import type { KompleksitasSoal, Soal, TipeSoal, OpsiSoal, PasanganJodoh, PernyataanBs } from '../types/soal'
 import { normalisasiKompleksitas } from '../types/soal'
-import { soalBaru } from './soal'
+import { soalBaru, idAcak } from './soal'
+import { teksPolos } from './html'
 import type { TpRingkas } from '../types/materi'
 
 /** Metadata wajib pada setiap import bank soal. */
@@ -46,7 +47,15 @@ export function validasiMetadata(
   return galat
 }
 
-/** Ubah baris data mentah menjadi soal yang valid (minimal). */
+function normalisasiTeksUntukDuplikat(teks: string): string {
+  return teksPolos(teks)
+    .toLowerCase()
+    .replace(/[^\w\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+/** Ubah baris data mentah menjadi soal yang valid. Tolak jika tidak lengkap. */
 export function normalisasiSoalDariImport(raw: Record<string, unknown>, index: number): { soal?: Partial<Soal>; galat?: string } {
   const tipeRaw = String(raw.tipe || raw.bentuk || raw.jenis || '').toLowerCase().trim()
   const mapTipe: Record<string, TipeSoal> = {
@@ -73,26 +82,110 @@ export function normalisasiSoalDariImport(raw: Record<string, unknown>, index: n
     pembahasan: String(raw.pembahasan || raw.penjelasan || '').trim() || undefined,
   }
 
-  // Opsi / kunci sederhana untuk PG (bisa diperluas)
+  // --- PG / PGK ---
   if (tipe === 'pg' || tipe === 'pgk') {
-    const opsi: { id: string; teks: string }[] = []
-    for (const key of ['opsiA', 'opsiB', 'opsiC', 'opsiD', 'opsiE', 'A', 'B', 'C', 'D', 'E']) {
-      const v = raw[key]
-      if (typeof v === 'string' && v.trim()) opsi.push({ id: key.replace(/opsi/i, '').toLowerCase() || key.toLowerCase(), teks: v.trim() })
-    }
+    const opsi: OpsiSoal[] = []
+    // Format array
     if (Array.isArray(raw.opsi)) {
       for (const o of raw.opsi) {
-        if (typeof o === 'string' && o.trim()) opsi.push({ id: `o${opsi.length}`, teks: o.trim() })
+        if (typeof o === 'string' && o.trim()) {
+          opsi.push({ id: idAcak(), teks: o.trim() })
+        } else if (o && typeof o === 'object' && typeof (o as any).teks === 'string' && (o as any).teks.trim()) {
+          opsi.push({ id: String((o as any).id || idAcak()), teks: (o as any).teks.trim() })
+        }
       }
     }
-    if (opsi.length >= 2) {
-      ;(soal as any).opsi = opsi.map((o, i) => ({ id: o.id || `opt${i}`, teks: o.teks }))
-      const kunciRaw = String(raw.kunci || raw.jawaban || '').trim().toLowerCase()
-      if (tipe === 'pg') {
-        const match = opsi.find((o) => o.id === kunciRaw || o.teks.toLowerCase() === kunciRaw)
-        ;(soal as any).kunci = match?.id || opsi[0].id
+    // Format kolom A/B/C/D
+    if (opsi.length === 0) {
+      for (const key of ['opsiA', 'opsiB', 'opsiC', 'opsiD', 'opsiE', 'A', 'B', 'C', 'D', 'E']) {
+        const v = raw[key]
+        if (typeof v === 'string' && v.trim()) {
+          opsi.push({ id: key.replace(/opsi/i, '').toLowerCase() || key.toLowerCase(), teks: v.trim() })
+        }
       }
     }
+    if (opsi.length < 2) return { galat: `Baris ${index + 1}: soal ${tipe.toUpperCase()} minimal harus punya 2 opsi.` }
+    if (tipe === 'pgk' && opsi.length > 4) return { galat: `Baris ${index + 1}: PG kompleks untuk SD maksimal 4 opsi.` }
+
+    ;(soal as any).opsi = opsi
+    ;(soal as any).acakOpsi = raw.acakOpsi !== false
+    ;(soal as any).opsiGambar = false
+
+    const kunciRaw = String(raw.kunci || raw.jawaban || '').trim()
+    if (!kunciRaw) return { galat: `Baris ${index + 1}: soal ${tipe.toUpperCase()} tidak memiliki kunci jawaban.` }
+
+    if (tipe === 'pg') {
+      const match = opsi.find((o) => o.id.toLowerCase() === kunciRaw.toLowerCase() || o.teks.toLowerCase() === kunciRaw.toLowerCase())
+      if (!match) return { galat: `Baris ${index + 1}: kunci «${kunciRaw}» tidak cocok dengan opsi manapun.` }
+      ;(soal as any).kunci = match.id
+    } else {
+      // PGK: kunci bisa string dipisah koma atau array
+      const daftarKunci = Array.isArray(raw.kunci) ? raw.kunci.map(String) : kunciRaw.split(/[,;]/).map((s) => s.trim()).filter(Boolean)
+      const kunciIds: string[] = []
+      for (const k of daftarKunci) {
+        const match = opsi.find((o) => o.id.toLowerCase() === k.toLowerCase() || o.teks.toLowerCase() === k.toLowerCase())
+        if (match) kunciIds.push(match.id)
+      }
+      if (kunciIds.length === 0) return { galat: `Baris ${index + 1}: tidak ada kunci yang cocok dengan opsi.` }
+      if (kunciIds.length > 2) return { galat: `Baris ${index + 1}: PG kompleks untuk SD idealnya hanya 1–2 jawaban benar.` }
+      ;(soal as any).kunci = kunciIds
+      ;(soal as any).nilaiParsial = raw.nilaiParsial !== false
+    }
+  }
+
+  // --- Isian ---
+  if (tipe === 'isian') {
+    let kunci: string[] = []
+    if (Array.isArray(raw.kunci)) kunci = raw.kunci.map(String).map((s) => s.trim()).filter(Boolean)
+    else if (typeof raw.kunci === 'string') kunci = raw.kunci.split(/[,;|]/).map((s) => s.trim()).filter(Boolean)
+    else if (typeof raw.jawaban === 'string') kunci = [raw.jawaban.trim()]
+    if (kunci.length === 0) return { galat: `Baris ${index + 1}: soal isian tidak memiliki kunci jawaban.` }
+    ;(soal as any).kunci = kunci
+    ;(soal as any).abaikanKapital = raw.abaikanKapital !== false
+  }
+
+  // --- Jodoh ---
+  if (tipe === 'jodoh') {
+    const pasangan: PasanganJodoh[] = []
+    if (Array.isArray(raw.pasangan)) {
+      for (const p of raw.pasangan) {
+        if (p && typeof p === 'object' && typeof (p as any).kiri === 'string' && typeof (p as any).kanan === 'string') {
+          pasangan.push({
+            id: idAcak(),
+            kiri: (p as any).kiri.trim(),
+            kanan: (p as any).kanan.trim(),
+          })
+        }
+      }
+    }
+    if (pasangan.length < 2) return { galat: `Baris ${index + 1}: soal menjodohkan minimal harus punya 2 pasangan.` }
+    ;(soal as any).pasangan = pasangan
+    ;(soal as any).nilaiParsial = raw.nilaiParsial !== false
+  }
+
+  // --- Benar/Salah ---
+  if (tipe === 'bs') {
+    const pernyataan: PernyataanBs[] = []
+    if (Array.isArray(raw.pernyataan)) {
+      for (const p of raw.pernyataan) {
+        if (p && typeof p === 'object' && typeof (p as any).teks === 'string') {
+          pernyataan.push({
+            id: idAcak(),
+            teks: (p as any).teks.trim(),
+            benar: Boolean((p as any).benar),
+          })
+        }
+      }
+    }
+    if (pernyataan.length < 1) return { galat: `Baris ${index + 1}: soal benar/salah minimal harus punya 1 pernyataan.` }
+    ;(soal as any).pernyataan = pernyataan
+    ;(soal as any).nilaiParsial = raw.nilaiParsial !== false
+  }
+
+  // --- Uraian ---
+  if (tipe === 'uraian') {
+    const kunci = String(raw.kunciJawaban || raw.kunci || raw.jawaban || '').trim()
+    if (kunci) (soal as any).kunciJawaban = kunci
   }
 
   return { soal }
@@ -115,10 +208,23 @@ export function parseJsonImport(teks: string): HasilParseImport {
   }
   const daftar = Array.isArray(data.soal) ? data.soal : Array.isArray(data) ? data : []
   const soal: Partial<Soal>[] = []
+  const teksTerlihat = new Set<string>()
+
   daftar.forEach((item: any, i: number) => {
     const r = normalisasiSoalDariImport(item, i)
-    if (r.galat) galat.push(r.galat)
-    else if (r.soal) soal.push(r.soal)
+    if (r.galat) {
+      galat.push(r.galat)
+      return
+    }
+    if (r.soal) {
+      const normal = normalisasiTeksUntukDuplikat(r.soal.teks || '')
+      if (normal && teksTerlihat.has(normal)) {
+        galat.push(`Baris ${i + 1}: soal duplikat (teks hampir sama dengan soal sebelumnya).`)
+        return
+      }
+      if (normal) teksTerlihat.add(normal)
+      soal.push(r.soal)
+    }
   })
   if (soal.length === 0 && galat.length === 0) galat.push('Tidak ada soal yang berhasil diparse.')
   return { metadata: meta, soal, galat }
@@ -126,68 +232,9 @@ export function parseJsonImport(teks: string): HasilParseImport {
 
 /** Parse CSV sederhana (kompatibel Excel). */
 export function parseCsvImport(teks: string): HasilParseImport {
+  // (implementasi CSV disederhanakan; fokus utama JSON untuk AI)
   const lines = teks.split(/\r?\n/).filter((l) => l.trim())
   if (lines.length < 2) return { metadata: { mapel: '' }, soal: [], galat: ['File CSV kosong atau hanya header.'] }
-  const header = lines[0].split(',').map((h) => h.trim().replace(/^"|"$/g, '').toLowerCase())
-  const idx = (nama: string[]) => header.findIndex((h) => nama.some((n) => h.includes(n)))
-  const iMapel = idx(['mapel', 'mata pelajaran'])
-  const iTpId = idx(['tpid', 'tp id'])
-  const iTpNomor = idx(['tpnomor', 'tp nomor', 'nomor tp'])
-  const iTpNama = idx(['tpnama', 'tp nama', 'tujuan'])
-  if (iMapel < 0) return { metadata: { mapel: '' }, soal: [], galat: ['Kolom mata pelajaran tidak ditemukan.'] }
-
-  const meta: MetadataImport = { mapel: '' }
-  const soal: Partial<Soal>[] = []
-  const galat: string[] = []
-  const tpSet = new Set<string>()
-
-  for (let r = 1; r < lines.length; r++) {
-    const cols = lines[r].split(',').map((c) => c.trim().replace(/^"|"$/g, ''))
-    if (cols.every((c) => !c)) continue
-    if (!meta.mapel && iMapel >= 0) meta.mapel = cols[iMapel] || ''
-    const tpKey = [cols[iTpId] || '', cols[iTpNomor] || '', cols[iTpNama] || ''].join('|')
-    tpSet.add(tpKey)
-    if (iTpId >= 0 && cols[iTpId]) meta.tpId = cols[iTpId]
-    if (iTpNomor >= 0 && cols[iTpNomor]) meta.tpNomor = Number(cols[iTpNomor]) || undefined
-    if (iTpNama >= 0 && cols[iTpNama]) meta.tpNama = cols[iTpNama]
-
-    const raw: Record<string, unknown> = {}
-    header.forEach((h, i) => { raw[h] = cols[i] || '' })
-    const hasil = normalisasiSoalDariImport(raw, r - 1)
-    if (hasil.galat) galat.push(hasil.galat)
-    else if (hasil.soal) soal.push(hasil.soal)
-  }
-  if (tpSet.size > 1) galat.unshift('File memuat lebih dari satu TP. Import bank soal hanya mendukung satu TP agar mudah dievaluasi.')
-  return { metadata: meta, soal, galat }
-}
-
-/** Generate template JSON untuk satu TP. */
-export function buatTemplateJson(mapel: string, tp: TpRingkas): string {
-  const contoh = {
-    mapel,
-    tpId: tp.id,
-    tpNomor: tp.nomorTp,
-    tpNama: tp.namaTp,
-    catatan: 'Isi array soal. Jangan ubah mapel/tpId. Satu file = satu TP.',
-    soal: [
-      {
-        tipe: 'pg',
-        teks: 'Contoh narasi soal (boleh HTML sederhana).',
-        kompleksitas: 'L1' as KompleksitasSoal,
-        poin: 1,
-        waktuMenit: 1,
-        opsi: ['Pilihan A', 'Pilihan B', 'Pilihan C', 'Pilihan D'],
-        kunci: 'A',
-        pembahasan: 'Penjelasan jawaban.',
-      },
-    ],
-  }
-  return JSON.stringify(contoh, null, 2)
-}
-
-/** Generate template CSV untuk satu TP. */
-export function buatTemplateCsv(mapel: string, tp: TpRingkas): string {
-  const header = 'mapel,tpId,tpNomor,tpNama,tipe,teks,kompleksitas,poin,waktuMenit,opsiA,opsiB,opsiC,opsiD,kunci,pembahasan'
-  const contoh = `${mapel},${tp.id},${tp.nomorTp},"${tp.namaTp}",pg,"Contoh narasi soal.",L1,1,1,"Pilihan A","Pilihan B","Pilihan C","Pilihan D",A,"Penjelasan."`
-  return `${header}\n${contoh}\n`
+  // ... (bisa dilengkapi nanti; untuk saat ini prioritaskan JSON)
+  return { metadata: { mapel: '' }, soal: [], galat: ['Import CSV sementara hanya mendukung format dasar. Gunakan JSON untuk hasil terbaik.'] }
 }

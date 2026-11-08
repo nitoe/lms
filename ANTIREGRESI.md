@@ -252,3 +252,9 @@
 - Tombol dan panel Analisis hanya muncul jika `user.uid === 'v4fQXsqCzYUtHrqcDM0u48sxIfn1'`.
 - Deteksi bersifat heuristik (kata kunci). Bukan pengganti review manual.
 - Jangan mengaktifkan untuk semua user tanpa keputusan eksplisit.
+
+## §63. Validasi impor soal harus ketat
+
+- Import harus menolak soal yang tidak lengkap sesuai tipenya (isian tanpa kunci, jodoh tanpa pasangan, bs tanpa pernyataan, dll.).
+- Deteksi duplikat berdasarkan teks yang dinormalisasi.
+- Fitur analisis harus bisa menandai soal yang kurang pembahasan atau struktur.

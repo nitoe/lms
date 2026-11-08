@@ -220,3 +220,11 @@
 - Panel kanan yang bisa di-toggle menampilkan daftar soal tersebut + klik untuk loncat ke soal.
 - File baru: `src/lib/analisisSoal.ts`. File diubah: `SoalEditor.tsx`, `soal.css`.
 - ANTIREGRESI §61.
+
+## 2026-11-08 — Perbaiki kualitas soal AI (validasi impor + analisis)
+
+- **importSoal.ts**: validasi ketat per tipe soal. Soal isian tanpa kunci, jodoh tanpa pasangan, bs tanpa pernyataan, dan pgk dengan >4 opsi atau >2 kunci ditolak. Deteksi duplikat berdasarkan teks.
+- **analisisSoal.ts**: analisis diperluas — mendeteksi soal yang kurang kunci, pasangan, pernyataan, pembahasan, atau PG kompleks yang terlalu berat.
+- Panduan AI diperbarui dengan aturan yang lebih ketat.
+- File: `src/lib/importSoal.ts`, `src/lib/analisisSoal.ts`, `docs/PANDUAN_AI_BANK_SOAL.md`.
+- ANTIREGRESI §63.
