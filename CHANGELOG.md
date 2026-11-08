@@ -189,3 +189,12 @@
 - Model data: koleksi `lms_tugas` (lihat docs/DATA_MODEL.md rencana sebelumnya).
 - Rules: tambah match `lms_tugas` (file lengkap di zip).
 - ANTIREGRESI §54.
+
+## 2026-11-08 — Import soal ke paket yang sudah ada
+
+- Tombol **Import** ditambahkan di samping Buka dan Hapus pada setiap kartu paket soal.
+- Pengguna dapat menambahkan soal dari file JSON/CSV ke paket yang sudah ada (soal lama tidak diganti).
+- Validasi tetap berlaku: mapel dan TP di file harus cocok dengan paket tujuan. Jika tidak cocok, impor ditolak.
+- Import untuk membuat paket baru tetap ada dan tidak diubah.
+- File: `src/components/BankSoalPanel.tsx`.
+- ANTIREGRESI §56.

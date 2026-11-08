@@ -68,6 +68,8 @@ export default function BankSoalPanel({ kelas, mapel, ruangId }: Props) {
 
   /* Import */
   const [formImport, setFormImport] = useState(false)
+  const [paketTargetImport, setPaketTargetImport] = useState<PaketSoal | null>(null)
+  const [fileImportKePaket, setFileImportKePaket] = useState<File | null>(null)
   const [judulImport, setJudulImport] = useState('')
   const [tpIdImport, setTpIdImport] = useState('')
   const [fileImport, setFileImport] = useState<File | null>(null)
@@ -303,6 +305,47 @@ export default function BankSoalPanel({ kelas, mapel, ruangId }: Props) {
     }
   }
 
+
+  async function prosesImportKePaket(e: React.FormEvent) {
+    e.preventDefault()
+    if (!paketTargetImport || !fileImportKePaket) return
+    setBusy(true)
+    setError('')
+    try {
+      const teks = await fileImportKePaket.text()
+      const isJson = fileImportKePaket.name.toLowerCase().endsWith('.json') || teks.trim().startsWith('{') || teks.trim().startsWith('[')
+      const hasil = isJson ? parseJsonImport(teks) : parseCsvImport(teks)
+
+      const tpPaket = tpList.find((t) => t.id === paketTargetImport.tpId) || null
+      const galatMeta = validasiMetadata(hasil.metadata, mapel, tpPaket)
+      const semuaGalat = [...galatMeta, ...hasil.galat]
+
+      if (semuaGalat.length) {
+        setError(semuaGalat.join('\n'))
+        setBusy(false)
+        return
+      }
+      if (hasil.soal.length === 0) {
+        setError('Tidak ada soal valid yang dapat ditambahkan.')
+        setBusy(false)
+        return
+      }
+
+      const soalBaru = [...(paketTargetImport.soal || []), ...hasil.soal]
+      const { simpanPaket } = await import('../lib/soal')
+      await simpanPaket(paketTargetImport.id, { soal: soalBaru as any })
+
+      setInfoImport(`Berhasil menambahkan ${hasil.soal.length} soal ke paket «${paketTargetImport.judul}».`)
+      setPaketTargetImport(null)
+      setFileImportKePaket(null)
+      await muat()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Gagal menambahkan soal.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
   function renderKartu(p: PaketSoal) {
     const jt = hitungTipe(p)
     const jk = hitungKompleksitas(p)
@@ -346,6 +389,9 @@ export default function BankSoalPanel({ kelas, mapel, ruangId }: Props) {
         </div>
         <div className="flex shrink-0 items-center gap-1.5">
           <Link to={`/kelas/${encodeURIComponent(ruangId)}/soal/${p.id}`} className="lms-btn-secondary">Buka</Link>
+          <button type="button" className="lms-btn-secondary" disabled={busy} onClick={() => { setPaketTargetImport(p); setFormImport(false); setFormExport(false); setFormBuka(false) }}>
+            Import
+          </button>
           <button type="button" className="materi-btn-danger" disabled={busy} onClick={() => void hapus(p)}>
             Hapus
           </button>
@@ -550,6 +596,36 @@ export default function BankSoalPanel({ kelas, mapel, ruangId }: Props) {
           <div className="mt-3 flex justify-end">
             <button type="submit" className="lms-btn-primary" disabled={busy || !judulImport.trim() || !tpIdImport || !fileImport}>
               {busy ? 'Memproses…' : 'Impor & buka editor'}
+            </button>
+          </div>
+        </form>
+      )}
+
+      
+      {paketTargetImport && (
+        <form onSubmit={(e) => void prosesImportKePaket(e)} className="materi-form">
+          <div className="materi-form-head">
+            <h3 className="text-sm font-semibold text-slate-900">Tambah soal ke paket «{paketTargetImport.judul}»</h3>
+            <button type="button" className="lms-btn-ghost" onClick={() => setPaketTargetImport(null)}>Batal</button>
+          </div>
+          <p className="mb-3 text-sm text-slate-600">
+            File harus memuat mata pelajaran dan TP yang sama dengan paket ini. Soal akan ditambahkan ke paket yang sudah ada (bukan diganti).
+          </p>
+          <div className="materi-form-grid">
+            <label className="materi-field materi-field--full">
+              <span>File JSON atau CSV</span>
+              <input
+                type="file"
+                accept=".json,.csv,application/json,text/csv"
+                onChange={(e) => setFileImportKePaket(e.target.files?.[0] ?? null)}
+                required
+              />
+            </label>
+          </div>
+          <div className="mt-3 flex justify-end gap-2">
+            <button type="button" className="lms-btn-ghost" onClick={() => setPaketTargetImport(null)}>Batal</button>
+            <button type="submit" className="lms-btn-primary" disabled={busy || !fileImportKePaket}>
+              {busy ? 'Menambahkan…' : 'Tambahkan soal'}
             </button>
           </div>
         </form>

@@ -234,3 +234,9 @@
 - Klien WAJIB query dengan `where('kelas', '==', …)` DAN `where('mapel', '==', …)`. Tanpa kedua filter, rules menolak.
 - Halaman agregat sidebar (`TugasDanKuis`) melakukan loop per ruang kelas lalu query per pasangan, bukan satu query tanpa filter.
 - Jangan mengaktifkan `orderBy` di query pertama bila composite index belum dibuat; fallback sort di klien sudah ada di `daftarTugas`.
+
+## §56. Import soal ke paket yang sudah ada
+
+- Tombol Import pada kartu paket menambahkan soal ke array `soal` yang sudah ada (append), bukan mengganti.
+- Validasi metadata (mapel + TP) tetap wajib dan harus cocok dengan paket tujuan. Jika berbeda, tampilkan pesan dan jangan simpan.
+- Import untuk paket baru (form terpisah) tidak boleh dihapus; keduanya hidup berdampingan.
