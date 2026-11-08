@@ -298,17 +298,69 @@ export function buatTemplateJson(mapel: string, tp: TpRingkas): string {
     tpId: tp.id,
     tpNomor: tp.nomorTp,
     tpNama: tp.namaTp,
-    catatan: 'Isi array soal. Jangan ubah mapel/tpId. Satu file = satu TP.',
+    catatan: 'Isi array soal. Jangan ubah mapel/tpId. Satu file = satu TP. Setiap tipe memiliki field wajib yang berbeda.',
     soal: [
       {
         tipe: 'pg',
-        teks: 'Contoh narasi soal (boleh HTML sederhana).',
+        teks: 'Contoh soal pilihan ganda.',
         kompleksitas: 'L1',
         poin: 1,
         waktuMenit: 1,
         opsi: ['Pilihan A', 'Pilihan B', 'Pilihan C', 'Pilihan D'],
         kunci: 'A',
         pembahasan: 'Penjelasan jawaban.',
+      },
+      {
+        tipe: 'pgk',
+        teks: 'Contoh soal pilihan ganda kompleks (pilih dua jawaban benar).',
+        kompleksitas: 'L2',
+        poin: 1,
+        waktuMenit: 2,
+        opsi: ['Pilihan A', 'Pilihan B', 'Pilihan C', 'Pilihan D'],
+        kunci: ['A', 'C'],
+        pembahasan: 'Penjelasan.',
+      },
+      {
+        tipe: 'isian',
+        teks: 'Contoh soal isian singkat.',
+        kompleksitas: 'L1',
+        poin: 1,
+        waktuMenit: 1,
+        kunci: ['jawaban benar', 'variasi jawaban'],
+        pembahasan: 'Penjelasan.',
+      },
+      {
+        tipe: 'jodoh',
+        teks: 'Contoh soal menjodohkan.',
+        kompleksitas: 'L2',
+        poin: 1,
+        waktuMenit: 2,
+        pasangan: [
+          { kiri: 'Kiri 1', kanan: 'Kanan 1' },
+          { kiri: 'Kiri 2', kanan: 'Kanan 2' },
+        ],
+        pembahasan: 'Penjelasan.',
+      },
+      {
+        tipe: 'bs',
+        teks: 'Contoh soal benar/salah.',
+        kompleksitas: 'L1',
+        poin: 1,
+        waktuMenit: 1,
+        pernyataan: [
+          { teks: 'Pernyataan pertama benar.', benar: true },
+          { teks: 'Pernyataan kedua salah.', benar: false },
+        ],
+        pembahasan: 'Penjelasan.',
+      },
+      {
+        tipe: 'uraian',
+        teks: 'Contoh soal uraian.',
+        kompleksitas: 'L2',
+        poin: 2,
+        waktuMenit: 3,
+        kunciJawaban: 'Pedoman jawaban singkat.',
+        pembahasan: 'Penjelasan.',
       },
     ],
   }
@@ -318,6 +370,9 @@ export function buatTemplateJson(mapel: string, tp: TpRingkas): string {
 /** Generate template CSV untuk satu TP. */
 export function buatTemplateCsv(mapel: string, tp: TpRingkas): string {
   const header = 'mapel,tpId,tpNomor,tpNama,tipe,teks,kompleksitas,poin,waktuMenit,opsiA,opsiB,opsiC,opsiD,kunci,pembahasan'
-  const contoh = `${mapel},${tp.id},${tp.nomorTp},"${tp.namaTp}",pg,"Contoh narasi soal.",L1,1,1,"Pilihan A","Pilihan B","Pilihan C","Pilihan D",A,"Penjelasan."`
-  return `${header}\n${contoh}\n`
+  const rows = [
+    `${mapel},${tp.id},${tp.nomorTp},"${tp.namaTp}",pg,"Contoh soal pilihan ganda.",L1,1,1,"Pilihan A","Pilihan B","Pilihan C","Pilihan D",A,"Penjelasan."`,
+    `${mapel},${tp.id},${tp.nomorTp},"${tp.namaTp}",isian,"Contoh soal isian.",L1,1,1,,,,,"jawaban benar","Penjelasan."`,
+  ]
+  return `${header}\n${rows.join('\n')}\n`
 }

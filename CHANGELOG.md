@@ -233,3 +233,10 @@
 
 - Pesan error validasi import sekarang dihapus saat form ditutup (Batal), file diganti, atau form lain dibuka.
 - File: `src/components/BankSoalPanel.tsx`.
+
+## 2026-11-08 — Template unduh mencakup semua bentuk soal
+
+- Template JSON sekarang berisi contoh untuk PG, PG kompleks, isian, menjodohkan, benar/salah, dan uraian.
+- Template CSV diperbarui dengan contoh PG dan isian.
+- Mengurangi error import karena field wajib yang hilang.
+- File: `src/lib/importSoal.ts`.
