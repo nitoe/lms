@@ -39,7 +39,6 @@ type PickerProps = {
     teksSoal: string
     kelas?: string
     mapel?: string
-    targetJawaban?: string
   }
 }
 
@@ -87,8 +86,6 @@ export function GambarPicker({ gambarId, onChange, kecil = false, label = 'Tamba
         petunjukGambar: petunjuk || undefined,
         kelas: ai.kelas,
         mapel: ai.mapel,
-        targetJawaban: ai.targetJawaban,
-        variasi: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
       })
       onChange(id)
       setFormDetail(false)
@@ -146,8 +143,9 @@ export function GambarPicker({ gambarId, onChange, kecil = false, label = 'Tamba
                 disabled={busy || busyAi}
                 aria-expanded={formDetail}
                 onClick={() => setFormDetail((v) => !v)}
+                title="Tambahkan deskripsi agar ilustrasi lebih tepat (organ, sudut pandang, tabel, dll.)"
               >
-                {formDetail ? 'Sembunyikan opsi' : 'Opsi deskripsi (opsional)'}
+                {formDetail ? '▾ Sembunyikan deskripsi' : '▸ Deskripsi ilustrasi (opsional)'}
               </button>
             </div>
           )}
@@ -157,7 +155,7 @@ export function GambarPicker({ gambarId, onChange, kecil = false, label = 'Tamba
       {bolehAi && formDetail && (
         <div className="soal-picker-ai-form">
           <label className="materi-field">
-            <span>Deskripsi tambahan (opsional)</span>
+            <span>Deskripsi ilustrasi (opsional) — agar AI lebih tepat</span>
             <textarea
               rows={3}
               maxLength={600}

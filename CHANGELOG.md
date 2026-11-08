@@ -519,10 +519,8 @@
 - **Deploy wajib:** salin `firestore.rules` ke repo Penilaian lalu `npm run deploy:rules`, kemudian `npm run deploy` di repo LMS. Tanpa deploy rules, editor menampilkan «Missing or insufficient permissions».
 - Belum ada: kuis untuk siswa (2b), generate soal AI (2c), rumus KaTeX, impor soal dari paket lain.
 - **Catatan tumpang tindih:** modul «Kuis» (`lms_kuis`, `lms_soal`, `KuisBuilder`) yang sudah ada di repo LMS dibuat terpisah dari «Bank Soal» (`lms_paket_soal`). Keduanya hidup berdampingan sementara; penyatuan menunggu keputusan. Rules untuk `lms_kuis`/`lms_soal` **belum ada** (ditolak oleh aturan default) sampai ditulis.
-\n## 2026-11-08 — AI ilustrasi: fokus lebih tepat & variasi
+\n## 2026-11-08 — UI ilustrasi AI: tombol deskripsi lebih jelas
 
-- **Masalah:** ilustrasi AI cenderung menunjuk organ yang sama dan tidak selalu mengikuti kunci/petunjuk.
-- **Perbaikan server** (`susunPromptIlustrasiSoal`): instruksi fokus pada SATU bagian utama, dukungan `targetJawaban`, seed variasi, dan prioritas petunjuk guru.
-- **Perbaikan klien**: `generateDanSimpanIlustrasiSoal` dan `GambarPicker` meneruskan `targetJawaban` + `variasi`.
-- ANTIREGRESI §54.
+- Tombol "Opsi deskripsi (opsional)" diganti menjadi "▸ Deskripsi ilustrasi (opsional)" agar lebih terlihat dan dipahami sebagai fitur untuk menyesuaikan gambar.
+- Label di dalam form juga diperjelas.
 
