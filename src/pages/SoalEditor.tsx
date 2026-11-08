@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import SoalEditorKartu from '../components/soal/SoalEditorKartu'
 import PratinjauSoal from '../components/soal/PratinjauSoal'
+import AiSoalPanel from '../components/soal/AiSoalPanel'
 import { useAuth } from '../context/AuthContext'
 import {
   ambilPaket,
@@ -243,6 +244,20 @@ export default function SoalEditor() {
         </div>
       )}
 
+            <AiSoalPanel
+        uid={user?.uid}
+        kelas={paket.kelas}
+        mapel={paket.mapel}
+        tpNama={paket.tpNama}
+        tpNomor={paket.tpNomor}
+        onTerima={(list) => {
+          if (!list.length) return
+          const gabung = [...soalList, ...list].slice(0, BATAS_SOAL_PER_PAKET)
+          setSoal(gabung)
+          setAktifId(list[0].id)
+        }}
+      />
+
       {pengaturan && (
         <section className="materi-form" aria-label="Pengaturan paket">
           <div className="materi-form-grid">
@@ -349,7 +364,7 @@ export default function SoalEditor() {
         <main className="soal-utama">
           {aktif ? (
             <>
-              <SoalEditorKartu key={aktif.id} soal={aktif} nomor={aktifIdx + 1} onChange={ubahSoal} />
+              <SoalEditorKartu key={aktif.id} soal={aktif} nomor={aktifIdx + 1} onChange={ubahSoal} kelas={paket.kelas} mapel={paket.mapel} />
               <nav className="soal-nav" aria-label="Pindah soal">
                 <button type="button" className="lms-btn-secondary" disabled={aktifIdx === 0}
                   onClick={() => setAktifId(soalList[aktifIdx - 1].id)}>← Soal sebelumnya</button>

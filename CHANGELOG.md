@@ -3,6 +3,12 @@
 > Append-only: entri baru ditambahkan di BAWAH, entri lama tidak diubah.
 > Versi mengacu ke `package.json` (saat ini `0.1.0`); belum ada rilis bertag.
 
+## 2026-11-08 — AI generate soal & ilustrasi (akun terbatas)
+
+- Cloud Functions (repo SDM01Penilaian): `generateSoalLmsAi` + `generateIlustrasiSoalLmsAi` (Gemini, secret `GEMINI_API_KEY`). Prompt mengacu Buku Saku menyusun soal SD. Hanya UID+email pemilik AI.
+- LMS klien: `src/lib/generateSoalAi.ts`, panel **Buat soal dengan AI** di editor paket, tombol **Ilustrasi AI** di pemilih gambar soal (terpisah dari generate teks).
+- Generate teks dan gambar sengaja dipisah; ilustrasi wajib fungsional (bukan dekorasi).
+
 ## 2026-11-08 — Editor bank soal: semua tipe soal dapat dipakai
 
 - **Bug kritis:** `ubahTipe()` sebelumnya mengganti `id` soal → daftar samping/`aktifId` kehilangan fokus sehingga form PG kompleks, menjodohkan, B/S, isian, dan uraian tampak tidak berfungsi. Id kini dipertahankan.

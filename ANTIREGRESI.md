@@ -434,3 +434,12 @@ Jangan menyimpan blob base64 besar di dokumen Firestore.
 - `ubahTipe()` membuat objek lewat `soalBaru()` (id acak baru). **Harus menimpa kembali `id: s.id`.**
 - Tanpa itu, `key={soal.id}` di `SoalEditorKartu` dan `aktifId` di `SoalEditor` kehilangan referensi → form tipe non-PG tampak «hilang» / tidak bisa dipakai setelah ganti tipe.
 - `JawabanEditor` harus tahan data tidak lengkap (`opsi`/`pasangan`/`pernyataan`/`kunci` kosong atau bukan array) dengan fallback UI, bukan melempar runtime error.
+
+## §47. AI generate soal LMS: kunci hanya di Cloud Functions
+
+- Endpoint: `generateSoalLmsAi` (teks) dan `generateIlustrasiSoalLmsAi` (gambar) — **terpisah**.
+- Secret `GEMINI_API_KEY` hanya di Cloud Functions (sama project Penilaian). **Jangan** taruh di `.env` frontend, `VITE_*`, atau repo klien.
+- Hak akses: UID `v4fQXsqCzYUtHrqcDM0u48sxIfn1` **dan** email `arif.azwar79@gmail.com` (keduanya, di server). Pengecekan klien (`bolehGenerateSoalAi`) hanya kosmetik.
+- Prompt mengikuti Buku Saku soal SD: validitas vs TP, stimulus fungsional (bukan hiasan), bentuk soal, L1–L3 proporsional kelas.
+- Ilustrasi AI: hanya jika membantu menjawab; hasil dikompres klien lalu disimpan `lms_gambar` (bukan Storage publik dengan URL bertanda tangan kunci).
+- Model Gemini: ikut daftar di `functions/generateAi.js` (`MODEL_GEMINI`); model image `gemini-3.1-flash-lite-image`. Jangan hardcode model pensiun.

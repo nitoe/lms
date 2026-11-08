@@ -12,10 +12,12 @@ type Props = {
   soal: Soal
   nomor: number
   onChange: (s: Soal) => void
+  kelas?: string
+  mapel?: string
 }
 
 /** Kartu editor satu soal (mengikuti tata letak referensi: tipe, teks + gambar, pilihan, pengaturan bawah). */
-export default function SoalEditorKartu({ soal, nomor, onChange }: Props) {
+export default function SoalEditorKartu({ soal, nomor, onChange, kelas, mapel }: Props) {
   const [pembahasanTerbuka, setPembahasanTerbuka] = useState(!!soal.pembahasan)
   const masalah = masalahSoal(soal)
   const punyaAcak = soal.tipe === 'pg' || soal.tipe === 'pgk'
@@ -66,6 +68,11 @@ export default function SoalEditorKartu({ soal, nomor, onChange }: Props) {
               gambarId={soal.gambarId}
               label="Tambah gambar soal"
               onChange={(id) => onChange({ ...soal, gambarId: id })}
+              ai={{
+                teksSoal: soal.teks,
+                kelas,
+                mapel,
+              }}
             />
           </div>
         </div>

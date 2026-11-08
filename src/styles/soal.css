@@ -440,3 +440,96 @@
 .paket-item {
   min-width: 0;
 }
+
+
+/* —— AI generate soal (akun terbatas) —— */
+.ai-soal { margin: 0.25rem 0 0.5rem; }
+.ai-soal-toggle { font-size: 0.8rem; }
+.ai-soal-form { margin-top: 0.55rem; }
+.ai-soal-hint {
+  margin: 0;
+  font-size: 0.78rem;
+  font-weight: 400;
+  color: var(--color-muted);
+  line-height: 1.45;
+}
+.ai-soal-tp {
+  margin: 0;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-muh-700);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+.ai-soal-draf {
+  margin-top: 0.75rem;
+  border-top: 1px solid var(--color-border);
+  padding-top: 0.75rem;
+  display: grid;
+  gap: 0.55rem;
+}
+.ai-soal-draf-kepala {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+.ai-soal-draf-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 0.5rem;
+}
+.ai-soal-draf-list > li {
+  border: 1px solid var(--color-border);
+  border-radius: 0.65rem;
+  padding: 0.55rem 0.7rem;
+  background: var(--color-surface-2);
+  min-width: 0;
+}
+.ai-soal-draf-meta {
+  display: block;
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: var(--color-muted);
+  margin-bottom: 0.25rem;
+}
+.ai-soal-draf-teks {
+  margin: 0;
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: #1a1d33;
+  line-height: 1.4;
+}
+.ai-soal-petunjuk-gbr {
+  margin: 0.35rem 0 0;
+  font-size: 0.72rem;
+  color: var(--color-muh-700);
+}
+.soal-picker-kosong {
+  display: grid;
+  gap: 0.35rem;
+}
+.soal-picker-ai {
+  border: 1.5px dashed var(--color-muh-300);
+  background: var(--color-muh-50);
+  color: var(--color-muh-700);
+  border-radius: 0.6rem;
+  padding: 0.4rem 0.65rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+}
+.soal-picker-ai:hover:not(:disabled) {
+  border-color: var(--color-muh-500);
+  background: #e8e9f8;
+}
+.soal-picker-ai:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
