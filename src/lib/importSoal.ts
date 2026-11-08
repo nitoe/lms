@@ -1,5 +1,5 @@
 import type { KompleksitasSoal, Soal, TipeSoal } from '../types/soal'
-import { NAMA_TIPE, normalisasiKompleksitas } from '../types/soal'
+import { normalisasiKompleksitas } from '../types/soal'
 import { soalBaru } from './soal'
 import type { TpRingkas } from '../types/materi'
 
