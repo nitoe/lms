@@ -199,10 +199,9 @@
 - File: `src/components/BankSoalPanel.tsx`.
 - ANTIREGRESI §56.
 
-## 2026-11-08 — Penguncian paket soal berstatus Siap
+## 2026-11-08 — Batas soal per paket dinaikkan ke 300
 
-- Paket dengan status **Siap** tidak dapat diedit (judul, deskripsi, TP, soal, tambah/hapus/duplikat/pindah).
-- Untuk mengedit, pengguna harus klik **Kembalikan ke draf** terlebih dahulu.
-- Banner peringatan ditampilkan saat paket terkunci.
-- File: `src/pages/SoalEditor.tsx`.
-- ANTIREGRESI §57.
+- Batas maksimal soal per paket bank soal dinaikkan dari 100 menjadi **300**.
+- Memudahkan pembuatan bank soal besar dengan variasi bentuk soal.
+- File: `src/types/soal.ts` (`BATAS_SOAL_PER_PAKET`).
+- ANTIREGRESI §58.

@@ -151,5 +151,5 @@ export type JawabanSoal =
   | Record<string, string> // jodoh: id pasangan kiri → id pasangan kanan yang dipilih
   | Record<string, boolean> // bs: id pernyataan → dipilih "Benar"?
 
-export const BATAS_SOAL_PER_PAKET = 100
+export const BATAS_SOAL_PER_PAKET = 300
 export const BATAS_OPSI = 8
