@@ -234,9 +234,11 @@
 - Pesan error validasi import sekarang dihapus saat form ditutup (Batal), file diganti, atau form lain dibuka.
 - File: `src/components/BankSoalPanel.tsx`.
 
-## 2026-11-08 — Template unduh mencakup semua bentuk soal
+## 2026-11-08 — Perbarui panduan AI (aturan PG kompleks untuk SD)
 
-- Template JSON sekarang berisi contoh untuk PG, PG kompleks, isian, menjodohkan, benar/salah, dan uraian.
-- Template CSV diperbarui dengan contoh PG dan isian.
-- Mengurangi error import karena field wajib yang hilang.
-- File: `src/lib/importSoal.ts`.
+- Panduan AI Bank Soal diperkuat dengan aturan khusus PG kompleks:
+  - Maksimal 4 opsi
+  - Idealnya tepat 2 jawaban benar
+  - Wajib menuliskan di teks soal berapa jawaban yang benar
+  - Jangan membuat hampir semua opsi benar
+- File: `docs/PANDUAN_AI_BANK_SOAL.md`.
