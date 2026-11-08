@@ -415,13 +415,13 @@ export default function BankSoalPanel({ kelas, mapel, ruangId }: Props) {
           />
         </div>
         <div className="flex flex-wrap gap-2">
-          <button type="button" className="lms-btn-secondary" onClick={() => { setFormExport(true); setFormBuka(false); setFormImport(false) }}>
+          <button type="button" className="lms-btn-secondary" onClick={() => { setFormExport(true); setFormBuka(false); setFormImport(false); setError("") }}>
             Unduh template
           </button>
-          <button type="button" className="lms-btn-secondary" onClick={() => { setFormImport(true); setFormBuka(false); setFormExport(false) }}>
+          <button type="button" className="lms-btn-secondary" onClick={() => { setFormImport(true); setFormBuka(false); setFormExport(false); setError("") }}>
             Import soal
           </button>
-          <button type="button" className="lms-btn-primary" onClick={() => { setFormBuka((v) => !v); setFormImport(false); setFormExport(false) }}>
+          <button type="button" className="lms-btn-primary" onClick={() => { setFormBuka((v) => !v); setFormImport(false); setFormExport(false); setError("") }}>
             + Paket soal baru
           </button>
         </div>
@@ -556,7 +556,7 @@ export default function BankSoalPanel({ kelas, mapel, ruangId }: Props) {
         <form onSubmit={(e) => void prosesImport(e)} className="materi-form">
           <div className="materi-form-head">
             <h3 className="text-sm font-semibold text-slate-900">Import soal ke paket baru</h3>
-            <button type="button" className="lms-btn-ghost" onClick={() => setFormImport(false)}>Batal</button>
+            <button type="button" className="lms-btn-ghost" onClick={() => { setFormImport(false); setError(""); setInfoImport(""); setFileImport(null) }}>Batal</button>
           </div>
           <p className="mb-3 text-sm text-slate-600">
             Masukkan judul paket dan TP terlebih dahulu. File harus memuat mata pelajaran dan TP yang sama (satu TP saja). Jika berbeda, impor ditolak.
@@ -586,7 +586,7 @@ export default function BankSoalPanel({ kelas, mapel, ruangId }: Props) {
               <input
                 type="file"
                 accept=".json,.csv,application/json,text/csv"
-                onChange={(e) => setFileImport(e.target.files?.[0] ?? null)}
+                onChange={(e) => { setFileImport(e.target.files?.[0] ?? null); setError(""); setInfoImport("") }}
                 required
               />
             </label>

@@ -229,9 +229,7 @@
 - File: `src/lib/importSoal.ts`, `src/lib/analisisSoal.ts`, `docs/PANDUAN_AI_BANK_SOAL.md`.
 - ANTIREGRESI §63.
 
-## 2026-11-08 — Perbaiki pencocokan kunci jawaban saat import
+## 2026-11-08 — Perbaiki error import yang tidak hilang
 
-- Logika pencocokan kunci PG/PGK diperkuat: prioritaskan ID huruf (A/B/C/D), lalu teks.
-- ID opsi dinormalisasi ke huruf jika belum.
-- Mengurangi kasus kunci berubah setelah import.
-- File: `src/lib/importSoal.ts`.
+- Pesan error validasi import sekarang dihapus saat form ditutup (Batal), file diganti, atau form lain dibuka.
+- File: `src/components/BankSoalPanel.tsx`.
