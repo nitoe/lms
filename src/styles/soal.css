@@ -67,8 +67,25 @@
 .soal-samping-kepala { display: flex; align-items: center; justify-content: space-between; }
 .soal-samping-judul { margin: 0; font-size: 0.7rem; letter-spacing: 0.08em; font-weight: 700; color: var(--color-muted); }
 .soal-cari { max-width: none; }
-.soal-daftar { margin: 0; padding: 0; list-style: none; display: grid; gap: 0.45rem; overflow-y: auto; max-height: 20rem; }
-@media (min-width: 1024px) { .soal-daftar { max-height: none; flex: 1; min-height: 6rem; } }
+.soal-daftar {
+  margin: 0;
+  padding: 0.15rem 0.1rem 0.15rem 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  overflow-y: auto;
+  overflow-x: hidden;
+  max-height: 22rem;
+  min-height: 8rem;
+}
+@media (min-width: 1024px) {
+  .soal-daftar {
+    max-height: none;
+    flex: 1 1 auto;
+    min-height: 10rem;
+  }
+}
 .soal-item {
   border: 1px solid var(--color-border);
   border-radius: 0.7rem;
@@ -76,6 +93,7 @@
   min-width: 0;
   max-width: 100%;
   overflow: hidden;
+  flex: 0 0 auto; /* jangan menyusut */
 }
 .soal-item--aktif { border-color: var(--color-muh-500); background: var(--color-muh-50); box-shadow: 0 0 0 1px var(--color-muh-500) inset; }
 .soal-item--seret { opacity: 0.45; }
@@ -106,7 +124,7 @@
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 .soal-daftar { overflow-x: hidden; }
-.soal-samping { min-width: 0; overflow: visible; }
+.soal-samping { min-width: 0; overflow: hidden; }
 .soal-kosong-kecil { font-size: 0.8rem; color: var(--color-muted); text-align: center; padding: 0.8rem 0; }
 .soal-ringkas { display: grid; gap: 0.25rem; margin: 0; padding-top: 0.6rem; border-top: 1px solid var(--color-border); font-size: 0.78rem; }
 .soal-ringkas > div { display: flex; justify-content: space-between; }
