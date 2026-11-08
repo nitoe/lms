@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import SoalEditorKartu from '../components/soal/SoalEditorKartu'
 import PratinjauSoal from '../components/soal/PratinjauSoal'
-import AiSoalPanel from '../components/soal/AiSoalPanel'
 import { useAuth } from '../context/AuthContext'
 import {
   ambilPaket,
@@ -244,20 +243,6 @@ export default function SoalEditor() {
         </div>
       )}
 
-            <AiSoalPanel
-        uid={user?.uid}
-        kelas={paket.kelas}
-        mapel={paket.mapel}
-        tpNama={paket.tpNama}
-        tpNomor={paket.tpNomor}
-        onTerima={(list) => {
-          if (!list.length) return
-          const gabung = [...soalList, ...list].slice(0, BATAS_SOAL_PER_PAKET)
-          setSoal(gabung)
-          setAktifId(list[0].id)
-        }}
-      />
-
       {pengaturan && (
         <section className="materi-form" aria-label="Pengaturan paket">
           <div className="materi-form-grid">
@@ -332,8 +317,12 @@ export default function SoalEditor() {
                     {bermasalah && <span className="soal-item-titik" title="Perlu dilengkapi" aria-label="Perlu dilengkapi" />}
                   </button>
                   <div className="soal-item-baris">
-                    <span className="soal-chip">{SINGKAT_TIPE[x.tipe]}</span>
-                <span className={`soal-chip soal-chip--${normalisasiKompleksitas(x.kompleksitas).toLowerCase()}`}>{normalisasiKompleksitas(x.kompleksitas)}</span>
+                    <div className="soal-item-chips">
+                      <span className="soal-chip">{SINGKAT_TIPE[x.tipe]}</span>
+                      <span className={`soal-chip soal-chip--${normalisasiKompleksitas(x.kompleksitas).toLowerCase()}`}>
+                        {normalisasiKompleksitas(x.kompleksitas)}
+                      </span>
+                    </div>
                     <div className="soal-tambah-wrap">
                       <button type="button" className="soal-ikon-btn soal-ikon-btn--tipis" aria-label={`Aksi soal ${i + 1}`}
                         aria-expanded={menuAksi === x.id} onClick={() => setMenuAksi(menuAksi === x.id ? null : x.id)}>⋯</button>
@@ -364,7 +353,17 @@ export default function SoalEditor() {
         <main className="soal-utama">
           {aktif ? (
             <>
-              <SoalEditorKartu key={aktif.id} soal={aktif} nomor={aktifIdx + 1} onChange={ubahSoal} kelas={paket.kelas} mapel={paket.mapel} />
+              <SoalEditorKartu
+                key={aktif.id}
+                soal={aktif}
+                nomor={aktifIdx + 1}
+                onChange={ubahSoal}
+                kelas={paket.kelas}
+                mapel={paket.mapel}
+                tpNama={paket.tpNama}
+                tpNomor={paket.tpNomor}
+                uid={user?.uid}
+              />
               <nav className="soal-nav" aria-label="Pindah soal">
                 <button type="button" className="lms-btn-secondary" disabled={aktifIdx === 0}
                   onClick={() => setAktifId(soalList[aktifIdx - 1].id)}>← Soal sebelumnya</button>

@@ -3,6 +3,13 @@
 > Append-only: entri baru ditambahkan di BAWAH, entri lama tidak diubah.
 > Versi mengacu ke `package.json` (saat ini `0.1.0`); belum ada rilis bertag.
 
+## 2026-11-08 — AI per-soal, deskripsi ilustrasi, daftar soal rapi
+
+- Generate AI dipindah ke kartu soal aktif: satu nomor per generate (tipe + kompleksitas yang dipilih guru + fokus materi).
+- Form ilustrasi AI: input deskripsi untuk tabel/grafik/chart agar data terbaca dan fungsional.
+- Prompt Gemini: penekanan daya pembeda pengecoh & larangan pola jawaban benar paling panjang (Buku Saku).
+- Daftar samping editor: cegah overflow horizontal, teks 2 baris, chip dikelompokkan.
+
 ## 2026-11-08 — AI generate soal & ilustrasi (akun terbatas)
 
 - Cloud Functions (repo SDM01Penilaian): `generateSoalLmsAi` + `generateIlustrasiSoalLmsAi` (Gemini, secret `GEMINI_API_KEY`). Prompt mengacu Buku Saku menyusun soal SD. Hanya UID+email pemilik AI.

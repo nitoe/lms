@@ -32,24 +32,27 @@ export function GambarSoal({ id, className = '', alt = '' }: { id?: string; clas
 type PickerProps = {
   gambarId?: string
   onChange: (id: string | undefined) => void
-  /** Tampilan ringkas untuk baris pilihan. */
   kecil?: boolean
   label?: string
-  /** Konteks untuk generate ilustrasi AI (terpisah dari unggah manual). */
+  /** Konteks soal untuk ilustrasi AI. */
   ai?: {
     teksSoal: string
-    petunjukGambar?: string
     kelas?: string
     mapel?: string
   }
 }
 
-/** Tombol unggah + pratinjau + hapus gambar; opsional generate ilustrasi AI. */
+/**
+ * Unggah manual + opsional generate ilustrasi AI.
+ * Field deskripsi memandu tabel/grafik/chart agar fungsional (bukan hiasan).
+ */
 export function GambarPicker({ gambarId, onChange, kecil = false, label = 'Tambah gambar', ai }: PickerProps) {
   const inputRef = useRef<HTMLInputElement>(null)
   const [busy, setBusy] = useState(false)
   const [busyAi, setBusyAi] = useState(false)
   const [galat, setGalat] = useState('')
+  const [deskripsiAi, setDeskripsiAi] = useState('')
+  const [formAi, setFormAi] = useState(false)
   const bolehAi = bolehGenerateSoalAi(auth.currentUser?.uid) && !!ai
 
   async function pilih(e: React.ChangeEvent<HTMLInputElement>) {
@@ -69,16 +72,22 @@ export function GambarPicker({ gambarId, onChange, kecil = false, label = 'Tamba
 
   async function generateAi() {
     if (!ai) return
+    const petunjuk = deskripsiAi.trim()
+    if (!petunjuk && !(ai.teksSoal || '').replace(/<[^>]+>/g, '').trim()) {
+      setGalat('Isi deskripsi ilustrasi (mis. isi tabel/grafik) atau teks soal dulu.')
+      return
+    }
     setBusyAi(true)
     setGalat('')
     try {
       const id = await generateDanSimpanIlustrasiSoal({
         teksSoal: ai.teksSoal,
-        petunjukGambar: ai.petunjukGambar,
+        petunjukGambar: petunjuk || undefined,
         kelas: ai.kelas,
         mapel: ai.mapel,
       })
       onChange(id)
+      setFormAi(false)
     } catch (err) {
       setGalat(err instanceof Error ? err.message : 'Gagal membuat ilustrasi AI.')
     } finally {
@@ -94,19 +103,16 @@ export function GambarPicker({ gambarId, onChange, kecil = false, label = 'Tamba
           <GambarSoal id={gambarId} className={kecil ? 'soal-img--kecil' : 'soal-img--besar'} />
           <div className="soal-picker-aksi">
             <button type="button" className="soal-ikon-btn" disabled={busy || busyAi} onClick={() => inputRef.current?.click()}
-              title="Ganti gambar" aria-label="Ganti gambar">
-              ⟳
-            </button>
+              title="Ganti gambar" aria-label="Ganti gambar">⟳</button>
             {bolehAi && (
-              <button type="button" className="soal-ikon-btn" disabled={busy || busyAi} onClick={() => void generateAi()}
-                title="Buat ulang ilustrasi AI (fungsional, bukan hiasan)" aria-label="Ilustrasi AI">
-                {busyAi ? '…' : '✦'}
+              <button type="button" className="soal-ikon-btn" disabled={busy || busyAi}
+                onClick={() => setFormAi((v) => !v)}
+                title="Ilustrasi AI — tabel/grafik/chart fungsional" aria-label="Ilustrasi AI">
+                ✦
               </button>
             )}
             <button type="button" className="soal-ikon-btn soal-ikon-btn--bahaya" disabled={busy || busyAi}
-              onClick={() => onChange(undefined)} title="Hapus gambar" aria-label="Hapus gambar">
-              ✕
-            </button>
+              onClick={() => onChange(undefined)} title="Hapus gambar" aria-label="Hapus gambar">✕</button>
           </div>
         </div>
       ) : (
@@ -124,15 +130,46 @@ export function GambarPicker({ gambarId, onChange, kecil = false, label = 'Tamba
             <button
               type="button"
               className="soal-picker-ai"
-              disabled={busy || busyAi || !(ai.teksSoal || '').trim()}
-              onClick={() => void generateAi()}
-              title="Ilustrasi harus membantu menjawab soal, bukan sekadar hiasan"
+              disabled={busy || busyAi}
+              onClick={() => setFormAi((v) => !v)}
             >
-              {busyAi ? 'AI membuat ilustrasi…' : '✦ Ilustrasi AI'}
+              {formAi ? 'Tutup form ilustrasi AI' : '✦ Ilustrasi AI (tabel/grafik/gambar)'}
             </button>
           )}
         </div>
       )}
+
+      {bolehAi && formAi && (
+        <div className="soal-picker-ai-form">
+          <label className="materi-field">
+            <span>Deskripsi ilustrasi</span>
+            <textarea
+              rows={3}
+              maxLength={600}
+              value={deskripsiAi}
+              onChange={(e) => setDeskripsiAi(e.target.value)}
+              placeholder={
+                'Contoh: Tabel 2 kolom (Hari | Suhu °C) Senin 30, Selasa 28, Rabu 31. ' +
+                'Atau: grafik batang jumlah siswa per ekstrakurikuler. ' +
+                'Sebutkan angka/label yang HARUS terbaca agar siswa bisa menjawab.'
+              }
+            />
+          </label>
+          <p className="soal-picker-ai-hint">
+            Ilustrasi = alat bantu menjawab (data di tabel/grafik/diagram), bukan hiasan.
+            Cantumkan angka dan label yang dibutuhkan soal.
+          </p>
+          <button
+            type="button"
+            className="lms-btn-primary"
+            disabled={busyAi}
+            onClick={() => void generateAi()}
+          >
+            {busyAi ? 'AI menggambar…' : 'Generate ilustrasi'}
+          </button>
+        </div>
+      )}
+
       {galat && <p className="soal-galat">{galat}</p>}
     </div>
   )

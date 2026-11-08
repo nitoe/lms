@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { GambarPicker } from './GambarSoal'
+import AiSoalPanel from './AiSoalPanel'
 import JawabanEditor from './JawabanEditor'
 import RichEditor from './RichEditor'
 import { AngkaInput } from './kontrol'
@@ -14,10 +15,15 @@ type Props = {
   onChange: (s: Soal) => void
   kelas?: string
   mapel?: string
+  tpNama?: string
+  tpNomor?: number
+  uid?: string
 }
 
 /** Kartu editor satu soal (mengikuti tata letak referensi: tipe, teks + gambar, pilihan, pengaturan bawah). */
-export default function SoalEditorKartu({ soal, nomor, onChange, kelas, mapel }: Props) {
+export default function SoalEditorKartu({
+  soal, nomor, onChange, kelas, mapel, tpNama, tpNomor, uid,
+}: Props) {
   const [pembahasanTerbuka, setPembahasanTerbuka] = useState(!!soal.pembahasan)
   const masalah = masalahSoal(soal)
   const punyaAcak = soal.tipe === 'pg' || soal.tipe === 'pgk'
@@ -46,6 +52,21 @@ export default function SoalEditorKartu({ soal, nomor, onChange, kelas, mapel }:
         )}
       </header>
 
+      {(kelas && mapel) && (
+        <div className="soal-kartu-ai">
+          <AiSoalPanel
+            uid={uid}
+            soal={soal}
+            nomor={nomor}
+            kelas={kelas}
+            mapel={mapel}
+            tpNama={tpNama}
+            tpNomor={tpNomor}
+            onTerapkan={onChange}
+          />
+        </div>
+      )}
+
       <div className="soal-kartu-badan">
         <h3 className="soal-label">
           <span className="soal-label-ikon" aria-hidden>?</span>
@@ -68,11 +89,7 @@ export default function SoalEditorKartu({ soal, nomor, onChange, kelas, mapel }:
               gambarId={soal.gambarId}
               label="Tambah gambar soal"
               onChange={(id) => onChange({ ...soal, gambarId: id })}
-              ai={{
-                teksSoal: soal.teks,
-                kelas,
-                mapel,
-              }}
+              ai={kelas && mapel ? { teksSoal: soal.teks, kelas, mapel } : undefined}
             />
           </div>
         </div>

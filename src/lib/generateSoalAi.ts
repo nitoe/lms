@@ -48,6 +48,7 @@ export async function generateSoalLmsAi(input: {
   tpNomor?: number
   tipe: TipeSoal
   kompleksitas: KompleksitasSoal
+  /** Selalu 1 untuk alur tinjau-per-soal; server juga membatasi maks 5. */
   jumlah?: number
   konteks?: string
   butuhStimulus?: boolean
@@ -58,7 +59,8 @@ export async function generateSoalLmsAi(input: {
     'generateSoalLmsAi',
   )
   try {
-    const res = await panggil({ ...input, provider: 'gemini' })
+    const payload = { ...input, provider: 'gemini' as const, jumlah: 1 }
+    const res = await panggil(payload)
     const list = Array.isArray(res.data?.soal) ? res.data.soal : []
     // Pastikan setiap soal punya id unik di klien (server bisa pakai tmp_).
     return list.map((s) => ({ ...s, id: idAcak() }) as DrafSoalAi)

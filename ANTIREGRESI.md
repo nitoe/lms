@@ -443,3 +443,10 @@ Jangan menyimpan blob base64 besar di dokumen Firestore.
 - Prompt mengikuti Buku Saku soal SD: validitas vs TP, stimulus fungsional (bukan hiasan), bentuk soal, L1–L3 proporsional kelas.
 - Ilustrasi AI: hanya jika membantu menjawab; hasil dikompres klien lalu disimpan `lms_gambar` (bukan Storage publik dengan URL bertanda tangan kunci).
 - Model Gemini: ikut daftar di `functions/generateAi.js` (`MODEL_GEMINI`); model image `gemini-3.1-flash-lite-image`. Jangan hardcode model pensiun.
+
+## §48. AI soal: satu nomor per generate + pengecoh sejajar
+
+- Generate teks AI mengisi **satu soal aktif** (id dipertahankan). Jangan mengembalikan batch multi-soal di UI editor.
+- Server `generateSoalLmsAi` memaksa `jumlah = 1`.
+- Prompt wajib menolak pola «opsi benar paling panjang»; pengecoh harus miskonsepsi nyata dan panjang/struktur sejajar (Buku Saku).
+- Ilustrasi AI punya field deskripsi terpisah (tabel/grafik/chart + angka yang harus terbaca); generate gambar terpisah dari teks soal.

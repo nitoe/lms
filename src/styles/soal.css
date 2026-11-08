@@ -69,22 +69,44 @@
 .soal-cari { max-width: none; }
 .soal-daftar { margin: 0; padding: 0; list-style: none; display: grid; gap: 0.45rem; overflow-y: auto; max-height: 20rem; }
 @media (min-width: 1024px) { .soal-daftar { max-height: none; flex: 1; min-height: 6rem; } }
-.soal-item { border: 1px solid var(--color-border); border-radius: 0.7rem; background: #fff; }
+.soal-item {
+  border: 1px solid var(--color-border);
+  border-radius: 0.7rem;
+  background: #fff;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+}
 .soal-item--aktif { border-color: var(--color-muh-500); background: var(--color-muh-50); box-shadow: 0 0 0 1px var(--color-muh-500) inset; }
 .soal-item--seret { opacity: 0.45; }
 .soal-item-utama {
-  display: flex; align-items: center; gap: 0.55rem; width: 100%; text-align: left; cursor: pointer;
-  background: transparent; border: 0; padding: 0.55rem 0.6rem 0.2rem; font-family: inherit; color: #1a1d33;
+  display: flex; align-items: flex-start; gap: 0.45rem; width: 100%; text-align: left; cursor: pointer;
+  background: transparent; border: 0; padding: 0.5rem 0.55rem 0.15rem; font-family: inherit; color: #1a1d33;
+  min-width: 0; box-sizing: border-box;
 }
 .soal-item-no {
-  display: grid; place-items: center; width: 1.6rem; height: 1.6rem; flex: none; border-radius: 0.4rem;
-  background: var(--color-surface-2); font-size: 0.75rem; font-weight: 700;
+  display: grid; place-items: center; width: 1.45rem; height: 1.45rem; flex: none; border-radius: 0.35rem;
+  background: var(--color-surface-2); font-size: 0.72rem; font-weight: 700; margin-top: 0.05rem;
 }
 .soal-item--aktif .soal-item-no { background: var(--color-muh-600); color: #fff; }
-.soal-item-teks { flex: 1; min-width: 0; font-size: 0.8rem; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.soal-item-titik { width: 0.5rem; height: 0.5rem; border-radius: 999px; background: #f59e0b; flex: none; }
-.soal-item-baris { display: flex; align-items: center; justify-content: space-between; padding: 0.1rem 0.5rem 0.4rem 0.6rem; }
-.soal-chip { font-size: 0.68rem; font-weight: 700; color: #4b5568; background: var(--color-surface-2); border-radius: 0.4rem; padding: 0.1rem 0.45rem; }
+.soal-item-teks {
+  flex: 1; min-width: 0; font-size: 0.78rem; font-weight: 600; line-height: 1.35;
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2;
+  overflow: hidden; text-overflow: ellipsis; white-space: normal; word-break: break-word;
+}
+.soal-item-titik { width: 0.45rem; height: 0.45rem; border-radius: 999px; background: #f59e0b; flex: none; margin-top: 0.35rem; }
+.soal-item-baris {
+  display: flex; align-items: center; justify-content: space-between; gap: 0.35rem;
+  padding: 0.15rem 0.45rem 0.4rem 0.55rem; min-width: 0;
+}
+.soal-item-chips { display: flex; flex-wrap: wrap; gap: 0.25rem; min-width: 0; flex: 1; }
+.soal-chip {
+  font-size: 0.65rem; font-weight: 700; color: #4b5568; background: var(--color-surface-2);
+  border-radius: 0.35rem; padding: 0.08rem 0.4rem; max-width: 100%;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.soal-daftar { overflow-x: hidden; }
+.soal-samping { overflow-x: hidden; min-width: 0; }
 .soal-kosong-kecil { font-size: 0.8rem; color: var(--color-muted); text-align: center; padding: 0.8rem 0; }
 .soal-ringkas { display: grid; gap: 0.25rem; margin: 0; padding-top: 0.6rem; border-top: 1px solid var(--color-border); font-size: 0.78rem; }
 .soal-ringkas > div { display: flex; justify-content: space-between; }
@@ -532,4 +554,45 @@
 .soal-picker-ai:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+.soal-kartu-ai {
+  padding: 0.55rem 1rem 0;
+  border-bottom: 1px solid var(--color-border);
+}
+.ai-soal--kartu { margin: 0 0 0.55rem; }
+.ai-soal-form-inline {
+  display: grid;
+  gap: 0.55rem;
+  margin-top: 0.5rem;
+  padding-bottom: 0.55rem;
+}
+.soal-picker-ai-form {
+  display: grid;
+  gap: 0.4rem;
+  margin-top: 0.4rem;
+  padding: 0.55rem;
+  border-radius: 0.65rem;
+  border: 1px solid var(--color-muh-200);
+  background: var(--color-muh-50);
+  min-width: 0;
+}
+.soal-picker-ai-form textarea {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  border-radius: 0.5rem;
+  border: 1px solid var(--color-border);
+  padding: 0.45rem 0.55rem;
+  font-size: 0.8rem;
+  font-family: inherit;
+  resize: vertical;
+}
+.soal-picker-ai-hint {
+  margin: 0;
+  font-size: 0.7rem;
+  font-weight: 400;
+  color: var(--color-muted);
+  line-height: 1.35;
 }
