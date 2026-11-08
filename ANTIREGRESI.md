@@ -2,6 +2,16 @@
 
 > Append-only: aturan baru ditambahkan di BAWAH. Jangan menghapus atau mengubah makna aturan lama; kalau ada koreksi, tulis aturan baru yang merujuk nomor lama.
 
+## §19. Bank Soal / Kuis
+
+19.1 Koleksi `lms_kuis` dan `lms_soal` harus didaftarkan di `firestore.rules` (shared). Guru hanya boleh baca/tulis kuis dan soal pada kelas + mapel yang diampu (mirip pola `lms_materi`). Admin boleh baca. **Rules belum di-deploy.**
+
+19.2 Gambar soal diunggah ke `lms/kuis/{kuisId}/...` dengan batas 5 MB. Jangan menyimpan file besar atau non-gambar di path ini.
+
+19.3 Saat menghapus kuis, semua dokumen `lms_soal` terkait harus ikut dihapus (sudah dilakukan di `hapusKuis`).
+
+19.4 Jumlah soal di `lms_kuis.jumlahSoal` adalah denormalisasi. Jangan mengandalkannya sebagai sumber kebenaran; selalu hitung ulang dari `lms_soal` bila perlu.
+
 ## §1. Firestore rules
 
 1.1 **`users` create**: selalu batasi ke `role == 'orangtua' && status == 'pending'` dan daftar field (`keys().hasOnly`). Jangan pernah mengizinkan `create` hanya dengan `request.auth.uid == uid` — itu membuat siapa pun bisa menjadikan dirinya admin.
@@ -160,8 +170,6 @@
 
 
 
-
-
 ## §14. Alokasi bobot TP multi-semester
 
 14.1 Sumber kebenaran alokasi TP adalah `tp_kktp.bobotPerSemester` (map semester → persen). Field legacy `semester` + `bobotMapel` tetap diisi saat simpan agar dokumen lama dan klien lama tetap terbaca; jangan menghapus fallback di `tpMasukSemester` / `bobotTpDiSemester`.
@@ -218,273 +226,11 @@
 
 18.3 `jenisTugas` (`salin` | `dikte` | `hafalan`) dan `kesalahan[]` opsional pada catatan impor v2. Pembaca wajib menoleransi keduanya kosong. Jangan menambah aspek skor baru tanpa keputusan eksplisit pemilik proyek: rancangan sengaja ramping agar tidak membebani guru.
 
-18.4 Catat Menulis hanya untuk guru Tahsin (`isGuruTahsinRole`); admin memantau (§17). Setiap catatan menyimpan `tahunAjaran` dan `semester` periode aktif; ringkasan per periode tidak menghitung catatan tanpa periode.
+18.4 Catat Menulis hanya untuk guru Tahsin (`isGuruTahsinRole`); admin memantau (§17). Setiap catatan menyimp
 
-18.5 Tanggal pemeriksaan (`tanggalPeriksa`, yyyy-mm-dd) tidak boleh di masa depan. Semua aspek diawali 3 ("Baik") di UI; jangan mengubah nilai awal menjadi kosong sehingga guru wajib mengisi tiap aspek.
+## §54 — Fitur Tugas: query wajib where kelas + mapel
 
-18.6 **Skor menulis di laporan orang tua = rata-rata seluruh catatan dalam rentang laporan** (`ringkasMenulis`), bukan catatan terakhir. Posisi menulis ("hingga …") boleh dari catatan terbaru, tetapi angka skor dan kata "rata-rata" tidak. Rincian aspek di bagian 3 laporan memakai kotak (tanpa menambah tinggi) agar laporan tetap satu halaman A4; jangan menambah blok baru di bagian ini tanpa memeriksa cetaknya.
-
-18.7 Pembandingan selisih rata-rata (tren) wajib dibulatkan satu desimal dulu; jangan membandingkan hasil pengurangan floating point langsung dengan ambang.
-
-
-## §27. Input nilai STS/SAS: draf, impor Excel, dan tempel
-
-> Catatan penomoran: nomor §19–§26 dipakai oleh versi ANTIREGRESI sebelum 20 Okt 2026 (commit `7c3b762`) dan masih dirujuk oleh komentar di kode (notifikasi, rapor STS/SAS, UI). Nomor itu sengaja dilewati agar tidak bentrok bila bagian lama dipulihkan.
-
-27.1 **Objek/array yang menjadi dependensi `useEffect`/`useMemo` harus stabil.** `config` di `NilaiStsSas.tsx` wajib `useMemo` (dependensi nilai primitif `periodeAk.ready/semester/tahunAjaran`). Objek baru di tiap render membuat efek sinkron draf berjalan setiap kali toast tampil atau hilang dan menghapus isian yang belum disimpan.
-
-27.2 Efek sinkron draf pada `<Detail>` hanya boleh bergantung pada data server (`props.nilai`) dan kunci cache. Jangan menambahkan dependensi yang berubah di tiap render. `NilaiSlm.tsx` memakai `[nilai, kunciCache, show]` dengan `show` dari `useCallback`; jangan diubah tanpa menguji impor dan tempel.
-
-27.3 Impor Excel dan tempel (Ctrl+V) hanya memuat nilai ke **draf**; penulisan ke Firestore hanya lewat tombol Simpan (`simpanSemuaNilai`/`simpanSemua`). Jangan membuat impor langsung menulis ke Firestore tanpa pratinjau.
-
-27.4 Peringatan `parseNilaiExcelRows` yang paling penting ("baris siswa tidak cocok", "kolom tidak dikenali") harus tetap berada di dua posisi pertama, karena toast di halaman input hanya menampilkan `peringatan.slice(0, 2)`.
-
-27.5 Sebelum mengubah `nilaiImportExport.ts` atau efek draf, jalankan `npx tsx scripts/cek-nilai-import.mts` (harus mencetak SEMUA UJI LULUS). Uji ini tidak mencakup perilaku React; setelah mengubah efek draf, uji manual: impor template di STS, nilai harus tetap tampil di tabel dan tombol Simpan menampilkan jumlah perubahan.
-
-## §28. Tanda tangan digital Rapor STS (Storage)
-
-28.1 Fitur gambar TTD **hanya untuk Rapor STS** (distribusi online). Jangan memaksa URL gambar ke alur cetak SAS/rapor semester offline kecuali produk meminta ulang.
-
-28.2 Penyimpanan:
-- Kepala sekolah: `config/akademik.ttdKepsekUrl` + objek Storage `tanda-tangan/kepsek.png`.
-- Guru/wali: `users/{uid}.ttdUrl` + objek Storage `tanda-tangan/guru/{uid}.png`.
-Jangan menyimpan blob base64 besar di dokumen Firestore.
-
-28.3 Rules:
-- `users` self-update boleh `ttdUrl` (bersama `nama`, `gelar`, `updatedAt`); jangan memperlonggar field lain (role, penugasan, aktif, …).
-- Storage: baca TTD untuk user login; tulis/hapus kepsek hanya admin; tulis/hapus path guru hanya `request.auth.uid == uid`. Setelah mengubah `storage.rules`, wajib `firebase deploy --only storage`.
-
-28.4 Cetak STS: tiga kolom Ortu | Wali Kelas | Kepala Sekolah. Bila `ttdWaliUrl` / `ttdKepsekUrl` kosong, ruang tetap kosong (TTD basah). Jangan menghapus fallback ruang kosong.
-
-28.5 Nama wali tetap dari `cariWaliKelas` / `cariWaliKelasLengkap`. Bila satu kelas punya lebih dari satu wali terdaftar, TTD digital tidak dipilih otomatis (hanya nama digabung) agar tidak menampilkan tanda tangan orang yang salah.
-
-28.6 Kompresi gambar dilakukan di klien sebelum upload. Jangan menaikkan batas ukuran Storage rules tanpa menyesuaikan kompresi.
-
-28.7 Layout `/profil`: jangan mengembalikan `/profil` ke `HALAMAN_SEMPIT` / `max-w-md` tanpa alasan UX — halaman mengikuti lebar konten biasa (`max-w-6xl`) agar tidak menyisakan ruang kosong kiri-kanan saat zoom.
-
-28.8 Marker merge (`<<<<<<<`, `=======`, `>>>>>>>`) tidak boleh masuk ke `main`. Sebelum `npm run build`, pastikan `src/lib/akademik.ts` dan file lain bebas marker (pernah memblokir deploy karena sisi `PLACEHOLDER`).
-
-28.9 `fetchUserProfile` di `src/lib/auth.ts` **wajib** memetakan `ttdUrl` dan `nbm` dari dokumen `users/{uid}`. Menyimpan ke Firestore saja tidak cukup — tanpa mapping ini nilai hilang setelah refresh/login ulang.
-
-28.10 Self-update `users/{uid}` (rules): allowlist field hanya `nama`, `gelar`, `nbm`, `ttdUrl`, `updatedAt`. Menambah field profil yang boleh diubah guru harus mengubah rules lalu `firebase deploy --only firestore:rules`.
-
-28.11 Storage path guru: objek bernama `{uid}.png`. Rules harus membandingkan `fileName == request.auth.uid + '.png'`. Match `guru/{uid}` saja membuat 403 karena `uid` terikat ke string termasuk `.png`.
-
-28.12 Stempel: unggah lewat `kompresStempel` (latar putih, PNG). Jangan mengandalkan transparansi murni di cetak. Setelah mengubah algoritma kompresi, unggah ulang stempel di Data Sekolah.
-
-28.13 Lapisan cetak kepsek (keputusan produk terkini): **TTD di depan stempel** (`z-index` TTD > stempel), stempel digeser sedikit kiri agar tidak menutup tinta. Tinggi ruang TTD seragam antar kolom; tempat+tanggal hanya di kolom Kepala Sekolah.
-
-28.14 Pratinjau rapor memakai `iframe` + `srcDoc` dengan `sandbox` yang mencakup `allow-scripts` (konten dipercaya dari app). Tanpa itu konsol penuh peringatan `about:srcdoc` (bukan kegagalan bisnis, tetapi mengganggu diagnosis).
-
-
-## §29. Hapus nilai SLM / STS / SAS yang dikosongkan
-
-29.1 **Guru yang mengampu mapel×kelas (`tulisMapelKelas`) boleh menghapus dokumen nilai** di `nilai_tp`, `nilai_sts`, dan `nilai_sas`. Rules `allow delete: if tulisMapelKelas(...)`. Admin tetap tidak menulis/menghapus nilai (ANTIREGRESI §13 / §17).
-
-29.2 **UI wajib memperlakukan sel yang dikosongkan sebagai penghapusan**, bukan diabaikan. Bila sebelumnya ada nilai di server dan draf sel sekarang string kosong, masukkan ke daftar perubahan dengan `null` dan panggil batch yang menghapus dokumen. Jangan kembali ke perilaku lama yang melewati (`continue`) sel kosong di `perubahan`.
-
-29.3 **`saveNilaiTPBatch` / `saveNilaiAsesmenBatch` menerima `number | null`.** `null` → `batch.delete` dokumen yang sudah ada; nilai numerik → upsert seperti biasa. Jangan mengembalikan tipe hanya `number` atau melewati null tanpa hapus.
-
-29.4 **Nilai efektif di UI (total/rata/progress):** bila kunci draf untuk sel sudah terdefinisi (termasuk string kosong), jangan jatuh ke nilai server. Kosong = sengaja dihapus. Fallback ke server hanya bila kunci draf belum pernah disentuh (`undefined`).
-
-29.5 Setelah mengubah rules, wajib `npm run deploy:rules` sebelum menguji hapus di produksi. Tanpa deploy rules, hapus tetap ditolak meskipun UI sudah benar.
-
-
-## §30. Query alias mapel (IPAS / PJOK / PPKn / Seni Budaya) harus tahan `permission-denied`
-
-30.1 **Rules membaca nilai per nama mapel persis.** `nilai_tp`, `nilai_sts`, `nilai_sas`, `asesmen_cakupan` memakai `lihatMapelKelas`/`tulisMapelKelas` yang mencocokkan `"kelas::mapel"` ke `penugasanKelasMapel`. Guru bidang studi hanya lolos untuk nama yang tertulis di penugasannya; wali kelas lolos lewat `waliKelas` tanpa melihat nama mapel. Query Firestore tidak menyaring: bila satu nama tidak boleh dibaca, query itu ditolak seluruhnya.
-
-30.2 **Query multi-nama alias wajib lewat `selesaikanAlias()`** (`Promise.allSettled`) di `getNilaiTPUntukTP`, `getNilaiTPKelas`, `getCakupanTP`, `getNilaiAsesmenKelas`. Jangan kembali ke `Promise.all`: satu nama alias yang ditolak akan menggagalkan seluruh pemuatan guru bidang studi dan halaman input memuat tanpa akhir.
-
-30.3 `permission-denied` dilewati hanya selama masih ada satu nama alias yang berhasil. Error lain (jaringan dst.) tetap dilempar. Bila SEMUA nama ditolak, lempar penolakan itu (guru memang tidak berhak), jangan mengembalikan data kosong diam-diam.
-
-30.4 **Jangan melonggarkan rules** hanya agar alias lolos. Perluasan baca alias untuk leger wali kelas sudah tercakup oleh `waliKelas`.
-
-30.5 Setiap perubahan alias di `tpImport.ts` (`MAPEL_ALIAS_GROUPS`) harus diuji dengan akun guru bidang studi (bukan wali kelas) untuk mapel itu: halaman STS/SAS/SLM harus memuat dan menampilkan nilai.
-
-## §31. Salinan rapor STS untuk portal orang tua
-
-31.1 **Portal tidak menghitung rapor.** Nilai akhir, kalimat capaian, identitas, TTD, dan stempel yang dilihat orang tua harus sama dengan cetak. Itu hanya boleh dihasilkan `muatDataRaporStsKelas` + `kalimatCapaian` di aplikasi penilaian, lalu disimpan di `rapor_sts_ortu`. Jangan menyalin rumus ke portal.
-
-31.2 **Urutan publikasi**: tulis salinan dulu (`published: true`), baru `sts_publikasi.published = true` beserta `snapshotIds`. Batal: salinan `published: false`, lalu gerbang `published: false`. Jangan hanya membalik gerbang tanpa menyentuh salinan — portal memeriksa keduanya.
-
-31.3 **TTD wali** pada salinan dari `cariWaliKelasLengkap(kelas, profil)`, bukan nama admin yang menekan tombol. Tanggal dari `periode.tglRaporSts` (kosong = hari ini, sama seperti halaman Rapor). Jangan memakai `tglRapor` SAS.
-
-31.4 **Rules `rapor_sts_ortu`**: `read: if true` (portal tanpa Auth, pola sama `sts_publikasi` / `nilai_sts`). Tulis hanya `isAdmin()` atau `waliKelasSendiri(kelas)`. Dokumen wajib menyimpan `kelas`. Setelah ubah rules: `npm run deploy:rules`. Tanpa deploy, portal gagal membaca dan guru gagal menulis.
-
-31.5 Publikasi yang sudah ada sebelum perubahan ini **tidak** punya salinan. Wali harus mempublikasikan ulang. Jangan membuat portal jatuh ke rata-rata `nilai_sts` sebagai pengganti.
-
-## Jadwal rilis STS
-
-- Jadwal hanya menyimpan waktu di `sts_publikasi`. Eksekusi tetap memakai `publikasikanSts` (tulis `rapor_sts_ortu` + set `published: true`).
-- Jangan membuat jalur publish kedua yang menghitung ulang nilai atau menulis snapshot secara berbeda.
-- Saat publish manual atau batal publikasi, field `jadwalAt` harus dikosongkan agar tidak terpicu ulang.
-- Auto-jalankan hanya jika `jadwalAt <= sekarang` DAN `published !== true`.
-- Rules `sts_publikasi` sudah mengizinkan update oleh admin / wali kelas; tidak perlu diubah untuk fitur ini.
-
-## Loop Publikasikan STS
-
-- Jangan memasukkan objek yang dibuat ulang setiap render (seperti hasil `useToast()`) ke dependency `useCallback`/`useEffect` di `PublikasiSts.tsx`.
-- Pakai fungsi stabil (`toast.show`) atau nilai primitif.
-- Auto-jalankan jadwal tetap hanya terjadi bila `jadwalAt <= sekarang` dan belum `published`.
-
-## Top STS di beranda
-
-- Ranking hanya untuk kelas wali (`saya.wali`), bukan semua kelas yang diampu bidang studi.
-- Rata-rata dihitung dari `nilai_sts` periode aktif. Jangan mencampur SLM/SAS ke kartu ini.
-- Jangan menghidupkan perbandingan antar kelas di kartu ini.
-
-## Jadwal rilis otomatis (Cloud Function)
-
-- Function `jalankanJadwalPublikasiSts` hanya membalik `published: true` pada `rapor_sts_ortu` dan `sts_publikasi`. Jangan menaruh hitungan nilai atau `kalimatCapaian` di function.
-- Salinan harus sudah ada (field `snapshotIds`) saat jadwal disimpan. Jika `snapshotIds` kosong, function melewatkan dokumen itu.
-- Jadwal lama yang dibuat sebelum perbaikan ini tidak punya `snapshotIds` — wali kelas perlu menjadwalkan ulang sekali.
-- Setelah function berjalan, `jadwalAt` dikosongkan agar tidak terpicu ulang.
-- Deploy function wajib; tanpa itu jadwal tetap hanya jalan saat halaman dibuka.
-
-## §32. Login siswa LMS (custom token) dan batas keamanannya
-
-- Siswa LMS masuk lewat Cloud Function `loginSiswaLms` dan memegang token Firebase Auth dengan claims `lmsSiswa`, `siswaId`, `kelas`, `nama`. Beri akses siswa di rules **hanya** lewat `isSiswaLms()` dan claim tersebut (mis. `resource.data.siswaId == request.auth.token.siswaId`), jangan lewat `isLoggedIn()`.
-- **Jangan menghapus** `!('lmsSiswa' in request.auth.token)` dari `isLoggedIn()` di `firestore.rules` **maupun** `storage.rules`. Tanpa itu, token siswa dianggap «login» dan bisa lolos aturan lama, termasuk `delete` pada `lms/materi` di Storage dan buat dokumen `users/{uid}`.
-- Klien siswa wajib query `lms_materi` dengan `where('kelas', '==', kelasDariToken)` (huruf besar). Rules memeriksa claim `kelas`; query tanpa filter itu akan ditolak seluruhnya.
-- **Gejala «Layanan masuk belum siap»** (log function: gagal membuat custom token / `iam.serviceAccounts.signBlob`): service account runtime function belum boleh menandatangani token. Perbaiki: aktifkan API *IAM Service Account Credentials* dan beri peran *Service Account Token Creator* (`roles/iam.serviceAccountTokenCreator`) pada service account runtime function. Pada gen 2 biasanya service account default Compute (`NOMOR_PROJECT-compute@developer.gserviceaccount.com`); periksa di Cloud Run > layanan `loginsiswalms` > Keamanan.
-- Wilayah function (`asia-southeast2`) harus sama dengan `REGION_FUNGSI` di repo LMS (`src/lib/firebase.ts`).
-- `lms_login_gagal/{siswaId}` hanya diakses Admin SDK. Jangan menambahkan `match` untuknya di rules. Kunci 5 kali salah / 10 menit bisa dipakai pihak lain untuk mengunci satu siswa; ini disadari dan diterima.
-- **Batas keamanan saat ini:** `siswa/{id}` (memuat `nisn`) masih `allow get/list ... || true` karena dipakai login Perpustakaan. Selama itu berlaku, siapa pun bisa membaca NISN siswa lain lalu login sebagai dia. Jangan menyebut login siswa «aman» untuk data sensitif (nilai, jawaban) sebelum NISN tidak lagi terbaca publik atau digantikan PIN terpisah yang hanya bisa dibaca function.
-- Uji logika: `node scripts/cek-login-siswa-lms.mjs`. Rules belum teruji di emulator; uji dengan akun admin, guru, orang tua, dan siswa sebelum dianggap beres (§1.7).
-
-## §33. LMS Bank Soal: teks kaya = HTML, wajib dibersihkan (XSS)
-
-- Teks soal, pembahasan, dan pedoman uraian disimpan sebagai HTML terbatas dari editor. **Selalu** tampilkan lewat `RichView` / `bersihHtml()` (DOMPurify, daftar tag di `src/lib/html.ts`). Jangan `dangerouslySetInnerHTML` langsung dari data Firestore.
-- Pilihan jawaban, pernyataan, dan isian disimpan sebagai teks biasa dan dirender sebagai teks React.
-
-## §34. LMS Bank Soal: gambar ada di Firestore (`lms_gambar`), bukan Storage
-
-- Gambar dikompres di klien menjadi data URL ≤ 300.000 karakter (batas di rules; pola sama `perpus_foto`/`sarpras_foto`). Menaikkan batas berarti mengubah `firestore.rules` dan menjaga dokumen < 1 MiB.
-- Gambar **tidak dihapus** saat dilepas dari soal atau paket dihapus: satu gambar bisa dipakai bersama soal hasil duplikat. Gambar yatim dibersihkan lewat skrip admin, bukan dari klien.
-
-## §35. LMS: Firestore menolak `undefined`
-
-- Repo LMS (`src/lib/firebase.ts`) **tidak** memakai `ignoreUndefinedProperties`. Gejala bila terlewat: «Unsupported field value: undefined» saat menyimpan soal.
-- Semua data `lms_paket_soal` lewat `bersihkan()` di `src/lib/soal.ts`. Hapus field opsional dengan membuangnya dari objek, jangan mengisi `undefined`.
-
-## §36. LMS: query `lms_paket_soal`
-
-- Rules membaca `resource.data.kelas` dan `resource.data.mapel`, jadi query **wajib** `where kelas == … && where mapel == …` (equality saja), tanpa `orderBy` agar tidak perlu composite index. Pengurutan dilakukan di klien.
-- Nama `mapel` harus sama persis dengan penugasan guru.
-
-## §37. LMS: editor teks kaya harus lazy-load
-
-- `SoalEditor` diimpor dengan `React.lazy` di `App.tsx`. Jangan mengimpor `RichEditor`/TipTap dari halaman yang juga dipakai siswa. `SoalTampil` dan `RichView` tidak boleh bergantung pada TipTap.
-- TipTap v3: `shouldRerenderOnTransaction: true` wajib agar status tombol ikut berubah; `Placeholder` diimpor dari `@tiptap/extensions`.
-
-## §38. LMS: KUNCI JAWABAN tidak boleh terbaca siswa
-
-- `lms_paket_soal` memuat kunci, jadi rules hanya mengizinkan guru kelas×mapel dan admin membaca. **Jangan** membuka `read` ke siswa, walau «sementara». Ini berbeda dari `lms_materi` (§32) yang memang `read: if true`.
-- Siswa LMS kini bertoken (Cloud Function `loginSiswaLms`, claim `lmsSiswa`/`siswaId`/`kelas`/`nama`; `isSiswaLms()` di rules). Fase 2b: siswa membaca salinan soal TANPA kunci di koleksi terpisah dan penilaian dilakukan di sisi server (Cloud Function); jangan menaruh kunci di dokumen yang bisa dibaca `isSiswaLms()`.
-- `lms_gambar` dibaca `isGuru() || isSiswaLms()` (bukan `true`); siswa yang belum bertoken tidak akan melihat gambar soal.
-
-## §39. LMS Editor Soal: `key` pada kartu dan RichEditor
-
-- `RichEditor` hanya memakai `value` sebagai isi awal. `SoalEditorKartu` dipasang dengan `key={soal.id}` dan tiap `RichEditor` punya `key` turunan id soal. Bila `key` dihapus, isi soal lain ikut muncul atau tertimpa.
-
-## §40. LMS Editor Soal: simpan otomatis
-
-- Antrean simpan serial (`tertunda` + `sedangSimpan`) dengan debounce 1,2 detik. Jangan menambah `setDoc`/`updateDoc` paralel untuk dokumen yang sama (last-write-wins menimpa soal).
-- Batas 100 soal dan ±900 KB per dokumen (`BATAS_UKURAN_PAKET`); paket lebih besar harus dipecah. Syarat «Tandai siap» ada di `masalahSoal()`; tambah aturan baru di sana.
-
-## §41. LMS: font Inter harus self-host di `public/fonts/`
-
-- `@font-face` di `src/index.css` mengarah ke `/fonts/inter-latin-wght-normal.woff2`. File **wajib** ada di `public/fonts/`. Tanpa file, Vite/hosting mengembalikan `index.html` → OTS `invalid sfntVersion` / `Failed to decode downloaded font` di konsol (terlihat parah di halaman editor soal).
-- Jangan ganti ke CDN (CSP + ANTIREGRESI §5.2). Variabel Inter (woff2-variations) cukup satu file.
-
-## §42. LMS RichEditor: Underline + Placeholder TipTap v3
-
-- Tombol «U» memanggil `toggleUnderline()`. Extension `@tiptap/extension-underline` **harus** diimpor dan didaftarkan; StarterKit tidak menyertakannya.
-- `Placeholder` dari `@tiptap/extensions` (bukan path lama). Kedua paket dicantumkan eksplisit di `package.json` agar lockfile stabil.
-
-## §43. LMS rules: `lms_kuis` / `lms_soal` memuat kunci
-
-- Sama seperti `lms_paket_soal`: dokumen soal kuis berisi kunci jawaban. `allow read` hanya `lihatMapelKelas` (guru kelas×mapel / admin). Jangan membuka ke `isSiswaLms()` sampai ada koleksi salinan tanpa kunci (Fase 2b).
-- `lms_soal` memakai `get()` ke dokumen `lms_kuis` induk untuk cek penugasan; klien harus memastikan `kuisId` valid sebelum tulis.
-- Storage gambar: `lms/kuis/{kuisId}/…` hanya `isLoggedIn()` staf (token siswa dikecualikan di `storage.rules`).
-
-## §44. Teks panjang di form (TP, judul, opsi select) tidak boleh memecah layout
-
-- Gejala berulang: select «Tujuan Pembelajaran» / label panjang mendorong kolom grid keluar frame (terlihat di form paket soal baru dan pengaturan editor).
-- Penyebab: item CSS Grid default `min-width: auto` + `<select>` mengikuti lebar opsi terpanjang.
-- **Wajib** pada form 2 kolom (`.materi-form*` dan sejenis):
-  - container: `min-width: 0; max-width: 100%; overflow: hidden`
-  - grid: `grid-template-columns: minmax(0, 1fr) …` (bukan `1fr` mentah)
-  - field: `min-width: 0`
-  - `input`/`select`/`textarea`: `width: 100%; min-width: 0; box-sizing: border-box`
-  - `select`: `overflow: hidden; text-overflow: ellipsis; white-space: nowrap`
-- Pola yang sama untuk bar filter bank soal (`.paket-filter-field select`) dan chip meta TP (`.paket-tp`).
-- Jangan mengandalkan `max-width` tetap (px) saja — pecah di viewport sempit.
-
-## §45. Bank soal: kompleksitas L1–L3 dan pengelompokan
-
-- Setiap soal punya `kompleksitas: 'L1' | 'L2' | 'L3'` (default L1). Dokumen lama tanpa field → `normalisasiKompleksitas()` mengembalikan L1.
-- Saat `simpanPaket`, denormalisasi `jumlahPerTipe` dan `jumlahPerKompleksitas` di dokumen paket (filter daftar tanpa menghitung ulang di klien jika field sudah ada).
-- Filter/kelompok di `BankSoalPanel` memakai data paket + array `soal` (bukan query Firestore tambahan). Jangan menambah composite index hanya untuk filter UI ini.
-- L1/L2/L3 adalah skala sederhana sekolah dasar, bukan salinan penuh Bloom; jangan mengganti ke kode lain tanpa migrasi data.
-
-## §46. Editor soal: ganti tipe WAJIB mempertahankan `id`
-
-- `ubahTipe()` membuat objek lewat `soalBaru()` (id acak baru). **Harus menimpa kembali `id: s.id`.**
-- Tanpa itu, `key={soal.id}` di `SoalEditorKartu` dan `aktifId` di `SoalEditor` kehilangan referensi → form tipe non-PG tampak «hilang» / tidak bisa dipakai setelah ganti tipe.
-- `JawabanEditor` harus tahan data tidak lengkap (`opsi`/`pasangan`/`pernyataan`/`kunci` kosong atau bukan array) dengan fallback UI, bukan melempar runtime error.
-
-## §47. AI generate soal LMS: kunci hanya di Cloud Functions
-
-- Endpoint: `generateSoalLmsAi` (teks) dan `generateIlustrasiSoalLmsAi` (gambar) — **terpisah**.
-- Secret `GEMINI_API_KEY` hanya di Cloud Functions (sama project Penilaian). **Jangan** taruh di `.env` frontend, `VITE_*`, atau repo klien.
-- Hak akses: UID `v4fQXsqCzYUtHrqcDM0u48sxIfn1` **dan** email `arif.azwar79@gmail.com` (keduanya, di server). Pengecekan klien (`bolehGenerateSoalAi`) hanya kosmetik.
-- Prompt mengikuti Buku Saku soal SD: validitas vs TP, stimulus fungsional (bukan hiasan), bentuk soal, L1–L3 proporsional kelas.
-- Ilustrasi AI: hanya jika membantu menjawab; hasil dikompres klien lalu disimpan `lms_gambar` (bukan Storage publik dengan URL bertanda tangan kunci).
-- Model Gemini: ikut daftar di `functions/generateAi.js` (`MODEL_GEMINI`); model image `gemini-3.1-flash-lite-image`. Jangan hardcode model pensiun.
-
-## §48. AI soal: satu nomor per generate + pengecoh sejajar
-
-- Generate teks AI mengisi **satu soal aktif** (id dipertahankan). Jangan mengembalikan batch multi-soal di UI editor.
-- Server `generateSoalLmsAi` memaksa `jumlah = 1`.
-- Prompt wajib menolak pola «opsi benar paling panjang»; pengecoh harus miskonsepsi nyata dan panjang/struktur sejajar (Buku Saku).
-- Ilustrasi AI punya field deskripsi terpisah (tabel/grafik/chart + angka yang harus terbaca); generate gambar terpisah dari teks soal.
-
-## §49. AI generate: narasi soal wajib ikut berubah
-
-- Root cause fatal: TipTap `RichEditor` hanya memakai `value` sebagai content awal; generate AI pada soal yang sama (id tetap) mengisi opsi/kunci di state tetapi area narasi tidak ter-update.
-- Perbaikan: `RichEditor` menyinkronkan `value` eksternal via `setContent` bila berbeda dari isi editor; panel AI menolak draf tanpa `teks`; gambar lama di-reset saat narasi diganti AI.
-- Stimulus AI memakai **level** (`tanpa` | `ringan` | `sedang` | `kaya`), bukan sekadar checklist boolean — agar teks panjang (mis. Bahasa Indonesia) bisa diminta eksplisit.
-
-## §50. Ilustrasi AI: jangan bocorkan kunci & jangan mirip screenshot soal
-
-- Prompt `generateIlustrasiSoalLmsAi` harus melarang: label nama yang diminta soal (mis. nama organ pada soal identifikasi), teks soal/opsi A–D, centang/lingkaran jawaban, gaya screenshot/scan lembar ujian dari web.
-- Untuk soal penunjuk (panah/nomor): visual + penunjuk saja; tanpa menuliskan nama struktur yang diuji.
-- Deskripsi pengguna **opsional** — generate boleh dari teks soal saja; field deskripsi hanya untuk spesifikasi tambahan (tabel/grafik).
-
-## §51. Menu dropdown di daftar scrollable (editor soal)
-
-- Menu aksi per-soal (tombol ⋯) **tidak boleh** di-render sebagai `position: absolute` di dalam elemen yang punya `overflow: hidden` atau di dalam container `overflow-y: auto` (`.soal-item`, `.soal-daftar`).
-- Gejala: menu tidak muncul / terpotong, tombol tampak tidak berfungsi (termasuk Hapus).
-- Solusi yang dipakai: `createPortal(..., document.body)` + `position: fixed` berdasarkan `getBoundingClientRect` tombol. Tutup saat klik di luar atau scroll.
-- Pola yang sama berlaku untuk dropdown lain di dalam area scroll (jangan andalkan overflow parent visible saja).
-
-## §53. AI generate soal: kirim soal yang sudah ada agar tidak diulang
-
-- Setiap generate WAJIB mengirim `hindariSoal` (ringkasan teks soal lain di paket yang sama, maks ~12 item).
-- Server memasukkan daftar itu ke prompt dengan larangan eksplisit: jangan hasilkan soal yang mirip makna, struktur stem, atau frasa.
-- Temperature generation soal ~0.8–0.85. Nonce `variasi` tetap dikirim setiap kali.
-- Tanpa daftar hindari, model cenderung jatuh ke pola frasa paling umum untuk kompetensi L1 (mis. "Organ manakah yang berfungsi sebagai...").\n
-## §54. AI ilustrasi soal: fokus visual & anti-pengulangan organ
-
-- Prompt ilustrasi harus memfokuskan SATU bagian/organ yang relevan dengan soal (bukan menonjolkan banyak organ setara).
-- Jika `targetJawaban` atau petunjuk guru diberikan, itu menjadi prioritas fokus visual. Nama jawaban TIDAK boleh ditulis di gambar.
-- Setiap generate ilustrasi mengirim `variasi` (nonce) agar komposisi tidak selalu identik.
-
-## §55. Import bank soal: wajib mapel + satu TP
-
-- Setiap file import (JSON/CSV) **wajib** memuat informasi mata pelajaran dan Tujuan Pembelajaran. Jika tidak ada, proses import dibatalkan sebelum soal diparse lebih lanjut.
-- Import hanya untuk **satu TP**. File yang memuat lebih dari satu TP ditolak.
-- Alur import mengikuti mekanisme paket baru: pengguna mengisi Judul paket + memilih TP terlebih dahulu, baru memilih file. Jika TP di file tidak cocok dengan TP yang dipilih, tampilkan pesan kekeliruan dan jangan lanjutkan.
-- Template export selalu dihasilkan setelah pemilihan TP sehingga hanya berisi TP tersebut (tidak ada template “semua TP”).
+- Koleksi `lms_tugas` mengikuti pola `lms_materi` / `lms_kuis`: baca/tulis hanya guru kelas×mapel (tulisMapelKelas / lihatMapelKelas).
+- Klien WAJIB query dengan `where('kelas', '==', …)` DAN `where('mapel', '==', …)`. Tanpa kedua filter, rules menolak.
+- Halaman agregat sidebar (`TugasDanKuis`) melakukan loop per ruang kelas lalu query per pasangan, bukan satu query tanpa filter.
+- Jangan mengaktifkan `orderBy` di query pertama bila composite index belum dibuat; fallback sort di klien sudah ada di `daftarTugas`.

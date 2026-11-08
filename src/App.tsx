@@ -8,6 +8,7 @@ import OrangtuaMasuk from './pages/OrangtuaMasuk'
 import Beranda from './pages/Beranda'
 import KelasList from './pages/KelasList'
 import KelasDetail from './pages/KelasDetail'
+import TugasDanKuis from './pages/TugasDanKuis'
 import SiswaMasuk from './pages/siswa/SiswaMasuk'
 import SiswaLayout from './pages/siswa/SiswaLayout'
 import SiswaBeranda from './pages/siswa/SiswaBeranda'
@@ -115,6 +116,7 @@ export default function App() {
         <Route index element={<Beranda />} />
         <Route path="kelas" element={<KelasList />} />
         <Route path="kelas/:ruangId" element={<KelasDetail />} />
+        <Route path="tugas-kuis" element={<TugasDanKuis />} />
         <Route
           path="kelas/:ruangId/soal/:paketId"
           element={

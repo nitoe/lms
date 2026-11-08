@@ -6,6 +6,7 @@ import { aksenMapel, inisialMapel } from '../lib/uiAksen'
 import MateriPanel from '../components/MateriPanel'
 import KuisPanel from '../components/KuisPanel'
 import BankSoalPanel from '../components/BankSoalPanel'
+import TugasPanel from '../components/TugasPanel'
 
 type TabId = 'pengumuman' | 'materi' | 'kuis' | 'soal' | 'tugas'
 
@@ -88,9 +89,6 @@ export default function KelasDetail() {
             className={`lms-tab ${tab === t.id ? 'lms-tab--active' : ''}`}
           >
             {t.label}
-            {t.id === 'tugas' && (
-              <span className="lms-tab-soon">Segera</span>
-            )}
           </button>
         ))}
       </div>
@@ -104,14 +102,7 @@ export default function KelasDetail() {
       {tab === 'materi' && <MateriPanel kelas={judulKelas} mapel={judulMapel} />}
       {tab === 'kuis' && <KuisPanel kelas={judulKelas} mapel={judulMapel} />}
       {tab === 'soal' && <BankSoalPanel kelas={judulKelas} mapel={judulMapel} ruangId={decoded} />}
-      {tab === 'tugas' && (
-        <div className="lms-empty">
-          <p className="font-medium text-slate-700">Tugas segera hadir</p>
-          <p className="mt-1">
-            Buat tugas, pantau pengumpulan siswa, beri nilai dan komentar (Fase 1c).
-          </p>
-        </div>
-      )}
+      {tab === 'tugas' && <TugasPanel kelas={judulKelas} mapel={judulMapel} />}
     </div>
   )
 }

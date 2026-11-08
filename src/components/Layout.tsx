@@ -15,8 +15,7 @@ type NavItem = {
 const NAV_UTAMA: NavItem[] = [
   { to: '/', end: true, label: 'Beranda', icon: 'home' },
   { to: '/kelas', label: 'Ruang Kelas', icon: 'class' },
-  { to: '/kelas', label: 'Tugas', icon: 'task', soon: true },
-  { to: '/kelas', label: 'Kuis', icon: 'quiz', soon: true },
+  { to: '/tugas-kuis', label: 'Tugas & Kuis', icon: 'task' },
 ]
 
 const LS_SIDEBAR = 'lms-sidebar-collapsed'
@@ -103,6 +102,7 @@ export default function Layout() {
     pathname.includes('/soal/') ? 'Editor soal'
     : pathname.startsWith('/kelas/') ? 'Detail ruang kelas'
     : pathname.startsWith('/kelas') ? 'Ruang Kelas'
+    : pathname.startsWith('/tugas-kuis') ? 'Tugas & Kuis'
     : 'Beranda'
 
   return (
