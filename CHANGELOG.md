@@ -242,3 +242,18 @@
   - Wajib menuliskan di teks soal berapa jawaban yang benar
   - Jangan membuat hampir semua opsi benar
 - File: `docs/PANDUAN_AI_BANK_SOAL.md`.
+
+## 2026-11-09 — Kuis disusun dari paket bank soal (snapshot stabil)
+
+- **Ganti total** alur tab Kuis di ruang kelas. Model lama (`lms_soal` terpisah + editor KuisBuilder dari nol) dihentikan; kuis lama dianggap draf dan diganti.
+- Kuis baru diambil dari satu atau lebih **paket bank soal berstatus Siap**.
+- Mode penyusunan:
+  - **Manual** — centang soal dari paket terpilih.
+  - **Otomatis** — filter jumlah, bentuk (tipe), kompleksitas L1–L3; sistem mengacak dan mengisi kuota.
+  - **Otomatis + bantuan AI** (hanya `arif.azwar79@gmail.com`) — sama + deteksi soal mirip (Jaccard teks); tombol buang pasangan mirip. Analisis esensi AI server menyusul.
+- **Snapshot penuh** setiap soal disimpan di `lms_kuis.soal[]` (poin default 1) agar perubahan bank tidak merusak kuis aktif. Jejak `sumberPaketId` / `sumberSoalId` tetap ada.
+- Setelah dibuat: ubah poin per soal, urutan, hapus soal, durasi, acak soal/opsi, aktifkan/nonaktifkan.
+- File utama: `src/types/kuis.ts`, `src/lib/susunKuis.ts` (baru), `src/lib/kuis.ts`, `src/components/KuisPanel.tsx`, `src/components/KuisDetail.tsx` (baru). `KuisBuilder.tsx` tidak lagi dipakai.
+- `firestore.rules` (lengkap, repo SDM01Penilaian): `lms_kuis` wajib field `soal` list (≤100); create `lms_soal` ditolak (legacy hapus saja).
+- ANTIREGRESI §64.
+

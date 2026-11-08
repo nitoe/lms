@@ -1,221 +1,221 @@
+/**
+ * CRUD kuis LMS — model baru: soal di-snapshot di dokumen `lms_kuis`.
+ * Sumber: paket bank `lms_paket_soal` berstatus `siap`.
+ */
 import {
   addDoc,
   collection,
   deleteDoc,
   doc,
+  getDoc,
   getDocs,
-  orderBy,
   query,
   serverTimestamp,
   updateDoc,
   where,
-  writeBatch,
 } from 'firebase/firestore'
+import { auth, db } from './firebase'
+import type { PaketSoal } from '../types/soal'
+import type {
+  FilterSusunKuis,
+  KuisLms,
+  ModeSusunKuis,
+  SoalKuis,
+} from '../types/kuis'
+import { BATAS_PAKET_SUMBER, BATAS_SOAL_PER_KUIS } from '../types/kuis'
 import {
-  deleteObject,
-  getDownloadURL,
-  ref,
-  uploadBytes,
-} from 'firebase/storage'
-import { auth, db, storage } from './firebase'
-import type { JenisSoal, KuisLms, SoalLms } from '../types/kuis'
-import { BATAS_UKURAN_GAMBAR_SOAL } from '../types/kuis'
+  hitungRingkasanKuis,
+  kumpulkanKandidat,
+  susunManual,
+  susunOtomatis,
+} from './susunKuis'
+import { daftarPaket } from './soal'
 
-function koleksiKuis() {
+function koleksi() {
   return collection(db, 'lms_kuis')
 }
 
-function koleksiSoal() {
-  return collection(db, 'lms_soal')
+/** Firestore menolak `undefined`. */
+function bersihkan<T>(x: T): T {
+  return JSON.parse(JSON.stringify(x)) as T
 }
 
 export async function daftarKuis(kelas: string, mapel: string): Promise<KuisLms[]> {
   const q = query(
-    koleksiKuis(),
+    koleksi(),
     where('kelas', '==', String(kelas).toUpperCase()),
     where('mapel', '==', mapel),
-    orderBy('updatedAt', 'desc'),
   )
-  try {
-    const snap = await getDocs(q)
-    return snap.docs.map((d) => ({ id: d.id, ...d.data() }) as KuisLms)
-  } catch {
-    const q2 = query(
-      koleksiKuis(),
-      where('kelas', '==', String(kelas).toUpperCase()),
-      where('mapel', '==', mapel),
-    )
-    const snap = await getDocs(q2)
-    const list = snap.docs.map((d) => ({ id: d.id, ...d.data() }) as KuisLms)
-    list.sort((a, b) => {
-      const ta = (a.updatedAt as { seconds?: number })?.seconds ?? 0
-      const tb = (b.updatedAt as { seconds?: number })?.seconds ?? 0
-      return tb - ta
-    })
-    return list
-  }
+  const snap = await getDocs(q)
+  const list = snap.docs.map((d) => {
+    const data = d.data()
+    return {
+      id: d.id,
+      ...data,
+      sumberPaketIds: Array.isArray(data.sumberPaketIds) ? data.sumberPaketIds : [],
+      soal: Array.isArray(data.soal) ? data.soal : [],
+      modeSusun: (data.modeSusun as ModeSusunKuis) || 'manual',
+      jumlahSoal: typeof data.jumlahSoal === 'number' ? data.jumlahSoal : (data.soal?.length ?? 0),
+      totalPoin: typeof data.totalPoin === 'number' ? data.totalPoin : 0,
+    } as KuisLms
+  })
+  list.sort((a, b) => {
+    const ta = (a.updatedAt as { seconds?: number })?.seconds ?? 0
+    const tb = (b.updatedAt as { seconds?: number })?.seconds ?? 0
+    return tb - ta
+  })
+  return list
 }
 
-export async function buatKuis(input: {
+export async function ambilKuis(id: string): Promise<KuisLms | null> {
+  const s = await getDoc(doc(db, 'lms_kuis', id))
+  if (!s.exists()) return null
+  const data = s.data()
+  return {
+    id: s.id,
+    ...data,
+    sumberPaketIds: Array.isArray(data.sumberPaketIds) ? data.sumberPaketIds : [],
+    soal: Array.isArray(data.soal) ? data.soal : [],
+    modeSusun: (data.modeSusun as ModeSusunKuis) || 'manual',
+    jumlahSoal: typeof data.jumlahSoal === 'number' ? data.jumlahSoal : (data.soal?.length ?? 0),
+    totalPoin: typeof data.totalPoin === 'number' ? data.totalPoin : 0,
+  } as KuisLms
+}
+
+export type InputBuatKuis = {
   kelas: string
   mapel: string
   judul: string
   deskripsi?: string
-  tpId?: string
-  tpNomor?: number
-  tpNama?: string
   namaGuru?: string
-}): Promise<string> {
+  sumberPaketIds: string[]
+  modeSusun: ModeSusunKuis
+  filterSusun?: FilterSusunKuis
+  /** Mode manual: daftar pilihan. Mode otomatis diisi lib. */
+  pilihanManual?: { paketId: string; soalId: string }[]
+  /** Jika sudah dihitung di UI (mis. setelah AI filter). */
+  soalSiap?: SoalKuis[]
+  durasiMenit?: number
+  acakSoal?: boolean
+  acakOpsi?: boolean
+}
+
+/**
+ * Buat kuis baru dari paket siap.
+ * - Manual: pakai `pilihanManual` atau `soalSiap`.
+ * - Otomatis / otomatis_ai: susun dari filter; pemanggil AI boleh kirim `soalSiap` hasil penyesuaian.
+ */
+export async function buatKuisDariPaket(input: InputBuatKuis): Promise<string> {
   const uid = auth.currentUser?.uid
   if (!uid) throw new Error('Anda harus masuk terlebih dahulu.')
 
   const judul = input.judul.trim()
   if (!judul) throw new Error('Judul kuis wajib diisi.')
+  if (!input.sumberPaketIds?.length) {
+    throw new Error('Pilih minimal satu paket soal yang siap.')
+  }
+  if (input.sumberPaketIds.length > BATAS_PAKET_SUMBER) {
+    throw new Error(`Maksimal ${BATAS_PAKET_SUMBER} paket sumber.`)
+  }
 
-  const payload: Record<string, unknown> = {
+  let soal: SoalKuis[] = input.soalSiap ?? []
+
+  if (soal.length === 0) {
+    const semuaPaket = await daftarPaket(input.kelas, input.mapel)
+    const peta = new Map(semuaPaket.map((p) => [p.id, p]))
+    const paketDipilih: PaketSoal[] = []
+    for (const id of input.sumberPaketIds) {
+      const p = peta.get(id)
+      if (!p) throw new Error(`Paket ${id} tidak ditemukan.`)
+      if (p.status !== 'siap') throw new Error(`Paket «${p.judul}» belum berstatus Siap.`)
+      paketDipilih.push(p)
+    }
+    const kandidat = kumpulkanKandidat(paketDipilih)
+
+    if (input.modeSusun === 'manual') {
+      if (!input.pilihanManual?.length) {
+        throw new Error('Pilih minimal satu soal secara manual.')
+      }
+      soal = susunManual(kandidat, input.pilihanManual)
+    } else {
+      soal = susunOtomatis(kandidat, input.filterSusun, { seedAcak: true })
+    }
+  }
+
+  if (soal.length === 0) {
+    throw new Error('Tidak ada soal yang memenuhi filter / pilihan.')
+  }
+  if (soal.length > BATAS_SOAL_PER_KUIS) {
+    throw new Error(`Maksimal ${BATAS_SOAL_PER_KUIS} soal per kuis.`)
+  }
+
+  const ringkas = hitungRingkasanKuis(soal)
+  const payload = bersihkan({
     kelas: String(input.kelas).toUpperCase(),
     mapel: input.mapel.trim(),
     judul,
+    deskripsi: input.deskripsi?.trim() || undefined,
+    sumberPaketIds: input.sumberPaketIds,
+    modeSusun: input.modeSusun,
+    filterSusun: input.filterSusun,
+    soal,
+    durasiMenit: typeof input.durasiMenit === 'number' ? input.durasiMenit : undefined,
+    acakSoal: !!input.acakSoal,
+    acakOpsi: input.acakOpsi !== false,
     aktif: false,
     dibuatOleh: uid,
     dibuatOlehNama: input.namaGuru || '',
-    jumlahSoal: 0,
-    createdAt: serverTimestamp(),
-    updatedAt: serverTimestamp(),
-  }
-  if (input.deskripsi?.trim()) payload.deskripsi = input.deskripsi.trim()
-  if (input.tpId) {
-    payload.tpId = input.tpId
-    if (typeof input.tpNomor === 'number') payload.tpNomor = input.tpNomor
-    if (input.tpNama) payload.tpNama = input.tpNama
-  }
-
-  const refDoc = await addDoc(koleksiKuis(), payload)
-  return refDoc.id
-}
-
-export async function hapusKuis(kuisId: string): Promise<void> {
-  const soalSnap = await getDocs(query(koleksiSoal(), where('kuisId', '==', kuisId)))
-  const batch = writeBatch(db)
-  for (const d of soalSnap.docs) {
-    batch.delete(d.ref)
-  }
-  batch.delete(doc(db, 'lms_kuis', kuisId))
-  await batch.commit()
-}
-
-export async function daftarSoal(kuisId: string): Promise<SoalLms[]> {
-  const q = query(koleksiSoal(), where('kuisId', '==', kuisId), orderBy('urutan', 'asc'))
-  try {
-    const snap = await getDocs(q)
-    return snap.docs.map((d) => ({ id: d.id, ...d.data() }) as SoalLms)
-  } catch {
-    const q2 = query(koleksiSoal(), where('kuisId', '==', kuisId))
-    const snap = await getDocs(q2)
-    const list = snap.docs.map((d) => ({ id: d.id, ...d.data() }) as SoalLms)
-    list.sort((a, b) => (a.urutan ?? 0) - (b.urutan ?? 0))
-    return list
-  }
-}
-
-function buatIdOpsi(): string {
-  return Math.random().toString(36).slice(2, 10)
-}
-
-export async function tambahSoal(input: {
-  kuisId: string
-  jenis: JenisSoal
-  pertanyaan: string
-  skor?: number
-}): Promise<string> {
-  const uid = auth.currentUser?.uid
-  if (!uid) throw new Error('Anda harus masuk terlebih dahulu.')
-
-  const pertanyaan = input.pertanyaan.trim()
-  if (!pertanyaan) throw new Error('Pertanyaan wajib diisi.')
-
-  const urutan = Date.now()
-
-  const payload: Record<string, unknown> = {
-    kuisId: input.kuisId,
-    urutan,
-    jenis: input.jenis,
-    pertanyaan,
-    skor: typeof input.skor === 'number' ? input.skor : 1,
-    wajib: true,
-    createdAt: serverTimestamp(),
-    updatedAt: serverTimestamp(),
-  }
-
-  if (input.jenis === 'pg' || input.jenis === 'pg_kompleks') {
-    payload.opsi = [
-      { id: buatIdOpsi(), teks: '', benar: false },
-      { id: buatIdOpsi(), teks: '', benar: false },
-      { id: buatIdOpsi(), teks: '', benar: false },
-      { id: buatIdOpsi(), teks: '', benar: false },
-    ]
-  } else if (input.jenis === 'benar_salah') {
-    payload.opsi = [
-      { id: 'benar', teks: 'Benar', benar: false },
-      { id: 'salah', teks: 'Salah', benar: false },
-    ]
-  } else if (input.jenis === 'menjodohkan') {
-    payload.pasangan = [
-      { id: buatIdOpsi(), kiri: '', kanan: '' },
-      { id: buatIdOpsi(), kiri: '', kanan: '' },
-    ]
-  }
-
-  const refDoc = await addDoc(koleksiSoal(), payload)
-
-  // Update jumlah soal di kuis
-  const soalSnap = await getDocs(query(koleksiSoal(), where('kuisId', '==', input.kuisId)))
-  await updateDoc(doc(db, 'lms_kuis', input.kuisId), {
-    jumlahSoal: soalSnap.size,
-    updatedAt: serverTimestamp(),
+    ...ringkas,
   })
 
+  const refDoc = await addDoc(koleksi(), {
+    ...payload,
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  })
   return refDoc.id
 }
 
-export async function updateSoal(id: string, data: Partial<Omit<SoalLms, 'id' | 'kuisId'>>): Promise<void> {
-  const payload: Record<string, unknown> = { ...data, updatedAt: serverTimestamp() }
-  // Hapus field undefined
+export async function updateKuis(
+  id: string,
+  data: Partial<
+    Pick<
+      KuisLms,
+      | 'judul'
+      | 'deskripsi'
+      | 'soal'
+      | 'durasiMenit'
+      | 'acakSoal'
+      | 'acakOpsi'
+      | 'aktif'
+      | 'filterSusun'
+      | 'modeSusun'
+      | 'sumberPaketIds'
+    >
+  >,
+): Promise<void> {
+  const payload: Record<string, unknown> = { ...data }
+  if (data.soal) {
+    if (data.soal.length > BATAS_SOAL_PER_KUIS) {
+      throw new Error(`Maksimal ${BATAS_SOAL_PER_KUIS} soal per kuis.`)
+    }
+    Object.assign(payload, hitungRingkasanKuis(data.soal))
+  }
   for (const k of Object.keys(payload)) {
     if (payload[k] === undefined) delete payload[k]
   }
-  await updateDoc(doc(db, 'lms_soal', id), payload)
-}
-
-export async function hapusSoal(soal: SoalLms): Promise<void> {
-  if (soal.pertanyaanGambarPath) {
-    try {
-      await deleteObject(ref(storage, soal.pertanyaanGambarPath))
-    } catch {
-      /* ignore */
-    }
-  }
-  await deleteDoc(doc(db, 'lms_soal', soal.id))
-
-  const soalSnap = await getDocs(query(koleksiSoal(), where('kuisId', '==', soal.kuisId)))
-  await updateDoc(doc(db, 'lms_kuis', soal.kuisId), {
-    jumlahSoal: soalSnap.size,
+  await updateDoc(doc(db, 'lms_kuis', id), {
+    ...bersihkan(payload),
     updatedAt: serverTimestamp(),
   })
 }
 
-export async function unggahGambarSoal(file: File, kuisId: string): Promise<{ url: string; path: string }> {
-  if (!file.type.startsWith('image/')) {
-    throw new Error('Hanya file gambar yang didukung.')
-  }
-  if (file.size > BATAS_UKURAN_GAMBAR_SOAL) {
-    throw new Error('Ukuran gambar melebihi 5 MB.')
-  }
-  const aman = file.name.replace(/[^\w.\-()+ ]/g, '_').slice(0, 60)
-  const stamp = Date.now()
-  const path = `lms/kuis/${kuisId}/${stamp}_${aman}`
-  const r = ref(storage, path)
-  await uploadBytes(r, file, { contentType: file.type })
-  const url = await getDownloadURL(r)
-  return { url, path }
+export async function hapusKuis(kuisId: string): Promise<void> {
+  await deleteDoc(doc(db, 'lms_kuis', kuisId))
+}
+
+/** Paket siap saja untuk kelas×mapel (untuk wizard). */
+export async function daftarPaketSiap(kelas: string, mapel: string): Promise<PaketSoal[]> {
+  const semua = await daftarPaket(kelas, mapel)
+  return semua.filter((p) => p.status === 'siap' && (p.soal?.length ?? 0) > 0)
 }

@@ -258,3 +258,18 @@
 - Import harus menolak soal yang tidak lengkap sesuai tipenya (isian tanpa kunci, jodoh tanpa pasangan, bs tanpa pernyataan, dll.).
 - Deteksi duplikat berdasarkan teks yang dinormalisasi.
 - Fitur analisis harus bisa menandai soal yang kurang pembahasan atau struktur.
+
+## §64. Kuis dari bank soal (snapshot)
+
+64.1 Kuis baru **wajib** disusun dari `lms_paket_soal` berstatus `siap`. Jangan menghidupkan lagi editor soal berdiri sendiri di tab Kuis (`KuisBuilder` / `lms_soal` create).
+
+64.2 Field `lms_kuis.soal` adalah **snapshot** (salinan penuh). Jangan mengandalkan baca live ke paket saat siswa mengerjakan; paket bisa diubah atau dihapus.
+
+64.3 Poin awal setiap soal snapshot = **1**. Perubahan bobot hanya di dokumen kuis, bukan di bank.
+
+64.4 Query `lms_kuis` tetap `where kelas + mapel`. Rules menolak create tanpa `soal` list. Create ke `lms_soal` ditolak (legacy delete-only).
+
+64.5 Mode `otomatis_ai` dan deteksi mirip hanya UI-gated lewat `bolehGenerateSoalAi` (UID+email). Logika deteksi kasar di klien; panggilan AI server untuk esensi belum ada — jangan mengaku “AI menganalisis esensi” sampai function siap.
+
+64.6 Batas: ≤100 soal per kuis, ≤12 paket sumber. Ukuran dokumen Firestore 1 MiB — hindari menyalin gambar data-URL besar ke dalam snapshot (gambar tetap lewat `lms_gambar` id).
+
