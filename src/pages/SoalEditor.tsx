@@ -104,13 +104,17 @@ export default function SoalEditor() {
 
   const ubah = useCallback(
     (p: PerubahanPaket) => {
+      // Jika terkunci, hanya izinkan kembalikan ke draf
+      if (paket?.status === 'siap' && !(Object.keys(p).length === 1 && p.status === 'draf')) {
+        return
+      }
       setPaket((prev) => (prev ? { ...prev, ...p } : prev))
       tertunda.current = { ...tertunda.current, ...p }
       setStatus('menunggu')
       if (pewaktu.current) window.clearTimeout(pewaktu.current)
       pewaktu.current = window.setTimeout(() => void siram(), 1200)
     },
-    [siram],
+    [siram, paket?.status],
   )
 
   // Simpan sisa perubahan saat meninggalkan halaman; peringatkan bila tab ditutup sebelum tersimpan.
@@ -221,6 +225,7 @@ export default function SoalEditor() {
   if (!paket) return <div className="lms-empty">Memuat editor soal…</div>
 
   const milikSendiri = paket.dibuatOleh === user?.uid
+  const terkunci = paket.status === 'siap'
 
   return (
     <div className="soal-halaman">
@@ -235,6 +240,7 @@ export default function SoalEditor() {
           value={paket.judul}
           maxLength={200}
           aria-label="Judul paket soal"
+          disabled={terkunci}
           onChange={(e) => ubah({ judul: e.target.value })}
           onBlur={() => !paket.judul.trim() && ubah({ judul: 'Paket soal tanpa judul' })}
         />
@@ -259,6 +265,12 @@ export default function SoalEditor() {
       </div>
 
       {galatSimpan && <div className="soal-galat-bar" role="alert">{galatSimpan}</div>}
+      {terkunci && (
+        <div className="soal-info-bar" style={{background:'#fff7ed', borderColor:'#fed7aa', color:'#9a3412'}}>
+          Paket ini sudah ditandai <strong>Siap</strong>. Untuk mengedit, klik <strong>Kembalikan ke draf</strong> terlebih dahulu.
+        </div>
+      )}
+
       {!milikSendiri && (
         <div className="soal-info-bar">
           Paket ini dibuat oleh {paket.dibuatOlehNama || 'guru lain'}. Perubahan Anda akan tersimpan di paket yang sama.
@@ -271,11 +283,11 @@ export default function SoalEditor() {
             <label className="materi-field materi-field--full">
               <span>Deskripsi / petunjuk untuk siswa</span>
               <textarea rows={2} maxLength={1000} value={paket.deskripsi ?? ''}
-                onChange={(e) => ubah({ deskripsi: e.target.value })} placeholder="Contoh: Kerjakan dengan teliti ya." />
+                disabled={terkunci} onChange={(e) => ubah({ deskripsi: e.target.value })} placeholder="Contoh: Kerjakan dengan teliti ya." />
             </label>
             <label className="materi-field">
               <span>Tujuan Pembelajaran</span>
-              <select value={paket.tpId ?? ''} onChange={(e) => {
+              <select value={paket.tpId ?? ''} disabled={terkunci} onChange={(e) => {
                 const tp = tpList.find((t) => t.id === e.target.value)
                 ubah({ tpId: tp?.id ?? '', tpNomor: tp?.nomorTp ?? 0, tpNama: tp?.namaTp ?? '' })
               }}>
@@ -284,7 +296,7 @@ export default function SoalEditor() {
               </select>
             </label>
             <label className="soal-cek">
-              <input type="checkbox" checked={paket.acakSoal} onChange={(e) => ubah({ acakSoal: e.target.checked })} />
+              <input type="checkbox" checked={paket.acakSoal} disabled={terkunci} onChange={(e) => ubah({ acakSoal: e.target.checked })} />
               <span>Acak urutan soal untuk tiap siswa</span>
             </label>
           </div>
@@ -298,7 +310,7 @@ export default function SoalEditor() {
             <h2 className="soal-samping-judul">SOAL ({soalList.length})</h2>
             <div className="soal-tambah-wrap">
               <button type="button" className="soal-ikon-btn" aria-label="Tambah soal" aria-expanded={menuTambah}
-                disabled={soalList.length >= BATAS_SOAL_PER_PAKET} onClick={() => setMenuTambah((v) => !v)}>+</button>
+                disabled={terkunci || soalList.length >= BATAS_SOAL_PER_PAKET} onClick={() => setMenuTambah((v) => !v)}>+</button>
               {menuTambah && (
                 <ul className="soal-menu soal-menu--tambah" role="menu">
                   {URUTAN_TIPE.map((t) => (
@@ -324,7 +336,7 @@ export default function SoalEditor() {
                 <li
                   key={x.id}
                   className={`soal-item ${x.id === aktif?.id ? 'soal-item--aktif' : ''} ${seretDari === i ? 'soal-item--seret' : ''}`}
-                  draggable={!cari}
+                  draggable={!cari && !terkunci}
                   onDragStart={() => setSeretDari(i)}
                   onDragOver={(e) => e.preventDefault()}
                   onDrop={() => {
@@ -394,7 +406,7 @@ export default function SoalEditor() {
                 <button type="button" className="lms-btn-secondary" disabled={aktifIdx === 0}
                   onClick={() => setAktifId(soalList[aktifIdx - 1].id)}>← Soal sebelumnya</button>
                 <button type="button" className="lms-btn-secondary" onClick={() => tambahSoal(aktif.tipe)}
-                  disabled={soalList.length >= BATAS_SOAL_PER_PAKET}>+ Soal {NAMA_TIPE[aktif.tipe].toLowerCase()}</button>
+                  disabled={terkunci || soalList.length >= BATAS_SOAL_PER_PAKET}>+ Soal {NAMA_TIPE[aktif.tipe].toLowerCase()}</button>
                 <button type="button" className="lms-btn-secondary" disabled={aktifIdx === soalList.length - 1}
                   onClick={() => setAktifId(soalList[aktifIdx + 1].id)}>Soal berikutnya →</button>
               </nav>
@@ -434,10 +446,10 @@ export default function SoalEditor() {
             if (idx < 0) return null
             return (
               <>
-                <li><button type="button" role="menuitem" onClick={() => duplikat(idx)}>Duplikat</button></li>
-                <li><button type="button" role="menuitem" disabled={idx === 0} onClick={() => pindah(idx, idx - 1)}>Naikkan</button></li>
-                <li><button type="button" role="menuitem" disabled={idx === soalList.length - 1} onClick={() => pindah(idx, idx + 1)}>Turunkan</button></li>
-                <li><button type="button" role="menuitem" className="soal-menu-bahaya" onClick={() => hapus(idx)}>Hapus</button></li>
+                <li><button type="button" role="menuitem" disabled={terkunci} onClick={() => duplikat(idx)}>Duplikat</button></li>
+                <li><button type="button" role="menuitem" disabled={terkunci || idx === 0} onClick={() => pindah(idx, idx - 1)}>Naikkan</button></li>
+                <li><button type="button" role="menuitem" disabled={terkunci || idx === soalList.length - 1} onClick={() => pindah(idx, idx + 1)}>Turunkan</button></li>
+                <li><button type="button" role="menuitem" className="soal-menu-bahaya" disabled={terkunci} onClick={() => hapus(idx)}>Hapus</button></li>
               </>
             )
           })()}

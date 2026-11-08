@@ -240,3 +240,9 @@
 - Tombol Import pada kartu paket menambahkan soal ke array `soal` yang sudah ada (append), bukan mengganti.
 - Validasi metadata (mapel + TP) tetap wajib dan harus cocok dengan paket tujuan. Jika berbeda, tampilkan pesan dan jangan simpan.
 - Import untuk paket baru (form terpisah) tidak boleh dihapus; keduanya hidup berdampingan.
+
+## §57. Paket soal Siap tidak boleh diedit langsung
+
+- Jika `paket.status === 'siap'`, fungsi `ubah()` mengabaikan semua perubahan kecuali `status: 'draf'`.
+- Input judul, pengaturan, tombol tambah soal, drag-and-drop, dan menu aksi (duplikat/hapus/pindah) dinonaktifkan.
+- Jangan mengizinkan simpan soal saat status siap; selalu paksa kembalikan ke draf dulu.

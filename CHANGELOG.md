@@ -198,3 +198,11 @@
 - Import untuk membuat paket baru tetap ada dan tidak diubah.
 - File: `src/components/BankSoalPanel.tsx`.
 - ANTIREGRESI §56.
+
+## 2026-11-08 — Penguncian paket soal berstatus Siap
+
+- Paket dengan status **Siap** tidak dapat diedit (judul, deskripsi, TP, soal, tambah/hapus/duplikat/pindah).
+- Untuk mengedit, pengguna harus klik **Kembalikan ke draf** terlebih dahulu.
+- Banner peringatan ditampilkan saat paket terkunci.
+- File: `src/pages/SoalEditor.tsx`.
+- ANTIREGRESI §57.
