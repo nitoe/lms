@@ -481,3 +481,10 @@ Jangan menyimpan blob base64 besar di dokumen Firestore.
 - Prompt ilustrasi harus memfokuskan SATU bagian/organ yang relevan dengan soal (bukan menonjolkan banyak organ setara).
 - Jika `targetJawaban` atau petunjuk guru diberikan, itu menjadi prioritas fokus visual. Nama jawaban TIDAK boleh ditulis di gambar.
 - Setiap generate ilustrasi mengirim `variasi` (nonce) agar komposisi tidak selalu identik.
+
+## §55. Import bank soal: wajib mapel + satu TP
+
+- Setiap file import (JSON/CSV) **wajib** memuat informasi mata pelajaran dan Tujuan Pembelajaran. Jika tidak ada, proses import dibatalkan sebelum soal diparse lebih lanjut.
+- Import hanya untuk **satu TP**. File yang memuat lebih dari satu TP ditolak.
+- Alur import mengikuti mekanisme paket baru: pengguna mengisi Judul paket + memilih TP terlebih dahulu, baru memilih file. Jika TP di file tidak cocok dengan TP yang dipilih, tampilkan pesan kekeliruan dan jangan lanjutkan.
+- Template export selalu dihasilkan setelah pemilihan TP sehingga hanya berisi TP tersebut (tidak ada template “semua TP”).

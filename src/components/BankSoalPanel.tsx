@@ -12,6 +12,13 @@ import {
   URUTAN_TIPE,
   normalisasiKompleksitas,
 } from '../types/soal'
+import {
+  buatTemplateCsv,
+  buatTemplateJson,
+  parseCsvImport,
+  parseJsonImport,
+  validasiMetadata,
+} from '../lib/importSoal'
 import '../styles/soal.css'
 
 type Props = { kelas: string; mapel: string; ruangId: string }
@@ -58,6 +65,17 @@ export default function BankSoalPanel({ kelas, mapel, ruangId }: Props) {
   const [judul, setJudul] = useState('')
   const [tpId, setTpId] = useState('')
   const [q, setQ] = useState('')
+
+  /* Import */
+  const [formImport, setFormImport] = useState(false)
+  const [judulImport, setJudulImport] = useState('')
+  const [tpIdImport, setTpIdImport] = useState('')
+  const [fileImport, setFileImport] = useState<File | null>(null)
+  const [infoImport, setInfoImport] = useState('')
+
+  /* Export template */
+  const [formExport, setFormExport] = useState(false)
+  const [tpIdExport, setTpIdExport] = useState('')
 
   /* Filter & pengelompokan */
   const [filterTp, setFilterTp] = useState('')
@@ -213,6 +231,78 @@ export default function BankSoalPanel({ kelas, mapel, ruangId }: Props) {
     }
   }
 
+  function unduhTemplate(format: 'json' | 'csv') {
+    const tp = tpList.find((t) => t.id === tpIdExport)
+    if (!tp) {
+      setError('Pilih Tujuan Pembelajaran terlebih dahulu.')
+      return
+    }
+    const nama = `template-soal-${mapel.replace(/\s+/g, '-')}-TP${tp.nomorTp}.${format}`
+    const isi = format === 'json' ? buatTemplateJson(mapel, tp) : buatTemplateCsv(mapel, tp)
+    const blob = new Blob([isi], { type: format === 'json' ? 'application/json' : 'text/csv;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = nama
+    a.click()
+    URL.revokeObjectURL(url)
+    setFormExport(false)
+    setTpIdExport('')
+  }
+
+  async function prosesImport(e: React.FormEvent) {
+    e.preventDefault()
+    if (!fileImport || !judulImport.trim()) return
+    setBusy(true)
+    setError('')
+    setInfoImport('')
+    try {
+      const teks = await fileImport.text()
+      const isJson = fileImport.name.toLowerCase().endsWith('.json') || teks.trim().startsWith('{') || teks.trim().startsWith('[')
+      const hasil = isJson ? parseJsonImport(teks) : parseCsvImport(teks)
+
+      const tpDipilih = tpList.find((t) => t.id === tpIdImport) || null
+      const galatMeta = validasiMetadata(hasil.metadata, mapel, tpDipilih)
+      const semuaGalat = [...galatMeta, ...hasil.galat]
+
+      if (semuaGalat.length) {
+        setError(semuaGalat.join('\n'))
+        setBusy(false)
+        return
+      }
+      if (hasil.soal.length === 0) {
+        setError('Tidak ada soal valid yang dapat diimpor.')
+        setBusy(false)
+        return
+      }
+
+      // Buat paket baru dengan soal hasil import (ganti soal awal)
+      const id = await buatPaket({
+        kelas,
+        mapel,
+        judul: judulImport,
+        tpId: tpDipilih?.id,
+        tpNomor: tpDipilih?.nomorTp,
+        tpNama: tpDipilih?.namaTp,
+        namaGuru: profil?.nama,
+      })
+      // Simpan soal hasil import (buatPaket membuat 1 soal kosong; kita timpa)
+      const { simpanPaket } = await import('../lib/soal')
+      await simpanPaket(id, { soal: hasil.soal as any })
+
+      setInfoImport(`Berhasil mengimpor ${hasil.soal.length} soal ke paket baru.`)
+      setFormImport(false)
+      setJudulImport('')
+      setTpIdImport('')
+      setFileImport(null)
+      navigate(`/kelas/${encodeURIComponent(ruangId)}/soal/${id}`)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Gagal memproses import.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
   function renderKartu(p: PaketSoal) {
     const jt = hitungTipe(p)
     const jk = hitungKompleksitas(p)
@@ -280,9 +370,17 @@ export default function BankSoalPanel({ kelas, mapel, ruangId }: Props) {
             aria-label="Cari paket soal"
           />
         </div>
-        <button type="button" className="lms-btn-primary" onClick={() => setFormBuka((v) => !v)}>
-          + Paket soal baru
-        </button>
+        <div className="flex flex-wrap gap-2">
+          <button type="button" className="lms-btn-secondary" onClick={() => { setFormExport(true); setFormBuka(false); setFormImport(false) }}>
+            Unduh template
+          </button>
+          <button type="button" className="lms-btn-secondary" onClick={() => { setFormImport(true); setFormBuka(false); setFormExport(false) }}>
+            Import soal
+          </button>
+          <button type="button" className="lms-btn-primary" onClick={() => { setFormBuka((v) => !v); setFormImport(false); setFormExport(false) }}>
+            + Paket soal baru
+          </button>
+        </div>
       </div>
 
       {/* Filter & grup — bantu merancang kuis dari bank */}
@@ -338,7 +436,10 @@ export default function BankSoalPanel({ kelas, mapel, ruangId }: Props) {
       </div>
 
       {error && (
-        <div className="rounded-xl border border-red-200 bg-red-50 px-3.5 py-2.5 text-sm text-red-800">{error}</div>
+        <div className="rounded-xl border border-red-200 bg-red-50 px-3.5 py-2.5 text-sm text-red-800 whitespace-pre-wrap">{error}</div>
+      )}
+      {infoImport && (
+        <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3.5 py-2.5 text-sm text-emerald-800">{infoImport}</div>
       )}
 
       {formBuka && (
@@ -371,6 +472,84 @@ export default function BankSoalPanel({ kelas, mapel, ruangId }: Props) {
           <div className="mt-3 flex justify-end">
             <button type="submit" className="lms-btn-primary" disabled={busy || !judul.trim()}>
               {busy ? 'Membuat…' : 'Buat & buka editor'}
+            </button>
+          </div>
+        </form>
+      )}
+
+      {formExport && (
+        <div className="materi-form">
+          <div className="materi-form-head">
+            <h3 className="text-sm font-semibold text-slate-900">Unduh template soal</h3>
+            <button type="button" className="lms-btn-ghost" onClick={() => setFormExport(false)}>Batal</button>
+          </div>
+          <p className="mb-3 text-sm text-slate-600">
+            Template hanya berisi satu Tujuan Pembelajaran yang Anda pilih. Isi soal di dalamnya, lalu impor kembali.
+          </p>
+          <div className="materi-form-grid">
+            <label className="materi-field">
+              <span>Pilih TP</span>
+              <select value={tpIdExport} onChange={(e) => setTpIdExport(e.target.value)} required>
+                <option value="">— pilih TP —</option>
+                {tpList.map((t) => (
+                  <option key={t.id} value={t.id}>TP {t.nomorTp}. {t.namaTp}</option>
+                ))}
+              </select>
+            </label>
+          </div>
+          <div className="mt-3 flex flex-wrap justify-end gap-2">
+            <button type="button" className="lms-btn-secondary" disabled={!tpIdExport} onClick={() => unduhTemplate('csv')}>
+              Unduh CSV (Excel)
+            </button>
+            <button type="button" className="lms-btn-primary" disabled={!tpIdExport} onClick={() => unduhTemplate('json')}>
+              Unduh JSON
+            </button>
+          </div>
+        </div>
+      )}
+
+      {formImport && (
+        <form onSubmit={(e) => void prosesImport(e)} className="materi-form">
+          <div className="materi-form-head">
+            <h3 className="text-sm font-semibold text-slate-900">Import soal ke paket baru</h3>
+            <button type="button" className="lms-btn-ghost" onClick={() => setFormImport(false)}>Batal</button>
+          </div>
+          <p className="mb-3 text-sm text-slate-600">
+            Masukkan judul paket dan TP terlebih dahulu. File harus memuat mata pelajaran dan TP yang sama (satu TP saja). Jika berbeda, impor ditolak.
+          </p>
+          <div className="materi-form-grid">
+            <label className="materi-field">
+              <span>Judul paket</span>
+              <input
+                required
+                value={judulImport}
+                maxLength={200}
+                onChange={(e) => setJudulImport(e.target.value)}
+                placeholder="Contoh: Bank soal pecahan — TP 1"
+              />
+            </label>
+            <label className="materi-field">
+              <span>Tujuan Pembelajaran</span>
+              <select value={tpIdImport} onChange={(e) => setTpIdImport(e.target.value)} required>
+                <option value="">— pilih TP —</option>
+                {tpList.map((t) => (
+                  <option key={t.id} value={t.id}>TP {t.nomorTp}. {t.namaTp}</option>
+                ))}
+              </select>
+            </label>
+            <label className="materi-field materi-field--full">
+              <span>File JSON atau CSV</span>
+              <input
+                type="file"
+                accept=".json,.csv,application/json,text/csv"
+                onChange={(e) => setFileImport(e.target.files?.[0] ?? null)}
+                required
+              />
+            </label>
+          </div>
+          <div className="mt-3 flex justify-end">
+            <button type="submit" className="lms-btn-primary" disabled={busy || !judulImport.trim() || !tpIdImport || !fileImport}>
+              {busy ? 'Memproses…' : 'Impor & buka editor'}
             </button>
           </div>
         </form>

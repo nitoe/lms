@@ -530,3 +530,11 @@
 - Tombol "Opsi deskripsi (opsional)" diganti menjadi "▸ Deskripsi ilustrasi (opsional)" agar lebih terlihat dan dipahami sebagai fitur untuk menyesuaikan gambar.
 - Label di dalam form juga diperjelas.
 
+
+## 2026-11-08 — Import & export template bank soal (satu TP)
+
+- **Fitur baru:** Unduh template soal (JSON atau CSV/Excel) yang terlebih dahulu menanyakan TP yang akan dipakai. Template hanya berisi mapel + TP tersebut.
+- **Import soal:** Tidak langsung mengunggah. Pengguna wajib mengisi Judul paket dan memilih TP (seperti mekanisme buat paket baru). File wajib memuat mata pelajaran dan TP; tanpa keduanya impor ditolak.
+- Validasi: hanya satu TP per file; jika TP di file berbeda dengan TP yang dipilih pengguna, muncul prompt kekeliruan pemilihan TP.
+- File: `src/lib/importSoal.ts` (baru), `src/components/BankSoalPanel.tsx`.
+- ANTIREGRESI §55.
