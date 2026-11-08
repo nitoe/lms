@@ -106,7 +106,7 @@
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 .soal-daftar { overflow-x: hidden; }
-.soal-samping { overflow-x: hidden; min-width: 0; }
+.soal-samping { min-width: 0; overflow: visible; }
 .soal-kosong-kecil { font-size: 0.8rem; color: var(--color-muted); text-align: center; padding: 0.8rem 0; }
 .soal-ringkas { display: grid; gap: 0.25rem; margin: 0; padding-top: 0.6rem; border-top: 1px solid var(--color-border); font-size: 0.78rem; }
 .soal-ringkas > div { display: flex; justify-content: space-between; }
@@ -115,16 +115,38 @@
 .soal-ringkas--warn { color: #b45309; }
 
 /* —— Menu popover —— */
-.soal-tambah-wrap { position: relative; }
+.soal-tambah-wrap { position: relative; z-index: 40; }
 .soal-menu {
-  position: absolute; z-index: 30; top: calc(100% + 0.25rem); left: 0; min-width: 11rem; margin: 0; padding: 0.3rem;
-  list-style: none; background: #fff; border: 1px solid var(--color-border); border-radius: 0.7rem;
-  box-shadow: 0 10px 28px rgba(23, 23, 57, 0.16);
+  position: absolute;
+  z-index: 50;
+  top: calc(100% + 0.25rem);
+  left: 0;
+  min-width: 13.5rem;
+  max-width: min(18rem, 70vw);
+  margin: 0;
+  padding: 0.35rem;
+  list-style: none;
+  background: #fff;
+  border: 1px solid var(--color-border);
+  border-radius: 0.7rem;
+  box-shadow: 0 12px 32px rgba(23, 23, 57, 0.18);
 }
+.soal-menu--tambah { left: auto; right: 0; }
 .soal-menu--kanan { left: auto; right: 0; }
 .soal-menu button {
-  display: block; width: 100%; text-align: left; padding: 0.45rem 0.6rem; border: 0; background: transparent;
-  border-radius: 0.5rem; font-size: 0.8rem; cursor: pointer; font-family: inherit; color: #1a1d33;
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 0.5rem 0.65rem;
+  border: 0;
+  background: transparent;
+  border-radius: 0.5rem;
+  font-size: 0.8rem;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: inherit;
+  color: #1a1d33;
+  white-space: nowrap;
 }
 .soal-menu button:hover:not(:disabled) { background: var(--color-surface-2); }
 .soal-menu button:disabled { color: #9aa1b2; cursor: not-allowed; }

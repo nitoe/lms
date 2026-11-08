@@ -456,3 +456,9 @@ Jangan menyimpan blob base64 besar di dokumen Firestore.
 - Root cause fatal: TipTap `RichEditor` hanya memakai `value` sebagai content awal; generate AI pada soal yang sama (id tetap) mengisi opsi/kunci di state tetapi area narasi tidak ter-update.
 - Perbaikan: `RichEditor` menyinkronkan `value` eksternal via `setContent` bila berbeda dari isi editor; panel AI menolak draf tanpa `teks`; gambar lama di-reset saat narasi diganti AI.
 - Stimulus AI memakai **level** (`tanpa` | `ringan` | `sedang` | `kaya`), bukan sekadar checklist boolean — agar teks panjang (mis. Bahasa Indonesia) bisa diminta eksplisit.
+
+## §50. Ilustrasi AI: jangan bocorkan kunci & jangan mirip screenshot soal
+
+- Prompt `generateIlustrasiSoalLmsAi` harus melarang: label nama yang diminta soal (mis. nama organ pada soal identifikasi), teks soal/opsi A–D, centang/lingkaran jawaban, gaya screenshot/scan lembar ujian dari web.
+- Untuk soal penunjuk (panah/nomor): visual + penunjuk saja; tanpa menuliskan nama struktur yang diuji.
+- Deskripsi pengguna **opsional** — generate boleh dari teks soal saja; field deskripsi hanya untuk spesifikasi tambahan (tabel/grafik).

@@ -3,6 +3,10 @@
 > Append-only: entri baru ditambahkan di BAWAH, entri lama tidak diubah.
 > Versi mengacu ke `package.json` (saat ini `0.1.0`); belum ada rilis bertag.
 
+## 2026-11-08 — Menu tambah soal tidak terpotong
+
+- Dropdown tipe soal dari tombol **+** di sidebar: posisi kanan, lebar cukup, tidak dipotong `overflow` sidebar.
+
 ## 2026-11-08 — AI: narasi ikut diganti + level stimulus
 
 - Perbaiki bug fatal: generate AI hanya mengisi opsi/kunci sementara narasi soal tidak berubah (RichEditor tidak sinkron ke props).

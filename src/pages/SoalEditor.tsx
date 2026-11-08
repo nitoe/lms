@@ -278,7 +278,7 @@ export default function SoalEditor() {
               <button type="button" className="soal-ikon-btn" aria-label="Tambah soal" aria-expanded={menuTambah}
                 disabled={soalList.length >= BATAS_SOAL_PER_PAKET} onClick={() => setMenuTambah((v) => !v)}>+</button>
               {menuTambah && (
-                <ul className="soal-menu" role="menu">
+                <ul className="soal-menu soal-menu--tambah" role="menu">
                   {URUTAN_TIPE.map((t) => (
                     <li key={t}><button type="button" role="menuitem" onClick={() => tambahSoal(t)}>{NAMA_TIPE[t]}</button></li>
                   ))}
