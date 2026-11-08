@@ -475,4 +475,9 @@ Jangan menyimpan blob base64 besar di dokumen Firestore.
 - Setiap generate WAJIB mengirim `hindariSoal` (ringkasan teks soal lain di paket yang sama, maks ~12 item).
 - Server memasukkan daftar itu ke prompt dengan larangan eksplisit: jangan hasilkan soal yang mirip makna, struktur stem, atau frasa.
 - Temperature generation soal ~0.8–0.85. Nonce `variasi` tetap dikirim setiap kali.
-- Tanpa daftar hindari, model cenderung jatuh ke pola frasa paling umum untuk kompetensi L1 (mis. "Organ manakah yang berfungsi sebagai...").
+- Tanpa daftar hindari, model cenderung jatuh ke pola frasa paling umum untuk kompetensi L1 (mis. "Organ manakah yang berfungsi sebagai...").\n
+## §54. AI ilustrasi soal: fokus visual & anti-pengulangan organ
+
+- Prompt ilustrasi harus memfokuskan SATU bagian/organ yang relevan dengan soal (bukan menonjolkan banyak organ setara).
+- Jika `targetJawaban` atau petunjuk guru diberikan, itu menjadi prioritas fokus visual. Nama jawaban TIDAK boleh ditulis di gambar.
+- Setiap generate ilustrasi mengirim `variasi` (nonce) agar komposisi tidak selalu identik.

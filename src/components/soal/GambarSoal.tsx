@@ -39,6 +39,7 @@ type PickerProps = {
     teksSoal: string
     kelas?: string
     mapel?: string
+    targetJawaban?: string
   }
 }
 
@@ -86,6 +87,8 @@ export function GambarPicker({ gambarId, onChange, kecil = false, label = 'Tamba
         petunjukGambar: petunjuk || undefined,
         kelas: ai.kelas,
         mapel: ai.mapel,
+        targetJawaban: ai.targetJawaban,
+        variasi: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
       })
       onChange(id)
       setFormDetail(false)

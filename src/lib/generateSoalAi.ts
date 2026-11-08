@@ -139,6 +139,8 @@ export async function generateDanSimpanIlustrasiSoal(input: {
   petunjukGambar?: string
   kelas?: string
   mapel?: string
+  targetJawaban?: string
+  variasi?: string
 }): Promise<string> {
   pastikanBerhak()
   const uid = auth.currentUser?.uid
@@ -151,7 +153,11 @@ export async function generateDanSimpanIlustrasiSoal(input: {
 
   let dataUrl: string
   try {
-    const res = await panggil({ ...input, provider: 'gemini' })
+    const res = await panggil({
+      ...input,
+      provider: 'gemini',
+      variasi: input.variasi || `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    })
     dataUrl = res.data?.dataUrl
   } catch (e) {
     throw new Error(pesan(e))
