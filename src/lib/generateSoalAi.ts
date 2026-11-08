@@ -35,6 +35,9 @@ function pesan(err: unknown): string {
   return 'Gagal menghubungi layanan AI.'
 }
 
+/** Level stimulus teks yang diminta ke AI (Buku Saku: stimulus fungsional, proporsional kelas). */
+export type LevelStimulusAi = 'tanpa' | 'ringan' | 'sedang' | 'kaya'
+
 /** Draf soal dari AI (masih bisa diedit sebelum masuk paket). */
 export type DrafSoalAi = Soal & {
   butuhGambar?: boolean
@@ -48,10 +51,14 @@ export async function generateSoalLmsAi(input: {
   tpNomor?: number
   tipe: TipeSoal
   kompleksitas: KompleksitasSoal
-  /** Selalu 1 untuk alur tinjau-per-soal; server juga membatasi maks 5. */
+  /** Selalu 1 untuk alur tinjau-per-soal. */
   jumlah?: number
   konteks?: string
+  /** @deprecated pakai levelStimulus */
   butuhStimulus?: boolean
+  levelStimulus?: LevelStimulusAi
+  /** Wajib true: AI menulis narasi baru, bukan mempertahankan teks kartu. */
+  gantiTeks?: boolean
 }): Promise<DrafSoalAi[]> {
   pastikanBerhak()
   const panggil = httpsCallable<typeof input & { provider: 'gemini' }, { soal: DrafSoalAi[] }>(
@@ -59,7 +66,17 @@ export async function generateSoalLmsAi(input: {
     'generateSoalLmsAi',
   )
   try {
-    const payload = { ...input, provider: 'gemini' as const, jumlah: 1 }
+    let levelStimulus = input.levelStimulus
+    if (!levelStimulus) {
+      levelStimulus = input.butuhStimulus ? 'sedang' : 'tanpa'
+    }
+    const payload = {
+      ...input,
+      provider: 'gemini' as const,
+      jumlah: 1,
+      levelStimulus,
+      gantiTeks: input.gantiTeks !== false,
+    }
     const res = await panggil(payload)
     const list = Array.isArray(res.data?.soal) ? res.data.soal : []
     // Pastikan setiap soal punya id unik di klien (server bisa pakai tmp_).

@@ -596,3 +596,63 @@
   color: var(--color-muted);
   line-height: 1.35;
 }
+
+/* —— Level stimulus AI —— */
+.ai-stimulus-field {
+  margin: 0;
+  padding: 0;
+  border: none;
+  min-width: 0;
+}
+.ai-stimulus-field legend {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #4b5568;
+  padding: 0;
+  margin-bottom: 0.15rem;
+}
+.ai-stimulus-opsi {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.4rem;
+  min-width: 0;
+}
+@media (max-width: 640px) {
+  .ai-stimulus-opsi { grid-template-columns: 1fr; }
+}
+.ai-stimulus-kartu {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-rows: auto auto;
+  column-gap: 0.4rem;
+  row-gap: 0.1rem;
+  align-items: start;
+  margin: 0;
+  padding: 0.45rem 0.5rem;
+  border: 1px solid var(--color-border);
+  border-radius: 0.55rem;
+  background: #fff;
+  cursor: pointer;
+  min-width: 0;
+}
+.ai-stimulus-kartu input {
+  grid-row: 1 / span 2;
+  margin-top: 0.15rem;
+}
+.ai-stimulus-kartu--aktif {
+  border-color: var(--color-muh-500);
+  background: var(--color-muh-50);
+  box-shadow: 0 0 0 1px var(--color-muh-500) inset;
+}
+.ai-stimulus-judul {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #1a1d33;
+}
+.ai-stimulus-desk {
+  grid-column: 2;
+  font-size: 0.68rem;
+  font-weight: 400;
+  color: var(--color-muted);
+  line-height: 1.3;
+}

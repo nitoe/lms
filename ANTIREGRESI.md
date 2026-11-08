@@ -450,3 +450,9 @@ Jangan menyimpan blob base64 besar di dokumen Firestore.
 - Server `generateSoalLmsAi` memaksa `jumlah = 1`.
 - Prompt wajib menolak pola «opsi benar paling panjang»; pengecoh harus miskonsepsi nyata dan panjang/struktur sejajar (Buku Saku).
 - Ilustrasi AI punya field deskripsi terpisah (tabel/grafik/chart + angka yang harus terbaca); generate gambar terpisah dari teks soal.
+
+## §49. AI generate: narasi soal wajib ikut berubah
+
+- Root cause fatal: TipTap `RichEditor` hanya memakai `value` sebagai content awal; generate AI pada soal yang sama (id tetap) mengisi opsi/kunci di state tetapi area narasi tidak ter-update.
+- Perbaikan: `RichEditor` menyinkronkan `value` eksternal via `setContent` bila berbeda dari isi editor; panel AI menolak draf tanpa `teks`; gambar lama di-reset saat narasi diganti AI.
+- Stimulus AI memakai **level** (`tanpa` | `ringan` | `sedang` | `kaya`), bukan sekadar checklist boolean — agar teks panjang (mis. Bahasa Indonesia) bisa diminta eksplisit.

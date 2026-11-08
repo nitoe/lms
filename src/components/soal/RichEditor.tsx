@@ -1,4 +1,4 @@
-import { Fragment } from 'react'
+import { Fragment, useEffect } from 'react'
 import { EditorContent, useEditor } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import Subscript from '@tiptap/extension-subscript'
@@ -18,9 +18,15 @@ type Props = {
 
 const SIMBOL = ['½', '¼', '¾', '×', '÷', '²', '³', '√', 'π', '°', '≤', '≥', '≠', '±', '→']
 
+function normHtml(html: string): string {
+  const t = bersihHtml(html || '').trim()
+  if (!t || t === '<p></p>') return ''
+  return t
+}
+
 /**
- * Editor teks kaya ringan: tebal, miring, garis bawah, subskrip/superskrip, daftar, simbol matematika.
- * Komponen dipasang ulang (key) tiap berganti soal, jadi `value` hanya dipakai sebagai isi awal.
+ * Editor teks kaya ringan.
+ * `value` dikontrol: perubahan eksternal (mis. generate AI) disinkronkan ke TipTap.
  */
 export default function RichEditor({ value, onChange, placeholder, minRem = 7, ariaLabel }: Props) {
   const editor = useEditor({
@@ -50,6 +56,16 @@ export default function RichEditor({ value, onChange, placeholder, minRem = 7, a
     },
     onUpdate: ({ editor: e }) => onChange(e.isEmpty ? '' : e.getHTML()),
   })
+
+  // Sinkron dari props → editor (AI / ganti soal tanpa unmount).
+  // Jangan ganggu saat isi editor sudah sama dengan value (ketikan user).
+  useEffect(() => {
+    if (!editor || editor.isDestroyed) return
+    const dariProps = normHtml(value)
+    const dariEditor = editor.isEmpty ? '' : normHtml(editor.getHTML())
+    if (dariProps === dariEditor) return
+    editor.commands.setContent(bersihHtml(value || ''), { emitUpdate: false })
+  }, [value, editor])
 
   if (!editor) return <div className="soal-rich" style={{ minHeight: `${minRem}rem` }} />
 

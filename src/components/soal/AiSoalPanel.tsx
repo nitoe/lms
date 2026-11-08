@@ -2,13 +2,36 @@ import { useState } from 'react'
 import {
   bolehGenerateSoalAi,
   generateSoalLmsAi,
+  type LevelStimulusAi,
 } from '../../lib/generateSoalAi'
 import type { KompleksitasSoal, Soal } from '../../types/soal'
 import { NAMA_KOMPLEKSITAS, NAMA_TIPE, normalisasiKompleksitas } from '../../types/soal'
 
+const OPSI_STIMULUS: { id: LevelStimulusAi; label: string; deskripsi: string }[] = [
+  {
+    id: 'tanpa',
+    label: 'Tanpa stimulus',
+    deskripsi: 'Hanya stem (pertanyaan). Cocok recall fakta singkat.',
+  },
+  {
+    id: 'ringan',
+    label: 'Ringan',
+    deskripsi: '1–2 kalimat konteks atau data minimal yang dipakai menjawab.',
+  },
+  {
+    id: 'sedang',
+    label: 'Sedang',
+    deskripsi: 'Paragraf pendek / tabel kecil / dialog singkat — fungsional.',
+  },
+  {
+    id: 'kaya',
+    label: 'Kaya (teks panjang)',
+    deskripsi: 'Narasi atau eksplanasi panjang (mis. Bahasa Indonesia), proporsional kelas & TP.',
+  },
+]
+
 type Props = {
   uid?: string
-  /** Soal aktif yang akan diisi ulang AI (id dipertahankan). */
   soal: Soal
   nomor: number
   kelas: string
@@ -19,8 +42,7 @@ type Props = {
 }
 
 /**
- * AI untuk SATU nomor soal saja — guru meninjau per soal.
- * Memakai tipe & kompleksitas yang sudah dipilih di kartu.
+ * AI untuk SATU nomor soal — menulis ulang teks soal + opsi/kunci (id soal tetap).
  */
 export default function AiSoalPanel({
   uid, soal, nomor, kelas, mapel, tpNama, tpNomor, onTerapkan,
@@ -28,7 +50,7 @@ export default function AiSoalPanel({
   const boleh = bolehGenerateSoalAi(uid)
   const [buka, setBuka] = useState(false)
   const [fokus, setFokus] = useState('')
-  const [butuhStimulus, setButuhStimulus] = useState(false)
+  const [levelStimulus, setLevelStimulus] = useState<LevelStimulusAi>('ringan')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
 
@@ -50,16 +72,22 @@ export default function AiSoalPanel({
         kompleksitas,
         jumlah: 1,
         konteks: fokus.trim() || undefined,
-        butuhStimulus,
+        levelStimulus,
+        /** Paksa AI menulis narasi baru — jangan mempertahankan teks lama di kartu. */
+        gantiTeks: true,
       })
       const draf = list[0]
       if (!draf) throw new Error('AI tidak mengembalikan soal.')
-      // Pertahankan id & (opsional) gambar yang sudah ada kecuali AI minta ganti lewat alur ilustrasi.
+      const teksBaru = (draf.teks || '').trim()
+      if (!teksBaru) throw new Error('AI tidak mengisi narasi soal. Coba generate lagi.')
+
       const { butuhGambar: _b, petunjukGambar: _p, ...isi } = draf
       onTerapkan({
         ...isi,
+        teks: teksBaru,
         id: soal.id,
-        gambarId: soal.gambarId,
+        // Gambar lama sering tidak cocok dengan narasi baru — lepas agar guru pilih ulang / AI ilustrasi.
+        gambarId: undefined,
       } as Soal)
       setBuka(false)
       setFokus('')
@@ -84,27 +112,44 @@ export default function AiSoalPanel({
       {buka && (
         <form className="ai-soal-form-inline" onSubmit={(e) => void jalankan(e)}>
           <p className="ai-soal-hint">
-            Satu soal saja — tipe <strong>{NAMA_TIPE[soal.tipe]}</strong>,{' '}
-            <strong>{NAMA_KOMPLEKSITAS[kompleksitas]}</strong>.
-            Sesuaikan tipe/kompleksitas di kartu dulu bila generate. Tinjau hasil sebelum lanjut ke nomor berikutnya.
+            AI akan <strong>menulis ulang narasi soal</strong> beserta pilihan/kunci sesuai tipe{' '}
+            <strong>{NAMA_TIPE[soal.tipe]}</strong> dan <strong>{NAMA_KOMPLEKSITAS[kompleksitas]}</strong>.
+            Sesuaikan tipe & kompleksitas di kartu sebelum generate.
           </p>
+
           <label className="materi-field">
             <span>Fokus materi / konteks (opsional)</span>
             <input
               value={fokus}
               maxLength={800}
               onChange={(e) => setFokus(e.target.value)}
-              placeholder="Contoh: membaca tabel suhu; pecahan senilai; siklus air"
+              placeholder="Contoh: teks eksplanasi siklus air; tabel suhu harian; pecahan senilai"
             />
           </label>
-          <label className="soal-cek">
-            <input
-              type="checkbox"
-              checked={butuhStimulus}
-              onChange={(e) => setButuhStimulus(e.target.checked)}
-            />
-            <span>Sertakan stimulus fungsional (teks/data yang dipakai menjawab)</span>
-          </label>
+
+          <fieldset className="ai-stimulus-field">
+            <legend>Level stimulus</legend>
+            <p className="ai-soal-hint" style={{ marginBottom: '0.35rem' }}>
+              Stimulus = bahan yang harus dibaca/dilihat untuk menjawab (bukan hiasan).
+              Pilih <strong>Kaya</strong> untuk teks narasi/eksplanasi panjang (mis. Bahasa Indonesia).
+            </p>
+            <div className="ai-stimulus-opsi">
+              {OPSI_STIMULUS.map((o) => (
+                <label key={o.id} className={`ai-stimulus-kartu ${levelStimulus === o.id ? 'ai-stimulus-kartu--aktif' : ''}`}>
+                  <input
+                    type="radio"
+                    name={`stimulus-${nomor}`}
+                    value={o.id}
+                    checked={levelStimulus === o.id}
+                    onChange={() => setLevelStimulus(o.id)}
+                  />
+                  <span className="ai-stimulus-judul">{o.label}</span>
+                  <span className="ai-stimulus-desk">{o.deskripsi}</span>
+                </label>
+              ))}
+            </div>
+          </fieldset>
+
           {tpNama && (
             <p className="ai-soal-tp" title={tpNama}>
               TP: {tpNomor ? `${tpNomor}. ` : ''}{tpNama}

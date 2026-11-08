@@ -3,6 +3,12 @@
 > Append-only: entri baru ditambahkan di BAWAH, entri lama tidak diubah.
 > Versi mengacu ke `package.json` (saat ini `0.1.0`); belum ada rilis bertag.
 
+## 2026-11-08 — AI: narasi ikut diganti + level stimulus
+
+- Perbaiki bug fatal: generate AI hanya mengisi opsi/kunci sementara narasi soal tidak berubah (RichEditor tidak sinkron ke props).
+- Panel AI: opsi level stimulus (tanpa / ringan / sedang / kaya) untuk teks fungsional hingga narasi panjang.
+- Prompt server mewajibkan field `teks` baru; kompatibel field lama `butuhStimulus`.
+
 ## 2026-11-08 — Sidebar dapat diciutkan (ikon saja)
 
 - Menu kiri desktop bisa diciutkan: hanya ikon navigasi, ruang konten (editor soal) lebih lebar.
