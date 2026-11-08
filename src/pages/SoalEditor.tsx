@@ -15,6 +15,7 @@ import {
   ukuranPerkiraan,
   type PerubahanPaket,
 } from '../lib/soal'
+import { daftarSoalButuhStimulus } from '../lib/analisisSoal'
 import { parseRuangId } from '../lib/kelasLms'
 import { getTpMapelKelas } from '../lib/tpData'
 import type { TpRingkas } from '../types/materi'
@@ -446,7 +447,7 @@ export default function SoalEditor() {
             <p className="soal-kosong-kecil">Tidak ada soal yang terdeteksi butuh stimulus.</p>
           ) : (
             <ol className="soal-analisis-list">
-              {butuhStimulus.map(({ soal, nomor }) => (
+              {butuhStimulus.map(({ soal, nomor }: { soal: Soal; nomor: number }) => (
                 <li key={soal.id}>
                   <button type="button" className="soal-analisis-item" onClick={() => setAktifId(soal.id)}>
                     <span className="soal-analisis-nomor">{nomor}</span>

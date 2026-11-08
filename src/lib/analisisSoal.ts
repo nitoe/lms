@@ -1,14 +1,6 @@
 import type { Soal } from '../types/soal'
 import { teksPolos } from './html'
 
-/**
- * Deteksi apakah soal kemungkinan membutuhkan stimulus/ilustrasi
- * tetapi belum memiliki gambarId.
- *
- * Heuristik sederhana (bisa ditingkatkan nanti dengan AI):
- * - Kata kunci yang menunjukkan kebutuhan visual/data
- * - Tidak ada gambarId pada soal
- */
 const KATA_BUTUH_STIMULUS = [
   'perhatikan', 'lihat gambar', 'pada gambar', 'berdasarkan gambar',
   'tabel', 'grafik', 'diagram', 'ilustrasi', 'peta', 'gambar berikut',
