@@ -223,7 +223,7 @@ export default function Layout() {
             <button
               type="button"
               className="lms-icon-btn lg:hidden"
-              aria-label="Buka menu"
+              aria-label="Buka menu navigasi"
               onClick={() => setSidebarOpen(true)}
             >
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
@@ -253,14 +253,10 @@ export default function Layout() {
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            <NavLink to="/kelas" className="lms-btn-secondary hidden sm:inline-flex">
-              Semua kelas
-            </NavLink>
-            <NavLink to="/kelas" className="lms-btn-primary">
-              + Ruang kelas
-            </NavLink>
-          </div>
+          {/* Aksi kanan topbar dihapus: "Semua kelas" dan "+ Ruang kelas" hanya
+              mengarah ke /kelas dan menyesatkan (ruang kelas dari penugasan Penilaian).
+              Navigasi ruang kelas tetap lewat sidebar / menu Ruang Kelas. */}
+          <div className="flex items-center gap-2" aria-hidden="true" />
         </header>
 
         <div className="lms-content">
