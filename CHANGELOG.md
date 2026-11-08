@@ -3,6 +3,13 @@
 > Append-only: entri baru ditambahkan di BAWAH, entri lama tidak diubah.
 > Versi mengacu ke `package.json` (saat ini `0.1.0`); belum ada rilis bertag.
 
+## 2026-11-08 — AI generate: anti-pengulangan lebih kuat (hindari soal yang sudah ada)
+
+- **Masalah berlanjut:** meski temperature & nonce, generate L1 dengan fokus materi sama (mis. identifikasi organ pernapasan) masih menghasilkan stem yang hampir identik.
+- **Perbaikan:** klien mengirim ringkasan teks soal lain di paket (`hindariSoal`). Server menuliskan daftar itu di prompt dengan larangan eksplisit membuat soal yang mirip makna/struktur/frasa. Temperature dinaikkan ke 0.85.
+- File: `SoalEditor.tsx`, `SoalEditorKartu.tsx`, `AiSoalPanel.tsx`, `generateSoalAi.ts` (LMS) + `functions/generateSoalLmsAi.js` (SDM01Penilaian).
+- ANTIREGRESI §53.
+
 ## 2026-11-08 — Menu aksi soal (⋯) tidak terpotong / bisa dihapus
 
 - **Bug:** tombol ⋯ di daftar samping editor soal tidak menampilkan menu (Duplikat / Naikkan / Turunkan / Hapus).

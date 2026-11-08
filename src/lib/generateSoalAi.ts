@@ -59,6 +59,10 @@ export async function generateSoalLmsAi(input: {
   levelStimulus?: LevelStimulusAi
   /** Wajib true: AI menulis narasi baru, bukan mempertahankan teks kartu. */
   gantiTeks?: boolean
+  /** Nonce agar generate ulang berbeda. */
+  variasi?: string
+  /** Ringkasan soal lain di paket yang harus dihindari. */
+  hindariSoal?: string[]
 }): Promise<DrafSoalAi[]> {
   pastikanBerhak()
   const panggil = httpsCallable<typeof input & { provider: 'gemini' }, { soal: DrafSoalAi[] }>(
@@ -76,6 +80,8 @@ export async function generateSoalLmsAi(input: {
       jumlah: 1,
       levelStimulus,
       gantiTeks: input.gantiTeks !== false,
+      variasi: input.variasi || `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`,
+      hindariSoal: Array.isArray(input.hindariSoal) ? input.hindariSoal.slice(0, 15) : undefined,
     }
     const res = await panggil(payload)
     const list = Array.isArray(res.data?.soal) ? res.data.soal : []

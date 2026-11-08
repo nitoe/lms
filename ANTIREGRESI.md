@@ -469,3 +469,10 @@ Jangan menyimpan blob base64 besar di dokumen Firestore.
 - Gejala: menu tidak muncul / terpotong, tombol tampak tidak berfungsi (termasuk Hapus).
 - Solusi yang dipakai: `createPortal(..., document.body)` + `position: fixed` berdasarkan `getBoundingClientRect` tombol. Tutup saat klik di luar atau scroll.
 - Pola yang sama berlaku untuk dropdown lain di dalam area scroll (jangan andalkan overflow parent visible saja).
+
+## §53. AI generate soal: kirim soal yang sudah ada agar tidak diulang
+
+- Setiap generate WAJIB mengirim `hindariSoal` (ringkasan teks soal lain di paket yang sama, maks ~12 item).
+- Server memasukkan daftar itu ke prompt dengan larangan eksplisit: jangan hasilkan soal yang mirip makna, struktur stem, atau frasa.
+- Temperature generation soal ~0.8–0.85. Nonce `variasi` tetap dikirim setiap kali.
+- Tanpa daftar hindari, model cenderung jatuh ke pola frasa paling umum untuk kompetensi L1 (mis. "Organ manakah yang berfungsi sebagai...").

@@ -39,13 +39,14 @@ type Props = {
   tpNama?: string
   tpNomor?: number
   onTerapkan: (soal: Soal) => void
+  soalLain?: string[]
 }
 
 /**
  * AI untuk SATU nomor soal — menulis ulang teks soal + opsi/kunci (id soal tetap).
  */
 export default function AiSoalPanel({
-  uid, soal, nomor, kelas, mapel, tpNama, tpNomor, onTerapkan,
+  uid, soal, nomor, kelas, mapel, tpNama, tpNomor, onTerapkan, soalLain = [],
 }: Props) {
   const boleh = bolehGenerateSoalAi(uid)
   const [buka, setBuka] = useState(false)
@@ -63,6 +64,10 @@ export default function AiSoalPanel({
     setBusy(true)
     setError('')
     try {
+      const hindari = soalLain
+        .map((t) => String(t || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim())
+        .filter((t) => t.length > 8)
+        .slice(0, 12)
       const list = await generateSoalLmsAi({
         mapel,
         kelas,
@@ -73,8 +78,9 @@ export default function AiSoalPanel({
         jumlah: 1,
         konteks: fokus.trim() || undefined,
         levelStimulus,
-        /** Paksa AI menulis narasi baru — jangan mempertahankan teks lama di kartu. */
         gantiTeks: true,
+        variasi: `${Date.now()}-${Math.random().toString(36).slice(2, 12)}`,
+        hindariSoal: hindari.length ? hindari : undefined,
       })
       const draf = list[0]
       if (!draf) throw new Error('AI tidak mengembalikan soal.')

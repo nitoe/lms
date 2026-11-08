@@ -388,6 +388,7 @@ export default function SoalEditor() {
                 tpNama={paket.tpNama}
                 tpNomor={paket.tpNomor}
                 uid={user?.uid}
+                soalLain={soalList.filter((s) => s.id !== aktif.id).map((s) => ringkasSoal(s))}
               />
               <nav className="soal-nav" aria-label="Pindah soal">
                 <button type="button" className="lms-btn-secondary" disabled={aktifIdx === 0}

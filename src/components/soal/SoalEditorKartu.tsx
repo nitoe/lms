@@ -18,11 +18,12 @@ type Props = {
   tpNama?: string
   tpNomor?: number
   uid?: string
+  soalLain?: string[]
 }
 
 /** Kartu editor satu soal (mengikuti tata letak referensi: tipe, teks + gambar, pilihan, pengaturan bawah). */
 export default function SoalEditorKartu({
-  soal, nomor, onChange, kelas, mapel, tpNama, tpNomor, uid,
+  soal, nomor, onChange, kelas, mapel, tpNama, tpNomor, uid, soalLain,
 }: Props) {
   const [pembahasanTerbuka, setPembahasanTerbuka] = useState(!!soal.pembahasan)
   const masalah = masalahSoal(soal)
@@ -63,6 +64,7 @@ export default function SoalEditorKartu({
             tpNama={tpNama}
             tpNomor={tpNomor}
             onTerapkan={onChange}
+            soalLain={soalLain}
           />
         </div>
       )}
