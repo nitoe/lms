@@ -1,7 +1,14 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
-import type { SiswaDasar } from '../lib/siswaAuth'
-
-const STORAGE_KEY = 'lms_siswa_sesi'
+import {
+  browserSessionPersistence,
+  onAuthStateChanged,
+  setPersistence,
+  signInWithCustomToken,
+  signOut,
+  type User,
+} from 'firebase/auth'
+import { httpsCallable } from 'firebase/functions'
+import { auth, functions, isFirebaseConfigured } from '../lib/firebase'
 
 interface SiswaSesi {
   id: string
@@ -12,22 +19,29 @@ interface SiswaSesi {
 interface SiswaState {
   sesi: SiswaSesi | null
   loading: boolean
-  masuk: (siswa: SiswaDasar, nisn: string) => Promise<void>
-  keluar: () => void
+  /** Verifikasi NISN dilakukan Cloud Function loginSiswaLms; NISN tidak pernah dicocokkan di klien. */
+  masuk: (siswaId: string, nisn: string) => Promise<void>
+  keluar: () => Promise<void>
 }
 
 const SiswaContext = createContext<SiswaState>({
   sesi: null,
   loading: true,
   masuk: async () => {},
-  keluar: () => {},
+  keluar: async () => {},
 })
 
-function bacaSesi(): SiswaSesi | null {
+/** Sesi siswa diturunkan dari claims token (lmsSiswa, siswaId, kelas, nama). */
+async function sesiDariUser(user: User | null): Promise<SiswaSesi | null> {
+  if (!user) return null
   try {
-    const raw = sessionStorage.getItem(STORAGE_KEY)
-    if (!raw) return null
-    return JSON.parse(raw) as SiswaSesi
+    const { claims } = await user.getIdTokenResult()
+    if (claims.lmsSiswa !== true || typeof claims.siswaId !== 'string') return null
+    return {
+      id: claims.siswaId,
+      nama: typeof claims.nama === 'string' ? claims.nama : '',
+      kelas: typeof claims.kelas === 'string' ? claims.kelas : '',
+    }
   } catch {
     return null
   }
@@ -38,26 +52,43 @@ export function SiswaProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    setSesi(bacaSesi())
-    setLoading(false)
+    if (!isFirebaseConfigured) {
+      setLoading(false)
+      return
+    }
+    let aktif = true
+    let terakhir = 0
+    const berhenti = onAuthStateChanged(auth, (user) => {
+      const n = ++terakhir
+      void sesiDariUser(user).then((s) => {
+        // Abaikan hasil lama bila status login berubah lagi sebelum token selesai dibaca.
+        if (!aktif || n !== terakhir) return
+        setSesi(s)
+        setLoading(false)
+      })
+    })
+    return () => {
+      aktif = false
+      berhenti()
+    }
   }, [])
 
-  const masuk = useCallback(async (siswa: SiswaDasar, nisn: string) => {
-    const input = nisn.trim()
-    const expected = (siswa.nisn || '').trim()
-    if (!expected) {
-      throw new Error('NISN siswa belum terdaftar. Hubungi guru atau admin.')
+  const masuk = useCallback(async (siswaId: string, nisn: string) => {
+    if (!isFirebaseConfigured) {
+      throw new Error('Firebase belum dikonfigurasi. Isi file .env terlebih dahulu.')
     }
-    if (input !== expected) {
-      throw new Error('NISN tidak cocok. Periksa kembali.')
-    }
-    const s: SiswaSesi = { id: siswa.id, nama: siswa.nama, kelas: siswa.kelas }
-    sessionStorage.setItem(STORAGE_KEY, JSON.stringify(s))
-    setSesi(s)
+    // Sesi siswa hilang saat tab ditutup (perangkat kelas dipakai bergantian).
+    await setPersistence(auth, browserSessionPersistence)
+    const panggil = httpsCallable<{ siswaId: string; nisn: string }, { token: string }>(
+      functions,
+      'loginSiswaLms',
+    )
+    const hasil = await panggil({ siswaId, nisn: nisn.trim() })
+    await signInWithCustomToken(auth, hasil.data.token)
   }, [])
 
-  const keluar = useCallback(() => {
-    sessionStorage.removeItem(STORAGE_KEY)
+  const keluar = useCallback(async () => {
+    if (isFirebaseConfigured) await signOut(auth)
     setSesi(null)
   }, [])
 

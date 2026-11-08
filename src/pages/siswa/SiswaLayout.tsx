@@ -16,8 +16,8 @@ export default function SiswaLayout() {
   // Jangan memanggil navigate() saat render (lihat ANTIREGRESI §12).
   if (!sesi) return <Navigate to="/siswa/masuk" replace />
 
-  function handleKeluar() {
-    keluar()
+  async function handleKeluar() {
+    await keluar()
     navigate('/siswa/masuk', { replace: true })
   }
 
@@ -36,7 +36,7 @@ export default function SiswaLayout() {
           </div>
           <button
             type="button"
-            onClick={handleKeluar}
+            onClick={() => void handleKeluar()}
             className="sw-btn-keluar"
             aria-label="Keluar dari akun siswa"
           >

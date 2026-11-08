@@ -1,4 +1,11 @@
-import { onAuthStateChanged, signInWithEmailAndPassword, signOut, type User } from 'firebase/auth'
+import {
+  browserLocalPersistence,
+  onAuthStateChanged,
+  setPersistence,
+  signInWithEmailAndPassword,
+  signOut,
+  type User,
+} from 'firebase/auth'
 import { doc, getDoc } from 'firebase/firestore'
 import { auth, db, isFirebaseConfigured } from './firebase'
 import { peranDari } from './peran'
@@ -31,6 +38,8 @@ export async function loginWithEmail(email: string, password: string) {
   if (!isFirebaseConfigured) {
     throw new Error('Firebase belum dikonfigurasi. Isi file .env terlebih dahulu.')
   }
+  // Siswa memakai persistence sesi (lihat SiswaContext); staf/orang tua tetap persisten di perangkat.
+  await setPersistence(auth, browserLocalPersistence)
   const cred = await signInWithEmailAndPassword(auth, email.trim().toLowerCase(), password)
   const profil = await fetchUserProfile(cred.user.uid)
   if (!profil) {
@@ -52,6 +61,9 @@ export function subscribeAuth(cb: (user: User | null, profil: AppUser | null) =>
   return onAuthStateChanged(auth, async (user) => {
     if (!user) return cb(null, null)
     try {
+      // Token siswa LMS (claim lmsSiswa) bukan akun staf: jangan dimuat sebagai profil.
+      const hasil = await user.getIdTokenResult()
+      if (hasil.claims.lmsSiswa === true) return cb(null, null)
       cb(user, await fetchUserProfile(user.uid))
     } catch {
       cb(user, null)

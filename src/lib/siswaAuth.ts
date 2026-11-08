@@ -14,7 +14,6 @@ export interface SiswaDasar {
   id: string
   nama: string
   kelas: string
-  nisn?: string
   aktif?: boolean
 }
 
@@ -31,7 +30,6 @@ export async function muatSiswaKelas(kelas: string): Promise<SiswaDasar[]> {
       id: doc.id,
       nama: (d.nama as string) || '',
       kelas: (d.kelas as string) || kelas,
-      nisn: d.nisn as string | undefined,
       aktif: d.aktif,
     })
   })

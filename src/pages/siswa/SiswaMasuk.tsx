@@ -9,7 +9,21 @@ function pesanGalat(e: unknown): string {
   if (kode === 'permission-denied') {
     return 'Belum bisa memuat daftar siswa. Hubungi admin agar aturan Firestore mengizinkan baca daftar siswa.'
   }
-  if (kode.includes('network')) return 'Tidak ada koneksi internet.'
+  // Pesan dari Cloud Function loginSiswaLms sudah berbahasa Indonesia dan aman ditampilkan.
+  if (
+    kode === 'functions/permission-denied' ||
+    kode === 'functions/invalid-argument' ||
+    kode === 'functions/failed-precondition' ||
+    kode === 'functions/resource-exhausted'
+  ) {
+    return e instanceof Error ? e.message : 'Gagal masuk.'
+  }
+  if (kode === 'functions/internal' || kode === 'functions/not-found') {
+    return 'Layanan masuk belum bisa dihubungi. Coba lagi, atau hubungi admin.'
+  }
+  if (kode.includes('network') || kode === 'functions/unavailable') {
+    return 'Tidak ada koneksi internet.'
+  }
   return e instanceof Error ? e.message : 'Gagal masuk.'
 }
 
@@ -69,7 +83,7 @@ export default function SiswaMasuk() {
     }
     setProses(true)
     try {
-      await masuk(pilih, nisn)
+      await masuk(pilih.id, nisn)
     } catch (err) {
       setGalat(pesanGalat(err))
     } finally {
