@@ -1,5 +1,5 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
-import type { ReactNode } from 'react'
+import { lazy, Suspense, type ReactNode } from 'react'
 import { useAuth } from './context/AuthContext'
 import { useSiswa } from './context/SiswaContext'
 import Layout from './components/Layout'
@@ -15,6 +15,9 @@ import SiswaMateri from './pages/siswa/SiswaMateri'
 import SiswaPlaceholder from './pages/siswa/SiswaPlaceholder'
 import OrangtuaBeranda from './pages/OrangtuaBeranda'
 import { isStaf } from './lib/peran'
+
+// Dimuat malas: editor teks kaya (TipTap) cukup besar dan hanya dipakai guru (ANTIREGRESI §13).
+const SoalEditor = lazy(() => import('./pages/SoalEditor'))
 
 function WajibStaf({ children }: { children: ReactNode }) {
   const { user, profil, peran, loading } = useAuth()
@@ -112,6 +115,14 @@ export default function App() {
         <Route index element={<Beranda />} />
         <Route path="kelas" element={<KelasList />} />
         <Route path="kelas/:ruangId" element={<KelasDetail />} />
+        <Route
+          path="kelas/:ruangId/soal/:paketId"
+          element={
+            <Suspense fallback={<div className="lms-empty">Memuat editor soal…</div>}>
+              <SoalEditor />
+            </Suspense>
+          }
+        />
       </Route>
 
       <Route path="*" element={<Navigate to="/" replace />} />

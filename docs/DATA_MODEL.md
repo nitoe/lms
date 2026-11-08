@@ -72,6 +72,49 @@ Batas: PDF/gambar 10 MB, video 50 MB.
 
 **Storage gambar soal:** `lms/kuis/{kuisId}/{timestamp}_{namaFile}` (maks 5 MB)
 
+> Catatan: `lms_kuis`/`lms_soal` (modul Kuis) dan `lms_paket_soal` (Bank Soal Fase 2a) dibuat terpisah dan saat ini tumpang tindih; penyatuan menunggu keputusan.
+
+### `lms_paket_soal/{id}` (Fase 2a)
+
+Satu paket soal/kuis (draf guru). Memuat **kunci jawaban** → hanya terbaca guru kelas×mapel & admin.
+
+| Field | Tipe | Keterangan |
+|-------|------|------------|
+| kelas, mapel | string | Seperti `lms_materi` (mapel sama persis dengan penugasan) |
+| judul | string | ≤ 200 karakter |
+| deskripsi | string? | Petunjuk untuk siswa |
+| tpId / tpNomor / tpNama | string? / number? / string? | TP opsional (denormalisasi) |
+| status | `'draf'` \| `'siap'` | `siap` hanya bila semua soal lengkap |
+| acakSoal | boolean | Acak urutan soal per siswa |
+| soal | array<Soal> | Maks 100 soal; lihat tipe di `src/types/soal.ts` |
+| jumlahSoal, totalPoin | number | Denormalisasi untuk daftar |
+| dibuatOleh, dibuatOlehNama | string | uid & nama guru |
+| createdAt / updatedAt | timestamp | |
+
+Elemen `soal[]` (semua punya `id`, `tipe`, `teks` (HTML terbatas), `gambarId?`, `poin`, `waktuMenit`, `pembahasan?`):
+
+| tipe | Field khusus |
+|------|--------------|
+| `pg` | `opsi[{id,teks,gambarId?}]`, `kunci` (id opsi), `acakOpsi`, `opsiGambar` |
+| `pgk` | `opsi[]`, `kunci[]` (id opsi), `acakOpsi`, `opsiGambar`, `nilaiParsial` |
+| `jodoh` | `pasangan[{id,kiri,kiriGambarId?,kanan}]` (baris sejajar = kunci), `nilaiParsial` |
+| `bs` | `pernyataan[{id,teks,benar}]`, `nilaiParsial` |
+| `isian` | `kunci[]` (jawaban diterima), `abaikanKapital` |
+| `uraian` | `kunciJawaban?` (pedoman guru, HTML), dinilai manual |
+
+Query: `where kelas == … && where mapel == …` saja (tanpa `orderBy`).
+
+### `lms_gambar/{id}` (Fase 2a)
+
+| Field | Tipe | Keterangan |
+|-------|------|------------|
+| data | string | Data URL WebP/JPEG terkompres, ≤ 300.000 karakter |
+| lebar, tinggi | number | Piksel |
+| dibuatOleh | string | uid guru |
+| createdAt | timestamp | |
+
+Baca terbuka (siswa tanpa Auth); tulis guru; tidak ada ubah; hapus admin.
+
 ### Rencana berikutnya
 
 - `lms_tugas/{id}` — tugas + tenggat

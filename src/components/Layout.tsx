@@ -75,7 +75,8 @@ export default function Layout() {
   }
 
   const judulHalaman =
-    pathname.startsWith('/kelas/') ? 'Detail ruang kelas'
+    pathname.includes('/soal/') ? 'Editor soal'
+    : pathname.startsWith('/kelas/') ? 'Detail ruang kelas'
     : pathname.startsWith('/kelas') ? 'Ruang Kelas'
     : 'Beranda'
 

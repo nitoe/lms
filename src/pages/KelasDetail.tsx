@@ -1,24 +1,30 @@
 import { useMemo, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { daftarRuangKelas, parseRuangId } from '../lib/kelasLms'
 import { aksenMapel, inisialMapel } from '../lib/uiAksen'
 import MateriPanel from '../components/MateriPanel'
 import KuisPanel from '../components/KuisPanel'
+import BankSoalPanel from '../components/BankSoalPanel'
 
-type TabId = 'pengumuman' | 'materi' | 'kuis' | 'tugas'
+type TabId = 'pengumuman' | 'materi' | 'kuis' | 'soal' | 'tugas'
 
 const TABS: { id: TabId; label: string }[] = [
   { id: 'pengumuman', label: 'Pengumuman' },
   { id: 'materi', label: 'Materi' },
   { id: 'kuis', label: 'Kuis' },
+  { id: 'soal', label: 'Bank Soal' },
   { id: 'tugas', label: 'Tugas' },
 ]
 
 export default function KelasDetail() {
   const { ruangId = '' } = useParams()
   const { profil } = useAuth()
-  const [tab, setTab] = useState<TabId>('materi')
+  const [searchParams] = useSearchParams()
+  const tabAwal = searchParams.get('tab')
+  const [tab, setTab] = useState<TabId>(
+    tabAwal === 'soal' || tabAwal === 'kuis' || tabAwal === 'pengumuman' || tabAwal === 'tugas' ? tabAwal : 'materi',
+  )
 
   const decoded = decodeURIComponent(ruangId)
   const parsed = useMemo(() => parseRuangId(decoded), [decoded])
@@ -97,6 +103,7 @@ export default function KelasDetail() {
       )}
       {tab === 'materi' && <MateriPanel kelas={judulKelas} mapel={judulMapel} />}
       {tab === 'kuis' && <KuisPanel kelas={judulKelas} mapel={judulMapel} />}
+      {tab === 'soal' && <BankSoalPanel kelas={judulKelas} mapel={judulMapel} ruangId={decoded} />}
       {tab === 'tugas' && (
         <div className="lms-empty">
           <p className="font-medium text-slate-700">Tugas segera hadir</p>

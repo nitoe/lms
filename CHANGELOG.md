@@ -3,16 +3,6 @@
 > Append-only: entri baru ditambahkan di BAWAH, entri lama tidak diubah.
 > Versi mengacu ke `package.json` (saat ini `0.1.0`); belum ada rilis bertag.
 
-## Belum dirilis — Fondasi Bank Soal / Kuis
-
-- Tab **Kuis** ditambahkan di ruang kelas (`KelasDetail`).
-- `src/types/kuis.ts`, `src/lib/kuis.ts`: model dan CRUD untuk `lms_kuis` + `lms_soal`.
-- `src/components/KuisPanel.tsx` + `KuisBuilder.tsx`: daftar kuis + builder sidebar (daftar soal) + editor (pertanyaan, opsi, gambar, skor).
-- Jenis soal: PG, PG Kompleks, Menjodohkan, Benar/Salah, Isian, Uraian.
-- Gambar pertanyaan diunggah ke Storage (`lms/kuis/{kuisId}/...`, maks 5 MB).
-- `docs/DATA_MODEL.md`: skema `lms_kuis` dan `lms_soal` ditambahkan.
-- **Rules belum di-deploy** — koleksi `lms_kuis` dan `lms_soal` perlu ditambahkan di `firestore.rules` (shared).
-
 ## Belum dirilis (basis: package.json 0.1.0) — Perbaikan keamanan & dokumentasi
 
 - `firestore.rules`: ditulis ulang. Pendaftaran `users` hanya sebagai `orangtua`+`pending` (sebelumnya pengguna login mana pun bisa membuat profil dengan role apa pun, termasuk `admin`). Orang tua hanya boleh `get` anaknya sendiri di `siswa` (sebelumnya bisa `list` semua siswa). Guru hanya boleh mengubah `tamatIqro` pada `siswa`; `create/delete` siswa khusus admin. `setoran`/`menulis_log` dibatasi per kelas yang diampu dan immutable. Koleksi `students` dan `nilai` dihapus dari rules. **Belum di-deploy** — jalankan `npm run deploy:rules` setelah uji.
@@ -178,4 +168,290 @@
 - Guru kelas membuka semua mapel di tingkat kelas walinya (termasuk PJOK dan mapel guru bidang studi) tanpa penugasan mapel. Guru bidang studi tetap hanya mapel yang ditugaskan. Guru Tahsin-Tahfizh tidak melihat menu Akademik.
 - Admin dapat melihat TP, bobot, nilai, dan laporan SLM, tanpa tombol simpan atau hapus.
 - Rules `nilai_tp`: guru kelas boleh menulis nilai di kelasnya; admin hanya membaca. **Belum di-deploy** — jalankan `npm run deploy:rules`.
-- Administrasi → Data Sekolah: identitas, NPSN, alamat, kepala sekolah, tahun aj
+- Administrasi → Data Sekolah: identitas, NPSN, alamat, kepala sekolah, tahun ajaran, semester, Seni Budaya, tanggal rapor, dan dimensi profil lulusan. Nilai baru menempel pada tahun ajaran aktif; data tahun lalu tidak dipindahkan.
+
+## Belum dirilis — Nilai STS dan SAS
+
+- Halaman `/akademik/nilai-sts`: guru memilih cakupan TP untuk STS atau SAS secara terpisah, lalu mengisi nilai per siswa. STS hanya menaikkan SLM bila lebih tinggi. SAS menampilkan SLM, STS, dan pratinjau nilai akhir TP.
+- Koleksi `asesmen_cakupan`, `nilai_sts`, `nilai_sas`. Admin hanya membaca. **Rules dan indeks belum di-deploy** — jalankan `npm run deploy:rules`.
+
+
+
+
+
+
+
+## Belum dirilis — Dashboard beranda per peran + filter admin + UI Data Sekolah
+
+- `src/pages/Home.tsx`: ringkasan beranda disesuaikan per peran.
+  - Guru akademik/kelas/bidang studi: **tidak lagi menampilkan daftar nama mapel**. Diganti kartu progres interaktif (Setup TP X/Y, TP tanpa bobot semester, pintasan nilai SLM) dengan badge "Perlu aksi".
+  - Guru Tahsin: ringkasan siswa di kelas ampu + setoran 7 hari terakhir + pintasan Input Setoran.
+  - Admin: tetap ringkasan sekolah + diagram siswa per kelas.
+- `src/lib/dashboardStats.ts`: ditambah `loadGuruAkademikProgress`, `loadSiswaCountKelas`, `loadSetoranMingguIni`.
+- `src/pages/akademik/SetupTp.tsx`: filter pencarian mapel + status (sudah/belum ada TP) di pemilih mapel×tingkatan.
+- `src/pages/admin/Mapel.tsx`: kotak pencarian daftar mapel.
+- `src/pages/admin/TahunAjaran.tsx` (Data Sekolah): UI dirapikan — section berikon, label wajib, layout 2 kolom, sticky tombol simpan di mobile, indikator jumlah DPL terpilih. Tidak mengikuti layout v2 secara ketat.
+
+## Belum dirilis — Impor TP (JSON kurikulum → tp_kktp)
+
+- `src/lib/tpImport.ts` (baru): parser murni untuk dua format — ekspor kurikulum (`tp[]` + `subjectKey`) dan format sistem (`items[]`). Mapel dinormalisasi ke nama resmi MAPEL_BAWAAN; `className` 5A → tingkatan `5`; `materiBuku` diabaikan; nomor TP diulang 1..n per mapel bila order sumber tidak berurutan.
+- `src/lib/akademik.ts`: `importTPBatch` (mode `tambah` / `ganti`) memakai writeBatch; tidak menyentuh `semester`/`bobotMapel`.
+- `src/pages/akademik/SetupTp.tsx`: panel **Impor JSON** di hub mapel×tingkatan dan di halaman detail mapel (filter otomatis ke pasangan aktif). Pratinjau ringkasan + peringatan sebelum tulis.
+- `docs/tp-import-kelas5-faseC.json`: contoh siap impor (127 TP kelas 5 fase C) dari `tujuan-pembelajaran-20261013.json`. Deskripsi level KKTP masih kosong — guru melengkapi di Setup TP.
+
+## Belum dirilis — Template Excel TP (ekspor + impor)
+
+- `src/lib/tpImport.ts`: template Excel resmi (`TP_EXCEL_HEADERS`), `parseTpExcelRows`, `bacaExcelTp`, `buatExcelTp`, `unduhBlob`. Sheet "Petunjuk" menjelaskan kolom wajib. Baris contoh (`Contoh:…`) diabaikan saat impor. Nomor TP kosong diisi otomatis per mapel×tingkatan.
+- `src/pages/akademik/SetupTp.tsx`: panel **Impor / Ekspor** — unduh template kosong, ekspor TP saat ini (detail mapel), unggah `.xlsx`/`.xls` atau JSON. Mode tambah/ganti tetap.
+
+## Belum dirilis — TP per kelas paralel + template Excel KKTP
+
+- **Skema**: `tp_kktp` sekarang per **mapel × kelas** (5A ≠ 5B). Field `kelas` wajib; `tingkatan` turunan. Mencegah guru rombel lain memakai TP tanpa menyusun sendiri.
+- `getTPList`/`saveTP`/`importTPBatch`, Setup TP, Bobot Semester, Nilai SLM/STS/SAS, Laporan SLM, dashboard progres: memakai kelas.
+- Template Excel: kolom `kelas` + deskripsi level KKTP (boleh kosong saat impor). UI filter Setup TP dirapikan (chip satu baris).
+- Indeks Firestore: `tp_kktp` mapel+kelas. Deploy: `npm run deploy:rules`.
+
+## Belum dirilis — Alokasi TP multi-semester + bobot live
+
+- **Masalah**: TP hanya bisa masuk Semester 1 ATAU 2; praktik di lapangan ada TP yang dipakai di kedua semester. Total bobot per semester tidak mudah dipantau secara live.
+- **Model data** (`types/akademik.ts`): field baru `bobotPerSemester?: { '1'?: number; '2'?: number }`. Key yang ada = TP dialokasikan ke semester itu (boleh keduanya, bobot berbeda). Field legacy `semester` + `bobotMapel` tetap ditulis sebagai fallback.
+- **Rumus** (`akademikRumus.ts`): `tpMasukSemester` membaca `bobotPerSemester` dulu; helper baru `bobotTpDiSemester` dan `normalisasiAlokasiTp`. Uji di `scripts/cek-rumus-akademik.mjs` lolos.
+- **Simpan** (`saveBobotSemesterBatch`): menulis `bobotPerSemester` + legacy `semester`/`bobotMapel` (primer = Sem 1 jika ada). TP tanpa alokasi → hapus ketiga field.
+- **UI Bobot Semester**: checkbox per semester per TP (boleh centang keduanya), input bobot per semester, ringkasan live (progress bar + sisa/% kelebihan) di atas halaman, badge "Dipakai di kedua semester", tombol ratakan per semester.
+- **Konsumen**: Nilai SLM, Laporan SLM, Setup TP memakai `bobotTpDiSemester` / `normalisasiAlokasiTp` agar bobot yang ditampilkan sesuai semester aktif.
+
+## Belum dirilis — UI/UX Nilai STS & SAS (fokus guru senior)
+
+- `src/pages/akademik/NilaiStsSas.tsx` dirombak untuk kenyamanan guru 50+:
+  - Label lengkap: **Ujian Tengah (STS)** / **Ujian Akhir (SAS)** — bukan singkatan saja.
+  - Cakupan diganti bahasa sehari-hari: **Pilih materi yang diujikan**; tombol Centang semua / Kosongkan; kartu checkbox besar.
+  - Default: jika belum pernah atur cakupan, semua TP semester aktif sudah dicentang (guru hanya uncentang yang tidak diujikan).
+  - Isi nilai: **satu materi fokus** (chip pilih materi), input besar (h-12 / h-14, font 17–18px), progress bar terisi, warna baris sudah/belum.
+  - **Enter** = siswa berikutnya; di baris terakhir Enter = simpan.
+  - Sticky tombol Simpan di bawah layar (mobile & desktop).
+  - Halaman memakai lebar penuh (`HALAMAN_LEBAR`).
+- `src/components/Layout.tsx`: `/akademik/nilai-sts` masuk daftar halaman lebar.
+- `src/pages/AkademikHub.tsx`: deskripsi kartu STS/SAS diperjelas.
+
+## Belum dirilis — Nilai STS/SAS: layout spreadsheet 1 tabel
+
+- `NilaiStsSas.tsx`: diganti layout **satu tabel** (baris = siswa, kolom = materi yang dicentang) menggantikan daftar bertumpuk per TP.
+- Panel kanan (desktop) / atas (mobile): centang materi diujikan, bisa **Tampilkan / Sembunyikan**.
+- Tombol **Simpan** selalu tersedia: di bawah panel materi saat panel terbuka, atau sticky di bawah layar saat panel disembunyikan. Menyimpan semua perubahan di semua kolom sekaligus.
+- Navigasi sel: Enter / panah kanan-kiri-atas-bawah.
+- Default cakupan: semua TP semester aktif dicentang jika belum pernah disimpan.
+
+## Belum dirilis — Nilai SLM: layout spreadsheet sama seperti STS/SAS
+
+- `NilaiSlm.tsx`: diganti **satu tabel** (siswa × materi semester), panel kanan tampil/sembunyi kolom, simpan semua perubahan sekaligus, navigasi panah/Enter, kolom rata-rata tertimbang live, badge level KKTP per sel.
+- `/akademik/nilai-slm` masuk HALAMAN_LEBAR.
+- SAS sudah memakai layout spreadsheet yang sama di `NilaiStsSas.tsx` (toggle Ujian Akhir).
+
+## Belum dirilis — Guard nilai belum disimpan + cache lokal draf
+
+- `src/lib/nilaiDraftCache.ts` (baru): simpan/baca/hapus draf nilai di localStorage per mapel×kelas×semester×tahun×jenis (slm/sts/sas).
+- `src/lib/useUnsavedGuard.ts` (baru): konfirmasi sebelum keluar jika ada perubahan — beforeunload (tutup tab/refresh), klik menu/back link, tombol back browser.
+- `NilaiSlm.tsx` & `NilaiStsSas.tsx`: menulis draf lokal (debounce 400ms) saat ada perubahan; memulihkan draf saat buka ulang; menghapus cache setelah simpan sukses; dialog "Nilai belum disimpan".
+
+## Belum dirilis — Salin TP+KKTP+bobot ke kelas paralel + konfirmasi Excel
+
+- `src/lib/akademik.ts`: fungsi baru `salinTPKeKelas` — salin seluruh TP + levels (KKTP) dari satu kelas paralel ke kelas setingkat lain. Mode `tambah`/`ganti`. Opsi `termasukBobot` (default true) menyalin `bobotPerSemester` + field legacy. Nilai siswa tidak disalin. Kelas beda tingkatan otomatis ditolak.
+- `src/pages/akademik/SetupTp.tsx`: panel **Salin ke kelas lain** (hanya muncul bila ada kelas paralel setingkat di penugasan). Centang kelas tujuan, mode tambah/ganti, opsi sertakan bobot. Konfirmasi sebelum menulis.
+- Excel impor/ekspor template TP+KKTP sudah tersedia sebelumnya di Setup TP (template kosong, ekspor TP saat ini, unggah .xlsx/.json) untuk guru kelas maupun guru bidang studi — tidak diubah dalam patch ini.
+
+## Belum dirilis — Ekspor nilai Tahsin-Tahfizh
+
+- Halaman baru `/tahsin/ekspor`: unduh semua setoran dan catatan menulis satu kelas ke Excel (.xlsx).
+- **Guru Tahsin**: kelas ampu saja. **Admin**: memilih kelas yang akan diekspor.
+- File berisi sheet Setoran (periode aktif), sheet Menulis, dan sheet Info.
+- `src/lib/eksporNilaiTahsin.ts` (baru): penyusunan baris + pembuatan Excel. Hanya membaca Firestore.
+- Menu di TahsinHub; ikon `download` di `Icon.tsx`.
+
+
+## Belum dirilis — Perbaikan generate TP/KKTP (Gemini 404)
+
+- **Gejala (21 Okt 2026)**: generate TP dan KKTP gagal dengan pesan `Gemini (gemini-1.5-flash) 404: models/gemini-1.5-flash is not found ...`.
+- **Penyebab**: ketiga model di `functions/generateAi.js` sudah dimatikan Google — `gemini-1.5-flash` (lama), `gemini-2.0-flash` (1 Jun 2026), `gemini-2.5-flash` (16 Okt 2026). Semua balas 404. Pesan hanya menampilkan model TERAKHIR yang dicoba, sehingga tampak seolah hanya 1.5 yang bermasalah.
+- `functions/generateAi.js`: daftar model dipusatkan di `MODEL_GEMINI` = `gemini-3.6-flash` → `gemini-3.5-flash` → `gemini-3.1-flash-lite` (dipakai teks dan vision). Pengaturan berpikir: `thinkingBudget: 0` untuk 2.5, `thinkingLevel: 'low'` untuk 3.x (berpikir aktif secara bawaan di 3.x dan ikut memakan `maxOutputTokens`); jalur vision (generate aset) kini ikut memakainya. Pesan galat gabungan menyebut semua model yang gagal.
+- **Perlu di-deploy**: `firebase deploy --only functions`. Kunci `GEMINI_API_KEY` tidak berubah.
+
+
+## Belum dirilis — Kokurikuler: AI merancang proyek STEM hanya dari keterangan aktivitas
+
+- **Masalah**: tab AI di Proyek STEM menolak berjalan bila kurang dari 3 DPL berstatus aktif, dan DPL baku (`pastikanDplBaku`) dibuat nonaktif dengan deskripsi level kosong, sehingga wali kelas harus menyiapkan DPL lebih dulu. Rubrik hasil AI hanya berisi nama aspek; deskripsi 4 rentang nilai kosong.
+- `functions/generateAi.js` (`susunPromptStem`, `normalisasiStem`): AI memilih 3 DPL dari SEMUA DPL kelas (aktif atau belum), mapel+TP dari katalog kelas (minimal 2 mapel berbeda, kini sampai 200 TP), dan menyusun `rubrik` (4–6 aspek, masing-masing dengan 4 deskripsi untuk rentang 0–60, 61–75, 76–85, 86–100). Untuk DPL terpilih yang bank deskripsi levelnya kosong, AI mengusulkan `dplLevel` (4 kalimat umum, bukan topik proyek). Prompt melarang judul bergaya julukan/slogan/persona. Semua id tetap divalidasi terhadap katalog; `dplLevel` dibuang bila DPL tidak terpilih atau bank-nya sudah terisi; `mapel` rubrik yang bukan mapel terlibat dikosongkan.
+- `functions/index.js`: meneruskan `dplKosongIds` ke normalisasi, pesan galat diperbarui, log mencatat jumlah rubrik dan dplLevel.
+- `src/lib/generateAi.ts`: tipe `KatalogDplStem.levelDeskripsi`, `RubrikAiStem`, `DplLevelAiStem`, dan `HasilStemAi.rubrik/dplLevel`.
+- `src/pages/akademik/Kokurikuler.tsx`: AI tidak lagi mensyaratkan DPL aktif. Hasil AI mengisi rubrik berdeskripsi. Saat proyek disimpan, DPL terpilih otomatis diaktifkan dan level yang kosong diisi dari usulan AI (level yang sudah terisi tidak ditimpa). Pilihan DPL di tab Tujuan menampilkan DPL aktif dan DPL terpilih yang belum aktif. Proyek baru dibuka di tab AI. Pesan TP kurang menyebut mapel yang belum punya TP.
+- Akses AI tidak berubah: tetap hanya UID `v4fQXsqCzYUtHrqcDM0u48sxIfn1` + email `arif.azwar79@gmail.com`.
+- **Perlu di-deploy**: `npm run deploy:functions` dan `npm run deploy` (hosting). Tidak ada perubahan `firestore.rules`.
+
+
+## Belum dirilis — Kokurikuler: 7KAIH menjadi daftar nilai 4 level, tanpa DPL
+
+- **Masalah**: 7KAIH dibuat per siswa dengan catatan teks dan wajib menautkan tiap kebiasaan ke satu DPL (dan tab diblokir bila belum ada DPL aktif). Tautan itu tidak bermakna (mis. tidur cepat tidak mewakili dimensi profil mana pun) dan isiannya lambat.
+- `src/types/kokurikuler.ts`: `CatatanKebiasaan` kini `{ level: 1–4 | null }`; `catatan` dan `dplId` jadi opsional (data lama). Konstanta `LEVEL_7KAIH_LABEL` (= 4 label skala DPL: Belum Terlihat, Mulai Terlihat, Berkembang Sesuai Harapan, Sangat Berkembang).
+- `src/lib/kokurikuler.ts`: `normalisasiKebiasaan` membaca `level`; `catatan`/`dplId` lama dipertahankan bila ada. `simpanG7kaihBanyak` (baru): simpan banyak siswa sekaligus dalam batch.
+- `src/pages/akademik/Kokurikuler.tsx` (tab 7KAIH): diganti tabel — baris siswa, kolom 7 kebiasaan, sel pilihan level 1–4 (kosong diperbolehkan; Bangun Pagi, Makan Sehat, Tidur Cepat ditandai boleh kosong). Ada "isi kosong…" per kolom (hanya mengisi sel yang masih kosong), penanda baris berubah, hitungan terisi per siswa, dan satu tombol simpan yang hanya menulis baris yang berubah. Tab tidak lagi bergantung pada DPL. Admin tetap hanya melihat.
+- Tidak ada perubahan `firestore.rules` (isi `kebiasaan` tidak divalidasi di rules). Dokumen lama tetap terbaca; levelnya kosong sampai diisi.
+- **Perlu di-deploy**: hosting saja (`npm run deploy`).
+
+
+## Belum dirilis — Perbaikan tampilan tabel 7KAIH
+
+- `src/pages/akademik/Kokurikuler.tsx` (tab 7KAIH): kontrol di header kolom sebelumnya tidak sejajar (kolom bertanda "boleh kosong" turun satu baris) dan lebarnya tidak seragam. Kini tiap kolom berlebar tetap, label diberi tinggi tetap, baris keterangan selalu ada, dan kontrol serta sel isian dipusatkan pada sumbu yang sama.
+- Menu header diganti dari "isi kosong…" menjadi "Atur semua…": **Semua 1–4 menimpa seluruh isian kolom**, dan **Kosongkan** menghapus seluruh isian kolom. Sebelumnya hanya sel kosong yang terisi, sehingga bila semua sel sudah terisi, pilihan apa pun tidak mengubah apa-apa dan tidak ada cara menghapus massal. Hanya siswa yang nilainya berubah yang ditandai berubah; "Batalkan perubahan" mengembalikan ke data tersimpan.
+- Perlu di-deploy: hosting saja.
+
+
+## Belum dirilis (basis: package.json 0.1.0) — Tahsin-Tahfizh: Catat Menulis
+
+- **Konsep penilaian** (disepakati 23 Okt 2026, hasil kajian literatur kitabah/imla' dan khat): satu konteks tugas (Salin / Dikte / Dari hafalan) + **tiga aspek inti** skala 1-4 yang masuk rata-rata: Huruf & Sambungan (`hurufSambungan`), Harakat & Tanda Baca (`harakat`), Kelengkapan Teks (`keutuhanTeks`). **Kerapian** (`kerapian`) menjadi aspek pelengkap opsional dan tidak lagi masuk rata-rata (di v2 ikut dirata-rata). Kesalahan umum sekali ketuk bersifat opsional. Sengaja tidak dinilai: insya', nahwu/sharaf, detail rasm, kecepatan, sikap, tajwid/makhraj.
+- `src/pages/tahsin/CatatMenulis.tsx` (baru), rute `/tahsin/menulis`, menu "Catat Menulis" di TahsinHub (hanya guru Tahsin; admin memantau). Semua aspek diawali "3 Baik" agar guru hanya mengubah yang menyimpang; indikator tiap level tampil di bawah kontrol dan sebagai tabel "Panduan skor"; materi diisi dari catatan terakhir siswa; Simpan & berikutnya; Ctrl+Enter; bilah simpan selalu terlihat. Catatan sebelumnya dapat dihapus oleh pembuatnya.
+- `src/lib/menulis.ts` (baru, logika murni): indikator rubrik, `rataInti`, `levelDariRata`, `bangunPenilaian`, `bangunKesalahan`, `ringkasMenulis` (rata-rata per aspek, tren ±0.3, kesalahan terbanyak, hanya periode terpilih). `src/types/tahsin.ts`: `JenisTugasMenulis`, `KesalahanMenulis`, `PenilaianMenulis`, `MenulisPayload`; `MenulisRecord` bertipe lebih jelas. `src/lib/tahsinData.ts`: `saveMenulis`, `deleteMenulis`.
+- **Perubahan perilaku laporan** (`src/lib/tahsinLaporanRumus.ts`): `rataMenulis` kini rata-rata tiga aspek inti; catatan v2 empat aspek dihitung tanpa Kerapian (contoh 4,3,4,3 sebelumnya 3,5 kini 3,7). Narasi dan "Capaian Terakhir" memakai rata-rata untuk semua catatan yang punya skor (sebelumnya hanya materi Al-Qur'an) dan menyebut "menulis" (bukan "menyalin"); log memuat jenis tugas. Uji `scripts/cek-laporan-cetak.mjs` disesuaikan.
+- `src/pages/tahsin/RiwayatSiswa.tsx`: tab Menulis menampilkan jenis tugas, skor tiap aspek, rata-rata, dan kesalahan umum; tab Ringkasan memuat rata-rata Menulis periode ini. `src/lib/eksporNilaiTahsin.ts`: sheet Menulis ditambah kolom jenis tugas, tiga aspek, rata-rata, Kerapian, kesalahan umum.
+- `scripts/cek-menulis.mts` (baru). `docs/DATA_MODEL.md` dan `docs/PARITAS_FITUR.md` diperbarui.
+- Tidak ada perubahan `firestore.rules` maupun indeks: rules `menulis_log` tidak membatasi daftar field. Perlu di-deploy: hosting saja (`npm run deploy`).
+- Catatan: `scripts/cek-laporan-cetak.mjs` sudah memiliki 3 uji GAGAL terkait bobot STS (`bobot STS: pakai bobot semester`, `bobot STS: legacy bobotMapel`, `STS mapel tertimbang 60/40 = 74`) sebelum perubahan ini; tidak diubah di sini.
+
+
+## Belum dirilis (basis: package.json 0.1.0) — Laporan Tahsin-Tahfizh: bagian Menulis selaras dengan Catat Menulis
+
+- **Masalah**: narasi dan "Capaian Terakhir" memakai skor dari SATU catatan terbaru, padahal kalimatnya menyebut "rata-rata penilaian menulis". Rincian per aspek dan kesalahan umum dari Catat Menulis juga belum tampil di laporan.
+- `src/lib/tahsinLaporanRumus.ts`: `susunLaporanSiswa` kini menghitung rata-rata seluruh catatan menulis dalam rentang tanggal laporan (`ringkasMenulis`). `narasiMenulis` memakai rata-rata itu (posisi menulis tetap dari catatan terbaru) dan menambahkan satu kalimat tren (lebih baik / sedikit di bawah sebelumnya). Fungsi baru `kalimatLatihan` ("Bagian yang perlu terus dilatih: …", maksimal dua kesalahan umum terbanyak). `LaporanSiswa.menulis` bertambah `aspek[]`, `rata`, `latihan`.
+- `src/lib/tahsinLaporanHtml.ts`: bagian 3 menampilkan empat kotak (Rata-rata Periode + tiga aspek inti) menggantikan "Capaian Terakhir" dan "Kali Diperiksa" (jumlah pemeriksaan tetap disebut di narasi), sehingga tinggi halaman tidak bertambah. Tanpa skor (mis. catatan v2 tanpa penilaian) tampilan lama dipertahankan. Judul siswa Iqro menjadi "3. Menulis (Iqro)", siswa Al-Qur'an tetap "3. Menulis Al-Qur'an".
+- `src/lib/menulis.ts`: perbaikan tren. Selisih rata-rata sekarang dibulatkan satu desimal sebelum dibandingkan dengan ambang 0,3 (sebelumnya 3,3 vs 3,0 terhitung 0,2999… dan dibaca "tetap").
+- Uji: `scripts/cek-laporan-cetak.mjs` (10 uji baru: rata-rata rentang bukan catatan terakhir, level, tren, aspek, kalimat latihan, log, HTML, judul Iqro, tampilan tanpa skor) dan `scripts/cek-menulis.mts` (uji ambang tren). Tiga uji GAGAL bobot STS yang sudah ada sebelumnya tidak diubah.
+- Tampilan cetak A4 diperiksa lewat wkhtmltoimage (mesin lama), bukan peramban sungguhan: sebaiknya cetak satu laporan penuh dari situs untuk memastikan tetap satu halaman. Perlu di-deploy: hosting saja.
+
+
+## Belum dirilis (basis: package.json 0.1.0) — Perbaikan: hasil impor Excel / tempel nilai STS & SAS hilang dari tabel
+
+- **Gejala (dilaporkan guru, termasuk kelas 4A)**: impor Excel memakai template dari aplikasi tampak berhasil (muncul pesan "N nilai dimuat ke draf"), tetapi tabel tetap kosong dan tombol Simpan menunjukkan "Tidak ada perubahan". Hanya halaman **STS/SAS**; halaman **SLM tidak terkena**.
+- **Penyebab**: di `src/pages/akademik/NilaiStsSas.tsx`, objek `config` dibuat baru di setiap render dan menjadi dependensi efek sinkron draf pada `<Detail>`. Pesan (toast) mengubah state induk, induk render ulang, efek berjalan lagi sebelum cache lokal sempat tertulis (jeda 400 ms), lalu mengembalikan draf ke nilai server. Hasil impor dan tempel (Ctrl+V) ikut terhapus. Ketik manual tidak terkena karena tidak memicu toast.
+- `src/pages/akademik/NilaiStsSas.tsx`: `config` dibungkus `useMemo` (dependensi `periodeAk.ready`, `.semester`, `.tahunAjaran`). Tidak ada logika lain yang diubah; `NilaiSlm.tsx` tidak disentuh.
+- `src/lib/nilaiImportExport.ts` (`parseNilaiExcelRows`): peringatan "N baris siswa tidak cocok" dan "Kolom tidak dikenali" kini berada di urutan pertama (`unshift`), karena halaman input hanya menampilkan dua peringatan pertama di toast; sebelumnya impor yang sebagian siswanya tidak cocok tampak sukses penuh. Isi pesan, pencocokan siswa/kolom, dan nilai yang diimpor tidak berubah.
+- `scripts/cek-nilai-import.mts` (baru): `npx tsx scripts/cek-nilai-import.mts`. Menguji pencocokan NIS/nama, sel kosong tidak mengubah, koma desimal, urutan peringatan (gagal pada kode lama, lulus pada kode baru).
+- Diperiksa: `npm run build` lolos; hasil semua skrip `scripts/cek-*` identik sebelum dan sesudah perubahan (kegagalan yang sudah ada tidak diubah: `cek-laporan-cetak.mjs`, `cek-rapor-sas.mjs`, `cek-generate-ai.mjs`, `cek-setup-tp.mjs`, `cek-akun-guru.mjs`).
+- **Catatan**: perbaikan efek diverifikasi lewat replika komponen (pola efek + toast yang sama), bukan lewat peramban pada halaman asli. Setelah deploy, uji: impor template di STS, pastikan nilai tetap tampil di tabel dan tombol Simpan berisi jumlah perubahan.
+- Perlu di-deploy: hosting saja (`npm run deploy`). Tidak ada perubahan `firestore.rules`.
+
+## Belum dirilis — Tanda tangan digital Rapor STS + layout Profil
+
+- **Tujuan**: STS sering dibagikan online; cetak perlu gambar tanda tangan guru (wali) dan kepala sekolah, bukan hanya ruang kosong untuk TTD basah. SAS tetap offline / tidak memaksa gambar.
+- `src/lib/tandaTangan.ts` (baru): kompres gambar di klien (max ~480 px, <280 KB), unggah ke Firebase Storage, simpan download URL di Firestore.
+  - Kepsek: path `tanda-tangan/kepsek.png` → `config/akademik.ttdKepsekUrl` (hanya admin).
+  - Guru: path `tanda-tangan/guru/{uid}.png` → `users/{uid}.ttdUrl` (pemilik akun).
+- `src/types/akademik.ts`: field opsional `ttdKepsekUrl`.
+- `src/types/user.ts`: field opsional `ttdUrl`.
+- `src/lib/akunGuruData.ts`: `dariDokumen` membaca `ttdUrl`.
+- `src/lib/penandatangan.ts`: `cariWaliKelasLengkap` mengembalikan `{ nama, ttdUrl? }` (satu wali → TTD-nya; beberapa wali → nama digabung, TTD kosong).
+- `src/lib/raporHtml.ts` / `raporSts.ts`: `DataRaporSts` menambah `ttdWaliUrl` / `ttdKepsekUrl`; blok tanda tangan STS menjadi **tiga kolom** (Ortu | Wali Kelas | Kepala Sekolah) dengan `<img class="rpr-ttd-img">` bila URL ada; kosong = ruang TTD basah seperti sebelumnya.
+- `src/pages/ProfilSaya.tsx`: UI unggah/ganti/hapus TTD sendiri (staf).
+- `src/pages/admin/TahunAjaran.tsx`: UI unggah/ganti/hapus TTD kepala sekolah di bagian Data Sekolah.
+- `src/pages/akademik/Rapor.tsx`: memuat `ttdWaliUrl` lewat `cariWaliKelasLengkap` dan meneruskannya ke `muatDataRaporSts` / cetak kelas.
+- `firestore.rules`: self-update `users/{uid}` boleh menyentuh `ttdUrl` (selain `nama`, `gelar`, `updatedAt`).
+- `storage.rules` (baru) + `firebase.json`: Storage production; baca TTD untuk user login; tulis kepsek admin; tulis guru hanya path sendiri. CSP Report-Only: `img-src` menambah `https://*.firebasestorage.app` dan `https://firebasestorage.googleapis.com`.
+- **Layout Profil**: `Layout.tsx` mengosongkan `HALAMAN_SEMPIT` (sebelumnya `/profil` → `max-w-xl`); `ProfilSaya` memakai `space-y-5` + grid `lg:grid-cols-2` agar tidak kolom sempit di tengah layar.
+- **Perbaikan build**: `src/lib/akademik.ts` dan `src/lib/aksesAkademik.ts` membersihkan marker merge conflict (`<<<<<<<` / `PLACEHOLDER`) yang sempat ter-commit dan memblokir `tsc`.
+- **Prasyarat**: aktifkan Firebase Storage (production mode; lokasi usahakan `asia-southeast2` bila tersedia), lalu `firebase deploy --only firestore:rules,storage` sebelum hosting.
+- Perlu di-deploy: `firestore:rules`, `storage`, hosting. Tidak ada Cloud Functions baru.
+
+## Belum dirilis — Stempel sekolah, NBM guru, perbaikan load profil & layout TTD
+
+- **Stempel sekolah** (`config/akademik.stempelUrl`, Storage `tanda-tangan/stempel.png`): unggah di Admin → Data Sekolah. Di cetak STS, stempel menumpuk dengan TTD kepsek (TTD di depan / `z-index` lebih tinggi; stempel digeser sedikit ke kiri).
+- **Kompresi**: TTD tetap PNG transparan; **stempel dikomposit ke latar putih** (`kompresStempel`) — mesin cetak sering menghitamkan piksel alpha. Jangan fallback JPEG.
+- **Storage rules**: path guru adalah `tanda-tangan/guru/{uid}.png` — match rules harus `fileName == request.auth.uid + '.png'` (bukan `{uid}` saja, itu menyebabkan 403).
+- **`fetchUserProfile` (`auth.ts`)**: wajib memetakan `ttdUrl` dan `nbm`. Tanpa ini unggah/simpan tampak sukses tetapi hilang setelah refresh.
+- **Rules self-update users**: allowlist `nama`, `gelar`, `nbm`, `ttdUrl`, `updatedAt`.
+- **NBM wali** di rapor STS dari `users.nbm` (isi di Profil Saya); tipe `DataRaporSts.waliNbm` + wiring `raporSts` / `Rapor.tsx` / `penandatangan`.
+- **Layout tanda tangan STS**: tempat+tanggal hanya di kolom Kepala Sekolah (jarak sebelum jabatan); tinggi ruang TTD seragam agar nama sejajar; ukuran TTD ~60pt.
+- **Pratinjau iframe**: `sandbox="allow-same-origin allow-scripts"` — hilangkan peringatan `about:srcdoc` (konten HTML aplikasi sendiri).
+- **Layout Profil**: lebar penuh + grid kartu (bukan `max-w-md` / `HALAMAN_SEMPIT`).
+- Perlu di-deploy: `firestore:rules`, `storage`, hosting. Setelah ubah kompresi stempel, **unggah ulang** file stempel di Storage.
+
+
+## Belum dirilis — Hapus nilai SLM / STS / SAS yang dikosongkan
+
+- **Bug**: nilai yang sudah diisi tidak bisa dihapus (sel dikosongkan lalu Simpan tidak mengubah apa pun). Menyentuh guru bidang studi maupun wali kelas.
+- **Penyebab**: (1) UI mengabaikan sel kosong di daftar perubahan; (2) `saveNilaiTPBatch` / `saveNilaiAsesmenBatch` hanya upsert; (3) rules `nilai_tp` / `nilai_sts` / `nilai_sas` `allow delete: if false`.
+- **Perbaikan**:
+  - `firestore.rules`: `allow delete` untuk guru yang punya `tulisMapelKelas` (admin tetap tidak menulis).
+  - `src/lib/akademik.ts`: batch menerima `null` → hapus dokumen yang sudah ada.
+  - `NilaiSlm.tsx` + `NilaiStsSas.tsx`: sel yang dikosongkan setelah ada nilai masuk daftar perubahan; ringkasan total/rata memakai nilai draf (kosong = null); pesan simpan membedakan disimpan vs dihapus.
+- **Deploy wajib**: `npm run deploy:rules` lalu hosting (`npm run deploy`).
+
+
+## Belum dirilis (basis: package.json 0.1.0) — Guru bidang studi PJOK/IPAS tidak bisa memuat nilai (spinner terus)
+
+- **Bug**: halaman input STS/SAS/SLM milik guru bidang studi PJOK (dan berpotensi IPAS, PPKn, Seni Budaya) memuat tanpa akhir; nilai yang sudah diinput tidak tampil. Wali kelas tidak terkena.
+- **Penyebab**: `getCakupanTP`, `getNilaiAsesmenKelas`, `getNilaiTPKelas`, `getNilaiTPUntukTP` (commit `0456102`, multi-nama alias mapel) menjalankan satu query per nama alias dengan `Promise.all`. Rules `nilai_tp` / `nilai_sts` / `nilai_sas` / `asesmen_cakupan` hanya mengizinkan baca untuk nama mapel yang persis ada di `penugasanKelasMapel` guru (wali kelas lolos lewat `waliKelas`). Nama alias lain ditolak `permission-denied`; satu penolakan menggagalkan seluruh `muat()`, `siap` tidak pernah `true`, spinner tidak berhenti.
+- **Perbaikan** (`src/lib/akademik.ts`): helper `selesaikanAlias()` memakai `Promise.allSettled`. `permission-denied` pada nama alias dilewati selama ada nama lain yang berhasil dibaca; error lain tetap dilempar; bila semua nama ditolak, penolakan dilempar. Leger/wali kelas tetap membaca semua alias.
+- **Tidak perlu** `deploy:rules`. Cukup `npm run deploy` (hosting).
+
+## Belum dirilis — Salinan rapor STS resmi untuk portal orang tua
+
+- **Beda format**: portal merata-ratakan `nilai_sts` (satu angka + predikat). Cetak rapor STS memakai nilai akhir berbobot cakupan, kalimat capaian KKTP, identitas sekolah, TTD wali, TTD + stempel kepala sekolah.
+- Portal tidak bisa menghitung itu sendiri: `mapel`, `tp_kktp`, `asesmen_cakupan`, dan `config/akademik` hanya boleh dibaca guru.
+- **Perbaikan** (`src/lib/stsPublikasi.ts`): `publikasikanSts` menulis dulu satu dokumen per siswa di `rapor_sts_ortu/{siswaId}_{tahun}_{semester}` lewat `muatDataRaporStsKelas` + `kalimatCapaian` (fungsi yang sama dengan cetak). Lalu gerbang `sts_publikasi` menyimpan `snapshotIds`. `batalkanPublikasiSts` menandai salinan `published: false`.
+- `PublikasiSts.tsx` mengirim profil pemanggil, `kotaRapor`, dan `tglRaporSts` periode. TTD wali kelas diambil `cariWaliKelasLengkap` (admin tidak menaruh TTD-nya sendiri).
+- `firestore.rules`: koleksi `rapor_sts_ortu` — baca terbuka (portal tanpa Auth), tulis admin atau wali kelas dokumen.
+- **Deploy wajib**: `npm run deploy:rules` lalu hosting. Wali kelas harus menekan **Publikasikan** lagi; publikasi lama tidak berisi salinan.
+- Rumus nilai tidak diubah.
+
+## 2026-10-29 — Jadwal rilis rapor STS
+
+- Wali kelas dan admin dapat menjadwalkan rilis rapor STS ke portal orang tua.
+- Di halaman **Publikasikan rapor STS**: pilih tanggal & waktu, lalu **Jadwalkan**.
+- Jadwal disimpan di dokumen `sts_publikasi` (field `jadwalAt`, `jadwalOlehNama`).
+- Saat waktu tiba dan halaman Publikasikan (atau hub yang memuat status) dibuka oleh wali kelas, rilis otomatis dijalankan memakai fungsi `publikasikanSts` yang sama dengan tombol manual.
+- Tombol **Publikasikan sekarang** tetap ada. Membatalkan publikasi atau mempublikasikan manual menghapus jadwal.
+- Tidak mengubah rumus rapor, salinan `rapor_sts_ortu`, atau rules. Tidak perlu `deploy:rules`.
+
+## 2026-10-29 — Perbaikan loop Publikasikan STS + Top STS live
+
+### Loop di halaman Publikasikan rapor STS
+- **Bug**: halaman terus menampilkan “Memuat status publikasi…” tanpa selesai (loop).
+- **Penyebab**: `muat` bergantung pada objek `toast` dari `useToast()`. Objek itu baru setiap render, sehingga `useEffect([muat])` berjalan terus.
+- **Perbaikan**: dependency diganti ke `toast.show` (stabil via `useCallback`).
+
+### Dashboard guru kelas — Top STS
+- Kartu **Top STS** di beranda guru (wali kelas) sekarang menampilkan 5 siswa dengan rata-rata nilai STS tertinggi pada periode aktif.
+- Sumber: koleksi `nilai_sts` (filter kelas + tahun ajaran + semester). Bukan placeholder lagi.
+- Top SLM dan Top SAS tetap placeholder sampai modulnya siap.
+
+## 2026-10-29 — Jadwal rilis STS benar-benar otomatis
+
+- **Bug**: jadwal hanya berjalan saat halaman Publikasikan dibuka/di-refresh di aplikasi penilaian. Portal orang tua tidak melihat rapor sampai guru membuka halaman itu.
+- **Perbaikan**:
+  - Saat menekan **Jadwalkan**, salinan `rapor_sts_ortu` disiapkan (published: false) memakai fungsi yang sama dengan publikasi manual.
+  - Cloud Function `jalankanJadwalPublikasiSts` (setiap 1 menit, Asia/Jakarta) membalik `published` menjadi true pada salinan dan gerbang `sts_publikasi` ketika waktu tiba.
+  - Tidak menghitung ulang nilai di function — hanya membalik flag, sehingga tidak beda dengan rapor resmi.
+- **Deploy wajib**: `firebase deploy --only functions:jalankanJadwalPublikasiSts` lalu hosting.
+- Data yang dirilis adalah data saat jadwal disimpan. Jika nilai berubah, jadwalkan ulang.
+
+## 2026-11-05 — Login siswa LMS lewat Cloud Function (identitas siswa di Firebase Auth)
+
+- **Latar belakang:** siswa LMS login memakai NISN yang dicocokkan **di klien**, tanpa Firebase Auth. Akibatnya rules tidak bisa membedakan siswa satu dengan lainnya, sehingga fitur Tugas (pengumpulan dan nilai per siswa) tidak bisa diamankan. Sebagai langkah sementara, commit `6ff49f4` membuka baca `lms_materi` untuk siapa saja (`allow read: if true`); perubahan ini menggantikannya.
+- **Cloud Function baru `loginSiswaLms`** (`functions/loginSiswaLms.js`, wilayah `asia-southeast2`): menerima `siswaId` + `nisn`, memverifikasi NISN di server terhadap `siswa/{id}` (hanya siswa aktif), lalu menerbitkan custom token Firebase Auth dengan claims `lmsSiswa`, `siswaId`, `kelas`, `nama`. UID siswa: `lms_siswa_{siswaId}`.
+- **Pembatasan percobaan:** 5 kali NISN salah mengunci siswa itu 10 menit (dicatat di `lms_login_gagal/{siswaId}`, hanya bisa diakses Admin SDK). Pesan gagal seragam agar tidak membocorkan siapa yang ada atau tidak.
+- Logika murni dipisah ke `functions/aturanSiswaLms.js`; uji: `node scripts/cek-login-siswa-lms.mjs`.
+- **`firestore.rules`:** `isLoggedIn()` kini **tidak** berlaku untuk token siswa (agar aturan lama yang hanya memeriksa «sudah login» tidak ikut terbuka untuk siswa); fungsi baru `isSiswaLms()`. `lms_materi` dibaca guru/admin, atau siswa hanya untuk materi kelasnya sendiri (claim `kelas`).
+- **`storage.rules`:** `isLoggedIn()` mengecualikan token siswa dengan alasan yang sama (mencegah siswa menghapus/menimpa `lms/materi` atau membaca file staf). Download URL bertoken tetap bisa dibuka siswa.
+- **Deploy wajib, berurutan:** (1) beri peran *Service Account Token Creator* pada service account runtime function (lihat ANTIREGRESI §32); (2) `firebase deploy --only functions:loginSiswaLms`; (3) deploy LMS v0.4.3; (4) `npm run deploy:rules`. Rules sebelum LMS baru di-deploy akan membuat siswa di LMS lama tidak bisa membuka materi.
+- **Keterbatasan:** koleksi `siswa` (berisi `nisn`) masih terbaca publik karena dipakai login Perpustakaan, sehingga verifikasi server belum membuat NISN rahasia. Perlu langkah lanjutan sebelum nilai siswa ditampilkan.
+
+## 2026-11-08 — LMS Fase 2a: Bank Soal & Editor Soal (repo `nitoe/lms`)
+
+- **Tab baru «Bank Soal»** di ruang kelas: daftar paket soal per kelas × mapel (status Draf/Siap, jumlah soal, total poin, TP), buat, cari, hapus.
+- **Editor soal** (`/kelas/:ruangId/soal/:paketId`): daftar soal di kiri (cari, seret untuk mengurutkan, duplikat, naik/turun, hapus, penanda soal belum lengkap) dan kartu soal di kanan, mengikuti tata letak referensi.
+- **Enam tipe soal:** pilihan ganda, pilihan ganda kompleks, menjodohkan, benar/salah (tabel pernyataan), isian singkat (kunci alternatif), uraian (pedoman penskoran, dinilai manual). Tipe bisa diganti tanpa kehilangan teks/gambar/poin.
+- Teks kaya (TipTap: tebal, miring, garis bawah, subskrip/superskrip, daftar, palet simbol matematika), gambar pada soal/pilihan/sisi kiri menjodohkan (dikompres otomatis di browser), pembahasan, poin, estimasi waktu, acak pilihan, acak soal, skor sebagian.
+- Simpan otomatis + peringatan sebelum menutup tab; pratinjau tampilan siswa dengan «Periksa jawaban» (`lib/penilaian.ts`, fungsi murni untuk dipakai penilaian kuis di Fase 2b); «Tandai siap» hanya bila semua soal lengkap.
+- Koleksi baru `lms_paket_soal` dan `lms_gambar` (lihat `docs/DATA_MODEL.md` di repo LMS). Editor dimuat malas (lazy) agar bundel siswa tidak membengkak.
+- Dependensi baru: `@tiptap/react`, `@tiptap/pm`, `@tiptap/starter-kit`, `@tiptap/extension-subscript`, `@tiptap/extension-superscript`, `dompurify`.
+- `firestore.rules`: dibangun di atas versi terbaru (dengan `isSiswaLms()`/`loginSiswaLms`). Blok baru `lms_paket_soal` (baca/tulis hanya guru kelas×mapel; admin hapus; memuat kunci jawaban) dan `lms_gambar` (baca guru atau siswa LMS bertoken, buat guru, tanpa ubah). Ditambah banner `REPO:` dan peta kepemilikan di header agar jelas bagian milik SDM01Penilaian, sarpras, perpustakaan, dan lms; blok `perpus_progress` dipindah ke bagian Perpustakaan. Tidak ada aturan lain yang berubah.
+- **Deploy wajib:** salin `firestore.rules` ke repo Penilaian lalu `npm run deploy:rules`, kemudian `npm run deploy` di repo LMS. Tanpa deploy rules, editor menampilkan «Missing or insufficient permissions».
+- Belum ada: kuis untuk siswa (2b), generate soal AI (2c), rumus KaTeX, impor soal dari paket lain.
+- **Catatan tumpang tindih:** modul «Kuis» (`lms_kuis`, `lms_soal`, `KuisBuilder`) yang sudah ada di repo LMS dibuat terpisah dari «Bank Soal» (`lms_paket_soal`). Keduanya hidup berdampingan sementara; penyatuan menunggu keputusan. Rules untuk `lms_kuis`/`lms_soal` **belum ada** (ditolak oleh aturan default) sampai ditulis.
