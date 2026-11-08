@@ -112,15 +112,37 @@ export function normalisasiSoalDariImport(raw: Record<string, unknown>, index: n
     const kunciRaw = String(raw.kunci || raw.jawaban || '').trim()
     if (!kunciRaw) return { galat: `Baris ${index + 1}: soal ${tipe.toUpperCase()} tidak memiliki kunci jawaban.` }
 
+    // Normalisasi ID opsi menjadi huruf A, B, C, D jika memungkinkan
+    const huruf = 'abcdefghijklmnopqrstuvwxyz'
+    opsi.forEach((o, i) => {
+      if (!/^[a-z]$/i.test(o.id)) o.id = huruf[i] || `o${i}`
+    })
+
+    function cariOpsi(kunci: string): OpsiSoal | undefined {
+      const k = kunci.trim().toLowerCase()
+      // 1. Cocokkan ID persis (a, b, c)
+      let m = opsi.find((o) => o.id.toLowerCase() === k)
+      if (m) return m
+      // 2. Cocokkan huruf di awal (A., A), B)
+      m = opsi.find((o) => o.id.toLowerCase() === k.replace(/[^a-z]/g, ''))
+      if (m) return m
+      // 3. Cocokkan teks persis
+      m = opsi.find((o) => o.teks.toLowerCase() === k)
+      if (m) return m
+      // 4. Cocokkan teks yang mengandung kunci (hati-hati)
+      m = opsi.find((o) => o.teks.toLowerCase().includes(k) && k.length > 2)
+      return m
+    }
+
     if (tipe === 'pg') {
-      const match = opsi.find((o) => o.id.toLowerCase() === kunciRaw.toLowerCase() || o.teks.toLowerCase() === kunciRaw.toLowerCase())
+      const match = cariOpsi(kunciRaw)
       if (!match) return { galat: `Baris ${index + 1}: kunci «${kunciRaw}» tidak cocok dengan opsi manapun.` }
       ;(soal as any).kunci = match.id
     } else {
       const daftarKunci = Array.isArray(raw.kunci) ? raw.kunci.map(String) : kunciRaw.split(/[,;]/).map((s) => s.trim()).filter(Boolean)
       const kunciIds: string[] = []
       for (const k of daftarKunci) {
-        const match = opsi.find((o) => o.id.toLowerCase() === k.toLowerCase() || o.teks.toLowerCase() === k.toLowerCase())
+        const match = cariOpsi(k)
         if (match) kunciIds.push(match.id)
       }
       if (kunciIds.length === 0) return { galat: `Baris ${index + 1}: tidak ada kunci yang cocok dengan opsi.` }

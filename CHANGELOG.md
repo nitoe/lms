@@ -228,3 +228,10 @@
 - Panduan AI diperbarui dengan aturan yang lebih ketat.
 - File: `src/lib/importSoal.ts`, `src/lib/analisisSoal.ts`, `docs/PANDUAN_AI_BANK_SOAL.md`.
 - ANTIREGRESI §63.
+
+## 2026-11-08 — Perbaiki pencocokan kunci jawaban saat import
+
+- Logika pencocokan kunci PG/PGK diperkuat: prioritaskan ID huruf (A/B/C/D), lalu teks.
+- ID opsi dinormalisasi ke huruf jika belum.
+- Mengurangi kasus kunci berubah setelah import.
+- File: `src/lib/importSoal.ts`.
