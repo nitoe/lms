@@ -2,7 +2,7 @@
  * Logika murni penyusunan soal kuis dari paket bank yang siap.
  * Tidak menyentuh Firestore — mudah diuji.
  */
-import type { KompleksitasSoal, PaketSoal, Soal, TipeSoal } from '../types/soal'
+import type { PaketSoal, Soal } from '../types/soal'
 import { normalisasiKompleksitas, URUTAN_TIPE, URUTAN_KOMPLEKSITAS } from '../types/soal'
 import type { FilterSusunKuis, SoalKuis } from '../types/kuis'
 import { BATAS_SOAL_PER_KUIS } from '../types/kuis'

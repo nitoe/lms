@@ -257,11 +257,8 @@
 - `firestore.rules` (lengkap, repo SDM01Penilaian): `lms_kuis` wajib field `soal` list (≤100); create `lms_soal` ditolak (legacy hapus saja).
 - ANTIREGRESI §64.
 
-## 2026-11-09 — Topbar Ruang Kelas: hapus aksi menyesatkan
+## 2026-11-09 — Perbaiki build: hapus KuisBuilder + import susunKuis
 
-- Hapus tombol **Semua kelas** dan **+ Ruang kelas** dari topbar guru.
-- Keduanya hanya menavigasi ke `/kelas` dan tombol “+” menyesatkan (ruang kelas berasal dari penugasan di Penilaian, bukan dibuat di LMS).
-- Tombol **garis tiga** (mobile) tetap: membuka drawer sidebar di layar kecil.
-- Tombol **ciut sidebar** (desktop) tetap: memperlebar area kerja (berguna di editor soal).
-- File: `src/components/Layout.tsx`.
+- Hapus `src/components/KuisBuilder.tsx` (model kuis lama; tidak diimpor setelah alur snapshot dari bank soal).
+- `src/lib/susunKuis.ts`: buang import type `KompleksitasSoal` / `TipeSoal` yang tidak terpakai (TS6196).
 
