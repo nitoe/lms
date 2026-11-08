@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { Link, useParams } from 'react-router-dom'
 import SoalEditorKartu from '../components/soal/SoalEditorKartu'
 import PratinjauSoal from '../components/soal/PratinjauSoal'
@@ -48,6 +49,7 @@ export default function SoalEditor() {
   const [cari, setCari] = useState('')
   const [menuTambah, setMenuTambah] = useState(false)
   const [menuAksi, setMenuAksi] = useState<string | null>(null)
+  const [menuPos, setMenuPos] = useState<{ top: number; right: number } | null>(null)
   const [pengaturan, setPengaturan] = useState(false)
   const [pratinjau, setPratinjau] = useState(false)
   const [tpList, setTpList] = useState<TpRingkas[]>([])
@@ -126,6 +128,26 @@ export default function SoalEditor() {
       void siram()
     }
   }, [siram])
+
+  // Tutup menu aksi saat klik di luar atau scroll (menu di-portal ke body)
+  useEffect(() => {
+    if (!menuAksi) return
+    const tutup = () => {
+      setMenuAksi(null)
+      setMenuPos(null)
+    }
+    const onPointer = (e: Event) => {
+      const t = e.target as HTMLElement | null
+      if (t?.closest?.('[data-menu-aksi]')) return
+      tutup()
+    }
+    document.addEventListener('pointerdown', onPointer, true)
+    window.addEventListener('scroll', tutup, true)
+    return () => {
+      document.removeEventListener('pointerdown', onPointer, true)
+      window.removeEventListener('scroll', tutup, true)
+    }
+  }, [menuAksi])
 
   /* ── Operasi soal ── */
   const soalList = paket?.soal ?? []
@@ -325,15 +347,18 @@ export default function SoalEditor() {
                     </div>
                     <div className="soal-tambah-wrap">
                       <button type="button" className="soal-ikon-btn soal-ikon-btn--tipis" aria-label={`Aksi soal ${i + 1}`}
-                        aria-expanded={menuAksi === x.id} onClick={() => setMenuAksi(menuAksi === x.id ? null : x.id)}>⋯</button>
-                      {menuAksi === x.id && (
-                        <ul className="soal-menu soal-menu--kanan" role="menu">
-                          <li><button type="button" role="menuitem" onClick={() => duplikat(i)}>Duplikat</button></li>
-                          <li><button type="button" role="menuitem" disabled={i === 0} onClick={() => pindah(i, i - 1)}>Naikkan</button></li>
-                          <li><button type="button" role="menuitem" disabled={i === soalList.length - 1} onClick={() => pindah(i, i + 1)}>Turunkan</button></li>
-                          <li><button type="button" role="menuitem" className="soal-menu-bahaya" onClick={() => hapus(i)}>Hapus</button></li>
-                        </ul>
-                      )}
+                        aria-expanded={menuAksi === x.id}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          if (menuAksi === x.id) {
+                            setMenuAksi(null)
+                            setMenuPos(null)
+                          } else {
+                            const rect = e.currentTarget.getBoundingClientRect()
+                            setMenuPos({ top: rect.bottom + 4, right: window.innerWidth - rect.right })
+                            setMenuAksi(x.id)
+                          }
+                        }}>⋯</button>
                     </div>
                   </div>
                 </li>
@@ -388,6 +413,36 @@ export default function SoalEditor() {
       </div>
 
       {pratinjau && <PratinjauSoal paket={paket} onTutup={() => setPratinjau(false)} />}
+
+      {menuAksi && menuPos && createPortal(
+        <ul
+          className="soal-menu soal-menu--kanan"
+          role="menu"
+          data-menu-aksi
+          style={{
+            position: 'fixed',
+            top: menuPos.top,
+            right: menuPos.right,
+            zIndex: 1000,
+            margin: 0,
+          }}
+          onPointerDown={(e) => e.stopPropagation()}
+        >
+          {(() => {
+            const idx = soalList.findIndex((s) => s.id === menuAksi)
+            if (idx < 0) return null
+            return (
+              <>
+                <li><button type="button" role="menuitem" onClick={() => duplikat(idx)}>Duplikat</button></li>
+                <li><button type="button" role="menuitem" disabled={idx === 0} onClick={() => pindah(idx, idx - 1)}>Naikkan</button></li>
+                <li><button type="button" role="menuitem" disabled={idx === soalList.length - 1} onClick={() => pindah(idx, idx + 1)}>Turunkan</button></li>
+                <li><button type="button" role="menuitem" className="soal-menu-bahaya" onClick={() => hapus(idx)}>Hapus</button></li>
+              </>
+            )
+          })()}
+        </ul>,
+        document.body,
+      )}
     </div>
   )
 }

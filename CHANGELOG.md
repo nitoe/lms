@@ -3,6 +3,13 @@
 > Append-only: entri baru ditambahkan di BAWAH, entri lama tidak diubah.
 > Versi mengacu ke `package.json` (saat ini `0.1.0`); belum ada rilis bertag.
 
+## 2026-11-08 — Menu aksi soal (⋯) tidak terpotong / bisa dihapus
+
+- **Bug:** tombol ⋯ di daftar samping editor soal tidak menampilkan menu (Duplikat / Naikkan / Turunkan / Hapus).
+- Penyebab: menu `position: absolute` berada di dalam `.soal-item { overflow: hidden }` dan `.soal-daftar { overflow-y: auto }`, sehingga terpotong.
+- Perbaikan: menu di-render lewat `createPortal` ke `document.body` dengan `position: fixed` (posisi dihitung dari tombol). Ditutup otomatis saat klik di luar atau scroll.
+- ANTIREGRESI §51.
+
 ## 2026-11-08 — Menu tambah soal tidak terpotong
 
 - Dropdown tipe soal dari tombol **+** di sidebar: posisi kanan, lebar cukup, tidak dipotong `overflow` sidebar.

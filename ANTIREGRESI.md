@@ -462,3 +462,10 @@ Jangan menyimpan blob base64 besar di dokumen Firestore.
 - Prompt `generateIlustrasiSoalLmsAi` harus melarang: label nama yang diminta soal (mis. nama organ pada soal identifikasi), teks soal/opsi A–D, centang/lingkaran jawaban, gaya screenshot/scan lembar ujian dari web.
 - Untuk soal penunjuk (panah/nomor): visual + penunjuk saja; tanpa menuliskan nama struktur yang diuji.
 - Deskripsi pengguna **opsional** — generate boleh dari teks soal saja; field deskripsi hanya untuk spesifikasi tambahan (tabel/grafik).
+
+## §51. Menu dropdown di daftar scrollable (editor soal)
+
+- Menu aksi per-soal (tombol ⋯) **tidak boleh** di-render sebagai `position: absolute` di dalam elemen yang punya `overflow: hidden` atau di dalam container `overflow-y: auto` (`.soal-item`, `.soal-daftar`).
+- Gejala: menu tidak muncul / terpotong, tombol tampak tidak berfungsi (termasuk Hapus).
+- Solusi yang dipakai: `createPortal(..., document.body)` + `position: fixed` berdasarkan `getBoundingClientRect` tombol. Tutup saat klik di luar atau scroll.
+- Pola yang sama berlaku untuk dropdown lain di dalam area scroll (jangan andalkan overflow parent visible saja).
