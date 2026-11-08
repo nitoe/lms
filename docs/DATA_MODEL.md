@@ -76,6 +76,9 @@ Batas: PDF/gambar 10 MB, video 50 MB.
 
 ### `lms_paket_soal/{id}` (Fase 2a)
 
+Setiap elemen `soal[]` memuat `kompleksitas`: `L1` | `L2` | `L3` (sederhana / menengah / kompleks). Dokumen paket menyimpan denormalisasi `jumlahPerTipe` dan `jumlahPerKompleksitas` untuk filter bank.
+
+
 Satu paket soal/kuis (draf guru). Memuat **kunci jawaban** → hanya terbaca guru kelas×mapel & admin.
 
 | Field | Tipe | Keterangan |

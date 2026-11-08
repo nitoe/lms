@@ -18,7 +18,7 @@ import { parseRuangId } from '../lib/kelasLms'
 import { getTpMapelKelas } from '../lib/tpData'
 import type { TpRingkas } from '../types/materi'
 import type { PaketSoal, Soal, TipeSoal } from '../types/soal'
-import { BATAS_SOAL_PER_PAKET, NAMA_TIPE, URUTAN_TIPE } from '../types/soal'
+import { BATAS_SOAL_PER_PAKET, NAMA_TIPE, URUTAN_TIPE, normalisasiKompleksitas } from '../types/soal'
 import '../styles/soal.css'
 
 type StatusSimpan = 'tersimpan' | 'menunggu' | 'menyimpan' | 'gagal'
@@ -318,6 +318,7 @@ export default function SoalEditor() {
                   </button>
                   <div className="soal-item-baris">
                     <span className="soal-chip">{SINGKAT_TIPE[x.tipe]}</span>
+                <span className={`soal-chip soal-chip--${normalisasiKompleksitas(x.kompleksitas).toLowerCase()}`}>{normalisasiKompleksitas(x.kompleksitas)}</span>
                     <div className="soal-tambah-wrap">
                       <button type="button" className="soal-ikon-btn soal-ikon-btn--tipis" aria-label={`Aksi soal ${i + 1}`}
                         aria-expanded={menuAksi === x.id} onClick={() => setMenuAksi(menuAksi === x.id ? null : x.id)}>⋯</button>

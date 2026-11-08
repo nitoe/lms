@@ -285,3 +285,108 @@
 .tampil-bs--no td:first-child { color: #991b1b; }
 .tampil-bahas, .tampil-pedoman { border-radius: 0.7rem; background: #f8fafc; border: 1px solid var(--color-border); padding: 0.7rem 0.85rem; font-size: 0.85rem; }
 .tampil-bahas { background: #eff6ff; border-color: #bfdbfe; }
+
+
+/* —— Bank soal: filter, grup, chip bentuk/kompleksitas —— */
+.paket-filter {
+  display: grid;
+  gap: 0.55rem 0.75rem;
+  grid-template-columns: repeat(auto-fill, minmax(9.5rem, 1fr));
+  padding: 0.75rem 0.9rem;
+  border-radius: 0.85rem;
+  border: 1px solid var(--color-border);
+  background: #fff;
+}
+.paket-filter-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 0;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--color-muted);
+  letter-spacing: 0.02em;
+}
+.paket-filter-field select {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  border-radius: 0.5rem;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface-2);
+  padding: 0.4rem 0.55rem;
+  font-size: 0.8rem;
+  font-weight: 500;
+  font-family: inherit;
+  color: #1a1d33;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.paket-filter-field select:focus {
+  outline: none;
+  border-color: var(--color-muh-600);
+  box-shadow: 0 0 0 3px rgba(49, 48, 131, 0.12);
+}
+.paket-grup { display: flex; flex-direction: column; gap: 0.55rem; }
+.paket-grup-judul {
+  margin: 0.35rem 0 0;
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #1a1d33;
+  min-width: 0;
+}
+.paket-grup-jumlah {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--color-muted);
+}
+.paket-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  margin-top: 0.35rem;
+  min-width: 0;
+}
+.paket-chip {
+  font-size: 0.68rem;
+  font-weight: 700;
+  border-radius: 999px;
+  padding: 0.12rem 0.45rem;
+  line-height: 1.3;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.paket-chip--tipe {
+  background: var(--color-muh-50);
+  color: var(--color-muh-700);
+}
+.paket-chip--l1 { background: #ecfdf5; color: #047857; }
+.paket-chip--l2 { background: #fffbeb; color: #b45309; }
+.paket-chip--l3 { background: #fef2f2; color: #b91c1c; }
+
+/* Chip L di daftar samping editor */
+.soal-chip--l1 { background: #ecfdf5; color: #047857; }
+.soal-chip--l2 { background: #fffbeb; color: #b45309; }
+.soal-chip--l3 { background: #fef2f2; color: #b91c1c; }
+
+/* Meta TP panjang jangan dorong layout */
+.paket-tp {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.paket-meta {
+  min-width: 0;
+}
+.paket-item {
+  min-width: 0;
+}

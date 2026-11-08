@@ -12,6 +12,28 @@ export const NAMA_TIPE: Record<TipeSoal, string> = {
 
 export const URUTAN_TIPE: TipeSoal[] = ['pg', 'pgk', 'jodoh', 'bs', 'isian', 'uraian']
 
+/** Tingkat kompleksitas kognitif sederhana (bukan taksonomi penuh). */
+export type KompleksitasSoal = 'L1' | 'L2' | 'L3'
+
+export const URUTAN_KOMPLEKSITAS: KompleksitasSoal[] = ['L1', 'L2', 'L3']
+
+export const NAMA_KOMPLEKSITAS: Record<KompleksitasSoal, string> = {
+  L1: 'L1 · Sederhana',
+  L2: 'L2 · Menengah',
+  L3: 'L3 · Kompleks',
+}
+
+export const DESKRIPSI_KOMPLEKSITAS: Record<KompleksitasSoal, string> = {
+  L1: 'Mengingat / mengenali fakta atau prosedur dasar',
+  L2: 'Memahami / menerapkan konsep pada situasi familiar',
+  L3: 'Menganalisis / menalar / memecahkan masalah baru',
+}
+
+/** Normalisasi field lama yang belum punya kompleksitas. */
+export function normalisasiKompleksitas(v: unknown): KompleksitasSoal {
+  return v === 'L1' || v === 'L2' || v === 'L3' ? v : 'L1'
+}
+
 /** Satu pilihan jawaban (PG / PG kompleks). `teks` = teks biasa (bukan HTML). */
 export interface OpsiSoal {
   id: string
@@ -27,6 +49,8 @@ interface SoalDasar {
   gambarId?: string
   poin: number
   waktuMenit: number
+  /** Tingkat kompleksitas L1–L3. Default L1 bila kosong (dokumen lama). */
+  kompleksitas: KompleksitasSoal
   /** HTML terbatas. Tampil setelah siswa menjawab. */
   pembahasan?: string
 }
@@ -107,9 +131,13 @@ export interface PaketSoal {
   status: StatusPaket
   acakSoal: boolean
   soal: Soal[]
-  /** Denormalisasi untuk daftar. */
+  /** Denormalisasi untuk daftar & filter bank. */
   jumlahSoal: number
   totalPoin: number
+  /** Jumlah soal per tipe (bentuk). Diisi saat simpan. */
+  jumlahPerTipe?: Partial<Record<TipeSoal, number>>
+  /** Jumlah soal per kompleksitas L1–L3. Diisi saat simpan. */
+  jumlahPerKompleksitas?: Partial<Record<KompleksitasSoal, number>>
   dibuatOleh: string
   dibuatOlehNama?: string
   createdAt?: unknown

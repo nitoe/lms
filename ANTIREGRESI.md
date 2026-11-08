@@ -408,3 +408,23 @@ Jangan menyimpan blob base64 besar di dokumen Firestore.
 - Sama seperti `lms_paket_soal`: dokumen soal kuis berisi kunci jawaban. `allow read` hanya `lihatMapelKelas` (guru kelas×mapel / admin). Jangan membuka ke `isSiswaLms()` sampai ada koleksi salinan tanpa kunci (Fase 2b).
 - `lms_soal` memakai `get()` ke dokumen `lms_kuis` induk untuk cek penugasan; klien harus memastikan `kuisId` valid sebelum tulis.
 - Storage gambar: `lms/kuis/{kuisId}/…` hanya `isLoggedIn()` staf (token siswa dikecualikan di `storage.rules`).
+
+## §44. Teks panjang di form (TP, judul, opsi select) tidak boleh memecah layout
+
+- Gejala berulang: select «Tujuan Pembelajaran» / label panjang mendorong kolom grid keluar frame (terlihat di form paket soal baru dan pengaturan editor).
+- Penyebab: item CSS Grid default `min-width: auto` + `<select>` mengikuti lebar opsi terpanjang.
+- **Wajib** pada form 2 kolom (`.materi-form*` dan sejenis):
+  - container: `min-width: 0; max-width: 100%; overflow: hidden`
+  - grid: `grid-template-columns: minmax(0, 1fr) …` (bukan `1fr` mentah)
+  - field: `min-width: 0`
+  - `input`/`select`/`textarea`: `width: 100%; min-width: 0; box-sizing: border-box`
+  - `select`: `overflow: hidden; text-overflow: ellipsis; white-space: nowrap`
+- Pola yang sama untuk bar filter bank soal (`.paket-filter-field select`) dan chip meta TP (`.paket-tp`).
+- Jangan mengandalkan `max-width` tetap (px) saja — pecah di viewport sempit.
+
+## §45. Bank soal: kompleksitas L1–L3 dan pengelompokan
+
+- Setiap soal punya `kompleksitas: 'L1' | 'L2' | 'L3'` (default L1). Dokumen lama tanpa field → `normalisasiKompleksitas()` mengembalikan L1.
+- Saat `simpanPaket`, denormalisasi `jumlahPerTipe` dan `jumlahPerKompleksitas` di dokumen paket (filter daftar tanpa menghitung ulang di klien jika field sudah ada).
+- Filter/kelompok di `BankSoalPanel` memakai data paket + array `soal` (bukan query Firestore tambahan). Jangan menambah composite index hanya untuk filter UI ini.
+- L1/L2/L3 adalah skala sederhana sekolah dasar, bukan salinan penuh Bloom; jangan mengganti ke kode lain tanpa migrasi data.

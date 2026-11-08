@@ -12,8 +12,8 @@ import {
 } from 'firebase/firestore'
 import { auth, db } from './firebase'
 import { htmlKosong, teksPolos } from './html'
-import type { OpsiSoal, PaketSoal, Soal, TipeSoal } from '../types/soal'
-import { BATAS_SOAL_PER_PAKET } from '../types/soal'
+import type { KompleksitasSoal, OpsiSoal, PaketSoal, Soal, TipeSoal } from '../types/soal'
+import { BATAS_SOAL_PER_PAKET, normalisasiKompleksitas } from '../types/soal'
 
 export function idAcak(): string {
   return crypto.randomUUID().replace(/-/g, '').slice(0, 12)
@@ -25,7 +25,7 @@ function opsiKosong(n: number): OpsiSoal[] {
 
 /** Soal baru dengan nilai awal yang masuk akal untuk tiap tipe. */
 export function soalBaru(tipe: TipeSoal): Soal {
-  const dasar = { id: idAcak(), teks: '', poin: 1, waktuMenit: 1 }
+  const dasar = { id: idAcak(), teks: '', poin: 1, waktuMenit: 1, kompleksitas: 'L1' as const }
   switch (tipe) {
     case 'pg': {
       const opsi = opsiKosong(4)
@@ -65,6 +65,7 @@ export function ubahTipe(s: Soal, tipe: TipeSoal): Soal {
     gambarId: s.gambarId,
     poin: s.poin,
     waktuMenit: s.waktuMenit,
+    kompleksitas: normalisasiKompleksitas(s.kompleksitas),
     pembahasan: s.pembahasan,
   }
   if ((s.tipe === 'pg' || s.tipe === 'pgk') && (tipe === 'pg' || tipe === 'pgk')) {
@@ -148,9 +149,18 @@ function bersihkan<T>(x: T): T {
 }
 
 function hitungRingkasan(soal: Soal[]) {
+  const jumlahPerTipe: Partial<Record<TipeSoal, number>> = {}
+  const jumlahPerKompleksitas: Partial<Record<KompleksitasSoal, number>> = {}
+  for (const s of soal) {
+    jumlahPerTipe[s.tipe] = (jumlahPerTipe[s.tipe] ?? 0) + 1
+    const k = normalisasiKompleksitas(s.kompleksitas)
+    jumlahPerKompleksitas[k] = (jumlahPerKompleksitas[k] ?? 0) + 1
+  }
   return {
     jumlahSoal: soal.length,
     totalPoin: Math.round(soal.reduce((t, s) => t + (Number(s.poin) || 0), 0) * 100) / 100,
+    jumlahPerTipe,
+    jumlahPerKompleksitas,
   }
 }
 

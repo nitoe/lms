@@ -4,7 +4,8 @@ import JawabanEditor from './JawabanEditor'
 import RichEditor from './RichEditor'
 import { AngkaInput } from './kontrol'
 import { masalahSoal, ubahTipe } from '../../lib/soal'
-import type { Soal, TipeSoal } from '../../types/soal'
+import type { KompleksitasSoal, Soal, TipeSoal } from '../../types/soal'
+import { NAMA_KOMPLEKSITAS, URUTAN_KOMPLEKSITAS, normalisasiKompleksitas } from '../../types/soal'
 import { NAMA_TIPE, URUTAN_TIPE } from '../../types/soal'
 
 type Props = {
@@ -114,6 +115,20 @@ export default function SoalEditorKartu({ soal, nomor, onChange }: Props) {
             </select>
           </label>
         )}
+        <label className="soal-kaki-kolom soal-kaki-kolom--kecil">
+          <span>Kompleksitas</span>
+          <select
+            className="soal-input"
+            value={normalisasiKompleksitas(soal.kompleksitas)}
+            onChange={(e) => onChange({ ...soal, kompleksitas: e.target.value as KompleksitasSoal })}
+            aria-label="Kompleksitas soal"
+            title={NAMA_KOMPLEKSITAS[normalisasiKompleksitas(soal.kompleksitas)]}
+          >
+            {URUTAN_KOMPLEKSITAS.map((k) => (
+              <option key={k} value={k}>{NAMA_KOMPLEKSITAS[k]}</option>
+            ))}
+          </select>
+        </label>
         <div className="soal-kaki-kolom soal-kaki-kolom--kecil">
           <span>Estimasi waktu</span>
           <AngkaInput ariaLabel="Estimasi waktu (menit)" nilai={soal.waktuMenit} min={0} maks={120}
