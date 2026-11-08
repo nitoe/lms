@@ -1,4 +1,4 @@
-import type { KompleksitasSoal, Soal, TipeSoal, OpsiSoal, PasanganJodoh, PernyataanBs } from '../types/soal'
+import type { Soal, TipeSoal, OpsiSoal, PasanganJodoh, PernyataanBs } from '../types/soal'
 import { normalisasiKompleksitas } from '../types/soal'
 import { soalBaru, idAcak } from './soal'
 import { teksPolos } from './html'
@@ -85,7 +85,6 @@ export function normalisasiSoalDariImport(raw: Record<string, unknown>, index: n
   // --- PG / PGK ---
   if (tipe === 'pg' || tipe === 'pgk') {
     const opsi: OpsiSoal[] = []
-    // Format array
     if (Array.isArray(raw.opsi)) {
       for (const o of raw.opsi) {
         if (typeof o === 'string' && o.trim()) {
@@ -95,7 +94,6 @@ export function normalisasiSoalDariImport(raw: Record<string, unknown>, index: n
         }
       }
     }
-    // Format kolom A/B/C/D
     if (opsi.length === 0) {
       for (const key of ['opsiA', 'opsiB', 'opsiC', 'opsiD', 'opsiE', 'A', 'B', 'C', 'D', 'E']) {
         const v = raw[key]
@@ -119,7 +117,6 @@ export function normalisasiSoalDariImport(raw: Record<string, unknown>, index: n
       if (!match) return { galat: `Baris ${index + 1}: kunci «${kunciRaw}» tidak cocok dengan opsi manapun.` }
       ;(soal as any).kunci = match.id
     } else {
-      // PGK: kunci bisa string dipisah koma atau array
       const daftarKunci = Array.isArray(raw.kunci) ? raw.kunci.map(String) : kunciRaw.split(/[,;]/).map((s) => s.trim()).filter(Boolean)
       const kunciIds: string[] = []
       for (const k of daftarKunci) {
@@ -232,9 +229,73 @@ export function parseJsonImport(teks: string): HasilParseImport {
 
 /** Parse CSV sederhana (kompatibel Excel). */
 export function parseCsvImport(teks: string): HasilParseImport {
-  // (implementasi CSV disederhanakan; fokus utama JSON untuk AI)
   const lines = teks.split(/\r?\n/).filter((l) => l.trim())
   if (lines.length < 2) return { metadata: { mapel: '' }, soal: [], galat: ['File CSV kosong atau hanya header.'] }
-  // ... (bisa dilengkapi nanti; untuk saat ini prioritaskan JSON)
-  return { metadata: { mapel: '' }, soal: [], galat: ['Import CSV sementara hanya mendukung format dasar. Gunakan JSON untuk hasil terbaik.'] }
+  const header = lines[0].split(',').map((h) => h.trim().replace(/^"|"$/g, '').toLowerCase())
+  const idx = (nama: string[]) => header.findIndex((h) => nama.some((n) => h.includes(n)))
+  const iMapel = idx(['mapel', 'mata pelajaran'])
+  const iTpId = idx(['tpid', 'tp id'])
+  const iTpNomor = idx(['tpnomor', 'tp nomor', 'nomor tp'])
+  const iTpNama = idx(['tpnama', 'tp nama', 'tujuan'])
+  if (iMapel < 0) return { metadata: { mapel: '' }, soal: [], galat: ['Kolom mata pelajaran tidak ditemukan.'] }
+
+  const meta: MetadataImport = {
+    mapel: '',
+    tpId: undefined,
+    tpNomor: undefined,
+    tpNama: undefined,
+  }
+  const soal: Partial<Soal>[] = []
+  const galat: string[] = []
+  const tpSet = new Set<string>()
+
+  for (let r = 1; r < lines.length; r++) {
+    const cols = lines[r].split(',').map((c) => c.trim().replace(/^"|"$/g, ''))
+    if (cols.every((c) => !c)) continue
+    const raw: Record<string, unknown> = {}
+    header.forEach((h, i) => { raw[h] = cols[i] || '' })
+    if (iMapel >= 0 && cols[iMapel]) meta.mapel = cols[iMapel]
+    if (iTpId >= 0 && cols[iTpId]) meta.tpId = cols[iTpId]
+    if (iTpNomor >= 0 && cols[iTpNomor]) meta.tpNomor = Number(cols[iTpNomor]) || undefined
+    if (iTpNama >= 0 && cols[iTpNama]) meta.tpNama = cols[iTpNama]
+    const tpKey = `${meta.tpId || ''}|${meta.tpNomor || ''}|${meta.tpNama || ''}`
+    if (tpKey) tpSet.add(tpKey)
+
+    const hasil = normalisasiSoalDariImport(raw, r - 1)
+    if (hasil.galat) galat.push(hasil.galat)
+    else if (hasil.soal) soal.push(hasil.soal)
+  }
+  if (tpSet.size > 1) galat.unshift('File memuat lebih dari satu TP. Import bank soal hanya mendukung satu TP agar mudah dievaluasi.')
+  return { metadata: meta, soal, galat }
+}
+
+/** Generate template JSON untuk satu TP. */
+export function buatTemplateJson(mapel: string, tp: TpRingkas): string {
+  const contoh = {
+    mapel,
+    tpId: tp.id,
+    tpNomor: tp.nomorTp,
+    tpNama: tp.namaTp,
+    catatan: 'Isi array soal. Jangan ubah mapel/tpId. Satu file = satu TP.',
+    soal: [
+      {
+        tipe: 'pg',
+        teks: 'Contoh narasi soal (boleh HTML sederhana).',
+        kompleksitas: 'L1',
+        poin: 1,
+        waktuMenit: 1,
+        opsi: ['Pilihan A', 'Pilihan B', 'Pilihan C', 'Pilihan D'],
+        kunci: 'A',
+        pembahasan: 'Penjelasan jawaban.',
+      },
+    ],
+  }
+  return JSON.stringify(contoh, null, 2)
+}
+
+/** Generate template CSV untuk satu TP. */
+export function buatTemplateCsv(mapel: string, tp: TpRingkas): string {
+  const header = 'mapel,tpId,tpNomor,tpNama,tipe,teks,kompleksitas,poin,waktuMenit,opsiA,opsiB,opsiC,opsiD,kunci,pembahasan'
+  const contoh = `${mapel},${tp.id},${tp.nomorTp},"${tp.namaTp}",pg,"Contoh narasi soal.",L1,1,1,"Pilihan A","Pilihan B","Pilihan C","Pilihan D",A,"Penjelasan."`
+  return `${header}\n${contoh}\n`
 }
