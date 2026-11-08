@@ -60,22 +60,38 @@ export function soalBaru(tipe: TipeSoal): Soal {
 export function ubahTipe(s: Soal, tipe: TipeSoal): Soal {
   if (s.tipe === tipe) return s
   const baru = soalBaru(tipe)
+  // WAJIB pertahankan id — kunci React di editor & aktifId mengandalkan id yang stabil.
   const dasar = {
+    id: s.id,
     teks: s.teks,
     gambarId: s.gambarId,
     poin: s.poin,
     waktuMenit: s.waktuMenit,
-    kompleksitas: normalisasiKompleksitas(s.kompleksitas),
+    kompleksitas: normalisasiKompleksitas((s as { kompleksitas?: unknown }).kompleksitas),
     pembahasan: s.pembahasan,
   }
   if ((s.tipe === 'pg' || s.tipe === 'pgk') && (tipe === 'pg' || tipe === 'pgk')) {
-    const kunciLama = s.tipe === 'pg' ? [s.kunci] : s.kunci
+    const opsi = Array.isArray(s.opsi) && s.opsi.length >= 2 ? s.opsi : baru.tipe === 'pg' || baru.tipe === 'pgk' ? (baru as { opsi: typeof s.opsi }).opsi : s.opsi
+    const kunciLama = s.tipe === 'pg'
+      ? [typeof s.kunci === 'string' ? s.kunci : '']
+      : (Array.isArray(s.kunci) ? s.kunci : [])
     if (tipe === 'pg') {
-      return { ...baru, ...dasar, tipe: 'pg', opsi: s.opsi, kunci: kunciLama[0] ?? s.opsi[0]?.id ?? '',
-        acakOpsi: s.acakOpsi, opsiGambar: s.opsiGambar }
+      return {
+        ...baru, ...dasar, tipe: 'pg',
+        opsi: opsi as Extract<Soal, { tipe: 'pg' }>['opsi'],
+        kunci: kunciLama[0] || (Array.isArray(opsi) ? opsi[0]?.id : '') || '',
+        acakOpsi: !!s.acakOpsi,
+        opsiGambar: !!s.opsiGambar,
+      }
     }
-    return { ...baru, ...dasar, tipe: 'pgk', opsi: s.opsi, kunci: kunciLama.filter(Boolean),
-      acakOpsi: s.acakOpsi, opsiGambar: s.opsiGambar, nilaiParsial: false }
+    return {
+      ...baru, ...dasar, tipe: 'pgk',
+      opsi: opsi as Extract<Soal, { tipe: 'pgk' }>['opsi'],
+      kunci: kunciLama.filter(Boolean),
+      acakOpsi: !!s.acakOpsi,
+      opsiGambar: !!s.opsiGambar,
+      nilaiParsial: false,
+    }
   }
   return { ...baru, ...dasar } as Soal
 }
@@ -109,29 +125,37 @@ export function masalahSoal(s: Soal): string[] {
   switch (s.tipe) {
     case 'pg':
     case 'pgk': {
-      const isi = s.opsi.filter((o) => o.teks.trim() || o.gambarId)
+      const opsi = Array.isArray(s.opsi) ? s.opsi : []
+      const isi = opsi.filter((o) => (o.teks ?? '').trim() || o.gambarId)
       if (isi.length < 2) m.push('Minimal 2 pilihan jawaban terisi.')
-      if (s.opsi.length !== isi.length) m.push('Ada pilihan jawaban yang kosong.')
-      if (s.tipe === 'pg' && !s.opsi.some((o) => o.id === s.kunci)) m.push('Pilih satu jawaban yang benar.')
+      if (opsi.length !== isi.length) m.push('Ada pilihan jawaban yang kosong.')
+      if (s.tipe === 'pg' && !opsi.some((o) => o.id === s.kunci)) m.push('Pilih satu jawaban yang benar.')
       if (s.tipe === 'pgk') {
-        if (s.kunci.length < 1) m.push('Pilih minimal satu jawaban yang benar.')
-        if (s.kunci.length === s.opsi.length) m.push('Semua pilihan ditandai benar — periksa lagi.')
+        const kunci = Array.isArray(s.kunci) ? s.kunci : []
+        if (kunci.length < 1) m.push('Pilih minimal satu jawaban yang benar.')
+        if (opsi.length > 0 && kunci.length === opsi.length) m.push('Semua pilihan ditandai benar — periksa lagi.')
       }
       break
     }
-    case 'jodoh':
-      if (s.pasangan.length < 2) m.push('Minimal 2 pasangan.')
-      if (s.pasangan.some((p) => (!p.kiri.trim() && !p.kiriGambarId) || !p.kanan.trim())) {
+    case 'jodoh': {
+      const pasangan = Array.isArray(s.pasangan) ? s.pasangan : []
+      if (pasangan.length < 2) m.push('Minimal 2 pasangan.')
+      if (pasangan.some((p) => (!(p.kiri ?? '').trim() && !p.kiriGambarId) || !(p.kanan ?? '').trim())) {
         m.push('Ada pasangan yang belum lengkap.')
       }
       break
-    case 'bs':
-      if (s.pernyataan.length < 1) m.push('Minimal 1 pernyataan.')
-      if (s.pernyataan.some((p) => !p.teks.trim())) m.push('Ada pernyataan yang kosong.')
+    }
+    case 'bs': {
+      const pernyataan = Array.isArray(s.pernyataan) ? s.pernyataan : []
+      if (pernyataan.length < 1) m.push('Minimal 1 pernyataan.')
+      if (pernyataan.some((p) => !(p.teks ?? '').trim())) m.push('Ada pernyataan yang kosong.')
       break
-    case 'isian':
-      if (!s.kunci.some((k) => k.trim())) m.push('Isi minimal satu kunci jawaban.')
+    }
+    case 'isian': {
+      const kunci = Array.isArray(s.kunci) ? s.kunci : []
+      if (!kunci.some((k) => (k ?? '').trim())) m.push('Isi minimal satu kunci jawaban.')
       break
+    }
     case 'uraian':
       break
   }

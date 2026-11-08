@@ -428,3 +428,9 @@ Jangan menyimpan blob base64 besar di dokumen Firestore.
 - Saat `simpanPaket`, denormalisasi `jumlahPerTipe` dan `jumlahPerKompleksitas` di dokumen paket (filter daftar tanpa menghitung ulang di klien jika field sudah ada).
 - Filter/kelompok di `BankSoalPanel` memakai data paket + array `soal` (bukan query Firestore tambahan). Jangan menambah composite index hanya untuk filter UI ini.
 - L1/L2/L3 adalah skala sederhana sekolah dasar, bukan salinan penuh Bloom; jangan mengganti ke kode lain tanpa migrasi data.
+
+## §46. Editor soal: ganti tipe WAJIB mempertahankan `id`
+
+- `ubahTipe()` membuat objek lewat `soalBaru()` (id acak baru). **Harus menimpa kembali `id: s.id`.**
+- Tanpa itu, `key={soal.id}` di `SoalEditorKartu` dan `aktifId` di `SoalEditor` kehilangan referensi → form tipe non-PG tampak «hilang» / tidak bisa dipakai setelah ganti tipe.
+- `JawabanEditor` harus tahan data tidak lengkap (`opsi`/`pasangan`/`pernyataan`/`kunci` kosong atau bukan array) dengan fallback UI, bukan melempar runtime error.

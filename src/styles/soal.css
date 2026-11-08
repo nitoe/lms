@@ -192,9 +192,59 @@
 .soal-kunci { width: 1.15rem; height: 1.15rem; margin-top: 0.65rem; flex: none; accent-color: var(--color-muh-600); cursor: pointer; }
 .soal-nomor { display: grid; place-items: center; width: 1.6rem; height: 2.4rem; flex: none; font-size: 0.75rem; font-weight: 700; color: var(--color-muted); }
 .soal-opsi-isi { flex: 1; min-width: 0; display: grid; gap: 0.4rem; }
-.soal-opsi--jodoh .soal-opsi-isi, .soal-opsi--bs .soal-opsi-isi { min-width: 7rem; }
-.soal-opsi--jodoh, .soal-opsi--bs { flex-wrap: wrap; }
-.soal-panah { align-self: center; color: var(--color-muted); padding-top: 0.2rem; }
+.soal-opsi--jodoh, .soal-opsi--bs {
+  flex-wrap: nowrap;
+  align-items: flex-start;
+}
+.soal-opsi-aksi {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  flex: none;
+}
+.soal-jodoh-grid {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  gap: 0.45rem;
+  align-items: start;
+}
+@media (max-width: 640px) {
+  .soal-opsi--jodoh { flex-wrap: wrap; }
+  .soal-jodoh-grid {
+    grid-template-columns: 1fr;
+    width: 100%;
+  }
+  .soal-opsi--jodoh .soal-panah { justify-self: center; transform: rotate(90deg); }
+  .soal-opsi--bs { flex-wrap: wrap; }
+}
+.soal-jodoh-kepala {
+  display: none;
+  grid-template-columns: 1.6rem minmax(0, 1fr) auto minmax(0, 1fr) 3.2rem;
+  gap: 0.5rem;
+  padding: 0 0 0.15rem;
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: var(--color-muted);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+@media (min-width: 641px) {
+  .soal-jodoh-kepala { display: grid; }
+}
+.soal-jodoh-label { grid-column: auto; }
+.soal-jodoh-spasi { width: 1.2rem; }
+.soal-jodoh-spasi-aksi { width: 3rem; }
+.soal-panah {
+  align-self: center;
+  color: var(--color-muted);
+  font-size: 1rem;
+  line-height: 1;
+  padding: 0.4rem 0.1rem;
+  user-select: none;
+}
+.soal-opsi--bs .soal-segmen { flex: none; margin-top: 0.15rem; }
 .soal-input {
   width: 100%; border: 1px solid var(--color-border); border-radius: 0.6rem; background: #fafafc; padding: 0.55rem 0.75rem;
   font-size: 0.9rem; font-family: inherit; color: #1a1d33;

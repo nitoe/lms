@@ -3,6 +3,13 @@
 > Append-only: entri baru ditambahkan di BAWAH, entri lama tidak diubah.
 > Versi mengacu ke `package.json` (saat ini `0.1.0`); belum ada rilis bertag.
 
+## 2026-11-08 — Editor bank soal: semua tipe soal dapat dipakai
+
+- **Bug kritis:** `ubahTipe()` sebelumnya mengganti `id` soal → daftar samping/`aktifId` kehilangan fokus sehingga form PG kompleks, menjodohkan, B/S, isian, dan uraian tampak tidak berfungsi. Id kini dipertahankan.
+- **`JawabanEditor`:** form diperkuat untuk keenam tipe (fallback array kosong, label jelas, saklar skor sebagian / abaikan kapital). Layout menjodohkan 2 kolom responsif.
+- **`masalahSoal`:** aman terhadap field array yang hilang/rusak.
+- ANTIREGRESI §46.
+
 ## 2026-11-08 — Bank soal: kompleksitas L1–L3, filter & pengelompokan
 
 - **Model:** field `kompleksitas` (`L1` | `L2` | `L3`) pada setiap soal; denormalisasi `jumlahPerTipe` + `jumlahPerKompleksitas` di `lms_paket_soal` saat simpan. Default soal baru = L1; dokumen lama dinormalisasi ke L1.
