@@ -4,12 +4,14 @@ import { useAuth } from '../context/AuthContext'
 import { daftarRuangKelas, parseRuangId } from '../lib/kelasLms'
 import { aksenMapel, inisialMapel } from '../lib/uiAksen'
 import MateriPanel from '../components/MateriPanel'
+import KuisPanel from '../components/KuisPanel'
 
-type TabId = 'pengumuman' | 'materi' | 'tugas'
+type TabId = 'pengumuman' | 'materi' | 'kuis' | 'tugas'
 
 const TABS: { id: TabId; label: string }[] = [
   { id: 'pengumuman', label: 'Pengumuman' },
   { id: 'materi', label: 'Materi' },
+  { id: 'kuis', label: 'Kuis' },
   { id: 'tugas', label: 'Tugas' },
 ]
 
@@ -94,6 +96,7 @@ export default function KelasDetail() {
         </div>
       )}
       {tab === 'materi' && <MateriPanel kelas={judulKelas} mapel={judulMapel} />}
+      {tab === 'kuis' && <KuisPanel kelas={judulKelas} mapel={judulMapel} />}
       {tab === 'tugas' && (
         <div className="lms-empty">
           <p className="font-medium text-slate-700">Tugas segera hadir</p>
