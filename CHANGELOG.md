@@ -206,9 +206,8 @@
 - File: `src/types/soal.ts` (`BATAS_SOAL_PER_PAKET`).
 - ANTIREGRESI §58.
 
-## 2026-11-08 — Perbaiki batas 100 soal di Firestore rules + vite.config
+## 2026-11-08 — Perbaiki vite.config.ts untuk Vite 8
 
-- **firestore.rules**: batas `soal.size()` pada `lms_paket_soal` (create & update) dinaikkan dari 100 ke 300.
-- **vite.config.ts**: perbaiki error TS pada `manualChunks` (pakai bentuk fungsi), naikkan `chunkSizeWarningLimit` ke 1000.
-- File: `firestore.rules` (lengkap), `vite.config.ts`.
-- ANTIREGRESI §60.
+- Hapus `minify: 'esbuild'` (Vite 8 memakai Oxc secara default; esbuild sudah tidak disertakan).
+- Ganti `__dirname` dengan `import.meta.dirname` agar kompatibel dengan config loader native.
+- File: `vite.config.ts`.
