@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
-import { buatPaket, daftarPaket, hapusPaket } from '../lib/soal'
+import { buatPaket, daftarPaket, hapusPaket, simpanPaket } from '../lib/soal'
 import { getTpMapelKelas } from '../lib/tpData'
 import type { TpRingkas } from '../types/materi'
 import type { KompleksitasSoal, PaketSoal, TipeSoal } from '../types/soal'
@@ -289,7 +289,6 @@ export default function BankSoalPanel({ kelas, mapel, ruangId }: Props) {
         namaGuru: profil?.nama,
       })
       // Simpan soal hasil import (buatPaket membuat 1 soal kosong; kita timpa)
-      const { simpanPaket } = await import('../lib/soal')
       await simpanPaket(id, { soal: hasil.soal as any })
 
       setInfoImport(`Berhasil mengimpor ${hasil.soal.length} soal ke paket baru.`)
@@ -332,7 +331,6 @@ export default function BankSoalPanel({ kelas, mapel, ruangId }: Props) {
       }
 
       const soalBaru = [...(paketTargetImport.soal || []), ...hasil.soal]
-      const { simpanPaket } = await import('../lib/soal')
       await simpanPaket(paketTargetImport.id, { soal: soalBaru as any })
 
       setInfoImport(`Berhasil menambahkan ${hasil.soal.length} soal ke paket «${paketTargetImport.judul}».`)

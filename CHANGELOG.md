@@ -205,3 +205,10 @@
 - Memudahkan pembuatan bank soal besar dengan variasi bentuk soal.
 - File: `src/types/soal.ts` (`BATAS_SOAL_PER_PAKET`).
 - ANTIREGRESI §58.
+
+## 2026-11-08 — Bersihkan dynamic import tidak efektif + optimasi Vite
+
+- Hapus dynamic import `simpanPaket` di `BankSoalPanel.tsx` (tidak efektif karena modul sudah diimpor statis). Diganti static import.
+- `vite.config.ts`: naikkan `chunkSizeWarningLimit` ke 1000, tambah `manualChunks` untuk react/tiptap/firebase, dan pengaturan build yang lebih baik.
+- File: `src/components/BankSoalPanel.tsx`, `vite.config.ts`.
+- ANTIREGRESI §59.

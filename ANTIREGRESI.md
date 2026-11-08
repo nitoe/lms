@@ -246,3 +246,8 @@
 - Konstanta `BATAS_SOAL_PER_PAKET` di `src/types/soal.ts` adalah 300.
 - Validasi di `simpanPaket` dan UI editor (tombol tambah) menggunakan konstanta ini.
 - Jangan turunkan kembali ke 100 tanpa keputusan eksplisit; bank soal dirancang untuk menampung banyak soal.
+
+## §59. Hindari dynamic import yang tidak efektif
+
+- Jika sebuah modul sudah diimpor secara statis di file yang sama, jangan gunakan dynamic `import()` untuk modul yang sama. Vite akan mengabaikan pemisahan chunk.
+- Gunakan static import untuk fungsi yang sering dipakai (mis. `simpanPaket` di BankSoalPanel).
