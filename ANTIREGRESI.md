@@ -246,3 +246,9 @@
 - Konstanta `BATAS_SOAL_PER_PAKET` di `src/types/soal.ts` adalah 300.
 - Validasi di `simpanPaket` dan UI editor (tombol tambah) menggunakan konstanta ini.
 - Jangan turunkan kembali ke 100 tanpa keputusan eksplisit; bank soal dirancang untuk menampung banyak soal.
+
+## §61. Fitur Analisis stimulus hanya untuk user tertentu
+
+- Tombol dan panel Analisis hanya muncul jika `user.uid === 'v4fQXsqCzYUtHrqcDM0u48sxIfn1'`.
+- Deteksi bersifat heuristik (kata kunci). Bukan pengganti review manual.
+- Jangan mengaktifkan untuk semua user tanpa keputusan eksplisit.

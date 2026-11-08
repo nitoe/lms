@@ -211,3 +211,12 @@
 - Hapus `minify: 'esbuild'` (Vite 8 memakai Oxc secara default; esbuild sudah tidak disertakan).
 - Ganti `__dirname` dengan `import.meta.dirname` agar kompatibel dengan config loader native.
 - File: `vite.config.ts`.
+
+## 2026-11-08 — Fitur Analisis stimulus (khusus user tertentu)
+
+- Tombol **Analisis** muncul di editor soal hanya untuk UID `v4fQXsqCzYUtHrqcDM0u48sxIfn1`.
+- Mendeteksi soal yang kemungkinan butuh stimulus/ilustrasi (berdasarkan kata kunci) tetapi belum punya `gambarId`.
+- Soal tersebut ditandai border merah di daftar kiri.
+- Panel kanan yang bisa di-toggle menampilkan daftar soal tersebut + klik untuk loncat ke soal.
+- File baru: `src/lib/analisisSoal.ts`. File diubah: `SoalEditor.tsx`, `soal.css`.
+- ANTIREGRESI §61.

@@ -52,6 +52,7 @@ export default function SoalEditor() {
   const [menuPos, setMenuPos] = useState<{ top: number; right: number } | null>(null)
   const [pengaturan, setPengaturan] = useState(false)
   const [pratinjau, setPratinjau] = useState(false)
+  const [panelAnalisis, setPanelAnalisis] = useState(false)
   const [tpList, setTpList] = useState<TpRingkas[]>([])
   const [seretDari, setSeretDari] = useState<number | null>(null)
 
@@ -209,6 +210,9 @@ export default function SoalEditor() {
   const totalMenit = soalList.reduce((t, s) => t + (Number(s.waktuMenit) || 0), 0)
   const totalPoin = soalList.reduce((t, s) => t + (Number(s.poin) || 0), 0)
   const jumlahBermasalah = soalList.filter((s) => masalahSoal(s).length > 0).length
+  const butuhStimulus = daftarSoalButuhStimulus(soalList)
+  const uidAnalisis = 'v4fQXsqCzYUtHrqcDM0u48sxIfn1'
+  const bolehAnalisis = user?.uid === uidAnalisis
   const bisaSiap = soalList.length > 0 && jumlahBermasalah === 0
 
   if (!ruang) {
@@ -250,6 +254,12 @@ export default function SoalEditor() {
             ⚙ Pengaturan
           </button>
           <button type="button" className="lms-btn-secondary" onClick={() => setPratinjau(true)}>▶ Pratinjau</button>
+          {bolehAnalisis && (
+            <button type="button" className={`lms-btn-secondary ${panelAnalisis ? 'ring-2 ring-amber-400' : ''}`}
+              onClick={() => setPanelAnalisis((v) => !v)} title="Analisis soal yang butuh stimulus/ilustrasi">
+              🔍 Analisis
+            </button>
+          )}
           {paket.status === 'siap' ? (
             <button type="button" className="lms-btn-secondary" onClick={() => ubah({ status: 'draf' })}>
               Kembalikan ke draf
@@ -424,6 +434,34 @@ export default function SoalEditor() {
           )}
         </main>
       </div>
+
+      {/* Panel Analisis Stimulus (khusus user tertentu) */}
+      {bolehAnalisis && panelAnalisis && (
+        <aside className="soal-panel-analisis" aria-label="Analisis stimulus">
+          <div className="soal-panel-analisis-header">
+            <strong>Soal butuh stimulus/ilustrasi</strong>
+            <button type="button" className="lms-btn-secondary" onClick={() => setPanelAnalisis(false)}>Tutup</button>
+          </div>
+          {butuhStimulus.length === 0 ? (
+            <p className="soal-kosong-kecil">Tidak ada soal yang terdeteksi butuh stimulus.</p>
+          ) : (
+            <ol className="soal-analisis-list">
+              {butuhStimulus.map(({ soal, nomor }) => (
+                <li key={soal.id}>
+                  <button type="button" className="soal-analisis-item" onClick={() => setAktifId(soal.id)}>
+                    <span className="soal-analisis-nomor">{nomor}</span>
+                    <span className="soal-analisis-teks">{ringkasSoal(soal).slice(0, 80)}</span>
+                  </button>
+                </li>
+              ))}
+            </ol>
+          )}
+          <p className="soal-analisis-catatan">
+            Deteksi berdasarkan kata kunci (gambar, tabel, perhatikan, dll.) dan belum ada gambar.
+          </p>
+        </aside>
+      )}
+
 
       {pratinjau && <PratinjauSoal paket={paket} onTutup={() => setPratinjau(false)} />}
 
