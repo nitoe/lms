@@ -3,6 +3,7 @@ import { EditorContent, useEditor } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import Subscript from '@tiptap/extension-subscript'
 import Superscript from '@tiptap/extension-superscript'
+import Underline from '@tiptap/extension-underline'
 import { Placeholder } from '@tiptap/extensions'
 import { bersihHtml } from '../../lib/html'
 
@@ -35,6 +36,7 @@ export default function RichEditor({ value, onChange, placeholder, minRem = 7, a
       }),
       Subscript,
       Superscript,
+      Underline,
       Placeholder.configure({ placeholder: placeholder ?? 'Ketik di sini…' }),
     ],
     content: bersihHtml(value),

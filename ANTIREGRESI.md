@@ -392,3 +392,19 @@ Jangan menyimpan blob base64 besar di dokumen Firestore.
 
 - Antrean simpan serial (`tertunda` + `sedangSimpan`) dengan debounce 1,2 detik. Jangan menambah `setDoc`/`updateDoc` paralel untuk dokumen yang sama (last-write-wins menimpa soal).
 - Batas 100 soal dan ±900 KB per dokumen (`BATAS_UKURAN_PAKET`); paket lebih besar harus dipecah. Syarat «Tandai siap» ada di `masalahSoal()`; tambah aturan baru di sana.
+
+## §41. LMS: font Inter harus self-host di `public/fonts/`
+
+- `@font-face` di `src/index.css` mengarah ke `/fonts/inter-latin-wght-normal.woff2`. File **wajib** ada di `public/fonts/`. Tanpa file, Vite/hosting mengembalikan `index.html` → OTS `invalid sfntVersion` / `Failed to decode downloaded font` di konsol (terlihat parah di halaman editor soal).
+- Jangan ganti ke CDN (CSP + ANTIREGRESI §5.2). Variabel Inter (woff2-variations) cukup satu file.
+
+## §42. LMS RichEditor: Underline + Placeholder TipTap v3
+
+- Tombol «U» memanggil `toggleUnderline()`. Extension `@tiptap/extension-underline` **harus** diimpor dan didaftarkan; StarterKit tidak menyertakannya.
+- `Placeholder` dari `@tiptap/extensions` (bukan path lama). Kedua paket dicantumkan eksplisit di `package.json` agar lockfile stabil.
+
+## §43. LMS rules: `lms_kuis` / `lms_soal` memuat kunci
+
+- Sama seperti `lms_paket_soal`: dokumen soal kuis berisi kunci jawaban. `allow read` hanya `lihatMapelKelas` (guru kelas×mapel / admin). Jangan membuka ke `isSiswaLms()` sampai ada koleksi salinan tanpa kunci (Fase 2b).
+- `lms_soal` memakai `get()` ke dokumen `lms_kuis` induk untuk cek penugasan; klien harus memastikan `kuisId` valid sebelum tulis.
+- Storage gambar: `lms/kuis/{kuisId}/…` hanya `isLoggedIn()` staf (token siswa dikecualikan di `storage.rules`).

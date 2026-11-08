@@ -3,6 +3,13 @@
 > Append-only: entri baru ditambahkan di BAWAH, entri lama tidak diubah.
 > Versi mengacu ke `package.json` (saat ini `0.1.0`); belum ada rilis bertag.
 
+## 2026-11-08 — Perbaikan editor bank soal + rules modul Kuis
+
+- **Font Inter**: file `public/fonts/inter-latin-wght-normal.woff2` ditambahkan (self-host). Sebelumnya path `@font-face` mengarah ke file yang tidak ada, sehingga dev-server mengembalikan HTML → browser gagal decode font (`OTS parsing error: invalid sfntVersion`, `Failed to decode downloaded font`).
+- **RichEditor (TipTap)**: ekstensi `Underline` dipasang (`@tiptap/extension-underline`) karena tombol garis bawah memanggil `toggleUnderline` tanpa extension → error runtime. Dependensi eksplisit `@tiptap/extensions` (Placeholder) dan `@tiptap/extension-underline` ditambah di `package.json`.
+- **`firestore.rules`** (file lengkap, salin ke SDM01Penilaian): blok baru `lms_kuis` dan `lms_soal`. Baca/tulis hanya guru kelas×mapel (atau admin hapus); soal memuat kunci (`opsi.benar`, `jawabanIsian`, …) jadi siswa **tidak** boleh baca (sama prinsip §38). Query klien wajib `where kelas + mapel` (kuis) / `where kuisId` (soal).
+- **`storage.rules`** (file lengkap): path `lms/kuis/{kuisId}/{fileName}` — unggah/baca staf, maks 5 MB image.
+
 ## Belum dirilis (basis: package.json 0.1.0) — Perbaikan keamanan & dokumentasi
 
 - `firestore.rules`: ditulis ulang. Pendaftaran `users` hanya sebagai `orangtua`+`pending` (sebelumnya pengguna login mana pun bisa membuat profil dengan role apa pun, termasuk `admin`). Orang tua hanya boleh `get` anaknya sendiri di `siswa` (sebelumnya bisa `list` semua siswa). Guru hanya boleh mengubah `tamatIqro` pada `siswa`; `create/delete` siswa khusus admin. `setoran`/`menulis_log` dibatasi per kelas yang diampu dan immutable. Koleksi `students` dan `nilai` dihapus dari rules. **Belum di-deploy** — jalankan `npm run deploy:rules` setelah uji.
