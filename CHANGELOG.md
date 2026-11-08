@@ -262,3 +262,14 @@
 - Hapus `src/components/KuisBuilder.tsx` (model kuis lama; tidak diimpor setelah alur snapshot dari bank soal).
 - `src/lib/susunKuis.ts`: buang import type `KompleksitasSoal` / `TipeSoal` yang tidak terpakai (TS6196).
 
+
+## 2026-11-09 — Kuis: pengelompokan otomatis menurut bentuk soal + instruksi bagian
+
+- **Masalah:** setelah soal disusun (manual/otomatis) dari bank, urutannya belum terkelompok menurut bentuk, sehingga siswa berpotensi bingung saat mengerjakan.
+- **Perbaikan:**
+  - Di halaman detail kuis, soal ditampilkan **dikelompokkan** menurut `URUTAN_TIPE` (PG → PG kompleks → Menjodohkan → Benar/Salah → Isian → Uraian).
+  - Setiap kelompok menampilkan **instruksi lengkap dan jelas**.
+  - Tombol **Kelompokkan menurut bentuk** menyusun ulang array `soal` di state (urutan relatif dalam kelompok tetap); user kemudian menekan Simpan.
+- File: `src/components/KuisDetail.tsx` (tambah `INSTRUKSI_TIPE` + tampilan berkelompok).
+- ANTIREGRESI §65.
+- Catatan ke depan: struktur kelompok + instruksi ini menjadi dasar ekspor Word/PDF sesuai template sekolah.

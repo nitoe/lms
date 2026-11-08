@@ -273,3 +273,11 @@
 
 64.6 Batas: ≤100 soal per kuis, ≤12 paket sumber. Ukuran dokumen Firestore 1 MiB — hindari menyalin gambar data-URL besar ke dalam snapshot (gambar tetap lewat `lms_gambar` id).
 
+
+## §65. Pengelompokan soal kuis menurut bentuk
+
+- Urutan bagian memakai `URUTAN_TIPE` dari `src/types/soal.ts` (pg → pgk → jodoh → bs → isian → uraian).
+- Instruksi setiap bentuk ada di konstanta `INSTRUKSI_TIPE` di `KuisDetail.tsx`. Jangan mengubah teks instruksi tanpa keputusan eksplisit (berpengaruh ke siswa dan nantinya cetak).
+- Tombol “Kelompokkan menurut bentuk” hanya mengubah urutan array `soal` di state. Persistensi terjadi saat guru menekan Simpan perubahan.
+- Tampilan selalu mengelompokkan (meski array di dokumen belum terurut). 
+- Bila `acakSoal` aktif, kebijakan acak sebaiknya tetap menghormati kelompok bentuk (acak di dalam bagian), atau sesuai keputusan sekolah nanti saat implementasi siswa.
