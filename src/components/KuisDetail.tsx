@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { updateKuis } from '../lib/kuis'
+import { daftarPaket } from '../lib/soal'
 import { hitungRingkasanKuis } from '../lib/susunKuis'
 import { teksPolos } from '../lib/html'
 import type { JenisPenilaianKuis, KuisLms, SoalKuis } from '../types/kuis'
@@ -108,6 +109,39 @@ export default function KuisDetail({ kuis, onUpdated }: Props) {
     }
     setSoal(sorted)
     setInfo('Soal dikelompokkan menurut bentuk. Jangan lupa Simpan perubahan.')
+  }
+
+  async function perbaruiTpDariPaket() {
+    if (!kuis.sumberPaketIds?.length) {
+      setInfo('Kuis ini tidak memiliki paket sumber.')
+      return
+    }
+    setBusy(true)
+    setError('')
+    try {
+      const semua = await daftarPaket(kuis.kelas, kuis.mapel)
+      const tpMap = new Map<string, string>()
+      for (const pid of kuis.sumberPaketIds) {
+        const pk = semua.find((x) => x.id === pid)
+        if (pk?.tpId && pk.tpNama) {
+          const label = pk.tpNomor ? `TP ${pk.tpNomor}. ${pk.tpNama}` : pk.tpNama
+          tpMap.set(pk.tpId, label)
+        }
+      }
+      const ids = [...tpMap.keys()]
+      const names = [...tpMap.values()]
+      setTpInput(names.join('\n'))
+      await updateKuis(kuis.id, {
+        tpIds: ids.length ? ids : undefined,
+        tpNamaList: names.length ? names : undefined,
+      })
+      setInfo(ids.length ? `TP diperbarui (${ids.length} TP).` : 'Tidak ada TP ditemukan pada paket sumber.')
+      onUpdated?.()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Gagal memperbarui TP.')
+    } finally {
+      setBusy(false)
+    }
   }
 
   async function simpan() {
@@ -248,9 +282,14 @@ export default function KuisDetail({ kuis, onUpdated }: Props) {
               <p className="text-xs text-slate-400 italic">Belum ada TP. Susun ulang kuis dari paket yang sudah memiliki TP, atau TP akan muncul setelah kuis dibuat dari paket bank soal.</p>
             )}
           </div>
-          <p className="text-[11px] text-slate-500">
-            Daftar ini terisi otomatis dari TP pada paket bank soal yang dipilih saat menyusun kuis. Berlaku untuk semua jenis penilaian.
-          </p>
+          <div className="flex items-center gap-2 mt-1">
+            <button type="button" className="lms-btn-secondary text-xs" disabled={busy} onClick={() => void perbaruiTpDariPaket()}>
+              Perbarui TP dari paket
+            </button>
+            <p className="text-[11px] text-slate-500">
+              Berguna untuk kuis lama. Sistem akan membaca ulang TP dari paket sumber.
+            </p>
+          </div>
         </div>
       </section>
 
