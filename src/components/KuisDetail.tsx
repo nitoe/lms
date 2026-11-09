@@ -44,7 +44,7 @@ export default function KuisDetail({ kuis, onUpdated }: Props) {
   const [waktuSelesai, setWaktuSelesai] = useState(kuis.waktuSelesai ?? '')
   const [token, setToken] = useState(kuis.token ?? '')
   const [jenisPenilaian, setJenisPenilaian] = useState<JenisPenilaianKuis>(kuis.jenisPenilaian ?? 'latihan')
-  const [tpInput, setTpInput] = useState((kuis.tpNamaList ?? kuis.tpIds ?? []).map(bersihNamaTp).filter(Boolean).join('\n'))
+  const [tpList, setTpList] = useState<string[]>((kuis.tpNamaList ?? kuis.tpIds ?? []).map(bersihNamaTp).filter(Boolean))
   const [nilaiPerTp, setNilaiPerTp] = useState<Record<string, number>>(kuis.nilaiPerTp ?? {})
 
   useEffect(() => {
@@ -58,7 +58,7 @@ export default function KuisDetail({ kuis, onUpdated }: Props) {
     setWaktuSelesai(kuis.waktuSelesai ?? '')
     setToken(kuis.token ?? '')
     setJenisPenilaian(kuis.jenisPenilaian ?? 'latihan')
-    setTpInput((kuis.tpNamaList ?? kuis.tpIds ?? []).map(bersihNamaTp).filter(Boolean).join('\n'))
+    setTpList((kuis.tpNamaList ?? kuis.tpIds ?? []).map(bersihNamaTp).filter(Boolean))
     setNilaiPerTp(kuis.nilaiPerTp ?? {})
   }, [kuis])
 
@@ -139,7 +139,7 @@ export default function KuisDetail({ kuis, onUpdated }: Props) {
       }
       const ids = [...tpMap.keys()]
       const names = [...tpMap.values()]
-      setTpInput(names.join('\n'))
+      setTpList(names)
       await updateKuis(kuis.id, {
         tpIds: ids.length ? ids : undefined,
         tpNamaList: names.length ? names : undefined,
@@ -162,7 +162,7 @@ export default function KuisDetail({ kuis, onUpdated }: Props) {
     setError('')
     setInfo('')
     try {
-      const tpList = tpInput.split(/\n|,/).map(s => s.trim()).filter(Boolean)
+      const daftarTp = tpList
       await updateKuis(kuis.id, {
         judul: judul.trim(),
         deskripsi: deskripsi.trim() || undefined,
@@ -174,8 +174,8 @@ export default function KuisDetail({ kuis, onUpdated }: Props) {
         waktuSelesai: waktuSelesai || undefined,
         token: token.trim() || undefined,
         jenisPenilaian,
-        tpIds: tpList.length ? tpList : undefined,
-        tpNamaList: tpList.length ? tpList : undefined,
+        tpIds: daftarTp.length ? daftarTp : undefined,
+        tpNamaList: daftarTp.length ? daftarTp : undefined,
         nilaiPerTp: Object.keys(nilaiPerTp).length ? nilaiPerTp : undefined,
         sumberNilai: Object.keys(nilaiPerTp).length ? 'manual' : undefined,
       })
@@ -274,16 +274,12 @@ export default function KuisDetail({ kuis, onUpdated }: Props) {
             TP yang diukur (terisi otomatis dari paket soal)
           </div>
           <div className="rounded border border-slate-200 bg-white p-2 min-h-[60px]">
-            {tpInput.trim() ? (
+            {tpList.length > 0 ? (
               <ul className="space-y-1">
-                {tpInput.split(/\n|,/).map(s => s.trim()).filter(Boolean).map((tp, i) => (
-                  <li key={i} className="flex items-center justify-between text-sm bg-slate-50 rounded px-+2 py-1">
-                    <span>{tp}</span>
-                    <button type="button" className="text-xs text-red-600" onClick={() => {
-                      const list = tpInput.split(/\n|,/).map(x => x.trim()).filter(Boolean)
-                      list.splice(i, 1)
-                      setTpInput(list.join('\n'))
-                    }}>hapus</button>
+                {tpList.map((tp, i) => (
+                  <li key={i} className="flex items-start justify-between gap-2 text-sm bg-slate-50 rounded px-2 py-1.5">
+                    <span className="whitespace-pre-wrap break-words flex-1">{tp}</span>
+                    <button type="button" className="text-xs text-red-600 shrink-0" onClick={() => setTpList((prev) => prev.filter((_, idx) => idx !== i))}>hapus</button>
                   </li>
                 ))}
               </ul>
@@ -316,7 +312,7 @@ export default function KuisDetail({ kuis, onUpdated }: Props) {
             Untuk guru yang ingin langsung memasukkan nilai tanpa analisis jawaban. Nanti jika ada hasil analisis, nilai analisis yang diutamakan.
           </p>
           <div className="space-y-2">
-            {tpInput.split(/\n|,/).map(s => s.trim()).filter(Boolean).map((tp) => (
+            {tpList.map((tp) => (
               <div key={tp} className="flex items-center gap-3">
                 <div className="flex-1 text-sm text-slate-700 truncate">{tp}</div>
                 <input
@@ -331,7 +327,7 @@ export default function KuisDetail({ kuis, onUpdated }: Props) {
                 />
               </div>
             ))}
-            {tpInput.trim() === '' && (
+            {tpList.length === 0 && (
               <p className="text-xs text-slate-500">Isi daftar TP di atas terlebih dahulu.</p>
             )}
           </div>
