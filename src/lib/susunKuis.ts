@@ -61,6 +61,51 @@ function cocokFilter(s: Soal, f: FilterSusunKuis | undefined): boolean {
 }
 
 /**
+ * Proporsi target per bentuk soal (lebih mudah = lebih banyak).
+ * Total bobot = 100. Dipakai bila user tidak menentukan jumlahPerTipe.
+ */
+const BOBOT_TIPE: Record<string, number> = {
+  pg: 35,      // paling mudah
+  pgk: 20,
+  isian: 15,
+  bs: 12,
+  jodoh: 12,
+  uraian: 6,   // paling sulit
+}
+
+/** Hitung jumlah target per tipe yang jumlahnya tepat = batas, hanya untuk tipe yang diizinkan. */
+function hitungProporsiTipe(
+  batas: number,
+  tipeDiizinkan: string[] | undefined,
+): Partial<Record<string, number>> {
+  const tipe = (tipeDiizinkan && tipeDiizinkan.length > 0)
+    ? tipeDiizinkan
+    : Object.keys(BOBOT_TIPE)
+  const aktif = tipe.filter((t) => BOBOT_TIPE[t] != null)
+  if (aktif.length === 0 || batas <= 0) return {}
+
+  const totalBobot = aktif.reduce((s, t) => s + BOBOT_TIPE[t], 0)
+  const hasil: Record<string, number> = {}
+  let sisa = batas
+  const ideal = aktif.map((t) => ({
+    t,
+    raw: (BOBOT_TIPE[t] / totalBobot) * batas,
+  }))
+
+  // Floor dulu
+  for (const x of ideal) {
+    hasil[x.t] = Math.floor(x.raw)
+    sisa -= hasil[x.t]
+  }
+  // Sisa dibagikan ke yang fractional-nya terbesar
+  ideal.sort((a, b) => (b.raw - Math.floor(b.raw)) - (a.raw - Math.floor(a.raw)))
+  for (let i = 0; i < sisa && i < ideal.length; i++) {
+    hasil[ideal[i].t] = (hasil[ideal[i].t] || 0) + 1
+  }
+  return hasil
+}
+
+/**
  * Susun otomatis sesuai filter.
  * - Poin semua = 1 (user ubah nanti).
  * - Hormati jumlahPerTipe / jumlahPerKompleksitas selama stok cukup.
@@ -96,10 +141,13 @@ export function susunOtomatis(
     }
   }
 
+  // Jika user tidak menentukan jumlahPerTipe, gunakan proporsi menurut kompleksitas bentuk
   const jpt = filter?.jumlahPerTipe
-  if (jpt) {
+    ?? hitungProporsiTipe(batas, filter?.tipe)
+
+  if (jpt && Object.keys(jpt).length > 0) {
     for (const t of URUTAN_TIPE) {
-      const n = jpt[t]
+      const n = (jpt as Record<string, number>)[t]
       if (typeof n === 'number' && n > 0) {
         ambil((s) => s.tipe === t, n)
       }

@@ -288,3 +288,15 @@
 - **Perbaikan:** dinaikkan menjadi 3000 karakter di UI (`GambarSoal.tsx` maxLength) dan di Cloud Function (`generateSoalLmsAi.js` potong petunjukGambar).
 - File: `src/components/soal/GambarSoal.tsx` (LMS) + `functions/generateSoalLmsAi.js` (SDM01Penilaian, versi lengkap).
 - ANTIREGRESI §67.
+
+## 2026-11-09 — Kuis otomatis: proporsi soal menurut kompleksitas bentuk
+
+- **Perbaikan:** saat mode otomatis / otomatis+AI dan user hanya mengisi total jumlah soal (tanpa jumlahPerTipe), sistem sekarang membagi soal secara proporsional menurut kompleksitas bentuk:
+  - PG paling banyak (~35%)
+  - PG kompleks ~20%
+  - Isian ~15%
+  - Benar/Salah & Menjodohkan ~12% masing-masing
+  - Uraian paling sedikit (~6%)
+- Jika stok tipe tertentu kurang, sisa diisi dari tipe lain yang masih tersedia (perilaku lama).
+- File: `src/lib/susunKuis.ts`.
+- ANTIREGRESI §68.

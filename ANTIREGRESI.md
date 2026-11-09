@@ -294,3 +294,10 @@
 - Deskripsi ilustrasi AI (petunjukGambar) minimal 3000 karakter di UI dan di server.
 - Jangan turunkan kembali ke 500/600; prompt pendek sering menghasilkan ilustrasi tidak stabil atau tidak sesuai.
 - Setelah mengubah `functions/generateSoalLmsAi.js`, deploy ulang Cloud Functions dari repo SDM01Penilaian.
+
+## §68. Proporsi soal kuis otomatis
+
+- Bila `jumlahPerTipe` tidak diisi, `susunOtomatis` memakai `hitungProporsiTipe` berdasarkan `BOBOT_TIPE` (PG terbanyak, uraian tersedikit).
+- Jangan mengubah bobot tanpa keputusan eksplisit; proporsi ini mengikuti prinsip soal lebih mudah lebih banyak.
+- Jika user secara eksplisit mengisi `jumlahPerTipe`, proporsi otomatis diabaikan.
+- Sisa kuota setelah proporsi tetap diisi acak dari kandidat yang cocok (tidak memaksa tipe yang stoknya habis).
