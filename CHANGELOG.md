@@ -472,3 +472,24 @@
 - File LMS: `pages/RekapKuis.tsx`, `lib/sinkronNilaiKuis.ts`, `App.tsx`, `Layout.tsx`.
 - File SDM01Penilaian: `functions/sinkronNilaiKuisLms.js`, `index.js`.
 
+
+## 2026-11-09 — UI Input offline: status siswa, progress, soal penuh, alur cepat
+
+- **Panel Input offline** diperbaiki agar guru lebih cepat mengisi banyak siswa:
+  - Badge **sudah diinput** + skor terakhir di dropdown siswa; urutkan yang belum diinput di atas.
+  - Cari nama siswa.
+  - Progress bar jumlah soal terisi; kartu soal hijau bila sudah diisi.
+  - Teks soal tampil penuh (RichView) + gambar soal/opsi bila ada.
+  - Peringatan bila siswa sudah pernah diinput (percobaan baru).
+  - Konfirmasi bila menyimpan dengan soal belum lengkap.
+  - Sticky action bar: Simpan, Bantu AI, Terapkan AI, **Siswa berikutnya (belum diinput)**, Kosongkan form.
+- File: `src/components/OfflineKuisPanel.tsx`.
+
+## 2026-11-09 — Offline: muat ulang jawaban tersimpan + perbaiki bantu nilai AI
+
+- **Bug:** memilih ulang siswa yang sudah diinput mengosongkan form meski skor ada di Hasil siswa.
+  - **Perbaikan:** saat pilih siswa, muat `jawaban` + skor isian/uraian dari percobaan terbaru (`lms_jawaban`); set `lastJawabanId` agar AI & skor manual langsung tersedia.
+  - Tombol **Kosongkan → percobaan baru** jika guru ingin input ulang dari nol.
+- **Bug:** Bantu nilai AI (isian/uraian) di tab Input offline sering tidak jalan karena `jawabanId` hanya di-set setelah simpan di sesi yang sama.
+  - **Perbaikan:** AI memakai `jawabanId` dokumen tersimpan; alur Terapkan skor AI memanggil `nilaiManualKuisLms` per butir lalu refresh status; tombol **Simpan skor ini** per soal isian/uraian.
+- File: `src/components/OfflineKuisPanel.tsx`.
