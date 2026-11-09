@@ -24,7 +24,7 @@ import {
   URUTAN_KOMPLEKSITAS,
   URUTAN_TIPE,
 } from '../types/soal'
-import KuisDetail from './KuisDetail'
+import KuisDetail, { INSTRUKSI_TIPE } from './KuisDetail'
 
 type Props = {
   kelas: string
@@ -32,6 +32,22 @@ type Props = {
 }
 
 type Langkah = 'daftar' | 'wizard' | 'detail'
+
+function urutkanMenurutBentuk(list: SoalKuis[]): SoalKuis[] {
+  const map = new Map<string, SoalKuis[]>()
+  for (const t of URUTAN_TIPE) map.set(t, [])
+  for (const s of list) {
+    const arr = map.get(s.tipe)
+    if (arr) arr.push(s)
+  }
+  const out: SoalKuis[] = []
+  for (const t of URUTAN_TIPE) {
+    out.push(...(map.get(t) ?? []))
+  }
+  return out
+}
+
+
 
 export default function KuisPanel({ kelas, mapel }: Props) {
   const { profil, user } = useAuth()
@@ -138,6 +154,8 @@ export default function KuisPanel({ kelas, mapel }: Props) {
         setPratinjau([])
         return
       }
+      // Otomatis kelompokkan menurut bentuk soal
+      soal = urutkanMenurutBentuk(soal)
       setPratinjau(soal)
 
       if (mode === 'otomatis_ai' || mode === 'otomatis') {
@@ -165,7 +183,7 @@ export default function KuisPanel({ kelas, mapel }: Props) {
     for (const d of dup) {
       buang.add(d.b)
     }
-    const sisa = pratinjau.filter((_, i) => !buang.has(i))
+    const sisa = urutkanMenurutBentuk(pratinjau.filter((_, i) => !buang.has(i)))
     setPratinjau(sisa)
     setPeringatanDuplikat([])
   }
@@ -546,18 +564,48 @@ export default function KuisPanel({ kelas, mapel }: Props) {
                 {busy ? 'Menyimpan…' : 'Simpan kuis'}
               </button>
             </div>
-            <ol className="max-h-64 overflow-auto space-y-1 text-sm">
-              {pratinjau.map((s, i) => (
-                <li key={`${s.sumberPaketId}-${s.id}-${i}`} className="border-b border-slate-50 py-1.5">
-                  <span className="text-slate-400 mr-1">{i + 1}.</span>
-                  {teksPolos(s.teks).slice(0, 120) || '(tanpa teks)'}
-                  <span className="ml-1 text-[10px] text-slate-400">
-                    {NAMA_TIPE[s.tipe]} · {s.kompleksitas || 'L1'} · {s.poin}p
-                    {s.sumberPaketJudul ? ` · ${s.sumberPaketJudul}` : ''}
-                  </span>
-                </li>
-              ))}
-            </ol>
+            <div className="max-h-80 overflow-auto space-y-4 text-sm">
+              {(() => {
+                const kelompok = new Map<string, SoalKuis[]>()
+                for (const t of URUTAN_TIPE) kelompok.set(t, [])
+                for (const s of pratinjau) {
+                  const arr = kelompok.get(s.tipe)
+                  if (arr) arr.push(s)
+                }
+                let no = 0
+                return URUTAN_TIPE.map((tipe) => {
+                  const items = kelompok.get(tipe) ?? []
+                  if (items.length === 0) return null
+                  return (
+                    <div key={tipe}>
+                      <div className="rounded bg-slate-50 px-2 py-1.5 border border-slate-100 mb-1">
+                        <div className="text-xs font-bold text-slate-700">
+                          {NAMA_TIPE[tipe]} ({items.length})
+                        </div>
+                        <div className="text-[11px] text-slate-500 leading-snug mt-0.5">
+                          {INSTRUKSI_TIPE[tipe]}
+                        </div>
+                      </div>
+                      <ol className="space-y-1 pl-1">
+                        {items.map((s, j) => {
+                          no += 1
+                          return (
+                            <li key={`${s.sumberPaketId}-${s.id}-${j}`} className="border-b border-slate-50 py-1">
+                              <span className="text-slate-400 mr-1">{no}.</span>
+                              {teksPolos(s.teks).slice(0, 110) || '(tanpa teks)'}
+                              <span className="ml-1 text-[10px] text-slate-400">
+                                {s.kompleksitas || 'L1'} · {s.poin}p
+                                {s.sumberPaketJudul ? ` · ${s.sumberPaketJudul}` : ''}
+                              </span>
+                            </li>
+                          )
+                        })}
+                      </ol>
+                    </div>
+                  )
+                })
+              })()}
+            </div>
           </section>
         )}
       </div>

@@ -270,6 +270,6 @@
   - Di halaman detail kuis, soal ditampilkan **dikelompokkan** menurut `URUTAN_TIPE` (PG → PG kompleks → Menjodohkan → Benar/Salah → Isian → Uraian).
   - Setiap kelompok menampilkan **instruksi lengkap dan jelas**.
   - Tombol **Kelompokkan menurut bentuk** menyusun ulang array `soal` di state (urutan relatif dalam kelompok tetap); user kemudian menekan Simpan.
-- File: `src/components/KuisDetail.tsx` (tambah `INSTRUKSI_TIPE` + tampilan berkelompok).
+- File: `src/components/KuisDetail.tsx` (tambah `INSTRUKSI_TIPE` + tampilan berkelompok) dan `src/components/KuisPanel.tsx` (pratinjau juga dikelompokkan + diurutkan otomatis saat susun).
 - ANTIREGRESI §65.
 - Catatan ke depan: struktur kelompok + instruksi ini menjadi dasar ekspor Word/PDF sesuai template sekolah.
