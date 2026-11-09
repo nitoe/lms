@@ -124,7 +124,8 @@ export default function KuisDetail({ kuis, onUpdated }: Props) {
       for (const pid of kuis.sumberPaketIds) {
         const pk = semua.find((x) => x.id === pid)
         if (pk?.tpId && pk.tpNama) {
-          const label = pk.tpNomor ? `TP ${pk.tpNomor}. ${pk.tpNama}` : pk.tpNama
+          const namaBersih = String(pk.tpNama).replace(/[\r\n]+/g, ' ').replace(/\s+/g, ' ').trim()
+          const label = pk.tpNomor ? `TP ${pk.tpNomor}. ${namaBersih}` : namaBersih
           tpMap.set(pk.tpId, label)
         }
       }
