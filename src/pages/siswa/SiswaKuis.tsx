@@ -139,6 +139,10 @@ type HasilKirim = {
   status: string
 }
 
+function kuisUntukSiswa(k: { aktif?: boolean; modePelaksanaan?: string }) {
+  return k.aktif === true && k.modePelaksanaan !== 'offline'
+}
+
 export default function SiswaKuis() {
   const { sesi } = useSiswa()
   const siswaId = sesi?.id ?? ''
@@ -159,7 +163,9 @@ export default function SiswaKuis() {
         where('aktif', '==', true),
       )
       const snap = await getDocs(q)
-      const kuisList = snap.docs.map((d) => ({ id: d.id, ...d.data() }) as KuisLms)
+      const kuisList = snap.docs
+        .map((d) => ({ id: d.id, ...d.data() }) as KuisLms)
+        .filter((k) => kuisUntukSiswa(k))
       setList(kuisList)
 
       const entries = await Promise.all(

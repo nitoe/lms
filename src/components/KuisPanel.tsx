@@ -26,6 +26,7 @@ import {
 } from '../types/soal'
 import KuisDetail, { INSTRUKSI_TIPE } from './KuisDetail'
 import HasilKuisPanel from './HasilKuisPanel'
+import OfflineKuisPanel from './OfflineKuisPanel'
 
 type Props = {
   kelas: string
@@ -60,7 +61,7 @@ export default function KuisPanel({ kelas, mapel }: Props) {
   const [busy, setBusy] = useState(false)
   const [langkah, setLangkah] = useState<Langkah>('daftar')
   const [selectedId, setSelectedId] = useState<string | null>(null)
-  const [detailTab, setDetailTab] = useState<'atur' | 'hasil'>('atur')
+  const [detailTab, setDetailTab] = useState<'atur' | 'hasil' | 'offline'>('atur')
 
   const [judul, setJudul] = useState('')
   const [deskripsi, setDeskripsi] = useState('')
@@ -285,22 +286,23 @@ export default function KuisPanel({ kelas, mapel }: Props) {
 
   if (langkah === 'detail' && selectedId) {
     const kuis = list?.find((k) => k.id === selectedId)
+    const offline = kuis?.modePelaksanaan === 'offline'
     return (
-      <div className="space-y-3">
+      <div className="space-y-4">
         <button
           type="button"
-          className="text-sm font-semibold text-muh-600 hover:underline"
+          className="inline-flex items-center gap-1 text-sm font-semibold text-muh-700 hover:text-muh-800"
           onClick={() => {
             setSelectedId(null)
             setDetailTab('atur')
             setLangkah('daftar')
           }}
         >
-          ← Kembali ke daftar kuis
+          <span aria-hidden>←</span> Kembali ke daftar kuis
         </button>
         {kuis ? (
           <>
-                        <div className="flex w-fit rounded-xl bg-slate-100/90 p-1">
+            <div className="flex w-fit flex-wrap rounded-xl bg-slate-100/90 p-1">
               <button
                 type="button"
                 className={
@@ -312,6 +314,19 @@ export default function KuisPanel({ kelas, mapel }: Props) {
               >
                 Atur kuis
               </button>
+              {offline && (
+                <button
+                  type="button"
+                  className={
+                    detailTab === 'offline'
+                      ? 'rounded-lg bg-muh-600 px-3.5 py-1.5 text-xs font-semibold text-white shadow-sm'
+                      : 'rounded-lg px-3.5 py-1.5 text-xs font-semibold text-slate-600 hover:bg-white hover:text-slate-900'
+                  }
+                  onClick={() => setDetailTab('offline')}
+                >
+                  Input offline
+                </button>
+              )}
               <button
                 type="button"
                 className={
@@ -325,12 +340,9 @@ export default function KuisPanel({ kelas, mapel }: Props) {
               </button>
             </div>
             {detailTab === 'atur' ? (
-              <KuisDetail
-                kuis={kuis}
-                onUpdated={async () => {
-                  await muat()
-                }}
-              />
+              <KuisDetail kuis={kuis} onUpdated={async () => { await muat() }} />
+            ) : detailTab === 'offline' && offline ? (
+              <OfflineKuisPanel kuis={kuis} onTersimpan={() => { void muat() }} />
             ) : (
               <HasilKuisPanel kuis={kuis} />
             )}

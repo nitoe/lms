@@ -203,6 +203,7 @@ export async function updateKuis(
       | 'filterSusun'
       | 'modeSusun'
       | 'sumberPaketIds'
+      | 'modePelaksanaan'
     >
   >,
 ): Promise<void> {

@@ -404,3 +404,12 @@ Jangan memaksa satu kolom sempit di desktop.
 56.3 Mode **kuis**: laporan kualitatif kelas. Unduhan laporan = HTML Word-compatible (.doc) di klien; tanpa dependency baru.
 
 56.4 Kunci Gemini hanya di secrets CF.
+
+
+## §57. Kuis offline
+
+57.1 `modePelaksanaan` default `online`. Offline: guru input di tab Input offline; portal siswa menyembunyikan kuis offline.
+
+57.2 Penulisan `lms_jawaban` offline hanya lewat CF `simpanJawabanOfflineKuis` (Admin SDK). Field `sumber: 'offline'`.
+
+57.3 Bantu AI offline memakai gate yang sama §56 (UID+email); skor diterapkan lewat `nilaiManualKuisLms`.

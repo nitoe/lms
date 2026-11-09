@@ -455,3 +455,12 @@
 - Hanya akun `arif.azwar79@gmail.com`.
 - File: `analisisKuisAi.ts`, `HasilKuisPanel.tsx`; CF `analisisKuisLmsAi.js` (mode kuis|siswa); ANTIREGRESI §56.
 
+## 2026-11-09 — Kuis offline: input jawaban guru + nilai otomatis + bantu AI
+
+- Field `modePelaksanaan`: `online` | `offline` di atur kuis.
+- Tab **Input offline** (jika offline): pilih siswa, isi jawaban, **Simpan & nilai otomatis** (CF `simpanJawabanOfflineKuis`, kunci di server).
+- Kuis offline tidak tampil di portal siswa.
+- Bantu nilai AI isian/uraian (akun `arif.azwar79@gmail.com`) setelah simpan → terapkan skor lewat `nilaiManualKuisLms`.
+- File LMS: `types/kuis.ts`, `lib/kuis.ts`, `lib/offlineKuis.ts`, `components/OfflineKuisPanel.tsx`, `KuisDetail.tsx`, `KuisPanel.tsx`, `SiswaKuis.tsx`.
+- File SDM01Penilaian: `functions/simpanJawabanOfflineKuis.js`, `functions/index.js`.
+

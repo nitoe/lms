@@ -9,6 +9,14 @@ export type ModeSusunKuis = 'manual' | 'otomatis' | 'otomatis_ai'
 
 export type JenisPenilaianKuis = 'latihan' | 'slm' | 'sts' | 'sas'
 
+/** Online = siswa kerjakan di LMS; offline = guru input jawaban. */
+export type ModePelaksanaanKuis = 'online' | 'offline'
+
+export const NAMA_MODE_PELAKSANAAN: Record<ModePelaksanaanKuis, string> = {
+  online: 'Online (siswa mengerjakan di LMS)',
+  offline: 'Offline (guru input jawaban)',
+}
+
 export const NAMA_JENIS_PENILAIAN: Record<JenisPenilaianKuis, string> = {
   latihan: 'Latihan (tidak masuk nilai)',
   slm: 'SLM (masuk nilai SLM TP)',
@@ -56,6 +64,8 @@ export interface KuisLms {
   waktuSelesai?: string
   /** Token opsional untuk akses online. */
   token?: string
+  /** Default online. Offline → input jawaban oleh guru. */
+  modePelaksanaan?: ModePelaksanaanKuis
   /** Tujuan penilaian. Default latihan. */
   jenisPenilaian?: JenisPenilaianKuis
   /** TP yang diukur. Untuk SLM biasanya 1, untuk STS/SAS bisa banyak. */

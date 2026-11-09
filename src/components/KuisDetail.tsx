@@ -3,8 +3,8 @@ import { updateKuis } from '../lib/kuis'
 import { daftarPaket } from '../lib/soal'
 import { hitungRingkasanKuis } from '../lib/susunKuis'
 import { teksPolos } from '../lib/html'
-import type { JenisPenilaianKuis, KuisLms, SoalKuis } from '../types/kuis'
-import { NAMA_JENIS_PENILAIAN } from '../types/kuis'
+import type { JenisPenilaianKuis, KuisLms, ModePelaksanaanKuis, SoalKuis } from '../types/kuis'
+import { NAMA_JENIS_PENILAIAN, NAMA_MODE_PELAKSANAAN } from '../types/kuis'
 import { NAMA_TIPE, URUTAN_TIPE, type TipeSoal } from '../types/soal'
 
 /** Instruksi lengkap per bentuk soal (untuk siswa dan nantinya cetak). */
@@ -44,6 +44,7 @@ export default function KuisDetail({ kuis, onUpdated }: Props) {
   const [waktuSelesai, setWaktuSelesai] = useState(kuis.waktuSelesai ?? '')
   const [token, setToken] = useState(kuis.token ?? '')
   const [jenisPenilaian, setJenisPenilaian] = useState<JenisPenilaianKuis>(kuis.jenisPenilaian ?? 'latihan')
+  const [modePelaksanaan, setModePelaksanaan] = useState<ModePelaksanaanKuis>(kuis.modePelaksanaan === 'offline' ? 'offline' : 'online')
   const [tpList, setTpList] = useState<string[]>((kuis.tpNamaList ?? kuis.tpIds ?? []).map(bersihNamaTp).filter(Boolean))
   const [nilaiPerTp, setNilaiPerTp] = useState<Record<string, number>>(kuis.nilaiPerTp ?? {})
 
@@ -58,6 +59,7 @@ export default function KuisDetail({ kuis, onUpdated }: Props) {
     setWaktuSelesai(kuis.waktuSelesai ?? '')
     setToken(kuis.token ?? '')
     setJenisPenilaian(kuis.jenisPenilaian ?? 'latihan')
+    setModePelaksanaan(kuis.modePelaksanaan === 'offline' ? 'offline' : 'online')
     setTpList((kuis.tpNamaList ?? kuis.tpIds ?? []).map(bersihNamaTp).filter(Boolean))
     setNilaiPerTp(kuis.nilaiPerTp ?? {})
   }, [kuis])
@@ -174,6 +176,7 @@ export default function KuisDetail({ kuis, onUpdated }: Props) {
         waktuSelesai: waktuSelesai || undefined,
         token: token.trim() || undefined,
         jenisPenilaian,
+        modePelaksanaan,
         tpIds: daftarTp.length ? daftarTp : undefined,
         tpNamaList: daftarTp.length ? daftarTp : undefined,
         nilaiPerTp: Object.keys(nilaiPerTp).length ? nilaiPerTp : undefined,
@@ -247,6 +250,25 @@ export default function KuisDetail({ kuis, onUpdated }: Props) {
               placeholder="Petunjuk singkat untuk siswa…"
             />
           </label>
+
+          <label className="space-y-1 sm:col-span-2">
+            <span className="text-xs font-semibold text-slate-600">Mode pelaksanaan</span>
+            <select
+              value={modePelaksanaan}
+              onChange={(e) => setModePelaksanaan(e.target.value as ModePelaksanaanKuis)}
+              className={inputCls}
+            >
+              {(Object.keys(NAMA_MODE_PELAKSANAAN) as ModePelaksanaanKuis[]).map((k) => (
+                <option key={k} value={k}>
+                  {NAMA_MODE_PELAKSANAAN[k]}
+                </option>
+              ))}
+            </select>
+            <span className="text-[11px] text-slate-400">
+              Offline: siswa tidak mengerjakan di LMS; guru menginput jawaban di tab «Input offline».
+            </span>
+          </label>
+
           <label className="space-y-1">
             <span className="text-xs font-semibold text-slate-600">Durasi (menit)</span>
             <input
