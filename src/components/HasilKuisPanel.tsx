@@ -13,6 +13,12 @@ import { teksPolos } from '../lib/html'
 import type { KuisLms, SoalKuis } from '../types/kuis'
 import { NAMA_JENIS_PENILAIAN, type JenisPenilaianKuis } from '../types/kuis'
 import { NAMA_TIPE, type TipeSoal } from '../types/soal'
+import { useAuth } from '../context/AuthContext'
+import {
+  analisisKuisDenganAi,
+  bolehAnalisisKuisAi,
+  type HasilAnalisisKuisAi,
+} from '../lib/analisisKuisAi'
 
 type Props = {
   kuis: KuisLms
@@ -114,6 +120,8 @@ function TabPill({
 
 /** Daftar nilai + analisis + penilaian manual. ANTIREGRESI §55. */
 export default function HasilKuisPanel({ kuis }: Props) {
+  const { user } = useAuth()
+  const bolehAi = bolehAnalisisKuisAi(user?.uid)
   const [list, setList] = useState<JawabanKuis[] | null>(null)
   const [error, setError] = useState('')
   const [mode, setMode] = useState<'siswa' | 'soal'>('siswa')
@@ -122,6 +130,9 @@ export default function HasilKuisPanel({ kuis }: Props) {
   const [skorDraft, setSkorDraft] = useState<Record<string, string>>({})
   const [busySoal, setBusySoal] = useState<string | null>(null)
   const [info, setInfo] = useState('')
+  const [analisisAi, setAnalisisAi] = useState<HasilAnalisisKuisAi | null>(null)
+  const [busyAi, setBusyAi] = useState(false)
+  const [errorAi, setErrorAi] = useState('')
 
   const muat = useCallback(async () => {
     setError('')
@@ -429,6 +440,122 @@ export default function HasilKuisPanel({ kuis }: Props) {
       {error && (
         <div className="rounded-xl border border-red-200 bg-red-50 px-3.5 py-2.5 text-sm text-red-800">
           {error}
+        </div>
+      )}
+
+
+      {bolehAi && (
+        <div className="overflow-hidden rounded-2xl border border-muh-100 bg-white shadow-sm">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-muh-50 bg-muh-50/40 px-4 py-3">
+            <div>
+              <h4 className="text-sm font-bold text-muh-900">Analisis AI</h4>
+              <p className="text-[11px] text-muh-700/80">
+                Interpretasi hasil, butir bermasalah, dan saran tindak lanjut (khusus akun Anda)
+              </p>
+            </div>
+            <button
+              type="button"
+              className="lms-btn-primary text-xs"
+              disabled={busyAi || list.length === 0}
+              onClick={() => {
+                void (async () => {
+                  setBusyAi(true)
+                  setErrorAi('')
+                  try {
+                    const h = await analisisKuisDenganAi(kuis.id)
+                    setAnalisisAi(h)
+                  } catch (e) {
+                    setErrorAi(e instanceof Error ? e.message : 'Gagal menganalisis.')
+                  } finally {
+                    setBusyAi(false)
+                  }
+                })()
+              }}
+            >
+              {busyAi ? 'Menganalisis…' : analisisAi ? 'Analisis ulang' : 'Jalankan analisis AI'}
+            </button>
+          </div>
+          {errorAi && (
+            <div className="border-b border-red-100 bg-red-50 px-4 py-2 text-sm text-red-800">{errorAi}</div>
+          )}
+          {analisisAi && (
+            <div className="space-y-4 p-4 text-sm text-slate-700">
+              <p className="leading-relaxed text-slate-800">{analisisAi.ringkas}</p>
+              {analisisAi.meta && (
+                <p className="text-xs text-slate-500">
+                  Dasar: {analisisAi.meta.nSiswa} siswa · rata-rata {analisisAi.meta.rata100}/100 ·{' '}
+                  {analisisAi.meta.nSoal} soal
+                </p>
+              )}
+              <div className="grid gap-3 sm:grid-cols-2">
+                {analisisAi.kekuatan.length > 0 && (
+                  <div className="rounded-xl border border-emerald-100 bg-emerald-50/50 p-3">
+                    <p className="text-[11px] font-bold uppercase tracking-wide text-emerald-800">Kekuatan</p>
+                    <ul className="mt-1 list-disc space-y-1 pl-4 text-xs text-emerald-950">
+                      {analisisAi.kekuatan.map((x, i) => (
+                        <li key={i}>{x}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                {analisisAi.kelemahan.length > 0 && (
+                  <div className="rounded-xl border border-amber-100 bg-amber-50/50 p-3">
+                    <p className="text-[11px] font-bold uppercase tracking-wide text-amber-800">Kelemahan</p>
+                    <ul className="mt-1 list-disc space-y-1 pl-4 text-xs text-amber-950">
+                      {analisisAi.kelemahan.map((x, i) => (
+                        <li key={i}>{x}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+              {analisisAi.butirBermasalah.length > 0 && (
+                <div>
+                  <p className="text-[11px] font-bold uppercase tracking-wide text-slate-500">Butir bermasalah</p>
+                  <ul className="mt-2 space-y-2">
+                    {analisisAi.butirBermasalah.map((b, i) => (
+                      <li key={i} className="rounded-lg border border-slate-100 bg-slate-50 px-3 py-2 text-xs">
+                        <span className="font-bold text-slate-800">Soal {b.no}.</span> {b.alasan}
+                        {b.saran ? (
+                          <span className="mt-0.5 block text-slate-600">Saran: {b.saran}</span>
+                        ) : null}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              {analisisAi.miskonsepsi.length > 0 && (
+                <div>
+                  <p className="text-[11px] font-bold uppercase tracking-wide text-slate-500">Miskonsepsi</p>
+                  <ul className="mt-1 list-disc space-y-1 pl-4 text-xs">
+                    {analisisAi.miskonsepsi.map((x, i) => (
+                      <li key={i}>{x}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              {analisisAi.tindakLanjutGuru.length > 0 && (
+                <div>
+                  <p className="text-[11px] font-bold uppercase tracking-wide text-slate-500">Tindak lanjut guru</p>
+                  <ul className="mt-1 list-disc space-y-1 pl-4 text-xs">
+                    {analisisAi.tindakLanjutGuru.map((x, i) => (
+                      <li key={i}>{x}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              {analisisAi.perbaikanSoal.length > 0 && (
+                <div>
+                  <p className="text-[11px] font-bold uppercase tracking-wide text-slate-500">Perbaikan soal</p>
+                  <ul className="mt-1 list-disc space-y-1 pl-4 text-xs">
+                    {analisisAi.perbaikanSoal.map((x, i) => (
+                      <li key={i}>{x}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
 

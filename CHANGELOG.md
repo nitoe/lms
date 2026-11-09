@@ -439,3 +439,11 @@
 - Tab **Atur kuis** (`KuisDetail`): bilah aksi sticky (simpan + ringkas soal/poin), kartu bagian Identitas / Jadwal & akses / Penilaian & TP, daftar soal per bentuk dengan header badge dan baris lebih rapi.
 - File: `src/components/KuisDetail.tsx`.
 
+## 2026-11-09 — Analisis kuis dengan AI (akun terbatas)
+
+- Tombol **Jalankan analisis AI** di tab Hasil siswa (hanya sesi Auth UID+email `arif.azwar79@gmail.com`).
+- CF `analisisKuisLmsAi`: agregat skor & butir dari `lms_jawaban`, prompt Gemini → ringkas, kekuatan/kelemahan, butir bermasalah, miskonsepsi, tindak lanjut, perbaikan soal.
+- File LMS: `src/lib/analisisKuisAi.ts`, `src/components/HasilKuisPanel.tsx`, ANTIREGRESI §56.
+- File SDM01Penilaian: `functions/analisisKuisLmsAi.js`, `functions/index.js`.
+- Deploy: `firebase deploy --only functions:analisisKuisLmsAi` lalu hosting LMS.
+

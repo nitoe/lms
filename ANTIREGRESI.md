@@ -385,3 +385,11 @@ Jangan memaksa satu kolom sempit di desktop.
 
 55.6 Isian dinilai otomatis dengan normalisasi spasi/kapital dan kesetaraan angka. Tetap sediakan UI koreksi guru karena sinonim/ejaan tidak dicocokkan.
 
+## §56. Analisis kuis AI
+
+56.1 Fitur analisis hasil kuis dengan AI (**hanya** UID `v4fQXsqCzYUtHrqcDM0u48sxIfn1` + email `arif.azwar79@gmail.com`). Cek di klien (`bolehAnalisisKuisAi`) dan **wajib** di CF (`bolehPemanggilAi`). Jangan memperluas daftar akun tanpa keputusan eksplisit.
+
+56.2 Kunci Gemini hanya di secrets Cloud Functions. Jangan memanggil API AI dari browser.
+
+56.3 Analisis membaca agregat `lms_jawaban` di server; jangan mengirim kunci jawaban atau data siswa berlebih ke model di luar yang diperlukan untuk statistik/contoh jawaban salah.
+
