@@ -300,3 +300,16 @@
 - Jika stok tipe tertentu kurang, sisa diisi dari tipe lain yang masih tersedia (perilaku lama).
 - File: `src/lib/susunKuis.ts`.
 - ANTIREGRESI §68.
+
+## 2026-11-09 — Fase 1 kuis: waktu, token, jenis penilaian, dan tautan TP
+
+- Tambah pengaturan pada kuis:
+  - Waktu mulai & waktu selesai
+  - Token (opsional, untuk akses online)
+  - Jenis penilaian: `latihan` | `slm` | `sts` | `sas`
+  - Daftar TP (satu atau lebih). Untuk STS/SAS mendukung banyak TP agar nantinya bisa menilai capaian per TP.
+- UI di halaman detail kuis (bagian “Pengaturan kuis & penilaian”).
+- `firestore.rules` (lengkap): izinkan field opsional baru pada `lms_kuis`.
+- File: `src/types/kuis.ts`, `src/lib/kuis.ts`, `src/components/KuisDetail.tsx`, `firestore.rules`.
+- ANTIREGRESI §69.
+- Catatan: integrasi nilai ke SDM01Penilaian dan pengerjaan siswa menyusul di fase berikutnya.

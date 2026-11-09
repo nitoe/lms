@@ -2,7 +2,8 @@ import { useEffect, useMemo, useState } from 'react'
 import { updateKuis } from '../lib/kuis'
 import { hitungRingkasanKuis } from '../lib/susunKuis'
 import { teksPolos } from '../lib/html'
-import type { KuisLms, SoalKuis } from '../types/kuis'
+import type { JenisPenilaianKuis, KuisLms, SoalKuis } from '../types/kuis'
+import { NAMA_JENIS_PENILAIAN } from '../types/kuis'
 import { NAMA_TIPE, URUTAN_TIPE, type TipeSoal } from '../types/soal'
 
 /** Instruksi lengkap per bentuk soal (untuk siswa dan nantinya cetak). */
@@ -30,6 +31,11 @@ export default function KuisDetail({ kuis, onUpdated }: Props) {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [info, setInfo] = useState('')
+  const [waktuMulai, setWaktuMulai] = useState(kuis.waktuMulai ?? '')
+  const [waktuSelesai, setWaktuSelesai] = useState(kuis.waktuSelesai ?? '')
+  const [token, setToken] = useState(kuis.token ?? '')
+  const [jenisPenilaian, setJenisPenilaian] = useState<JenisPenilaianKuis>(kuis.jenisPenilaian ?? 'latihan')
+  const [tpInput, setTpInput] = useState((kuis.tpNamaList ?? kuis.tpIds ?? []).join('\n'))
 
   useEffect(() => {
     setSoal([...(kuis.soal ?? [])])
@@ -38,6 +44,11 @@ export default function KuisDetail({ kuis, onUpdated }: Props) {
     setDurasi(kuis.durasiMenit ?? 0)
     setAcakSoal(!!kuis.acakSoal)
     setAcakOpsi(kuis.acakOpsi !== false)
+    setWaktuMulai(kuis.waktuMulai ?? '')
+    setWaktuSelesai(kuis.waktuSelesai ?? '')
+    setToken(kuis.token ?? '')
+    setJenisPenilaian(kuis.jenisPenilaian ?? 'latihan')
+    setTpInput((kuis.tpNamaList ?? kuis.tpIds ?? []).join('\n'))
   }, [kuis])
 
   const ringkas = hitungRingkasanKuis(soal)
@@ -106,6 +117,7 @@ export default function KuisDetail({ kuis, onUpdated }: Props) {
     setError('')
     setInfo('')
     try {
+      const tpList = tpInput.split(/\n|,/).map(s => s.trim()).filter(Boolean)
       await updateKuis(kuis.id, {
         judul: judul.trim(),
         deskripsi: deskripsi.trim() || undefined,
@@ -113,6 +125,12 @@ export default function KuisDetail({ kuis, onUpdated }: Props) {
         durasiMenit: durasi > 0 ? durasi : undefined,
         acakSoal,
         acakOpsi,
+        waktuMulai: waktuMulai || undefined,
+        waktuSelesai: waktuSelesai || undefined,
+        token: token.trim() || undefined,
+        jenisPenilaian,
+        tpIds: tpList.length ? tpList : undefined,
+        tpNamaList: tpList.length ? tpList : undefined,
       })
       setInfo('Tersimpan.')
       onUpdated?.()
@@ -179,6 +197,45 @@ export default function KuisDetail({ kuis, onUpdated }: Props) {
           {info}
         </div>
       )}
+
+      <section className="rounded-xl border border-slate-200 bg-slate-50/50 p-4 space-y-3">
+        <h4 className="text-sm font-semibold text-slate-800">Pengaturan kuis & penilaian</h4>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <label className="space-y-1 text-sm">
+            <span className="text-xs font-medium text-slate-600">Waktu mulai</span>
+            <input type="datetime-local" value={waktuMulai} onChange={e => setWaktuMulai(e.target.value)} className="w-full rounded border border-slate-300 px-2 py-1.5 text-sm" />
+          </label>
+          <label className="space-y-1 text-sm">
+            <span className="text-xs font-medium text-slate-600">Waktu selesai</span>
+            <input type="datetime-local" value={waktuSelesai} onChange={e => setWaktuSelesai(e.target.value)} className="w-full rounded border border-slate-300 px-2 py-1.5 text-sm" />
+          </label>
+          <label className="space-y-1 text-sm">
+            <span className="text-xs font-medium text-slate-600">Token (opsional, untuk online)</span>
+            <input value={token} onChange={e => setToken(e.target.value)} placeholder="contoh: SD01-2026" className="w-full rounded border border-slate-300 px-2 py-1.5 text-sm" />
+          </label>
+          <label className="space-y-1 text-sm">
+            <span className="text-xs font-medium text-slate-600">Jenis penilaian</span>
+            <select value={jenisPenilaian} onChange={e => setJenisPenilaian(e.target.value as JenisPenilaianKuis)} className="w-full rounded border border-slate-300 px-2 py-1.5 text-sm">
+              {(Object.keys(NAMA_JENIS_PENILAIAN) as JenisPenilaianKuis[]).map(k => (
+                <option key={k} value={k}>{NAMA_JENIS_PENILAIAN[k]}</option>
+              ))}
+            </select>
+          </label>
+        </div>
+        <label className="block space-y-1 text-sm">
+          <span className="text-xs font-medium text-slate-600">
+            TP yang diukur {jenisPenilaian === 'slm' ? '(biasanya 1)' : jenisPenilaian === 'sts' || jenisPenilaian === 'sas' ? '(boleh lebih dari 1)' : ''}
+          </span>
+          <textarea
+            rows={3}
+            value={tpInput}
+            onChange={e => setTpInput(e.target.value)}
+            placeholder="Satu TP per baris, contoh:&#10;TP 3.1 Memahami siklus air&#10;TP 3.2 Menganalisis perubahan wujud"
+            className="w-full rounded border border-slate-300 px-2 py-1.5 text-sm font-mono"
+          />
+          <p className="text-[11px] text-slate-500">Untuk STS/SAS, daftar TP ini nantinya dipakai untuk menghitung capaian per TP.</p>
+        </label>
+      </section>
 
       <div className="text-xs text-slate-500">
         {ringkas.jumlahSoal} soal · total {ringkas.totalPoin} poin

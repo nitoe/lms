@@ -301,3 +301,11 @@
 - Jangan mengubah bobot tanpa keputusan eksplisit; proporsi ini mengikuti prinsip soal lebih mudah lebih banyak.
 - Jika user secara eksplisit mengisi `jumlahPerTipe`, proporsi otomatis diabaikan.
 - Sisa kuota setelah proporsi tetap diisi acak dari kandidat yang cocok (tidak memaksa tipe yang stoknya habis).
+
+## §69. Pengaturan kuis Fase 1 (waktu, token, jenis, TP)
+
+- Field baru pada `lms_kuis`: `waktuMulai`, `waktuSelesai`, `token`, `jenisPenilaian`, `tpIds`, `tpNamaList`.
+- `jenisPenilaian` hanya boleh `latihan` | `slm` | `sts` | `sas`. Default `latihan` (hasil tidak masuk nilai).
+- Untuk STS/SAS, `tpIds`/`tpNamaList` boleh berisi lebih dari satu TP (untuk analisis capaian per TP nanti).
+- Rules harus tetap mengizinkan field ini sebagai opsional. Jangan menghapus validasi kelas/mapel/dibuatOleh.
+- Setelah mengubah rules, salin file lengkap ke SDM01Penilaian dan deploy (`npm run deploy:rules`).
