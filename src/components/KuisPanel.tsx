@@ -25,6 +25,7 @@ import {
   URUTAN_TIPE,
 } from '../types/soal'
 import KuisDetail, { INSTRUKSI_TIPE } from './KuisDetail'
+import HasilKuisPanel from './HasilKuisPanel'
 
 type Props = {
   kelas: string
@@ -59,6 +60,7 @@ export default function KuisPanel({ kelas, mapel }: Props) {
   const [busy, setBusy] = useState(false)
   const [langkah, setLangkah] = useState<Langkah>('daftar')
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [detailTab, setDetailTab] = useState<'atur' | 'hasil'>('atur')
 
   const [judul, setJudul] = useState('')
   const [deskripsi, setDeskripsi] = useState('')
@@ -290,18 +292,45 @@ export default function KuisPanel({ kelas, mapel }: Props) {
           className="text-sm font-semibold text-muh-600 hover:underline"
           onClick={() => {
             setSelectedId(null)
+            setDetailTab('atur')
             setLangkah('daftar')
           }}
         >
           ← Kembali ke daftar kuis
         </button>
         {kuis ? (
-          <KuisDetail
-            kuis={kuis}
-            onUpdated={async () => {
-              await muat()
-            }}
-          />
+          <>
+            <div className="flex flex-wrap gap-1 rounded-lg border border-slate-200 bg-slate-50 p-0.5 w-fit">
+              <button
+                type="button"
+                className={`rounded-md px-3 py-1.5 text-xs font-semibold ${
+                  detailTab === 'atur' ? 'bg-white text-muh-700 shadow-sm' : 'text-slate-600'
+                }`}
+                onClick={() => setDetailTab('atur')}
+              >
+                Atur kuis
+              </button>
+              <button
+                type="button"
+                className={`rounded-md px-3 py-1.5 text-xs font-semibold ${
+                  detailTab === 'hasil' ? 'bg-white text-muh-700 shadow-sm' : 'text-slate-600'
+                }`}
+                onClick={() => setDetailTab('hasil')}
+              >
+                Hasil siswa
+              </button>
+            </div>
+            {detailTab === 'atur' ? (
+              <KuisDetail
+                kuis={kuis}
+                onUpdated={async () => {
+                  await muat()
+                }}
+              />
+            ) : (
+              <HasilKuisPanel kuis={kuis} />
+            )}
+          </>
         ) : (
           <div className="lms-empty">Kuis tidak ditemukan.</div>
         )}

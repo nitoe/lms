@@ -393,3 +393,15 @@
 - **ANTIREGRESI §54** (baru): aturan wajib full-width responsive untuk area siswa dan acuan halaman baru.
 - Perlu di-deploy: hosting saja (`npm run deploy`). Tidak ada perubahan rules.
 
+## 2026-11-09 — Analisis hasil kuis guru (termasuk latihan)
+
+- **Masalah:** kuis berjenis *Latihan* tampak tidak punya menu nilai/analisis di akun guru. Bukan karena data tidak tersimpan: CF `nilaiKuisLms` menulis setiap kiriman ke `lms_jawaban` (termasuk latihan). Yang hilang adalah **UI guru** untuk membaca analisis.
+- **Bukan regresi penilaian rapor:** latihan tetap tidak menulis ke `nilai_tp` / STS / SAS. Analisis jawaban ≠ input nilai rapor.
+- **Perbaikan:**
+  - Tab **Hasil siswa** di detail kuis (`KuisPanel`): daftar skor per siswa (percobaan terbaru atau semua), agregat benar/salah per soal.
+  - `src/lib/jawabanKuis.ts` — baca `lms_jawaban` (query `kuisId`).
+  - `docs/DATA_MODEL.md` — skema `lms_jawaban`.
+  - `firestore.rules` (repo SDM01Penilaian, versi lengkap): blok `lms_jawaban` (baca siswa/guru/admin; tulis false).
+  - ANTIREGRESI §55.
+- **Deploy:** hosting LMS; pastikan rules produksi sudah memuat `lms_jawaban` (`npm run deploy:rules` dari SDM01Penilaian bila belum). Indeks: `siswaId`+`kuisId`.
+

@@ -371,3 +371,13 @@ Jangan memaksa satu kolom sempit di desktop.
 
 75.4 Query siswa: `where siswaId == claim && where kuisId == …`. Siapkan indeks komposit bila Console meminta.
 
+## §55. Hasil kuis (`lms_jawaban`) & analisis guru
+
+55.1 Koleksi `lms_jawaban` wajib ada di `firestore.rules` (shared). **Tulis hanya Admin SDK** (Cloud Function `nilaiKuisLms`). Klien: siswa baca miliknya (`siswaId` == claim); guru baca lewat `lihatMapelKelas(mapel, kelas)` pada field dokumen; admin baca.
+
+55.2 Jangan mengaitkan keberadaan analisis dengan `jenisPenilaian`. **Latihan** (`latihan`) tidak masuk nilai rapor, tetapi setiap kiriman tetap menghasilkan dokumen `lms_jawaban` dan harus bisa dilihat guru di tab **Hasil siswa**.
+
+55.3 Jangan menulis kunci jawaban ke dokumen `lms_jawaban` di luar yang sudah dinilai server (`detail.benar` / skor). Kunci penuh tetap hanya di snapshot `lms_kuis.soal` (baca guru) dan di CF.
+
+55.4 File `firestore.rules` di-deploy hanya dari repo SDM01Penilaian (`npm run deploy:rules`). Perubahan bagian LMS disalin sebagai file **utuh** ke SDM01Penilaian sebelum deploy.
+

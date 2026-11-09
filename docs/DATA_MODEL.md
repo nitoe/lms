@@ -94,3 +94,35 @@ Batas: PDF/gambar 10 MB, video 50 MB.
 | createdAt / updatedAt | timestamp | |
 
 Query: `where kelas == … && where mapel == …`.
+
+### `lms_jawaban/{id}`
+
+Satu dokumen **per kiriman / percobaan** siswa (bukan per soal).
+
+Ditulis **hanya** oleh Cloud Function `nilaiKuisLms` (Admin SDK). Klien tidak boleh create/update/delete.
+
+| Field | Tipe | Keterangan |
+|-------|------|------------|
+| kuisId | string | |
+| siswaUid | string | UID Auth (lms_siswa_…) |
+| siswaId | string? | ID dokumen `siswa` |
+| siswaNama | string | Denormalisasi |
+| kelas | string | Rombel |
+| mapel | string | |
+| judulKuis | string? | Denormalisasi |
+| jenisPenilaian | string | `latihan` \| `slm` \| `sts` \| `sas` |
+| jawaban | map | Kunci = id soal snapshot, nilai = jawaban siswa |
+| skorOtomatis | number | Jumlah skor otomatis |
+| totalPoin | number | |
+| detail | array | `{ soalId, tipe, benar, skor, butuhManual }` |
+| percobaan | number | 1, 2, … per siswa×kuis |
+| status | string | `selesai` \| `sebagian_manual` |
+| createdAt | timestamp | |
+
+**Query guru:** `where('kuisId', '==', …)` (rules memeriksa `kelas`+`mapel` di dokumen).  
+**Query siswa:** `where('siswaId', '==', …) && where('kuisId', '==', …)`.
+
+Indeks: `siswaId` Asc + `kuisId` Asc. Bila perlu orderBy waktu di klien, urutkan di memori atau buat indeks `kuisId` + `createdAt`.
+
+**Catatan latihan:** `jenisPenilaian === 'latihan'` tidak menulis ke koleksi nilai rapor (SLM/STS/SAS), tetapi dokumen `lms_jawaban` **tetap** dibuat agar guru bisa menganalisis.
+
