@@ -94,7 +94,7 @@ export default function SiswaKuis() {
   }
 
   return (
-    <div className="space-y-4 p-4 max-w-2xl mx-auto">
+    <div className="space-y-5">
       <h1 className="text-xl font-bold text-slate-800">Kuis</h1>
       {error && <div className="text-red-600 text-sm">{error}</div>}
       {list === null && <p className="text-slate-500">Memuat…</p>}
@@ -105,7 +105,7 @@ export default function SiswaKuis() {
           const nJawab = saved ? Object.keys(saved.jawaban ?? {}).length : 0
           const sisa = saved?.sisaDetik
           return (
-            <li key={k.id} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+            <li key={k.id} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
               <div className="font-semibold text-slate-800">{k.judul}</div>
               <div className="text-xs text-slate-500 mt-1">
                 {k.mapel} · {NAMA_JENIS_PENILAIAN[k.jenisPenilaian ?? 'latihan']} · {k.jumlahSoal} soal
@@ -288,8 +288,8 @@ function KerjakanKuis({
   }
 
   return (
-    <div className="min-h-screen bg-slate-100">
-      <header className="sticky top-0 z-10 bg-white border-b px-4 py-3 flex items-center justify-between shadow-sm">
+    <div className="sw-kuis-kerja -mx-1 sm:mx-0">
+      <header className="sticky top-0 z-10 -mx-3 sm:-mx-0 mb-4 flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
         <div className="min-w-0">
           <div className="font-semibold text-sm truncate">{kuis.judul}</div>
           <div className="text-xs text-slate-500">
@@ -313,7 +313,7 @@ function KerjakanKuis({
         </div>
       </header>
 
-      <div className="max-w-5xl mx-auto grid grid-cols-1 md:grid-cols-[220px_1fr] gap-4 p-4 pb-24">
+      <div className="grid grid-cols-1 md:grid-cols-[220px_1fr] gap-4 pb-8 md:pb-4">
         <aside className="bg-white rounded-xl border p-3 h-fit md:sticky md:top-20">
           <div className="text-xs font-semibold text-slate-500 mb-2">Navigasi soal</div>
           <div className="grid grid-cols-5 gap-1.5">

@@ -3,6 +3,14 @@
 > Append-only: entri baru ditambahkan di BAWAH, entri lama tidak diubah.
 > Versi mengacu ke `package.json` (saat ini `0.1.0`); belum ada rilis bertag.
 
+## 2026-11-09 — Layout kuis siswa: hilangkan max-w-2xl (regresi ruang kosong)
+
+- **Bug:** daftar kuis siswa tampil sempit di tengah layar PC, ruang kosong lebar di kiri-kanan.
+- **Penyebab:** wrapper `max-w-2xl mx-auto` (dan saat mengerjakan: `max-w-5xl mx-auto`) — pola yang sudah dilarang ANTIREGRESI §54 tetapi ikut terbawa lagi saat rewrite fitur progres/timer.
+- **Perbaikan:** konten mengikuti lebar `.sw-main` (hingga 1600px); dialog konfirmasi tetap `max-w-sm` (boleh terpusat).
+- **Pelajaran:** setiap rewrite halaman siswa wajib cek viewport ~1280px; jangan menambah `max-w-*` sempit pada konten utama.
+- File: `src/pages/siswa/SiswaKuis.tsx`.
+
 ## 2026-11-09 — Regresi rules: status paket siap→draf (batas soal 100 vs 300)
 
 - **Bug berulang:** mengubah status paket bank soal dari Siap ke Draf gagal dengan "Missing or insufficient permissions".

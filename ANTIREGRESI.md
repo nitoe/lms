@@ -338,6 +338,8 @@ Jangan memaksa satu kolom sempit di desktop.
 54.4 **Navigasi siswa:** HP = bottom nav fixed; tablet/PC (≥768px) = strip horizontal di bawah header (bukan bottom fixed), agar konten tidak selalu mengosongkan ruang bawah besar.
 
 54.5 Aturan ini berlaku untuk **semua halaman baru** di area siswa (`src/pages/siswa/*`) dan sebaiknya diikuti juga untuk halaman guru yang bukan editor khusus (bukan SoalEditor). Sebelum merge halaman baru, cek di viewport ~1280px dan ~375px apakah konten mengisi lebar secara wajar.
+54.6 **Regresi 2026-11-09 (SiswaKuis):** rewrite fitur progres/timer mengembalikan `max-w-2xl mx-auto` di daftar dan `max-w-5xl mx-auto` di mode kerjakan. Checklist sebelum merge halaman siswa: (1) tidak ada `max-w-md`…`max-w-5xl` pada wrapper konten utama, (2) uji PC ~1280px konten mengisi `.sw-main`, (3) hanya placeholder/dialog boleh sempit + `mx-auto`.
+
 
 ## §73. Kuis siswa (pengerjaan online)
 
