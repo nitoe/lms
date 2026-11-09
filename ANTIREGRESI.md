@@ -413,3 +413,12 @@ Jangan memaksa satu kolom sempit di desktop.
 57.2 Penulisan `lms_jawaban` offline hanya lewat CF `simpanJawabanOfflineKuis` (Admin SDK). Field `sumber: 'offline'`.
 
 57.3 Bantu AI offline memakai gate yang sama §56 (UID+email); skor diterapkan lewat `nilaiManualKuisLms`.
+
+
+## §58. Sinkron kuis → nilai Penilaian
+
+58.1 Penulisan `nilai_tp` / `nilai_sts` / `nilai_sas` dari LMS hanya lewat CF `sinkronNilaiKuisLms` (Admin SDK). Jangan tulis langsung dari klien LMS tanpa rules yang setara Penilaian.
+
+58.2 Hanya jenis SLM/STS/SAS. Skor = (skorOtomatis/totalPoin)×100; satu nilai per TP terdaftar di kuis (atau `nilaiPerTp` bila diisi).
+
+58.3 TP harus resolve ke `tp_kktp` (id atau nama + mapel/kelas). Gagal resolve → tolak sinkron dengan pesan jelas.

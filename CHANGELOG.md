@@ -464,3 +464,11 @@
 - File LMS: `types/kuis.ts`, `lib/kuis.ts`, `lib/offlineKuis.ts`, `components/OfflineKuisPanel.tsx`, `KuisDetail.tsx`, `KuisPanel.tsx`, `SiswaKuis.tsx`.
 - File SDM01Penilaian: `functions/simpanJawabanOfflineKuis.js`, `functions/index.js`.
 
+## 2026-11-09 — Rekap hasil kuis + sinkron ke Penilaian (SLM/STS/SAS)
+
+- Halaman **Rekap Kuis** (`/rekap-kuis`): tabel nilai online & offline, filter kelas×mapel×kuis.
+- Tombol **Sinkronkan ke Penilaian** untuk jenis SLM/STS/SAS → CF `sinkronNilaiKuisLms` menulis `nilai_tp` / `nilai_sts` / `nilai_sas` (skala 100, percobaan terbaru per siswa, TP dari daftar TP kuis).
+- Latihan tidak disinkron. Butuh TP di atur kuis yang cocok `tp_kktp`.
+- File LMS: `pages/RekapKuis.tsx`, `lib/sinkronNilaiKuis.ts`, `App.tsx`, `Layout.tsx`.
+- File SDM01Penilaian: `functions/sinkronNilaiKuisLms.js`, `index.js`.
+

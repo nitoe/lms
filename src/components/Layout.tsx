@@ -8,7 +8,7 @@ type NavItem = {
   to: string
   end?: boolean
   label: string
-  icon: 'home' | 'class' | 'task' | 'quiz'
+  icon: 'home' | 'class' | 'task' | 'quiz' | 'table'
   soon?: boolean
 }
 
@@ -16,6 +16,7 @@ const NAV_UTAMA: NavItem[] = [
   { to: '/', end: true, label: 'Beranda', icon: 'home' },
   { to: '/kelas', label: 'Ruang Kelas', icon: 'class' },
   { to: '/tugas-kuis', label: 'Tugas & Kuis', icon: 'task' },
+  { to: '/rekap-kuis', label: 'Rekap Kuis', icon: 'table' },
 ]
 
 const LS_SIDEBAR = 'lms-sidebar-collapsed'
@@ -63,6 +64,15 @@ function Icon({ name }: { name: NavItem['icon'] }) {
         <svg {...common}>
           <path d="M12 20h9" />
           <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
+        </svg>
+      )
+    case 'table':
+      return (
+        <svg {...common}>
+          <path d="M3 5h18" />
+          <path d="M3 12h18" />
+          <path d="M3 19h18" />
+          <path d="M9 5v14" />
         </svg>
       )
     case 'quiz':

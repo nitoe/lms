@@ -37,6 +37,7 @@ export type JawabanKuis = {
   detail?: DetailJawabanSoal[]
   percobaan: number
   status: string
+  sumber?: string
   createdAt?: unknown
   dinilaiOleh?: string
   dinilaiOlehNama?: string
@@ -68,6 +69,7 @@ function dariDok(id: string, data: Record<string, unknown>): JawabanKuis {
     detail: Array.isArray(data.detail) ? (data.detail as DetailJawabanSoal[]) : undefined,
     percobaan: Number(data.percobaan) || 1,
     status: String(data.status ?? ''),
+    sumber: typeof data.sumber === 'string' ? data.sumber : undefined,
     createdAt: data.createdAt,
     dinilaiOleh: typeof data.dinilaiOleh === 'string' ? data.dinilaiOleh : undefined,
     dinilaiOlehNama: typeof data.dinilaiOlehNama === 'string' ? data.dinilaiOlehNama : undefined,
