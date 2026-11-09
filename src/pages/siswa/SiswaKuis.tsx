@@ -9,18 +9,23 @@ import type { JawabanSoal } from '../../types/soal'
 import SoalTampil from '../../components/soal/SoalTampil'
 import '../../styles/soal.css'
 
-/** Versi kunci progres — naikkan jika bentuk data berubah. */
 const PROGRESS_PREFIX = 'lms_kuis_progress_v2_'
 
 type Progress = {
   jawaban: Record<string, JawabanSoal>
   idx: number
-  /**
-   * Sisa waktu (detik) pada saat terakhir disimpan.
-   * Timer bersifat pause saat siswa keluar: saat kembali, nilai ini dilanjutkan.
-   */
   sisaDetik?: number
   updatedAt: number
+}
+
+/** Ringkasan satu percobaan dari lms_jawaban. */
+export type RiwayatPercobaan = {
+  id: string
+  skorOtomatis: number
+  totalPoin: number
+  percobaan: number
+  status: string
+  createdAtMs: number
 }
 
 function progressKey(siswaId: string, kuisId: string) {
@@ -49,7 +54,7 @@ function saveProgress(siswaId: string, kuisId: string, p: Progress) {
       JSON.stringify({ ...p, updatedAt: Date.now() }),
     )
   } catch {
-    /* quota / private mode */
+    /* quota */
   }
 }
 
@@ -62,33 +67,149 @@ function clearProgress(siswaId: string, kuisId: string) {
   }
 }
 
+function tsMs(v: unknown): number {
+  if (!v) return 0
+  if (typeof v === 'object' && v !== null && 'seconds' in v) {
+    return Number((v as { seconds: number }).seconds) * 1000
+  }
+  if (typeof v === 'number') return v
+  return 0
+}
+
+async function muatRiwayat(siswaId: string, kuisId: string): Promise<RiwayatPercobaan[]> {
+  const q = query(
+    collection(db, 'lms_jawaban'),
+    where('siswaId', '==', siswaId),
+    where('kuisId', '==', kuisId),
+  )
+  const snap = await getDocs(q)
+  const list: RiwayatPercobaan[] = snap.docs.map((d) => {
+    const x = d.data()
+    return {
+      id: d.id,
+      skorOtomatis: Number(x.skorOtomatis) || 0,
+      totalPoin: Number(x.totalPoin) || 0,
+      percobaan: Number(x.percobaan) || 1,
+      status: String(x.status || 'selesai'),
+      createdAtMs: tsMs(x.createdAt),
+    }
+  })
+  list.sort((a, b) => b.createdAtMs - a.createdAtMs || b.percobaan - a.percobaan)
+  return list
+}
+
+function formatWaktu(ms: number): string {
+  if (!ms) return '—'
+  try {
+    return new Date(ms).toLocaleString('id-ID', {
+      day: 'numeric',
+      month: 'short',
+      hour: '2-digit',
+      minute: '2-digit',
+    })
+  } catch {
+    return '—'
+  }
+}
+
+type ModeKerja = {
+  kuis: KuisLms
+  /** true = mulai bersih (abaikan progres lokal) */
+  dariAwal: boolean
+}
+
+type HasilKirim = {
+  kuis: KuisLms
+  skor: number
+  totalPoin: number
+  percobaan: number
+  status: string
+}
+
 export default function SiswaKuis() {
   const { sesi } = useSiswa()
-  const [list, setList] = useState<KuisLms[] | null>(null)
-  const [aktif, setAktif] = useState<KuisLms | null>(null)
-  const [error, setError] = useState('')
-
-  // Field sesi: { id, nama, kelas } — bukan siswaId
   const siswaId = sesi?.id ?? ''
+  const [list, setList] = useState<KuisLms[] | null>(null)
+  const [riwayatMap, setRiwayatMap] = useState<Record<string, RiwayatPercobaan[]>>({})
+  const [mode, setMode] = useState<ModeKerja | null>(null)
+  const [hasil, setHasil] = useState<HasilKirim | null>(null)
+  const [error, setError] = useState('')
+  const [konfirmUlangId, setKonfirmUlangId] = useState<string | null>(null)
+
+  const muatSemua = useCallback(async () => {
+    if (!sesi || !siswaId) return
+    setError('')
+    try {
+      const q = query(
+        collection(db, 'lms_kuis'),
+        where('kelas', '==', sesi.kelas),
+        where('aktif', '==', true),
+      )
+      const snap = await getDocs(q)
+      const kuisList = snap.docs.map((d) => ({ id: d.id, ...d.data() }) as KuisLms)
+      setList(kuisList)
+
+      const entries = await Promise.all(
+        kuisList.map(async (k) => {
+          try {
+            return [k.id, await muatRiwayat(siswaId, k.id)] as const
+          } catch {
+            return [k.id, [] as RiwayatPercobaan[]] as const
+          }
+        }),
+      )
+      const map: Record<string, RiwayatPercobaan[]> = {}
+      for (const [id, r] of entries) map[id] = r
+      setRiwayatMap(map)
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Gagal memuat kuis')
+    }
+  }, [sesi, siswaId])
 
   useEffect(() => {
-    if (!sesi) return
-    const q = query(
-      collection(db, 'lms_kuis'),
-      where('kelas', '==', sesi.kelas),
-      where('aktif', '==', true),
-    )
-    getDocs(q)
-      .then((snap) => setList(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as KuisLms)))
-      .catch((e) => setError(e.message || 'Gagal memuat kuis'))
-  }, [sesi])
+    void muatSemua()
+  }, [muatSemua])
 
-  if (aktif && sesi && siswaId) {
+  function mulaiBaru(kuis: KuisLms) {
+    clearProgress(siswaId, kuis.id)
+    setHasil(null)
+    setMode({ kuis, dariAwal: true })
+  }
+
+  function lanjutkan(kuis: KuisLms) {
+    setHasil(null)
+    setMode({ kuis, dariAwal: false })
+  }
+
+  if (hasil) {
+    return (
+      <HasilLatihan
+        hasil={hasil}
+        bolehUlang={(hasil.kuis.jenisPenilaian ?? 'latihan') === 'latihan'}
+        onKembali={() => {
+          setHasil(null)
+          void muatSemua()
+        }}
+        onUlang={() => mulaiBaru(hasil.kuis)}
+      />
+    )
+  }
+
+  if (mode && siswaId) {
     return (
       <KerjakanKuis
-        kuis={aktif}
+        kuis={mode.kuis}
         siswaId={siswaId}
-        onSelesai={() => setAktif(null)}
+        dariAwal={mode.dariAwal}
+        onSelesai={() => {
+          setMode(null)
+          void muatSemua()
+        }}
+        onKirimSukses={(h) => {
+          setMode(null)
+          setHasil(h)
+          void muatSemua()
+        }}
       />
     )
   }
@@ -96,7 +217,7 @@ export default function SiswaKuis() {
   return (
     <div className="space-y-5">
       <h1 className="text-xl font-bold text-slate-800">Kuis</h1>
-      {error && <div className="text-red-600 text-sm">{error}</div>}
+      {error && <div className="text-sm text-red-600">{error}</div>}
       {list === null && <p className="text-slate-500">Memuat…</p>}
       {list?.length === 0 && <p className="text-slate-500">Belum ada kuis aktif.</p>}
       <ul className="space-y-3">
@@ -104,24 +225,111 @@ export default function SiswaKuis() {
           const saved = siswaId ? loadProgress(siswaId, k.id) : null
           const nJawab = saved ? Object.keys(saved.jawaban ?? {}).length : 0
           const sisa = saved?.sisaDetik
+          const riwayat = riwayatMap[k.id] ?? []
+          const sudahKirim = riwayat.length > 0
+          const terakhir = riwayat[0]
+          const isLatihan = (k.jenisPenilaian ?? 'latihan') === 'latihan'
+          const adaProgresLokal = nJawab > 0 && !sudahKirim
+
           return (
             <li key={k.id} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
               <div className="font-semibold text-slate-800">{k.judul}</div>
-              <div className="text-xs text-slate-500 mt-1">
+              <div className="mt-1 text-xs text-slate-500">
                 {k.mapel} · {NAMA_JENIS_PENILAIAN[k.jenisPenilaian ?? 'latihan']} · {k.jumlahSoal} soal
                 {k.durasiMenit ? ` · ${k.durasiMenit} menit` : ''}
               </div>
-              {nJawab > 0 && (
-                <div className="mt-2 text-xs font-medium text-emerald-700 bg-emerald-50 inline-block px-2 py-0.5 rounded-full">
-                  Progres tersimpan · {nJawab} soal terjawab
+
+              {sudahKirim && terakhir && (
+                <div className="mt-3 rounded-lg border border-emerald-100 bg-emerald-50/80 px-3 py-2 text-xs text-emerald-900">
+                  <div className="font-semibold">
+                    Sudah dikerjakan {riwayat.length}×
+                    {terakhir.totalPoin > 0
+                      ? ` · skor terakhir ${terakhir.skorOtomatis}/${terakhir.totalPoin}`
+                      : ''}
+                  </div>
+                  <div className="mt-0.5 text-emerald-800/80">
+                    Percobaan ke-{terakhir.percobaan} · {formatWaktu(terakhir.createdAtMs)}
+                  </div>
+                  {riwayat.length > 1 && (
+                    <ul className="mt-1.5 space-y-0.5 text-[11px] text-emerald-800/70">
+                      {riwayat.slice(0, 3).map((r) => (
+                        <li key={r.id}>
+                          #{r.percobaan}: {r.skorOtomatis}/{r.totalPoin} · {formatWaktu(r.createdAtMs)}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              )}
+
+              {adaProgresLokal && (
+                <div className="mt-2 inline-block rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-800">
+                  Draf tersimpan · {nJawab} soal terjawab
                   {typeof sisa === 'number' && k.durasiMenit
                     ? ` · sisa ${Math.floor(sisa / 60)}:${String(sisa % 60).padStart(2, '0')}`
                     : ''}
                 </div>
               )}
-              <button type="button" className="mt-3 lms-btn-primary text-sm" onClick={() => setAktif(k)}>
-                {nJawab > 0 ? 'Lanjutkan' : 'Mulai Kerjakan'}
-              </button>
+
+              <div className="mt-3 flex flex-wrap gap-2">
+                {!sudahKirim && (
+                  <button
+                    type="button"
+                    className="lms-btn-primary text-sm"
+                    onClick={() => (adaProgresLokal ? lanjutkan(k) : mulaiBaru(k))}
+                  >
+                    {adaProgresLokal ? 'Lanjutkan' : 'Mulai Kerjakan'}
+                  </button>
+                )}
+
+                {sudahKirim && isLatihan && (
+                  <>
+                    <button
+                      type="button"
+                      className="lms-btn-primary text-sm"
+                      onClick={() => setKonfirmUlangId(k.id)}
+                    >
+                      Kerjakan lagi dari awal
+                    </button>
+                  </>
+                )}
+
+                {sudahKirim && !isLatihan && (
+                  <span className="self-center text-xs text-slate-500">
+                    Jawaban sudah dikirim. Tidak dapat diubah.
+                  </span>
+                )}
+              </div>
+
+              {konfirmUlangId === k.id && (
+                <div className="mt-3 rounded-xl border border-violet-200 bg-violet-50 p-3 text-sm text-slate-700">
+                  <p className="font-medium text-slate-800">Mulai dari awal?</p>
+                  <p className="mt-1 text-xs leading-relaxed text-slate-600">
+                    Kamu sudah mengirim jawaban sebelumnya. Jika lanjut, kamu mengerjakan semua soal dari
+                    awal dan mengirim sebagai percobaan baru (ke-{(riwayat[0]?.percobaan ?? 0) + 1}).
+                    Jawaban lama tetap tersimpan di riwayat.
+                  </p>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      className="lms-btn-primary text-sm"
+                      onClick={() => {
+                        setKonfirmUlangId(null)
+                        mulaiBaru(k)
+                      }}
+                    >
+                      Ya, mulai dari awal
+                    </button>
+                    <button
+                      type="button"
+                      className="lms-btn-secondary text-sm"
+                      onClick={() => setKonfirmUlangId(null)}
+                    >
+                      Batal
+                    </button>
+                  </div>
+                </div>
+              )}
             </li>
           )
         })}
@@ -130,19 +338,71 @@ export default function SiswaKuis() {
   )
 }
 
+function HasilLatihan({
+  hasil,
+  bolehUlang,
+  onKembali,
+  onUlang,
+}: {
+  hasil: HasilKirim
+  bolehUlang: boolean
+  onKembali: () => void
+  onUlang: () => void
+}) {
+  return (
+    <div className="mx-auto max-w-lg space-y-4">
+      <div className="rounded-2xl border border-slate-200 bg-white p-6 text-center shadow-sm">
+        <div className="text-sm font-medium text-slate-500">Hasil dikirim</div>
+        <h2 className="mt-1 text-lg font-bold text-slate-800">{hasil.kuis.judul}</h2>
+        <div className="mt-4 text-4xl font-bold text-muh-700">
+          {hasil.skor}
+          <span className="text-lg font-semibold text-slate-400"> / {hasil.totalPoin}</span>
+        </div>
+        <p className="mt-2 text-xs text-slate-500">
+          Percobaan ke-{hasil.percobaan}
+          {hasil.status === 'sebagian_manual' ? ' · sebagian dinilai guru' : ''}
+        </p>
+        <div className="mt-6 flex flex-col gap-2 sm:flex-row sm:justify-center">
+          <button type="button" className="lms-btn-secondary text-sm" onClick={onKembali}>
+            Kembali ke daftar
+          </button>
+          {bolehUlang && (
+            <button type="button" className="lms-btn-primary text-sm" onClick={onUlang}>
+              Kerjakan lagi dari awal
+            </button>
+          )}
+        </div>
+        {bolehUlang && (
+          <p className="mt-3 text-[11px] leading-relaxed text-slate-500">
+            Latihan boleh diulang. Setiap pengiriman dihitung sebagai percobaan terpisah.
+          </p>
+        )}
+        {!bolehUlang && (
+          <p className="mt-3 text-[11px] leading-relaxed text-slate-500">
+            Penilaian ini tidak dapat dikerjakan ulang dari akun siswa.
+          </p>
+        )}
+      </div>
+    </div>
+  )
+}
+
 function KerjakanKuis({
   kuis,
   siswaId,
+  dariAwal,
   onSelesai,
+  onKirimSukses,
 }: {
   kuis: KuisLms
   siswaId: string
+  dariAwal: boolean
   onSelesai: () => void
+  onKirimSukses: (h: HasilKirim) => void
 }) {
-  // Baca progres sekali di awal (bukan di render loop)
   const awalRef = useRef<Progress | null | undefined>(undefined)
   if (awalRef.current === undefined) {
-    awalRef.current = loadProgress(siswaId, kuis.id)
+    awalRef.current = dariAwal ? null : loadProgress(siswaId, kuis.id)
   }
   const saved = awalRef.current
 
@@ -155,15 +415,11 @@ function KerjakanKuis({
   const [jawaban, setJawaban] = useState<Record<string, JawabanSoal>>(() => saved?.jawaban ?? {})
   const [busy, setBusy] = useState(false)
   const [sisaDetik, setSisaDetik] = useState(() => {
-    // Lanjutkan sisa waktu yang tersimpan (mode pause saat keluar)
-    if (saved && typeof saved.sisaDetik === 'number' && saved.sisaDetik >= 0) {
-      return saved.sisaDetik
-    }
+    if (saved && typeof saved.sisaDetik === 'number' && saved.sisaDetik >= 0) return saved.sisaDetik
     return (kuis.durasiMenit ?? 0) * 60
   })
   const [confirmKeluar, setConfirmKeluar] = useState(false)
 
-  // Ref supaya flush saat unmount selalu memakai nilai terbaru
   const stateRef = useRef({ jawaban, idx, sisaDetik })
   stateRef.current = { jawaban, idx, sisaDetik }
 
@@ -193,7 +449,6 @@ function KerjakanKuis({
     })
   }
 
-  // Simpan progres setiap perubahan (jawaban / nomor / sisa waktu)
   useEffect(() => {
     saveProgress(siswaId, kuis.id, {
       jawaban,
@@ -203,7 +458,6 @@ function KerjakanKuis({
     })
   }, [jawaban, idx, sisaDetik, siswaId, kuis.id, punyaTimer])
 
-  // Flush saat komponen dilepas (keluar / navigasi)
   useEffect(() => {
     return () => {
       flushProgress()
@@ -211,16 +465,12 @@ function KerjakanKuis({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [siswaId, kuis.id])
 
-  // Timer: hitung mundur tiap detik
   useEffect(() => {
     if (!punyaTimer) return
-    const t = setInterval(() => {
-      setSisaDetik((s) => Math.max(0, s - 1))
-    }, 1000)
+    const t = setInterval(() => setSisaDetik((s) => Math.max(0, s - 1)), 1000)
     return () => clearInterval(t)
   }, [punyaTimer])
 
-  // Cegah refresh / tutup tab tanpa sengaja + flush progres
   useEffect(() => {
     const handler = (e: BeforeUnloadEvent) => {
       flushProgress()
@@ -232,12 +482,14 @@ function KerjakanKuis({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [siswaId, kuis.id])
 
-  // Sembunyikan navigasi bawah siswa selama mengerjakan
   useEffect(() => {
     const nav = document.querySelector('.sw-nav') as HTMLElement | null
+    const main = document.querySelector('.sw-main') as HTMLElement | null
     if (nav) nav.style.display = 'none'
+    if (main) main.classList.add('sw-main--kuis')
     return () => {
       if (nav) nav.style.display = ''
+      if (main) main.classList.remove('sw-main--kuis')
     }
   }, [])
 
@@ -251,10 +503,20 @@ function KerjakanKuis({
     try {
       const fn = httpsCallable(functions, 'nilaiKuisLms')
       const res = await fn({ kuisId: kuis.id, jawaban })
-      const data = res.data as { skor?: number; totalPoin?: number }
+      const data = res.data as {
+        skor?: number
+        totalPoin?: number
+        percobaan?: number
+        status?: string
+      }
       clearProgress(siswaId, kuis.id)
-      alert(`Selesai!\nSkor: ${data?.skor ?? '-'} / ${data?.totalPoin ?? '-'}`)
-      onSelesai()
+      onKirimSukses({
+        kuis,
+        skor: data?.skor ?? 0,
+        totalPoin: data?.totalPoin ?? kuis.totalPoin ?? 0,
+        percobaan: data?.percobaan ?? 1,
+        status: data?.status ?? 'selesai',
+      })
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : 'Gagal mengirim jawaban.'
       alert(msg)
@@ -288,63 +550,63 @@ function KerjakanKuis({
   }
 
   return (
-    <div className="sw-kuis-kerja -mx-1 sm:mx-0">
-      <header className="sticky top-0 z-10 -mx-3 sm:-mx-0 mb-4 flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
+    <div className="sw-kuis-kerja">
+      <header className="sw-kuis-kerja-head">
         <div className="min-w-0">
-          <div className="font-semibold text-sm truncate">{kuis.judul}</div>
+          <div className="truncate text-sm font-semibold text-slate-800">{kuis.judul}</div>
           <div className="text-xs text-slate-500">
             Soal {idx + 1} dari {soalList.length}
-            <span className="ml-2 text-emerald-600">· Progres tersimpan otomatis</span>
+            <span className="ml-2 font-medium text-emerald-600">· Progres tersimpan</span>
           </div>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex shrink-0 items-center gap-2 sm:gap-3">
           {punyaTimer ? (
             <div
-              className={`text-sm font-mono font-semibold px-3 py-1 rounded-full ${
+              className={`rounded-full px-3 py-1 font-mono text-sm font-semibold ${
                 sisaDetik < 60 ? 'bg-red-100 text-red-700' : 'bg-slate-100 text-slate-700'
               }`}
             >
               {String(menit).padStart(2, '0')}:{String(detik).padStart(2, '0')}
             </div>
           ) : null}
-          <button type="button" onClick={mintaKeluar} className="text-xs text-slate-500 hover:text-slate-700">
+          <button type="button" onClick={mintaKeluar} className="sw-kuis-keluar">
             Keluar
           </button>
         </div>
       </header>
 
-      <div className="grid grid-cols-1 md:grid-cols-[220px_1fr] gap-4 pb-8 md:pb-4">
-        <aside className="bg-white rounded-xl border p-3 h-fit md:sticky md:top-20">
-          <div className="text-xs font-semibold text-slate-500 mb-2">Navigasi soal</div>
-          <div className="grid grid-cols-5 gap-1.5">
+      <div className="sw-kuis-kerja-body">
+        <aside className="sw-kuis-nav" aria-label="Navigasi soal">
+          <div className="mb-2 text-xs font-semibold text-slate-500">Navigasi soal</div>
+          <div className="sw-kuis-nav-grid">
             {soalList.map((s, i) => (
               <button
                 key={s.id}
                 type="button"
                 onClick={() => setIdx(i)}
-                className={`h-8 rounded text-xs font-medium transition ${
+                className={
                   i === idx
-                    ? 'bg-violet-600 text-white'
+                    ? 'sw-kuis-nav-btn sw-kuis-nav-btn--aktif'
                     : sudahJawab(s.id)
-                      ? 'bg-emerald-100 text-emerald-800'
-                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                }`}
+                      ? 'sw-kuis-nav-btn sw-kuis-nav-btn--jawab'
+                      : 'sw-kuis-nav-btn'
+                }
               >
                 {i + 1}
               </button>
             ))}
           </div>
-          <div className="mt-3 text-[10px] text-slate-400 space-y-0.5">
-            <div>
-              <span className="inline-block w-2 h-2 rounded-sm bg-violet-600 mr-1" /> Sedang dikerjakan
-            </div>
-            <div>
-              <span className="inline-block w-2 h-2 rounded-sm bg-emerald-100 mr-1" /> Sudah dijawab
-            </div>
+          <div className="sw-kuis-nav-legend">
+            <span>
+              <i className="sw-kuis-dot sw-kuis-dot--aktif" /> Sedang dikerjakan
+            </span>
+            <span>
+              <i className="sw-kuis-dot sw-kuis-dot--jawab" /> Sudah dijawab
+            </span>
           </div>
         </aside>
 
-        <main className="min-w-0">
+        <div className="sw-kuis-soal min-w-0">
           <SoalTampil
             soal={soal}
             nomor={idx + 1}
@@ -352,43 +614,46 @@ function KerjakanKuis({
             onJawab={(j) => setJawaban((prev) => ({ ...prev, [soal.id]: j }))}
             seed={seed}
           />
-
-          <div className="flex justify-between mt-4 pt-2">
-            <button
-              type="button"
-              disabled={idx === 0}
-              onClick={() => setIdx((i) => i - 1)}
-              className="lms-btn-secondary text-sm"
-            >
-              ← Sebelumnya
-            </button>
-            {idx < soalList.length - 1 ? (
-              <button type="button" onClick={() => setIdx((i) => i + 1)} className="lms-btn-primary text-sm">
-                Berikutnya →
-              </button>
-            ) : (
-              <button
-                type="button"
-                disabled={busy || (!!waktuHabis && Object.keys(jawaban).length === 0)}
-                onClick={() => void kirim()}
-                className="lms-btn-primary text-sm"
-              >
-                {busy ? 'Mengirim…' : waktuHabis ? 'Waktu habis · Kirim' : 'Selesai & Kirim'}
-              </button>
-            )}
-          </div>
-        </main>
+        </div>
       </div>
+
+      <footer className="sw-kuis-kerja-foot">
+        <button
+          type="button"
+          disabled={idx === 0}
+          onClick={() => setIdx((i) => i - 1)}
+          className="lms-btn-secondary text-sm"
+        >
+          ← Sebelumnya
+        </button>
+        <div className="sw-kuis-foot-meta">
+          {idx + 1} / {soalList.length}
+        </div>
+        {idx < soalList.length - 1 ? (
+          <button type="button" onClick={() => setIdx((i) => i + 1)} className="lms-btn-primary text-sm">
+            Berikutnya →
+          </button>
+        ) : (
+          <button
+            type="button"
+            disabled={busy || (!!waktuHabis && Object.keys(jawaban).length === 0)}
+            onClick={() => void kirim()}
+            className="lms-btn-primary text-sm"
+          >
+            {busy ? 'Mengirim…' : waktuHabis ? 'Waktu habis · Kirim' : 'Selesai & Kirim'}
+          </button>
+        )}
+      </footer>
 
       {confirmKeluar && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="bg-white rounded-2xl shadow-xl max-w-sm w-full p-5 space-y-3">
-            <h2 className="font-bold text-slate-800 text-base">Keluar dari kuis?</h2>
+          <div className="w-full max-w-sm space-y-3 rounded-2xl bg-white p-5 shadow-xl">
+            <h2 className="text-base font-bold text-slate-800">Keluar dari kuis?</h2>
             <p className="text-sm text-slate-600">
               Jawaban dan sisa waktu disimpan di perangkat ini. Saat kamu kembali, pengerjaan dilanjutkan
-              dari soal dan timer terakhir.
+              dari soal dan timer terakhir (selama belum dikirim).
             </p>
-            <div className="flex gap-2 justify-end pt-1">
+            <div className="flex justify-end gap-2 pt-1">
               <button type="button" className="lms-btn-secondary text-sm" onClick={() => setConfirmKeluar(false)}>
                 Lanjut mengerjakan
               </button>

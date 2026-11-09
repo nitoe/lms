@@ -3,6 +3,19 @@
 > Append-only: entri baru ditambahkan di BAWAH, entri lama tidak diubah.
 > Versi mengacu ke `package.json` (saat ini `0.1.0`); belum ada rilis bertag.
 
+## 2026-11-09 — Latihan: riwayat pengerjaan + opsi kerjakan lagi dari awal
+
+- **Perilaku:**
+  - Setelah **Selesai & Kirim**, siswa melihat layar hasil (skor, nomor percobaan).
+  - Di daftar kuis: badge **Sudah dikerjakan N×** + skor terakhir + ringkas riwayat.
+  - **Latihan** (`jenisPenilaian === 'latihan'`): tombol **Kerjakan lagi dari awal** dengan konfirmasi; progres lokal dihapus; kirim berikutnya = percobaan baru di `lms_jawaban`.
+  - Bukan latihan (SLM/STS/SAS): setelah dikirim tidak bisa mengerjakan ulang dari akun siswa; hanya melihat status terkirim.
+  - Draf lokal (belum kirim) tetap bisa **Lanjutkan**.
+- **Backend:** `nilaiKuisLms` menulis `lms_jawaban` per kirim (`siswaId`, `percobaan`, skor, detail); penilaian otomatis juga untuk jodoh & BS.
+- **Rules:** `lms_jawaban` baca siswa (milik sendiri) / guru mapel×kelas; tulis hanya Admin SDK (CF).
+- File: `src/pages/siswa/SiswaKuis.tsx` (LMS); `functions/nilaiKuisLms.js` + `firestore.rules` (SDM01Penilaian, versi lengkap).
+- Indeks Firestore: komposit `lms_jawaban` — `siswaId` Asc + `kuisId` Asc (buat di Console bila query gagal).
+
 ## 2026-11-09 — Layout kuis siswa: hilangkan max-w-2xl (regresi ruang kosong)
 
 - **Bug:** daftar kuis siswa tampil sempit di tengah layar PC, ruang kosong lebar di kiri-kanan.

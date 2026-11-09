@@ -361,3 +361,13 @@ Jangan memaksa satu kolom sempit di desktop.
 
 74.3 Setelah mengubah rules: salin file **utuh** ke SDM01Penilaian, `npm run deploy:rules`, uji update status paket siap↔draf dengan paket yang soalnya >100 bila ada.
 
+## §75. Hasil kuis siswa (`lms_jawaban`)
+
+75.1 Setiap **Selesai & Kirim** membuat dokumen baru di `lms_jawaban` (bukan menimpa). Field wajib: `kuisId`, `siswaId`, `percobaan`, `skorOtomatis`, `totalPoin`, `jawaban`, `status`.
+
+75.2 **Latihan** boleh diulang dari UI siswa hanya lewat konfirmasi «Kerjakan lagi dari awal» (progres lokal dihapus). SLM/STS/SAS tidak menawarkan ulang dari klien.
+
+75.3 Tulis `lms_jawaban` hanya Cloud Function / Admin SDK. Rules klien: `create/update/delete: if false`.
+
+75.4 Query siswa: `where siswaId == claim && where kuisId == …`. Siapkan indeks komposit bila Console meminta.
+

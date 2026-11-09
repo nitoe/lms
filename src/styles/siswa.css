@@ -439,3 +439,165 @@
     transform: none;
   }
 }
+
+/* —— Mode kerjakan kuis (ANTIREGRESI §54: full-width, minim ruang kosong) —— */
+.sw-kuis-kerja {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  /* Isi sisa viewport di bawah header + strip nav siswa */
+  min-height: calc(100dvh - 7.5rem);
+}
+@media (min-width: 768px) {
+  .sw-kuis-kerja {
+    min-height: calc(100dvh - 8.5rem);
+  }
+}
+.sw-kuis-kerja-head {
+  position: sticky;
+  top: 0;
+  z-index: 12;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.7rem 1rem;
+  border-radius: 0.9rem;
+  border: 1px solid var(--color-border);
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 1px 2px rgba(23, 23, 57, 0.04);
+  backdrop-filter: blur(8px);
+}
+.sw-kuis-keluar {
+  border: 1px solid var(--color-border);
+  background: #fff;
+  color: var(--color-muted);
+  font-size: 0.75rem;
+  font-weight: 600;
+  border-radius: 999px;
+  padding: 0.35rem 0.75rem;
+  cursor: pointer;
+}
+.sw-kuis-keluar:hover {
+  color: #1a1d33;
+  background: #f4f5f9;
+}
+.sw-kuis-kerja-body {
+  flex: 1 1 auto;
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: 1fr;
+  align-items: start;
+  min-height: 0;
+}
+@media (min-width: 768px) {
+  .sw-kuis-kerja-body {
+    grid-template-columns: minmax(11rem, 14rem) minmax(0, 1fr);
+    gap: 1rem;
+  }
+}
+.sw-kuis-nav {
+  background: #fff;
+  border: 1px solid var(--color-border);
+  border-radius: 0.9rem;
+  padding: 0.75rem;
+}
+@media (min-width: 768px) {
+  .sw-kuis-nav {
+    position: sticky;
+    top: 4.25rem;
+  }
+}
+.sw-kuis-nav-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0.35rem;
+}
+@media (min-width: 480px) and (max-width: 767px) {
+  .sw-kuis-nav-grid {
+    grid-template-columns: repeat(8, minmax(0, 1fr));
+  }
+}
+.sw-kuis-nav-btn {
+  height: 2rem;
+  border: 0;
+  border-radius: 0.45rem;
+  background: #f1f3f7;
+  color: #4b5563;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.12s, color 0.12s;
+}
+.sw-kuis-nav-btn:hover {
+  background: #e5e8f0;
+}
+.sw-kuis-nav-btn--aktif {
+  background: var(--color-muh-600);
+  color: #fff;
+}
+.sw-kuis-nav-btn--jawab {
+  background: #d1fae5;
+  color: #065f46;
+}
+.sw-kuis-nav-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 0.85rem;
+  margin-top: 0.65rem;
+  font-size: 0.65rem;
+  color: #9aa1b2;
+}
+.sw-kuis-nav-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+.sw-kuis-dot {
+  display: inline-block;
+  width: 0.45rem;
+  height: 0.45rem;
+  border-radius: 0.15rem;
+}
+.sw-kuis-dot--aktif { background: var(--color-muh-600); }
+.sw-kuis-dot--jawab { background: #a7f3d0; }
+.sw-kuis-soal .tampil {
+  /* kartu soal mengisi kolom, jarak internal tetap dari soal.css */
+  height: 100%;
+}
+.sw-kuis-kerja-foot {
+  position: sticky;
+  bottom: 0;
+  z-index: 12;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-top: auto;
+  padding: 0.65rem 0.85rem;
+  border-radius: 0.9rem;
+  border: 1px solid var(--color-border);
+  background: rgba(255, 255, 255, 0.97);
+  box-shadow: 0 -4px 16px rgba(23, 23, 57, 0.06);
+  backdrop-filter: blur(8px);
+}
+.sw-kuis-foot-meta {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-muted);
+  font-variant-numeric: tabular-nums;
+}
+/* Nav bawah siswa disembunyikan saat mengerjakan — foot menempel aman di HP */
+@media (max-width: 767px) {
+  .sw-kuis-kerja {
+    min-height: calc(100dvh - 4.25rem);
+    padding-bottom: 0.25rem;
+  }
+}
+
+/* Saat mode kerjakan kuis aktif (kelas ditambah dari SiswaKuis) */
+.sw-main.sw-main--kuis {
+  padding-bottom: 0.75rem;
+}
+
