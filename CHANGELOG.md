@@ -434,3 +434,8 @@
 - Detail siswa: header skor menonjol, nomor soal berwarna, kartu jawaban, area nilai manual.
 - File: `src/components/HasilKuisPanel.tsx`, `src/components/KuisPanel.tsx`.
 
+## 2026-11-09 — UI Atur kuis dirapikan
+
+- Tab **Atur kuis** (`KuisDetail`): bilah aksi sticky (simpan + ringkas soal/poin), kartu bagian Identitas / Jadwal & akses / Penilaian & TP, daftar soal per bentuk dengan header badge dan baris lebih rapi.
+- File: `src/components/KuisDetail.tsx`.
+

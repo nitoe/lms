@@ -188,221 +188,344 @@ export default function KuisDetail({ kuis, onUpdated }: Props) {
     }
   }
 
+
   let nomorGlobal = 0
+
+  const inputCls =
+    'w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-muh-500 focus:outline-none focus:ring-2 focus:ring-muh-200'
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-end gap-3">
-        <label className="flex-1 min-w-[200px] space-y-1">
-          <span className="text-xs font-semibold text-slate-700">Judul kuis</span>
-          <input
-            value={judul}
-            onChange={(e) => setJudul(e.target.value)}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-          />
-        </label>
-        <label className="w-28 space-y-1">
-          <span className="text-xs font-semibold text-slate-700">Durasi (menit)</span>
-          <input
-            type="number"
-            min={0}
-            value={durasi}
-            onChange={(e) => setDurasi(Number(e.target.value) || 0)}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-          />
-        </label>
-        <div className="flex items-center gap-3 text-sm">
-          <label className="flex items-center gap-1.5">
-            <input type="checkbox" checked={acakSoal} onChange={(e) => setAcakSoal(e.target.checked)} />
-            Acak soal
-          </label>
-          <label className="flex items-center gap-1.5">
-            <input type="checkbox" checked={acakOpsi} onChange={(e) => setAcakOpsi(e.target.checked)} />
-            Acak opsi
-          </label>
+      {/* Sticky action bar */}
+      <div className="sticky top-0 z-10 -mx-1 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white/95 px-4 py-3 shadow-sm backdrop-blur">
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-muh-600">Atur kuis</p>
+          <p className="text-sm font-bold text-slate-900 line-clamp-1">{judul.trim() || 'Tanpa judul'}</p>
         </div>
-        <button
-          type="button"
-          className="lms-btn-secondary text-xs"
-          disabled={busy || soal.length === 0}
-          onClick={urutkanMenurutBentuk}
-        >
-          Kelompokkan menurut bentuk
-        </button>
-        <button type="button" className="lms-btn-primary" disabled={busy} onClick={() => void simpan()}>
-          {busy ? 'Menyimpan…' : 'Simpan perubahan'}
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="hidden rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-600 sm:inline">
+            {ringkas.jumlahSoal} soal · {ringkas.totalPoin} poin
+          </span>
+          <button
+            type="button"
+            className="lms-btn-secondary text-xs"
+            disabled={busy || soal.length === 0}
+            onClick={urutkanMenurutBentuk}
+          >
+            Kelompokkan bentuk
+          </button>
+          <button type="button" className="lms-btn-primary text-xs" disabled={busy} onClick={() => void simpan()}>
+            {busy ? 'Menyimpan…' : 'Simpan perubahan'}
+          </button>
+        </div>
       </div>
 
       {error && (
-        <div className="rounded-xl border border-red-200 bg-red-50 px-3.5 py-2.5 text-sm text-red-800">
-          {error}
-        </div>
+        <div className="rounded-xl border border-red-200 bg-red-50 px-3.5 py-2.5 text-sm text-red-800">{error}</div>
       )}
       {info && (
-        <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3.5 py-2.5 text-sm text-emerald-800">
-          {info}
-        </div>
+        <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3.5 py-2.5 text-sm text-emerald-800">{info}</div>
       )}
 
-      <section className="rounded-xl border border-slate-200 bg-slate-50/50 p-4 space-y-3">
-        <h4 className="text-sm font-semibold text-slate-800">Pengaturan kuis & penilaian</h4>
-        <div className="grid gap-3 sm:grid-cols-2">
-          <label className="space-y-1 text-sm">
-            <span className="text-xs font-medium text-slate-600">Waktu mulai</span>
-            <input type="datetime-local" value={waktuMulai} onChange={e => setWaktuMulai(e.target.value)} className="w-full rounded border border-slate-300 px-2 py-1.5 text-sm" />
-          </label>
-          <label className="space-y-1 text-sm">
-            <span className="text-xs font-medium text-slate-600">Waktu selesai</span>
-            <input type="datetime-local" value={waktuSelesai} onChange={e => setWaktuSelesai(e.target.value)} className="w-full rounded border border-slate-300 px-2 py-1.5 text-sm" />
-          </label>
-          <label className="space-y-1 text-sm">
-            <span className="text-xs font-medium text-slate-600">Token (opsional, untuk online)</span>
-            <input value={token} onChange={e => setToken(e.target.value)} placeholder="contoh: SD01-2026" className="w-full rounded border border-slate-300 px-2 py-1.5 text-sm" />
-          </label>
-          <label className="space-y-1 text-sm">
-            <span className="text-xs font-medium text-slate-600">Jenis penilaian</span>
-            <select value={jenisPenilaian} onChange={e => setJenisPenilaian(e.target.value as JenisPenilaianKuis)} className="w-full rounded border border-slate-300 px-2 py-1.5 text-sm">
-              {(Object.keys(NAMA_JENIS_PENILAIAN) as JenisPenilaianKuis[]).map(k => (
-                <option key={k} value={k}>{NAMA_JENIS_PENILAIAN[k]}</option>
-              ))}
-            </select>
-          </label>
+      {/* Identitas */}
+      <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <div className="border-b border-slate-100 bg-slate-50/80 px-4 py-2.5">
+          <h4 className="text-sm font-bold text-slate-800">Identitas kuis</h4>
         </div>
-        <div className="space-y-1 text-sm">
-          <div className="text-xs font-medium text-slate-600">
-            TP yang diukur (terisi otomatis dari paket soal)
-          </div>
-          <div className="rounded border border-slate-200 bg-white p-2 min-h-[60px]">
-            {tpList.length > 0 ? (
-              <ul className="space-y-1">
-                {tpList.map((tp, i) => (
-                  <li key={i} className="flex items-start justify-between gap-2 text-sm bg-slate-50 rounded px-2 py-1.5">
-                    <span className="whitespace-pre-wrap break-words flex-1">{tp}</span>
-                    <button type="button" className="text-xs text-red-600 shrink-0" onClick={() => setTpList((prev) => prev.filter((_, idx) => idx !== i))}>hapus</button>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="text-xs text-slate-400 italic">Belum ada TP. Susun ulang kuis dari paket yang sudah memiliki TP, atau TP akan muncul setelah kuis dibuat dari paket bank soal.</p>
-            )}
-          </div>
-          <div className="flex items-center gap-2 mt-1">
-            <button type="button" className="lms-btn-secondary text-xs" disabled={busy} onClick={() => void perbaruiTpDariPaket()}>
-              Perbarui TP dari paket
-            </button>
-            <p className="text-[11px] text-slate-500">
-              Berguna untuk kuis lama. Sistem akan membaca ulang TP dari paket sumber.
-            </p>
+        <div className="grid gap-4 p-4 sm:grid-cols-2">
+          <label className="space-y-1 sm:col-span-2">
+            <span className="text-xs font-semibold text-slate-600">Judul</span>
+            <input value={judul} onChange={(e) => setJudul(e.target.value)} className={inputCls} />
+          </label>
+          <label className="space-y-1 sm:col-span-2">
+            <span className="text-xs font-semibold text-slate-600">Deskripsi (opsional)</span>
+            <textarea
+              value={deskripsi}
+              onChange={(e) => setDeskripsi(e.target.value)}
+              rows={2}
+              className={inputCls}
+              placeholder="Petunjuk singkat untuk siswa…"
+            />
+          </label>
+          <label className="space-y-1">
+            <span className="text-xs font-semibold text-slate-600">Durasi (menit)</span>
+            <input
+              type="number"
+              min={0}
+              value={durasi}
+              onChange={(e) => setDurasi(Number(e.target.value) || 0)}
+              className={inputCls}
+            />
+            <span className="text-[11px] text-slate-400">0 = tanpa batas waktu</span>
+          </label>
+          <div className="space-y-2">
+            <span className="text-xs font-semibold text-slate-600">Opsi pengerjaan</span>
+            <div className="flex flex-wrap gap-4 pt-1 text-sm text-slate-700">
+              <label className="flex cursor-pointer items-center gap-2">
+                <input
+                  type="checkbox"
+                  className="rounded border-slate-300 text-muh-600 focus:ring-muh-500"
+                  checked={acakSoal}
+                  onChange={(e) => setAcakSoal(e.target.checked)}
+                />
+                Acak urutan soal
+              </label>
+              <label className="flex cursor-pointer items-center gap-2">
+                <input
+                  type="checkbox"
+                  className="rounded border-slate-300 text-muh-600 focus:ring-muh-500"
+                  checked={acakOpsi}
+                  onChange={(e) => setAcakOpsi(e.target.checked)}
+                />
+                Acak opsi PG
+              </label>
+            </div>
           </div>
         </div>
       </section>
 
-      <div className="text-xs text-slate-500">
-        {ringkas.jumlahSoal} soal · total {ringkas.totalPoin} poin
-      </div>
+      {/* Jadwal & akses */}
+      <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <div className="border-b border-slate-100 bg-slate-50/80 px-4 py-2.5">
+          <h4 className="text-sm font-bold text-slate-800">Jadwal & akses</h4>
+        </div>
+        <div className="grid gap-4 p-4 sm:grid-cols-2">
+          <label className="space-y-1">
+            <span className="text-xs font-semibold text-slate-600">Waktu mulai</span>
+            <input
+              type="datetime-local"
+              value={waktuMulai}
+              onChange={(e) => setWaktuMulai(e.target.value)}
+              className={inputCls}
+            />
+          </label>
+          <label className="space-y-1">
+            <span className="text-xs font-semibold text-slate-600">Waktu selesai</span>
+            <input
+              type="datetime-local"
+              value={waktuSelesai}
+              onChange={(e) => setWaktuSelesai(e.target.value)}
+              className={inputCls}
+            />
+          </label>
+          <label className="space-y-1 sm:col-span-2">
+            <span className="text-xs font-semibold text-slate-600">Token (opsional)</span>
+            <input
+              value={token}
+              onChange={(e) => setToken(e.target.value)}
+              placeholder="contoh: SD01-2026"
+              className={inputCls}
+            />
+          </label>
+        </div>
+      </section>
 
-      {(jenisPenilaian === 'slm' || jenisPenilaian === 'sts' || jenisPenilaian === 'sas') && (
-        <section className="rounded-xl border border-amber-200 bg-amber-50/40 p-4 space-y-3">
-          <div className="flex items-center justify-between">
-            <h4 className="text-sm font-semibold text-amber-900">Nilai akhir per TP (mode cepat)</h4>
-            <span className="text-[11px] text-amber-700">Jika diisi, ini menjadi sumber nilai (bukan dari analisis)</span>
-          </div>
-          <p className="text-xs text-amber-800">
-            Untuk guru yang ingin langsung memasukkan nilai tanpa analisis jawaban. Nanti jika ada hasil analisis, nilai analisis yang diutamakan.
-          </p>
-          <div className="space-y-2">
-            {tpList.map((tp) => (
-              <div key={tp} className="flex items-center gap-3">
-                <div className="flex-1 text-sm text-slate-700 truncate">{tp}</div>
-                <input
-                  type="number"
-                  min={0}
-                  max={100}
-                  step={0.5}
-                  value={nilaiPerTp[tp] ?? ''}
-                  onChange={(e) => setNilaiPerTp(prev => ({ ...prev, [tp]: Number(e.target.value) || 0 }))}
-                  className="w-20 rounded border border-slate-300 px-2 py-1 text-sm"
-                  placeholder="0-100"
-                />
-              </div>
-            ))}
-            {tpList.length === 0 && (
-              <p className="text-xs text-slate-500">Isi daftar TP di atas terlebih dahulu.</p>
-            )}
-          </div>
-        </section>
-      )}
+      {/* Penilaian */}
+      <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <div className="border-b border-slate-100 bg-slate-50/80 px-4 py-2.5">
+          <h4 className="text-sm font-bold text-slate-800">Penilaian & TP</h4>
+        </div>
+        <div className="space-y-4 p-4">
+          <label className="block max-w-md space-y-1">
+            <span className="text-xs font-semibold text-slate-600">Jenis penilaian</span>
+            <select
+              value={jenisPenilaian}
+              onChange={(e) => setJenisPenilaian(e.target.value as JenisPenilaianKuis)}
+              className={inputCls}
+            >
+              {(Object.keys(NAMA_JENIS_PENILAIAN) as JenisPenilaianKuis[]).map((k) => (
+                <option key={k} value={k}>
+                  {NAMA_JENIS_PENILAIAN[k]}
+                </option>
+              ))}
+            </select>
+          </label>
 
-      <div className="space-y-5">
-        {URUTAN_TIPE.map((tipe) => {
-          const items = kelompok.get(tipe) ?? []
-          if (items.length === 0) return null
-          return (
-            <section key={tipe} className="space-y-2">
-              <div className="rounded-lg bg-slate-50 px-3 py-2 border border-slate-200">
-                <div className="text-sm font-bold text-slate-800">
-                  {NAMA_TIPE[tipe]} <span className="font-normal text-slate-500">({items.length} soal)</span>
-                </div>
-                <p className="mt-0.5 text-xs text-slate-600 leading-snug">{INSTRUKSI_TIPE[tipe]}</p>
-              </div>
-              <ul className="space-y-2">
-                {items.map(({ soal: s, idxAsli }) => {
-                  nomorGlobal += 1
-                  const no = nomorGlobal
-                  return (
+          <div className="space-y-1.5">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <span className="text-xs font-semibold text-slate-600">TP yang diukur</span>
+              <button
+                type="button"
+                className="lms-btn-secondary text-xs"
+                disabled={busy}
+                onClick={() => void perbaruiTpDariPaket()}
+              >
+                Perbarui dari paket
+              </button>
+            </div>
+            <div className="min-h-[64px] rounded-xl border border-slate-200 bg-slate-50/50 p-2">
+              {tpList.length > 0 ? (
+                <ul className="space-y-1.5">
+                  {tpList.map((tp, i) => (
                     <li
-                      key={`${s.sumberPaketId}-${s.id}-${idxAsli}`}
-                      className="rounded-xl border border-slate-200 bg-white p-3 flex flex-wrap gap-2 items-start"
+                      key={i}
+                      className="flex items-start justify-between gap-2 rounded-lg border border-slate-100 bg-white px-3 py-2 text-sm shadow-sm"
                     >
-                      <div className="min-w-0 flex-1">
-                        <div className="text-sm text-slate-800">
-                          <span className="font-semibold text-slate-500 mr-1">{no}.</span>
-                          {teksPolos(s.teks).slice(0, 160) || '(tanpa teks)'}
-                        </div>
-                        <div className="mt-1 text-[11px] text-slate-500 flex flex-wrap gap-2">
-                          <span>{s.kompleksitas || 'L1'}</span>
-                          {s.sumberPaketJudul && <span title="Sumber paket">← {s.sumberPaketJudul}</span>}
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-1.5 shrink-0">
-                        <label className="text-xs text-slate-600 flex items-center gap-1">
-                          Poin
-                          <input
-                            type="number"
-                            min={0}
-                            step={0.5}
-                            value={s.poin}
-                            onChange={(e) => setPoin(idxAsli, Number(e.target.value) || 0)}
-                            className="w-14 rounded border border-slate-300 px-1.5 py-0.5 text-sm"
-                          />
-                        </label>
-                        <button type="button" className="lms-btn-ghost text-xs" onClick={() => naik(idxAsli)} title="Naikkan">
-                          ↑
-                        </button>
-                        <button type="button" className="lms-btn-ghost text-xs" onClick={() => turun(idxAsli)} title="Turunkan">
-                          ↓
-                        </button>
-                        <button
-                          type="button"
-                          className="materi-btn-danger text-xs"
-                          onClick={() => hapusSoal(idxAsli)}
-                        >
-                          Hapus
-                        </button>
-                      </div>
+                      <span className="flex-1 whitespace-pre-wrap break-words text-slate-800">{tp}</span>
+                      <button
+                        type="button"
+                        className="shrink-0 text-xs font-semibold text-red-600 hover:text-red-700"
+                        onClick={() => setTpList((prev) => prev.filter((_, idx) => idx !== i))}
+                      >
+                        Hapus
+                      </button>
                     </li>
-                  )
-                })}
-              </ul>
-            </section>
-          )
-        })}
-      </div>
+                  ))}
+                </ul>
+              ) : (
+                <p className="px-2 py-3 text-xs italic text-slate-400">
+                  Belum ada TP. Susun kuis dari paket yang sudah punya TP, atau perbarui dari paket sumber.
+                </p>
+              )}
+            </div>
+          </div>
 
-      {soal.length === 0 && (
-        <div className="lms-empty">Tidak ada soal. Buat ulang kuis dari bank soal.</div>
-      )}
+          {(jenisPenilaian === 'slm' || jenisPenilaian === 'sts' || jenisPenilaian === 'sas') && (
+            <div className="rounded-xl border border-amber-200 bg-amber-50/50 p-4 space-y-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <h5 className="text-sm font-bold text-amber-900">Nilai akhir per TP (mode cepat)</h5>
+                <span className="text-[11px] font-medium text-amber-700">
+                  Jika diisi, ini menjadi sumber nilai (bukan dari analisis)
+                </span>
+              </div>
+              <div className="space-y-2">
+                {tpList.map((tp) => (
+                  <div key={tp} className="flex items-center gap-3">
+                    <div className="min-w-0 flex-1 truncate text-sm text-slate-700">{tp}</div>
+                    <input
+                      type="number"
+                      min={0}
+                      max={100}
+                      step={0.5}
+                      value={nilaiPerTp[tp] ?? ''}
+                      onChange={(e) => {
+                        const v = e.target.value
+                        setNilaiPerTp((prev) => {
+                          const next = { ...prev }
+                          if (v === '') delete next[tp]
+                          else next[tp] = Number(v)
+                          return next
+                        })
+                      }}
+                      className="w-24 rounded-lg border border-amber-200 bg-white px-2 py-1.5 text-sm shadow-sm"
+                      placeholder="0–100"
+                    />
+                  </div>
+                ))}
+                {tpList.length === 0 && (
+                  <p className="text-xs text-slate-500">Isi daftar TP di atas terlebih dahulu.</p>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      </section>
+
+      {/* Daftar soal */}
+      <section className="space-y-3">
+        <div className="flex flex-wrap items-end justify-between gap-2">
+          <div>
+            <h4 className="text-sm font-bold text-slate-900">Daftar soal</h4>
+            <p className="text-xs text-slate-500">
+              {ringkas.jumlahSoal} soal · total {ringkas.totalPoin} poin · urutan dapat diubah
+            </p>
+          </div>
+        </div>
+
+        <div className="space-y-4">
+          {URUTAN_TIPE.map((tipe) => {
+            const items = kelompok.get(tipe) ?? []
+            if (items.length === 0) return null
+            return (
+              <div key={tipe} className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+                <div className="border-b border-slate-100 bg-gradient-to-r from-slate-50 to-white px-4 py-3">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="inline-flex rounded-md bg-muh-100 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide text-muh-800">
+                      {NAMA_TIPE[tipe]}
+                    </span>
+                    <span className="text-xs font-semibold text-slate-500">{items.length} soal</span>
+                  </div>
+                  <p className="mt-1 text-xs leading-snug text-slate-500">{INSTRUKSI_TIPE[tipe]}</p>
+                </div>
+                <ul className="divide-y divide-slate-100">
+                  {items.map(({ soal: s, idxAsli }) => {
+                    nomorGlobal += 1
+                    const no = nomorGlobal
+                    return (
+                      <li
+                        key={`${s.sumberPaketId}-${s.id}-${idxAsli}`}
+                        className="flex flex-wrap items-start gap-3 px-4 py-3 transition-colors hover:bg-slate-50/80"
+                      >
+                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-100 text-xs font-bold text-slate-600">
+                          {no}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm text-slate-800">
+                            {teksPolos(s.teks).slice(0, 180) || '(tanpa teks)'}
+                          </p>
+                          <div className="mt-1 flex flex-wrap gap-2 text-[11px] text-slate-500">
+                            <span className="rounded bg-slate-100 px-1.5 py-0.5 font-medium">
+                              {s.kompleksitas || 'L1'}
+                            </span>
+                            {s.sumberPaketJudul && (
+                              <span className="truncate" title="Sumber paket">
+                                ← {s.sumberPaketJudul}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex shrink-0 flex-wrap items-center gap-1.5">
+                          <label className="flex items-center gap-1 text-xs text-slate-600">
+                            Poin
+                            <input
+                              type="number"
+                              min={0}
+                              step={0.5}
+                              value={s.poin}
+                              onChange={(e) => setPoin(idxAsli, Number(e.target.value) || 0)}
+                              className="w-14 rounded-lg border border-slate-300 px-1.5 py-1 text-sm shadow-sm"
+                            />
+                          </label>
+                          <button
+                            type="button"
+                            className="rounded-lg border border-slate-200 px-2 py-1 text-xs font-semibold text-slate-600 hover:bg-slate-50"
+                            onClick={() => naik(idxAsli)}
+                            title="Naikkan"
+                          >
+                            ↑
+                          </button>
+                          <button
+                            type="button"
+                            className="rounded-lg border border-slate-200 px-2 py-1 text-xs font-semibold text-slate-600 hover:bg-slate-50"
+                            onClick={() => turun(idxAsli)}
+                            title="Turunkan"
+                          >
+                            ↓
+                          </button>
+                          <button
+                            type="button"
+                            className="rounded-lg border border-red-100 px-2 py-1 text-xs font-semibold text-red-600 hover:bg-red-50"
+                            onClick={() => hapusSoal(idxAsli)}
+                          >
+                            Hapus
+                          </button>
+                        </div>
+                      </li>
+                    )
+                  })}
+                </ul>
+              </div>
+            )
+          })}
+        </div>
+
+        {soal.length === 0 && (
+          <div className="rounded-2xl border border-dashed border-slate-200 bg-white px-6 py-12 text-center shadow-sm">
+            <p className="text-sm font-semibold text-slate-700">Tidak ada soal</p>
+            <p className="mt-1 text-xs text-slate-500">Susun ulang kuis dari bank soal.</p>
+          </div>
+        )}
+      </section>
     </div>
   )
 }
