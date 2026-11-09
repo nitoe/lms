@@ -413,3 +413,10 @@
 - File: `src/lib/jawabanKuis.ts`, `src/components/HasilKuisPanel.tsx`.
 - **Cek juga:** rules produksi sudah memuat `match /lms_jawaban` (deploy dari SDM01Penilaian). Bila muncul error indeks, buat indeks komposit `kuisId`+`kelas`+`mapel` lewat tautan Console.
 
+## 2026-11-09 — Skor kuis siswa ditampilkan skala 100
+
+- **Permintaan:** skor akhir lebih mudah dipahami (bukan hanya poin mentah seperti 34,5/42).
+- **Perilaku:** tampilan siswa memakai skala 100 (contoh: **82,1 / 100**). Poin mentah tetap ditampilkan kecil di layar hasil; data di `lms_jawaban` tidak diubah.
+- Tempat: badge daftar kuis, ringkas riwayat, layar hasil setelah kirim.
+- File: `src/pages/siswa/SiswaKuis.tsx`.
+

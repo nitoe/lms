@@ -76,6 +76,19 @@ function tsMs(v: unknown): number {
   return 0
 }
 
+/** Skor ke skala 100 (satu desimal bila perlu). */
+function skorKe100(skor: number, totalPoin: number): number {
+  if (!totalPoin || totalPoin <= 0) return 0
+  const n = (Number(skor) / Number(totalPoin)) * 100
+  return Math.round(n * 10) / 10
+}
+
+/** Teks tampilan: "82,1" (skala 100). */
+function formatSkor100(skor: number, totalPoin: number): string {
+  const n = skorKe100(skor, totalPoin)
+  return Number.isInteger(n) ? String(n) : n.toLocaleString('id-ID', { maximumFractionDigits: 1 })
+}
+
 async function muatRiwayat(siswaId: string, kuisId: string): Promise<RiwayatPercobaan[]> {
   const q = query(
     collection(db, 'lms_jawaban'),
@@ -244,7 +257,7 @@ export default function SiswaKuis() {
                   <div className="font-semibold">
                     Sudah dikerjakan {riwayat.length}×
                     {terakhir.totalPoin > 0
-                      ? ` · skor terakhir ${terakhir.skorOtomatis}/${terakhir.totalPoin}`
+                      ? ` · skor terakhir ${formatSkor100(terakhir.skorOtomatis, terakhir.totalPoin)}`
                       : ''}
                   </div>
                   <div className="mt-0.5 text-emerald-800/80">
@@ -254,7 +267,7 @@ export default function SiswaKuis() {
                     <ul className="mt-1.5 space-y-0.5 text-[11px] text-emerald-800/70">
                       {riwayat.slice(0, 3).map((r) => (
                         <li key={r.id}>
-                          #{r.percobaan}: {r.skorOtomatis}/{r.totalPoin} · {formatWaktu(r.createdAtMs)}
+                          #{r.percobaan}: {formatSkor100(r.skorOtomatis, r.totalPoin)} · {formatWaktu(r.createdAtMs)}
                         </li>
                       ))}
                     </ul>
@@ -355,9 +368,12 @@ function HasilLatihan({
         <div className="text-sm font-medium text-slate-500">Hasil dikirim</div>
         <h2 className="mt-1 text-lg font-bold text-slate-800">{hasil.kuis.judul}</h2>
         <div className="mt-4 text-4xl font-bold text-muh-700">
-          {hasil.skor}
-          <span className="text-lg font-semibold text-slate-400"> / {hasil.totalPoin}</span>
+          {formatSkor100(hasil.skor, hasil.totalPoin)}
+          <span className="text-lg font-semibold text-slate-400"> / 100</span>
         </div>
+        <p className="mt-1 text-xs text-slate-500">
+          {hasil.skor} dari {hasil.totalPoin} poin
+        </p>
         <p className="mt-2 text-xs text-slate-500">
           Percobaan ke-{hasil.percobaan}
           {hasil.status === 'sebagian_manual' ? ' · sebagian dinilai guru' : ''}
