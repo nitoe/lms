@@ -324,3 +324,11 @@
 ## 2026-11-09 — Perbaiki error TS pada update kuis dan SiswaKuis
 - Tambah `nilaiPerTp` dan `sumberNilai` ke tipe `updateKuis`.
 - Hapus import tidak terpakai `teksPolos` di `SiswaKuis.tsx`.
+
+## 2026-11-09 — Rules untuk koleksi lms_jawaban
+
+- Tambah blok `match /lms_jawaban/{id}` di `firestore.rules` (versi lengkap).
+- Siswa (token lmsSiswa) boleh create jawaban miliknya sendiri.
+- Guru kelas×mapel dan admin boleh read.
+- Update dari klien ditolak; delete hanya admin.
+- ANTIREGRESI §72.

@@ -315,3 +315,10 @@
 - Function `nilaiKuisLms` masih skeleton. Jangan menganggap skor sudah benar sebelum logika perbandingan kunci diimplementasi.
 - Kunci jawaban tidak boleh dikirim ke klien. Semua perbandingan dilakukan di Cloud Function.
 - Deploy: `firebase deploy --only functions:nilaiKuisLms` dari repo SDM01Penilaian.
+
+## §72. Koleksi lms_jawaban
+
+- Jawaban siswa disimpan di `lms_jawaban`, terpisah dari dokumen kuis yang berisi kunci.
+- Siswa hanya boleh membuat dokumen dengan `siswaUid == request.auth.uid`.
+- Jangan membuka update dari klien; koreksi guru (jika perlu) dilakukan lewat jalur lain atau admin.
+- Setelah mengubah rules, salin file lengkap ke SDM01Penilaian dan deploy (`npm run deploy:rules`).
