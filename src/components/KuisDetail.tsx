@@ -17,6 +17,14 @@ export const INSTRUKSI_TIPE: Record<TipeSoal, string> = {
   uraian: 'Jawablah pertanyaan berikut dengan jelas dan lengkap!',
 }
 
+
+function bersihNamaTp(s: string): string {
+  return String(s ?? '')
+    .replace(/[\r\n\u2028\u2029]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
 type Props = {
   kuis: KuisLms
   onUpdated?: () => void
@@ -36,7 +44,7 @@ export default function KuisDetail({ kuis, onUpdated }: Props) {
   const [waktuSelesai, setWaktuSelesai] = useState(kuis.waktuSelesai ?? '')
   const [token, setToken] = useState(kuis.token ?? '')
   const [jenisPenilaian, setJenisPenilaian] = useState<JenisPenilaianKuis>(kuis.jenisPenilaian ?? 'latihan')
-  const [tpInput, setTpInput] = useState((kuis.tpNamaList ?? kuis.tpIds ?? []).join('\n'))
+  const [tpInput, setTpInput] = useState((kuis.tpNamaList ?? kuis.tpIds ?? []).map(bersihNamaTp).filter(Boolean).join('\n'))
   const [nilaiPerTp, setNilaiPerTp] = useState<Record<string, number>>(kuis.nilaiPerTp ?? {})
 
   useEffect(() => {
@@ -50,7 +58,7 @@ export default function KuisDetail({ kuis, onUpdated }: Props) {
     setWaktuSelesai(kuis.waktuSelesai ?? '')
     setToken(kuis.token ?? '')
     setJenisPenilaian(kuis.jenisPenilaian ?? 'latihan')
-    setTpInput((kuis.tpNamaList ?? kuis.tpIds ?? []).join('\n'))
+    setTpInput((kuis.tpNamaList ?? kuis.tpIds ?? []).map(bersihNamaTp).filter(Boolean).join('\n'))
     setNilaiPerTp(kuis.nilaiPerTp ?? {})
   }, [kuis])
 
@@ -124,7 +132,7 @@ export default function KuisDetail({ kuis, onUpdated }: Props) {
       for (const pid of kuis.sumberPaketIds) {
         const pk = semua.find((x) => x.id === pid)
         if (pk?.tpId && pk.tpNama) {
-          const namaBersih = String(pk.tpNama).replace(/[\r\n]+/g, ' ').replace(/\s+/g, ' ').trim()
+          const namaBersih = bersihNamaTp(String(pk.tpNama ?? ''))
           const label = pk.tpNomor ? `TP ${pk.tpNomor}. ${namaBersih}` : namaBersih
           tpMap.set(pk.tpId, label)
         }
