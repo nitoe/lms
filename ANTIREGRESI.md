@@ -322,3 +322,20 @@
 - Siswa hanya boleh membuat dokumen dengan `siswaUid == request.auth.uid`.
 - Jangan membuka update dari klien; koreksi guru (jika perlu) dilakukan lewat jalur lain atau admin.
 - Setelah mengubah rules, salin file lengkap ke SDM01Penilaian dan deploy (`npm run deploy:rules`).
+
+## §54. Layout area siswa & halaman baru (full-width responsive)
+
+54.1 **Konten halaman siswa memakai lebar penuh shell** (`.sw-main` max-width 1600px, padding responsif). Jangan membungkus daftar/kartu/konten utama dengan `max-w-md`, `max-w-lg`, `max-w-xl`, `max-w-2xl`, `max-w-3xl`, atau `max-width` ≤ 48rem kecuali untuk **satu kartu pesan kosong / placeholder terpusat** (mis. `.sw-placeholder`).
+
+54.2 **Pola yang dilarang (regresi berulang):** `className="… max-w-2xl mx-auto"` atau container sempit di tengah layar PC yang meninggalkan ruang kosong lebar di kiri-kanan. Pola ini sudah muncul di `SiswaKuis` dan beberapa halaman baru lainnya.
+
+54.3 **Grid fluid:** daftar kartu (menu, mapel, materi, kuis) memakai CSS grid `minmax(0, 1fr)` dengan breakpoint:
+- HP: 1–2 kolom
+- tablet (≥768px): 2–3 kolom
+- PC (≥1024/1200px): 3–5 kolom sesuai jenis kartu
+Jangan memaksa satu kolom sempit di desktop.
+
+54.4 **Navigasi siswa:** HP = bottom nav fixed; tablet/PC (≥768px) = strip horizontal di bawah header (bukan bottom fixed), agar konten tidak selalu mengosongkan ruang bawah besar.
+
+54.5 Aturan ini berlaku untuk **semua halaman baru** di area siswa (`src/pages/siswa/*`) dan sebaiknya diikuti juga untuk halaman guru yang bukan editor khusus (bukan SoalEditor). Sebelum merge halaman baru, cek di viewport ~1280px dan ~375px apakah konten mengisi lebar secara wajar.
+

@@ -9,6 +9,11 @@ const NAV: { to: string; end: boolean; label: string; icon: SiswaIconName }[] = 
   { to: '/siswa/kuis', end: false, label: 'Kuis', icon: 'target' },
 ]
 
+/**
+ * Shell area siswa: header + konten full-width + navigasi.
+ * HP: nav bawah fixed. Tablet/PC: nav strip di bawah header (lihat siswa.css).
+ * ANTIREGRESI §54 — jangan bungkus Outlet dengan max-width sempit.
+ */
 export default function SiswaLayout() {
   const { sesi, keluar } = useSiswa()
   const navigate = useNavigate()
@@ -45,10 +50,6 @@ export default function SiswaLayout() {
         </div>
       </header>
 
-      <main className="sw-main">
-        <Outlet />
-      </main>
-
       <nav className="sw-nav" aria-label="Menu utama siswa">
         <div className="sw-nav-inner">
           {NAV.map((item) => (
@@ -60,12 +61,16 @@ export default function SiswaLayout() {
                 `sw-nav-item ${isActive ? 'sw-nav-item--active' : ''}`
               }
             >
-              <SiswaIcon name={item.icon} size={24} />
+              <SiswaIcon name={item.icon} size={22} />
               <span className="sw-nav-label">{item.label}</span>
             </NavLink>
           ))}
         </div>
       </nav>
+
+      <main className="sw-main">
+        <Outlet />
+      </main>
     </div>
   )
 }

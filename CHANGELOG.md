@@ -337,3 +337,14 @@
 - Saat menyusun kuis, sistem mengumpulkan TP unik dari paket bank soal yang dipilih.
 - Di halaman detail, daftar TP ditampilkan (bisa dihapus) bukan lagi textarea bebas.
 - File: `KuisPanel.tsx`, `KuisDetail.tsx`, `lib/kuis.ts`.
+
+## 2026-11-09 — Overhaul UI area siswa: full-width responsive (PC + HP)
+
+- **Masalah berulang:** halaman siswa (terutama Kuis dan halaman baru) memakai container sempit (`max-w-2xl mx-auto` / max-width kecil) sehingga di PC banyak ruang kosong kiri-kanan; pola sama sering terulang saat membuat halaman baru.
+- **Perbaikan:**
+  - `src/styles/siswa.css`: shell `.sw-main` / header fluid (max 1600px, padding `clamp`); nav HP tetap bottom fixed; ≥768px nav menjadi strip horizontal di bawah header; grid mapel/materi/kuis diperjelas per breakpoint; kelas `.sw-kuis-list` / `.sw-kuis-card` baru.
+  - `SiswaLayout.tsx`: urutan header → nav → main agar sticky nav desktop benar; tidak membungkus konten dengan max-width sempit.
+  - `SiswaKuis.tsx`: hapus `max-w-2xl mx-auto`; daftar kuis grid full-width; mode kerjakan tetap dalam shell siswa (bukan full-screen terpisah yang memotong nav).
+- **ANTIREGRESI §54** (baru): aturan wajib full-width responsive untuk area siswa dan acuan halaman baru.
+- Perlu di-deploy: hosting saja (`npm run deploy`). Tidak ada perubahan rules.
+

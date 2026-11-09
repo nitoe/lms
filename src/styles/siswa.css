@@ -1,8 +1,12 @@
 /* ═══════════════════════════════════════════════════════════
-   Area siswa — overhaul tahap 3 (v0.4.2)
+   Area siswa — overhaul tahap 3b (responsive full-width)
    Prefiks `sw-`. Bahasa visual selaras guru (.lms-*, .kelas-hero*),
    tetapi target sentuh besar & ikon jelas untuk anak SD.
    Hanya memakai warna literal / variabel yang sudah dipakai di index.css.
+
+   ANTIREGRESI §54: konten siswa memakai lebar penuh (fluid).
+   Jangan menambahkan max-width sempit (max-w-md / max-w-2xl / 28rem)
+   pada shell atau daftar konten.
    ═══════════════════════════════════════════════════════════ */
 
 .sw-app {
@@ -32,7 +36,7 @@
   width: 100%;
   max-width: 1600px;
   margin: 0 auto;
-  padding: 0.7rem 1rem;
+  padding: 0.7rem clamp(0.85rem, 2.5vw, 1.5rem);
 }
 .sw-avatar {
   display: flex;
@@ -65,16 +69,25 @@
   color: #1a1d33;
 }
 
-/* —— Konten —— */
+/* —— Konten: full-width fluid —— */
 .sw-main {
   flex: 1;
   width: 100%;
   max-width: 1600px;
   margin: 0 auto;
-  padding: 1.25rem 1rem calc(6.5rem + env(safe-area-inset-bottom));
+  padding:
+    clamp(1rem, 2.5vw, 1.5rem)
+    clamp(0.85rem, 2.5vw, 1.5rem)
+    calc(6.5rem + env(safe-area-inset-bottom));
 }
 
-/* —— Navigasi bawah —— */
+@media (min-width: 768px) {
+  .sw-main {
+    padding-bottom: clamp(1.5rem, 3vw, 2.5rem);
+  }
+}
+
+/* —— Navigasi: bawah di HP, bar horizontal di tablet/PC —— */
 .sw-nav {
   position: fixed;
   inset: auto 0 0 0;
@@ -88,9 +101,10 @@
 .sw-nav-inner {
   display: flex;
   gap: 0.25rem;
-  max-width: 36rem;
+  width: 100%;
+  max-width: 1600px;
   margin: 0 auto;
-  padding: 0.35rem 0.5rem;
+  padding: 0.35rem clamp(0.5rem, 2vw, 1rem);
 }
 .sw-nav-item {
   display: flex;
@@ -121,6 +135,36 @@
 }
 .sw-nav-item--active .sw-nav-label {
   font-weight: 700;
+}
+
+@media (min-width: 768px) {
+  .sw-nav {
+    position: sticky;
+    top: 0;
+    inset: unset;
+    padding-bottom: 0;
+    border-top: none;
+    border-bottom: 1px solid var(--color-border);
+    box-shadow: none;
+    z-index: 30;
+  }
+  .sw-header {
+    z-index: 31;
+  }
+  .sw-nav-inner {
+    gap: 0.35rem;
+    padding: 0.4rem clamp(0.85rem, 2.5vw, 1.5rem);
+  }
+  .sw-nav-item {
+    flex-direction: row;
+    gap: 0.45rem;
+    min-height: 2.75rem;
+    padding: 0.45rem 1rem;
+    flex: 0 1 auto;
+  }
+  .sw-nav-label {
+    font-size: 0.8125rem;
+  }
 }
 
 /* —— Beranda: kartu menu besar —— */
@@ -221,10 +265,13 @@
   gap: 0.85rem;
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
-@media (min-width: 768px) {
+@media (min-width: 640px) {
   .sw-mapel-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
-@media (min-width: 1200px) {
+@media (min-width: 1024px) {
+  .sw-mapel-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+@media (min-width: 1280px) {
   .sw-mapel-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); }
 }
 .sw-mapel-card {
@@ -304,15 +351,53 @@
   background: var(--color-muh-700);
 }
 
-/* —— Placeholder fitur belum aktif —— */
+/* —— Daftar kuis (full-width) —— */
+.sw-kuis-list {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: 1fr;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+@media (min-width: 768px) {
+  .sw-kuis-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (min-width: 1200px) {
+  .sw-kuis-list { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+.sw-kuis-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 1rem 1.05rem;
+  border-radius: 1rem;
+  border: 1px solid var(--color-border);
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(23, 23, 57, 0.04);
+}
+.sw-kuis-card-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #0f172a;
+  line-height: 1.3;
+}
+.sw-kuis-card-meta {
+  font-size: 0.75rem;
+  color: var(--color-muted);
+  line-height: 1.4;
+}
+
+/* —— Placeholder —— */
 .sw-placeholder {
   display: flex;
-  max-width: 28rem;
+  width: 100%;
+  max-width: 36rem;
   margin: 1.5rem auto 0;
   flex-direction: column;
   align-items: center;
   gap: 1.25rem;
-  padding: 2rem 1.25rem;
+  padding: 2rem clamp(1rem, 3vw, 1.75rem);
   border-radius: 1rem;
   border: 1px solid var(--color-border);
   background: #fff;
@@ -331,10 +416,16 @@
   font-size: 0.875rem;
   font-weight: 600;
   text-decoration: none;
+  border: none;
+  cursor: pointer;
   transition: background 0.12s;
 }
 .sw-btn-primary:hover {
   background: var(--color-muh-700);
+}
+.sw-btn-primary:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
 }
 
 @media (prefers-reduced-motion: reduce) {
