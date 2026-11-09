@@ -16,8 +16,13 @@ import { NAMA_TIPE, type TipeSoal } from '../types/soal'
 import { useAuth } from '../context/AuthContext'
 import {
   analisisKuisDenganAi,
+  analisisSiswaDenganAi,
   bolehAnalisisKuisAi,
+  htmlLaporanKuis,
+  htmlLaporanSiswa,
+  unduhLaporanDoc,
   type HasilAnalisisKuisAi,
+  type HasilAnalisisSiswaAi,
 } from '../lib/analisisKuisAi'
 
 type Props = {
@@ -118,6 +123,27 @@ function TabPill({
   )
 }
 
+
+async function jalankanAnalisisSiswa(
+  kuisId: string,
+  jawabanId: string,
+  setBusy: (v: boolean) => void,
+  setErr: (v: string) => void,
+  setHasil: (v: HasilAnalisisSiswaAi | null) => void,
+) {
+  setBusy(true)
+  setErr('')
+  try {
+    const h = await analisisSiswaDenganAi(kuisId, jawabanId)
+    setHasil(h)
+  } catch (e) {
+    setHasil(null)
+    setErr(e instanceof Error ? e.message : 'Gagal menganalisis siswa.')
+  } finally {
+    setBusy(false)
+  }
+}
+
 /** Daftar nilai + analisis + penilaian manual. ANTIREGRESI §55. */
 export default function HasilKuisPanel({ kuis }: Props) {
   const { user } = useAuth()
@@ -133,6 +159,10 @@ export default function HasilKuisPanel({ kuis }: Props) {
   const [analisisAi, setAnalisisAi] = useState<HasilAnalisisKuisAi | null>(null)
   const [busyAi, setBusyAi] = useState(false)
   const [errorAi, setErrorAi] = useState('')
+  const [analisisSiswaAi, setAnalisisSiswaAi] = useState<HasilAnalisisSiswaAi | null>(null)
+  const [busySiswaAi, setBusySiswaAi] = useState(false)
+  const [errorSiswaAi, setErrorSiswaAi] = useState('')
+  const [terapanAi, setTerapanAi] = useState('')
 
   const muat = useCallback(async () => {
     setError('')
@@ -230,6 +260,9 @@ export default function HasilKuisPanel({ kuis }: Props) {
             setPilihId(null)
             setInfo('')
             setError('')
+            setAnalisisSiswaAi(null)
+            setErrorSiswaAi('')
+            setTerapanAi('')
           }}
         >
           <span aria-hidden>←</span> Kembali ke daftar nilai
@@ -262,7 +295,178 @@ export default function HasilKuisPanel({ kuis }: Props) {
             </div>
           </div>
 
-          {(error || info) && (
+          
+        {bolehAi && (
+          <div className="overflow-hidden rounded-2xl border border-muh-100 bg-white shadow-sm">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-muh-50 bg-muh-50/40 px-4 py-3">
+              <div>
+                <h4 className="text-sm font-bold text-muh-900">Analisis AI siswa</h4>
+                <p className="text-[11px] text-muh-700/80">
+                  Nilai isian &amp; uraian (skor boleh 0,5) + catatan untuk guru &amp; orang tua
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {analisisSiswaAi && (
+                  <button
+                    type="button"
+                    className="lms-btn-secondary text-xs"
+                    onClick={() =>
+                      unduhLaporanDoc({
+                        namaFile: `analisis-${analisisSiswaAi.meta?.siswaNama || 'siswa'}`,
+                        judul: 'Laporan penilaian siswa',
+                        htmlBody: htmlLaporanSiswa(analisisSiswaAi),
+                      })
+                    }
+                  >
+                    Unduh .doc
+                  </button>
+                )}
+                <button
+                  type="button"
+                  className="lms-btn-primary text-xs"
+                  disabled={busySiswaAi}
+                  onClick={() =>
+                    void jalankanAnalisisSiswa(
+                      kuis.id,
+                      terpilih.id,
+                      setBusySiswaAi,
+                      setErrorSiswaAi,
+                      setAnalisisSiswaAi,
+                    )
+                  }
+                >
+                  {busySiswaAi
+                    ? 'Menganalisis…'
+                    : analisisSiswaAi
+                      ? 'Analisis ulang'
+                      : 'Analisis AI'}
+                </button>
+              </div>
+            </div>
+            {errorSiswaAi && (
+              <div className="border-b border-red-100 bg-red-50 px-4 py-2 text-sm text-red-800">
+                {errorSiswaAi}
+              </div>
+            )}
+            {terapanAi && (
+              <div className="border-b border-emerald-100 bg-emerald-50 px-4 py-2 text-sm text-emerald-800">
+                {terapanAi}
+              </div>
+            )}
+            {analisisSiswaAi && (
+              <div className="space-y-3 p-4 text-sm">
+                <p className="text-slate-800">{analisisSiswaAi.ringkasSiswa}</p>
+                {analisisSiswaAi.catatanOrangTua ? (
+                  <p className="rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-600">
+                    <span className="font-semibold text-slate-700">Untuk orang tua: </span>
+                    {analisisSiswaAi.catatanOrangTua}
+                  </p>
+                ) : null}
+                {analisisSiswaAi.saranBelajar.length > 0 ? (
+                  <ul className="list-disc pl-5 text-xs text-slate-600">
+                    {analisisSiswaAi.saranBelajar.map((x, i) => (
+                      <li key={i}>{x}</li>
+                    ))}
+                  </ul>
+                ) : null}
+                <div className="overflow-x-auto rounded-xl border border-slate-200">
+                  <table className="w-full min-w-[480px] text-left text-xs">
+                    <thead className="bg-slate-50 text-[10px] font-semibold uppercase text-slate-500">
+                      <tr>
+                        <th className="px-3 py-2">No</th>
+                        <th className="px-3 py-2">Skor saran</th>
+                        <th className="px-3 py-2">Alasan</th>
+                        <th className="px-3 py-2" />
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {analisisSiswaAi.penilaian.map((p) => (
+                        <tr key={p.soalId}>
+                          <td className="px-3 py-2 font-semibold text-slate-700">{p.no}</td>
+                          <td className="px-3 py-2 tabular-nums font-bold text-muh-700">
+                            {p.skor}
+                            <span className="font-normal text-slate-400"> / {p.poinMaks}</span>
+                          </td>
+                          <td className="px-3 py-2 text-slate-600">{p.alasan}</td>
+                          <td className="px-3 py-2 text-right">
+                            <button
+                              type="button"
+                              className="rounded-lg border border-slate-200 px-2 py-1 font-semibold text-muh-700 hover:bg-muh-50"
+                              disabled={busySoal === p.soalId}
+                              onClick={() => {
+                                void (async () => {
+                                  setBusySoal(p.soalId)
+                                  setTerapanAi('')
+                                  setErrorSiswaAi('')
+                                  try {
+                                    await simpanNilaiManual({
+                                      jawabanId: terpilih.id,
+                                      soalId: p.soalId,
+                                      skor: p.skor,
+                                    })
+                                    setTerapanAi(`Skor soal ${p.no} diterapkan (${p.skor}).`)
+                                    setSkorDraft((prev) => ({
+                                      ...prev,
+                                      [`${terpilih.id}:${p.soalId}`]: String(p.skor),
+                                    }))
+                                    await muat()
+                                  } catch (e) {
+                                    setErrorSiswaAi(
+                                      e instanceof Error ? e.message : 'Gagal menerapkan skor.',
+                                    )
+                                  } finally {
+                                    setBusySoal(null)
+                                  }
+                                })()
+                              }}
+                            >
+                              Terapkan
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <button
+                  type="button"
+                  className="lms-btn-primary text-xs"
+                  disabled={busySiswaAi || analisisSiswaAi.penilaian.length === 0}
+                  onClick={() => {
+                    void (async () => {
+                      setBusySiswaAi(true)
+                      setTerapanAi('')
+                      setErrorSiswaAi('')
+                      try {
+                        for (const p of analisisSiswaAi.penilaian) {
+                          await simpanNilaiManual({
+                            jawabanId: terpilih.id,
+                            soalId: p.soalId,
+                            skor: p.skor,
+                          })
+                        }
+                        setTerapanAi(
+                          `Semua skor AI diterapkan (${analisisSiswaAi.penilaian.length} butir).`,
+                        )
+                        await muat()
+                      } catch (e) {
+                        setErrorSiswaAi(
+                          e instanceof Error ? e.message : 'Gagal menerapkan semua skor.',
+                        )
+                      } finally {
+                        setBusySiswaAi(false)
+                      }
+                    })()
+                  }}
+                >
+                  Terapkan semua skor AI
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
+{(error || info) && (
             <div className="space-y-2 border-b border-slate-100 px-5 py-3">
               {error && (
                 <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
@@ -453,27 +657,44 @@ export default function HasilKuisPanel({ kuis }: Props) {
                 Interpretasi hasil, butir bermasalah, dan saran tindak lanjut (khusus akun Anda)
               </p>
             </div>
-            <button
-              type="button"
-              className="lms-btn-primary text-xs"
-              disabled={busyAi || list.length === 0}
-              onClick={() => {
-                void (async () => {
-                  setBusyAi(true)
-                  setErrorAi('')
-                  try {
-                    const h = await analisisKuisDenganAi(kuis.id)
-                    setAnalisisAi(h)
-                  } catch (e) {
-                    setErrorAi(e instanceof Error ? e.message : 'Gagal menganalisis.')
-                  } finally {
-                    setBusyAi(false)
+            <div className="flex flex-wrap gap-2">
+              {analisisAi && (
+                <button
+                  type="button"
+                  className="lms-btn-secondary text-xs"
+                  onClick={() =>
+                    unduhLaporanDoc({
+                      namaFile: `analisis-kuis-${kuis.judul || kuis.id}`,
+                      judul: 'Analisis hasil kuis',
+                      htmlBody: htmlLaporanKuis(analisisAi),
+                    })
                   }
-                })()
-              }}
-            >
-              {busyAi ? 'Menganalisis…' : analisisAi ? 'Analisis ulang' : 'Jalankan analisis AI'}
-            </button>
+                >
+                  Unduh .doc
+                </button>
+              )}
+              <button
+                type="button"
+                className="lms-btn-primary text-xs"
+                disabled={busyAi || list.length === 0}
+                onClick={() => {
+                  void (async () => {
+                    setBusyAi(true)
+                    setErrorAi('')
+                    try {
+                      const h = await analisisKuisDenganAi(kuis.id)
+                      setAnalisisAi(h)
+                    } catch (e) {
+                      setErrorAi(e instanceof Error ? e.message : 'Gagal menganalisis.')
+                    } finally {
+                      setBusyAi(false)
+                    }
+                  })()
+                }}
+              >
+                {busyAi ? 'Menganalisis…' : analisisAi ? 'Analisis ulang' : 'Jalankan analisis AI'}
+              </button>
+            </div>
           </div>
           {errorAi && (
             <div className="border-b border-red-100 bg-red-50 px-4 py-2 text-sm text-red-800">{errorAi}</div>
@@ -646,17 +867,44 @@ export default function HasilKuisPanel({ kuis }: Props) {
                           : '—'}
                       </td>
                       <td className="px-4 py-3 text-right">
-                        <button
-                          type="button"
-                          className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-muh-700 shadow-sm hover:border-muh-200 hover:bg-muh-50"
-                          onClick={() => {
-                            setPilihId(j.id)
-                            setError('')
-                            setInfo('')
-                          }}
-                        >
-                          Detail / nilai
-                        </button>
+                        <div className="flex flex-wrap justify-end gap-1.5">
+                          <button
+                            type="button"
+                            className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-muh-700 shadow-sm hover:border-muh-200 hover:bg-muh-50"
+                            onClick={() => {
+                              setPilihId(j.id)
+                              setError('')
+                              setInfo('')
+                              setAnalisisSiswaAi(null)
+                              setErrorSiswaAi('')
+                              setTerapanAi('')
+                            }}
+                          >
+                            Detail / nilai
+                          </button>
+                          {bolehAi && (
+                            <button
+                              type="button"
+                              className="rounded-lg border border-muh-200 bg-muh-50 px-3 py-1.5 text-xs font-semibold text-muh-800 shadow-sm hover:bg-muh-100"
+                              disabled={busySiswaAi}
+                              onClick={() => {
+                                setPilihId(j.id)
+                                setError('')
+                                setInfo('')
+                                setTerapanAi('')
+                                void jalankanAnalisisSiswa(
+                                  kuis.id,
+                                  j.id,
+                                  setBusySiswaAi,
+                                  setErrorSiswaAi,
+                                  setAnalisisSiswaAi,
+                                )
+                              }}
+                            >
+                              Analisis AI
+                            </button>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   )

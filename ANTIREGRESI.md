@@ -393,3 +393,14 @@ Jangan memaksa satu kolom sempit di desktop.
 
 56.3 Analisis membaca agregat `lms_jawaban` di server; jangan mengirim kunci jawaban atau data siswa berlebih ke model di luar yang diperlukan untuk statistik/contoh jawaban salah.
 
+
+
+## §56. Analisis kuis AI
+
+56.1 Hanya UID `v4fQXsqCzYUtHrqcDM0u48sxIfn1` + email `arif.azwar79@gmail.com` (`bolehAnalisisKuisAi` + CF `bolehPemanggilAi`).
+
+56.2 Mode **siswa**: AI menilai isian/uraian vs kunci; skor kelipatan 0,5; guru menerapkan lewat `nilaiManualKuisLms` (jangan buka tulis klien ke `lms_jawaban`).
+
+56.3 Mode **kuis**: laporan kualitatif kelas. Unduhan laporan = HTML Word-compatible (.doc) di klien; tanpa dependency baru.
+
+56.4 Kunci Gemini hanya di secrets CF.

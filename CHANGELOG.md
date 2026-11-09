@@ -447,3 +447,11 @@
 - File SDM01Penilaian: `functions/analisisKuisLmsAi.js`, `functions/index.js`.
 - Deploy: `firebase deploy --only functions:analisisKuisLmsAi` lalu hosting LMS.
 
+## 2026-11-09 — Analisis AI per siswa (nilai isian/uraian) + unduh .doc
+
+- **Mode siswa:** AI membandingkan jawaban isian/uraian dengan kunci; skor boleh pecahan (0,5). Tombol **Analisis AI** di samping Detail/nilai dan di halaman detail. **Terapkan** / **Terapkan semua skor AI** → `nilaiManualKuisLms`.
+- **Mode kuis:** laporan kualitatif kelas tetap ada.
+- **Unduh .doc** (HTML kompatibel Word) untuk laporan kelas maupun per siswa.
+- Hanya akun `arif.azwar79@gmail.com`.
+- File: `analisisKuisAi.ts`, `HasilKuisPanel.tsx`; CF `analisisKuisLmsAi.js` (mode kuis|siswa); ANTIREGRESI §56.
+
