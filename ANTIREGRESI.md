@@ -339,3 +339,15 @@ Jangan memaksa satu kolom sempit di desktop.
 
 54.5 Aturan ini berlaku untuk **semua halaman baru** di area siswa (`src/pages/siswa/*`) dan sebaiknya diikuti juga untuk halaman guru yang bukan editor khusus (bukan SoalEditor). Sebelum merge halaman baru, cek di viewport ~1280px dan ~375px apakah konten mengisi lebar secara wajar.
 
+## §73. Kuis siswa (pengerjaan online)
+
+73.1 Halaman pengerjaan siswa **wajib** memakai `SoalTampil` (bukan form ad-hoc). Semua tipe (`pg`, `pgk`, `jodoh`, `bs`, `isian`, `uraian`) dan gambar (`gambarId` → `GambarSoal` / `lms_gambar`) harus tampil.
+
+73.2 Progres jawaban disimpan di `localStorage` (`lms_kuis_progress_v1_{siswaId}_{kuisId}`). Jangan menghapus progres kecuali setelah kirim sukses (`clearProgress`).
+
+73.3 Saat mengerjakan: pasang `beforeunload`, dialog konfirmasi Keluar, dan sembunyikan `.sw-nav` agar siswa tidak pindah halaman tanpa sengaja.
+
+73.4 Rules `lms_kuis` read: guru lewat `lihatMapelKelas`; siswa LMS hanya kuis **aktif** kelasnya (`resource.data.kelas == request.auth.token.kelas && resource.data.aktif == true`). Snapshot memuat kunci — diterima untuk latihan; ujian berisiko tinggi harus dilayani Cloud Function yang menyaring kunci (belum diimplementasi).
+
+73.5 Import `styles/soal.css` di rute siswa yang menampilkan `SoalTampil`, atau pastikan stylesheet sudah dimuat global.
+

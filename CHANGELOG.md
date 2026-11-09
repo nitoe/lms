@@ -3,6 +3,21 @@
 > Append-only: entri baru ditambahkan di BAWAH, entri lama tidak diubah.
 > Versi mengacu ke `package.json` (saat ini `0.1.0`); belum ada rilis bertag.
 
+## 2026-11-09 — Kuis siswa: tampilan lengkap, progres, cegah keluar tidak sengaja
+
+- **Masalah:**
+  1. Siswa bisa berpindah halaman kapan saja (tombol Keluar + navigasi bawah) tanpa konfirmasi; progres hilang.
+  2. Tidak ada save progress — refresh/tutup tab menghapus jawaban.
+  3. Gambar soal tidak tampil (hanya `soal.teks` via `dangerouslySetInnerHTML`).
+  4. Tipe benar-salah dan menjodohkan belum didukung di form jawaban siswa.
+- **Perbaikan:**
+  - `SiswaKuis.tsx` memakai komponen `SoalTampil` (semua tipe: PG, PGK, jodoh, BS, isian, uraian) + `GambarSoal`/`RichView`.
+  - Progres jawaban + nomor soal + sisa waktu disimpan otomatis ke `localStorage` (kunci per siswa+kuis); tombol **Lanjutkan** di daftar.
+  - Dialog konfirmasi saat Keluar; `beforeunload` saat refresh/tutup tab; navigasi bawah siswa disembunyikan selama mengerjakan.
+  - `firestore.rules`: siswa LMS boleh **read** `lms_kuis` aktif milik kelasnya (claim token). Catatan: snapshot memuat kunci — cukup untuk latihan; ujian berisiko tinggi nanti lewat CF.
+- File: `src/pages/siswa/SiswaKuis.tsx`, `firestore.rules` (lengkap, salin ke SDM01Penilaian).
+- ANTIREGRESI §54.
+
 ## Belum dirilis — Fondasi Bank Soal / Kuis
 
 - Tab **Kuis** ditambahkan di ruang kelas (`KelasDetail`).
