@@ -313,3 +313,11 @@
 - File: `src/types/kuis.ts`, `src/lib/kuis.ts`, `src/components/KuisDetail.tsx`, `firestore.rules`.
 - ANTIREGRESI §69.
 - Catatan: integrasi nilai ke SDM01Penilaian dan pengerjaan siswa menyusul di fase berikutnya.
+
+## 2026-11-09 — Fase 2 awal: tabel nilai per TP (mode cepat) + UI kuis siswa dasar
+
+- Di detail kuis (guru): untuk jenis SLM/STS/SAS ditambahkan **tabel nilai akhir per TP** (mode cepat). Guru bisa langsung mengisi nilai tanpa analisis. Jika nanti ada analisis, hasil analisis yang diutamakan.
+- Field baru: `nilaiPerTp`, `sumberNilai` ('manual' | 'analisis').
+- Halaman siswa `/siswa/kuis`: daftar kuis aktif di kelas siswa + halaman pengerjaan dasar (navigasi soal, placeholder jawaban). Skoring lewat Cloud Function menyusul.
+- File: `src/components/KuisDetail.tsx`, `src/types/kuis.ts`, `src/pages/siswa/SiswaKuis.tsx`, `src/App.tsx`.
+- ANTIREGRESI §70.

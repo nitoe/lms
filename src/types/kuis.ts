@@ -62,6 +62,10 @@ export interface KuisLms {
   tpIds?: string[]
   /** Denormalisasi nama TP untuk tampilan. */
   tpNamaList?: string[]
+  /** Nilai akhir per TP (manual atau dari analisis). */
+  nilaiPerTp?: Record<string, number>
+  /** Sumber nilai: analisis atau manual. */
+  sumberNilai?: 'analisis' | 'manual'
 
   createdAt?: unknown
   updatedAt?: unknown

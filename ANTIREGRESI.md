@@ -309,3 +309,10 @@
 - Untuk STS/SAS, `tpIds`/`tpNamaList` boleh berisi lebih dari satu TP (untuk analisis capaian per TP nanti).
 - Rules harus tetap mengizinkan field ini sebagai opsional. Jangan menghapus validasi kelas/mapel/dibuatOleh.
 - Setelah mengubah rules, salin file lengkap ke SDM01Penilaian dan deploy (`npm run deploy:rules`).
+
+## §70. Nilai per TP dan UI kuis siswa
+
+- Untuk SLM/STS/SAS, nilai akhir per TP bisa diisi manual (`nilaiPerTp` + `sumberNilai: 'manual'`).
+- Jika nanti ada hasil analisis, sistem harus mengutamakan nilai dari analisis.
+- Halaman pengerjaan siswa (`SiswaKuis`) masih dasar; form jawaban per tipe dan pengiriman ke Cloud Function belum lengkap.
+- Jangan mengirim kunci jawaban ke klien saat siswa mengerjakan.

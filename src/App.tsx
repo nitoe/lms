@@ -14,6 +14,7 @@ import SiswaLayout from './pages/siswa/SiswaLayout'
 import SiswaBeranda from './pages/siswa/SiswaBeranda'
 import SiswaMateri from './pages/siswa/SiswaMateri'
 import SiswaPlaceholder from './pages/siswa/SiswaPlaceholder'
+import SiswaKuis from './pages/siswa/SiswaKuis'
 import OrangtuaBeranda from './pages/OrangtuaBeranda'
 import { isStaf } from './lib/peran'
 
@@ -71,17 +72,7 @@ export default function App() {
             />
           }
         />
-        <Route
-          path="kuis"
-          element={
-            <SiswaPlaceholder
-              judul="Kuis"
-              icon="target"
-              deskripsi="Latihan soal dan kuis seru akan hadir di sini. Jawab dengan tenang dan rajin berlatih ya!"
-              tone="bg-violet-50 text-violet-700"
-            />
-          }
-        />
+        <Route path="kuis" element={<SiswaKuis />} />
         <Route
           path="pencapaian"
           element={

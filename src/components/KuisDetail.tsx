@@ -36,6 +36,7 @@ export default function KuisDetail({ kuis, onUpdated }: Props) {
   const [token, setToken] = useState(kuis.token ?? '')
   const [jenisPenilaian, setJenisPenilaian] = useState<JenisPenilaianKuis>(kuis.jenisPenilaian ?? 'latihan')
   const [tpInput, setTpInput] = useState((kuis.tpNamaList ?? kuis.tpIds ?? []).join('\n'))
+  const [nilaiPerTp, setNilaiPerTp] = useState<Record<string, number>>(kuis.nilaiPerTp ?? {})
 
   useEffect(() => {
     setSoal([...(kuis.soal ?? [])])
@@ -49,6 +50,7 @@ export default function KuisDetail({ kuis, onUpdated }: Props) {
     setToken(kuis.token ?? '')
     setJenisPenilaian(kuis.jenisPenilaian ?? 'latihan')
     setTpInput((kuis.tpNamaList ?? kuis.tpIds ?? []).join('\n'))
+    setNilaiPerTp(kuis.nilaiPerTp ?? {})
   }, [kuis])
 
   const ringkas = hitungRingkasanKuis(soal)
@@ -131,6 +133,8 @@ export default function KuisDetail({ kuis, onUpdated }: Props) {
         jenisPenilaian,
         tpIds: tpList.length ? tpList : undefined,
         tpNamaList: tpList.length ? tpList : undefined,
+        nilaiPerTp: Object.keys(nilaiPerTp).length ? nilaiPerTp : undefined,
+        sumberNilai: Object.keys(nilaiPerTp).length ? 'manual' : undefined,
       })
       setInfo('Tersimpan.')
       onUpdated?.()
@@ -240,6 +244,38 @@ export default function KuisDetail({ kuis, onUpdated }: Props) {
       <div className="text-xs text-slate-500">
         {ringkas.jumlahSoal} soal · total {ringkas.totalPoin} poin
       </div>
+
+      {(jenisPenilaian === 'slm' || jenisPenilaian === 'sts' || jenisPenilaian === 'sas') && (
+        <section className="rounded-xl border border-amber-200 bg-amber-50/40 p-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <h4 className="text-sm font-semibold text-amber-900">Nilai akhir per TP (mode cepat)</h4>
+            <span className="text-[11px] text-amber-700">Jika diisi, ini menjadi sumber nilai (bukan dari analisis)</span>
+          </div>
+          <p className="text-xs text-amber-800">
+            Untuk guru yang ingin langsung memasukkan nilai tanpa analisis jawaban. Nanti jika ada hasil analisis, nilai analisis yang diutamakan.
+          </p>
+          <div className="space-y-2">
+            {tpInput.split(/\n|,/).map(s => s.trim()).filter(Boolean).map((tp) => (
+              <div key={tp} className="flex items-center gap-3">
+                <div className="flex-1 text-sm text-slate-700 truncate">{tp}</div>
+                <input
+                  type="number"
+                  min={0}
+                  max={100}
+                  step={0.5}
+                  value={nilaiPerTp[tp] ?? ''}
+                  onChange={(e) => setNilaiPerTp(prev => ({ ...prev, [tp]: Number(e.target.value) || 0 }))}
+                  className="w-20 rounded border border-slate-300 px-2 py-1 text-sm"
+                  placeholder="0-100"
+                />
+              </div>
+            ))}
+            {tpInput.trim() === '' && (
+              <p className="text-xs text-slate-500">Isi daftar TP di atas terlebih dahulu.</p>
+            )}
+          </div>
+        </section>
+      )}
 
       <div className="space-y-5">
         {URUTAN_TIPE.map((tipe) => {
