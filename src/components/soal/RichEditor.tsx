@@ -39,6 +39,7 @@ export default function RichEditor({ value, onChange, placeholder, minRem = 7, a
         horizontalRule: false,
         link: false,
         strike: false,
+        underline: false,
       }),
       Subscript,
       Superscript,

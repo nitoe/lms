@@ -273,3 +273,11 @@
 - File: `src/components/KuisDetail.tsx` (tambah `INSTRUKSI_TIPE` + tampilan berkelompok) dan `src/components/KuisPanel.tsx` (pratinjau juga dikelompokkan + diurutkan otomatis saat susun).
 - ANTIREGRESI §65.
 - Catatan ke depan: struktur kelompok + instruksi ini menjadi dasar ekspor Word/PDF sesuai template sekolah.
+
+## 2026-11-09 — Perbaiki permissions ubah status paket siap → draf + warning TipTap
+
+- **Bug:** mengubah status paket dari Siap ke Draf gagal dengan "Missing or insufficient permissions" meski koneksi baik. Penyebab: `firestore.rules` masih membatasi `soal.size() <= 100` sementara kode sudah mengizinkan hingga 300.
+- **Perbaikan:** batas di create & update `lms_paket_soal` dinaikkan ke 300 (sesuai `BATAS_SOAL_PER_PAKET`).
+- **TipTap:** warning "Duplicate extension names found: ['underline']" dihilangkan dengan menonaktifkan underline di StarterKit (karena sudah ditambahkan eksplisit).
+- File: `firestore.rules` (lengkap, salin ke SDM01Penilaian lalu deploy), `src/components/soal/RichEditor.tsx`.
+- ANTIREGRESI §66.

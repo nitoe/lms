@@ -281,3 +281,10 @@
 - Tombol “Kelompokkan menurut bentuk” hanya mengubah urutan array `soal` di state. Persistensi terjadi saat guru menekan Simpan perubahan.
 - Tampilan selalu mengelompokkan (meski array di dokumen belum terurut). 
 - Bila `acakSoal` aktif, kebijakan acak sebaiknya tetap menghormati kelompok bentuk (acak di dalam bagian), atau sesuai keputusan sekolah nanti saat implementasi siswa.
+
+## §66. Batas soal paket di rules = 300
+
+- `firestore.rules` untuk `lms_paket_soal` (create & update) memakai `soal.size() <= 300`.
+- Jangan turunkan kembali ke 100; kode di `src/types/soal.ts` (`BATAS_SOAL_PER_PAKET`) sudah 300.
+- Setelah mengubah rules, WAJIB salin file lengkap ke repo SDM01Penilaian dan jalankan `npm run deploy:rules`. Perubahan di GitHub LMS saja tidak langsung berlaku.
+- Ubah status Siap ↔ Draf hanya boleh jika dokumen tetap memenuhi semua validasi rules (kelas/mapel tidak berubah, dibuatOleh sama, dll.).
