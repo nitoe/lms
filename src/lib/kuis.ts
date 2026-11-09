@@ -193,6 +193,8 @@ export async function updateKuis(
       | 'jenisPenilaian'
       | 'tpIds'
       | 'tpNamaList'
+      | 'nilaiPerTp'
+      | 'sumberNilai'
       | 'aktif'
       | 'filterSusun'
       | 'modeSusun'

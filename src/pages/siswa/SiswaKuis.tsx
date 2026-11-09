@@ -5,7 +5,6 @@ import { db, functions } from '../../lib/firebase'
 import { useSiswa } from '../../context/SiswaContext'
 import type { KuisLms, SoalKuis } from '../../types/kuis'
 import { NAMA_JENIS_PENILAIAN } from '../../types/kuis'
-import { teksPolos } from '../../lib/html'
 
 export default function SiswaKuis() {
   const { sesi } = useSiswa()

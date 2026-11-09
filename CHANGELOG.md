@@ -320,3 +320,7 @@
 - Tombol selesai memanggil Cloud Function `nilaiKuisLms` (skeleton).
 - Skeleton function di repo SDM01Penilaian: `functions/nilaiKuisLms.js` (versi lengkap, siap dilengkapi logika penilaian).
 - ANTIREGRESI §71.
+
+## 2026-11-09 — Perbaiki error TS pada update kuis dan SiswaKuis
+- Tambah `nilaiPerTp` dan `sumberNilai` ke tipe `updateKuis`.
+- Hapus import tidak terpakai `teksPolos` di `SiswaKuis.tsx`.
