@@ -413,10 +413,17 @@
 - File: `src/lib/jawabanKuis.ts`, `src/components/HasilKuisPanel.tsx`.
 - **Cek juga:** rules produksi sudah memuat `match /lms_jawaban` (deploy dari SDM01Penilaian). Bila muncul error indeks, buat indeks komposit `kuisId`+`kelas`+`mapel` lewat tautan Console.
 
-## 2026-11-09 — Skor kuis siswa ditampilkan skala 100
+## 2026-11-09 — Penilaian kuis guru: daftar nilai + nilai manual uraian/isian
 
-- **Permintaan:** skor akhir lebih mudah dipahami (bukan hanya poin mentah seperti 34,5/42).
-- **Perilaku:** tampilan siswa memakai skala 100 (contoh: **82,1 / 100**). Poin mentah tetap ditampilkan kecil di layar hasil; data di `lms_jawaban` tidak diubah.
-- Tempat: badge daftar kuis, ringkas riwayat, layar hasil setelah kirim.
-- File: `src/pages/siswa/SiswaKuis.tsx`.
+- **Kebutuhan:** belum ada aplikasi penilaian & daftar nilai kuis di sisi guru; ragu isian/uraian dinilai benar.
+- **Perilaku penilaian:**
+  - **PG / PGK / BS / jodoh:** otomatis di CF `nilaiKuisLms`.
+  - **Isian:** otomatis (teks dinormalisasi + cocok angka 3 = 3,0); guru boleh mengoreksi skor.
+  - **Uraian:** tidak otomatis (skor 0, status perlu manual) → guru isi skor di detail siswa.
+- **UI guru (tab Hasil siswa):** daftar nilai skala 100, status «Perlu nilai manual», detail per siswa (jawaban vs kunci/pedoman), input skor + simpan.
+- **CF baru:** `nilaiManualKuisLms` (tulis skor lewat Admin SDK; rules `lms_jawaban` tetap tulis=false).
+- **CF `nilaiKuisLms`:** isian mendukung kesetaraan numerik.
+- File LMS: `src/lib/jawabanKuis.ts`, `src/components/HasilKuisPanel.tsx`, `src/components/KuisPanel.tsx`.
+- File SDM01Penilaian: `functions/nilaiManualKuisLms.js`, `functions/nilaiKuisLms.js`, `functions/index.js` (lengkap).
+- Deploy: `firebase deploy --only functions:nilaiKuisLms,functions:nilaiManualKuisLms` dari SDM01Penilaian; hosting LMS.
 

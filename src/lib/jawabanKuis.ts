@@ -1,10 +1,7 @@
 /**
- * Baca hasil pengerjaan kuis (`lms_jawaban`).
- * Tulis hanya lewat Cloud Function nilaiKuisLms (Admin SDK).
+ * Baca hasil pengerjaan kuis (`lms_jawaban`) + panggil penilaian manual guru.
+ * Tulis dokumen hanya lewat Cloud Function (Admin SDK).
  * Lihat ANTIREGRESI §55.
- *
- * Query guru WAJIB menyertakan where kelas + mapel (selaras rules lihatMapelKelas).
- * Query hanya kuisId → "Missing or insufficient permissions".
  */
 import {
   collection,
@@ -12,7 +9,8 @@ import {
   query,
   where,
 } from 'firebase/firestore'
-import { db } from './firebase'
+import { httpsCallable } from 'firebase/functions'
+import { db, functions } from './firebase'
 
 export type DetailJawabanSoal = {
   soalId: string
@@ -20,6 +18,7 @@ export type DetailJawabanSoal = {
   benar?: boolean
   skor?: number
   butuhManual?: boolean
+  dinilaiManual?: boolean
 }
 
 export type JawabanKuis = {
@@ -39,6 +38,8 @@ export type JawabanKuis = {
   percobaan: number
   status: string
   createdAt?: unknown
+  dinilaiOleh?: string
+  dinilaiOlehNama?: string
 }
 
 function tsMs(v: unknown): number {
@@ -68,13 +69,12 @@ function dariDok(id: string, data: Record<string, unknown>): JawabanKuis {
     percobaan: Number(data.percobaan) || 1,
     status: String(data.status ?? ''),
     createdAt: data.createdAt,
+    dinilaiOleh: typeof data.dinilaiOleh === 'string' ? data.dinilaiOleh : undefined,
+    dinilaiOlehNama: typeof data.dinilaiOlehNama === 'string' ? data.dinilaiOlehNama : undefined,
   }
 }
 
-/**
- * Semua percobaan untuk satu kuis (guru).
- * Filter kelas + mapel wajib agar query lolos firestore.rules (lihatMapelKelas).
- */
+/** Query guru: kuisId + kelas + mapel (wajib agar lolos rules). */
 export async function daftarJawabanKuis(
   kuisId: string,
   kelas: string,
@@ -98,7 +98,6 @@ export async function daftarJawabanKuis(
   return list
 }
 
-/** Percobaan terbaru per siswa (satu baris per siswaId). */
 export function ringkasPerSiswa(list: JawabanKuis[]): JawabanKuis[] {
   const map = new Map<string, JawabanKuis>()
   for (const j of list) {
@@ -113,7 +112,6 @@ export function ringkasPerSiswa(list: JawabanKuis[]): JawabanKuis[] {
   )
 }
 
-/** Agregat per soal dari detail jawaban. */
 export function agregatPerSoal(
   list: JawabanKuis[],
   soalIds: string[],
@@ -158,6 +156,38 @@ export function agregatPerSoal(
     c.rataSkor = c.total > 0 ? Math.round((c.jumlahSkor / c.total) * 100) / 100 : 0
   }
   return out
+}
+
+export function skorKe100(skor: number, totalPoin: number): number {
+  if (!totalPoin || totalPoin <= 0) return 0
+  return Math.round((Number(skor) / Number(totalPoin)) * 1000) / 10
+}
+
+export function formatSkor100(skor: number, totalPoin: number): string {
+  const n = skorKe100(skor, totalPoin)
+  return Number.isInteger(n) ? String(n) : n.toLocaleString('id-ID', { maximumFractionDigits: 1 })
+}
+
+/** Guru menyimpan skor manual satu soal (CF nilaiManualKuisLms). */
+export async function simpanNilaiManual(input: {
+  jawabanId: string
+  soalId: string
+  skor: number
+}): Promise<{ skorSoal: number; skorTotal: number; totalPoin: number; status: string }> {
+  const fn = httpsCallable(functions, 'nilaiManualKuisLms')
+  const res = await fn(input)
+  const data = res.data as {
+    skorSoal?: number
+    skorTotal?: number
+    totalPoin?: number
+    status?: string
+  }
+  return {
+    skorSoal: data.skorSoal ?? input.skor,
+    skorTotal: data.skorTotal ?? 0,
+    totalPoin: data.totalPoin ?? 0,
+    status: data.status ?? 'selesai',
+  }
 }
 
 export { tsMs as jawabanTsMs }

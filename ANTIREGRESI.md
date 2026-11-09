@@ -381,3 +381,7 @@ Jangan memaksa satu kolom sempit di desktop.
 
 55.4 File `firestore.rules` di-deploy hanya dari repo SDM01Penilaian (`npm run deploy:rules`). Perubahan bagian LMS disalin sebagai file **utuh** ke SDM01Penilaian sebelum deploy.
 
+55.5 Penilaian manual (uraian / koreksi isian) **hanya** lewat Cloud Function `nilaiManualKuisLms`. Jangan membuka `allow update` klien pada `lms_jawaban`. Skor per soal disimpan di `detail[]`; total di `skorOtomatis` dihitung ulang server.
+
+55.6 Isian dinilai otomatis dengan normalisasi spasi/kapital dan kesetaraan angka. Tetap sediakan UI koreksi guru karena sinonim/ejaan tidak dicocokkan.
+
