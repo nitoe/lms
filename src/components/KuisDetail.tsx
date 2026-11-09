@@ -228,7 +228,7 @@ export default function KuisDetail({ kuis, onUpdated }: Props) {
         </div>
         <div className="space-y-1 text-sm">
           <div className="text-xs font-medium text-slate-600">
-            TP yang diukur {jenisPenilaian === 'slm' ? '(biasanya 1)' : '(bisa lebih dari 1 untuk STS/SAS)'}
+            TP yang diukur (terisi otomatis dari paket soal)
           </div>
           <div className="rounded border border-slate-200 bg-white p-2 min-h-[60px]">
             {tpInput.trim() ? (
@@ -245,11 +245,11 @@ export default function KuisDetail({ kuis, onUpdated }: Props) {
                 ))}
               </ul>
             ) : (
-              <p className="text-xs text-slate-400">Belum ada TP terdeteksi. TP akan terisi otomatis dari paket soal yang dipilih saat menyusun kuis.</p>
+              <p className="text-xs text-slate-400 italic">Belum ada TP. Susun ulang kuis dari paket yang sudah memiliki TP, atau TP akan muncul setelah kuis dibuat dari paket bank soal.</p>
             )}
           </div>
           <p className="text-[11px] text-slate-500">
-            Daftar ini berasal dari TP pada paket bank soal yang dipakai. Untuk STS/SAS, semua TP yang soalnya ikut diujikan akan tercatat di sini.
+            Daftar ini terisi otomatis dari TP pada paket bank soal yang dipilih saat menyusun kuis. Berlaku untuk semua jenis penilaian.
           </p>
         </div>
       </section>
