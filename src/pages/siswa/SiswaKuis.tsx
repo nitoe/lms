@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react'
 import { collection, query, where, getDocs } from 'firebase/firestore'
-import { db } from '../../lib/firebase'
+import { httpsCallable } from 'firebase/functions'
+import { db, functions } from '../../lib/firebase'
 import { useSiswa } from '../../context/SiswaContext'
-import type { KuisLms } from '../../types/kuis'
+import type { KuisLms, SoalKuis } from '../../types/kuis'
 import { NAMA_JENIS_PENILAIAN } from '../../types/kuis'
+import { teksPolos } from '../../lib/html'
 
 export default function SiswaKuis() {
   const { sesi } = useSiswa()
@@ -19,10 +21,7 @@ export default function SiswaKuis() {
       where('aktif', '==', true),
     )
     getDocs(q)
-      .then((snap) => {
-        const data = snap.docs.map((d) => ({ id: d.id, ...d.data() }) as KuisLms)
-        setList(data)
-      })
+      .then((snap) => setList(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as KuisLms)))
       .catch((e) => setError(e.message || 'Gagal memuat kuis'))
   }, [sesi])
 
@@ -44,11 +43,7 @@ export default function SiswaKuis() {
               {k.mapel} · {NAMA_JENIS_PENILAIAN[k.jenisPenilaian ?? 'latihan']} · {k.jumlahSoal} soal
               {k.durasiMenit ? ` · ${k.durasiMenit} menit` : ''}
             </div>
-            <button
-              type="button"
-              className="mt-3 lms-btn-primary text-sm"
-              onClick={() => setAktif(k)}
-            >
+            <button type="button" className="mt-3 lms-btn-primary text-sm" onClick={() => setAktif(k)}>
               Kerjakan
             </button>
           </li>
@@ -58,10 +53,82 @@ export default function SiswaKuis() {
   )
 }
 
+function FormJawaban({ soal, value, onChange }: { soal: SoalKuis; value: any; onChange: (v: any) => void }) {
+  if (soal.tipe === 'pg') {
+    return (
+      <div className="space-y-2 mt-3">
+        {soal.opsi?.map((o) => (
+          <label key={o.id} className="flex items-start gap-2 cursor-pointer rounded-lg border p-3 hover:bg-slate-50">
+            <input type="radio" name={soal.id} checked={value === o.id} onChange={() => onChange(o.id)} />
+            <span>{o.teks}</span>
+          </label>
+        ))}
+      </div>
+    )
+  }
+  if (soal.tipe === 'pgk') {
+    const arr: string[] = Array.isArray(value) ? value : []
+    return (
+      <div className="space-y-2 mt-3">
+        {soal.opsi?.map((o) => (
+          <label key={o.id} className="flex items-start gap-2 cursor-pointer rounded-lg border p-3 hover:bg-slate-50">
+            <input
+              type="checkbox"
+              checked={arr.includes(o.id)}
+              onChange={() => {
+                const next = arr.includes(o.id) ? arr.filter((x) => x !== o.id) : [...arr, o.id]
+                onChange(next)
+              }}
+            />
+            <span>{o.teks}</span>
+          </label>
+        ))}
+      </div>
+    )
+  }
+  if (soal.tipe === 'isian') {
+    return (
+      <input
+        className="mt-3 w-full rounded border border-slate-300 px-3 py-2 text-sm"
+        value={value ?? ''}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder="Ketik jawaban…"
+      />
+    )
+  }
+  if (soal.tipe === 'uraian') {
+    return (
+      <textarea
+        rows={5}
+        className="mt-3 w-full rounded border border-slate-300 px-3 py-2 text-sm"
+        value={value ?? ''}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder="Tulis jawaban lengkap…"
+      />
+    )
+  }
+  return <p className="mt-3 text-xs text-slate-400">Tipe {soal.tipe} — form menyusul.</p>
+}
+
 function KerjakanKuis({ kuis, onSelesai }: { kuis: KuisLms; onSelesai: () => void }) {
   const [idx, setIdx] = useState(0)
   const [jawaban, setJawaban] = useState<Record<string, any>>({})
+  const [busy, setBusy] = useState(false)
   const soal = kuis.soal?.[idx]
+
+  async function kirim() {
+    setBusy(true)
+    try {
+      const fn = httpsCallable(functions, 'nilaiKuisLms')
+      const res = await fn({ kuisId: kuis.id, jawaban })
+      alert('Jawaban terkirim.\n' + JSON.stringify((res.data as any)?.pesan ?? res.data))
+      onSelesai()
+    } catch (e: any) {
+      alert(e.message || 'Gagal mengirim jawaban.')
+    } finally {
+      setBusy(false)
+    }
+  }
 
   if (!soal) return <div className="p-4">Tidak ada soal.</div>
 
@@ -79,17 +146,15 @@ function KerjakanKuis({ kuis, onSelesai }: { kuis: KuisLms; onSelesai: () => voi
         <div className="rounded-xl bg-white border p-4">
           <div className="text-sm font-medium mb-2">Soal {idx + 1}</div>
           <div className="prose prose-sm" dangerouslySetInnerHTML={{ __html: soal.teks || '' }} />
-          {/* Placeholder untuk opsi — nanti dilengkapi per tipe */}
-          <div className="mt-4 text-xs text-slate-400">Form jawaban per tipe akan dilengkapi di iterasi berikutnya.</div>
+          <FormJawaban
+            soal={soal}
+            value={jawaban[soal.id]}
+            onChange={(v) => setJawaban((prev) => ({ ...prev, [soal.id]: v }))}
+          />
         </div>
 
         <div className="flex justify-between">
-          <button
-            type="button"
-            disabled={idx === 0}
-            onClick={() => setIdx((i) => i - 1)}
-            className="lms-btn-secondary text-sm"
-          >
+          <button type="button" disabled={idx === 0} onClick={() => setIdx((i) => i - 1)} className="lms-btn-secondary text-sm">
             Sebelumnya
           </button>
           {idx < (kuis.soal?.length ?? 1) - 1 ? (
@@ -97,8 +162,8 @@ function KerjakanKuis({ kuis, onSelesai }: { kuis: KuisLms; onSelesai: () => voi
               Berikutnya
             </button>
           ) : (
-            <button type="button" onClick={() => { alert('Jawaban akan dikirim ke Cloud Function untuk dinilai.'); onSelesai() }} className="lms-btn-primary text-sm">
-              Selesai
+            <button type="button" disabled={busy} onClick={() => void kirim()} className="lms-btn-primary text-sm">
+              {busy ? 'Mengirim…' : 'Selesai & Kirim'}
             </button>
           )}
         </div>

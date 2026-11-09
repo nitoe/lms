@@ -314,10 +314,9 @@
 - ANTIREGRESI §69.
 - Catatan: integrasi nilai ke SDM01Penilaian dan pengerjaan siswa menyusul di fase berikutnya.
 
-## 2026-11-09 — Fase 2 awal: tabel nilai per TP (mode cepat) + UI kuis siswa dasar
+## 2026-11-09 — Form jawaban siswa + skeleton Cloud Function nilaiKuisLms
 
-- Di detail kuis (guru): untuk jenis SLM/STS/SAS ditambahkan **tabel nilai akhir per TP** (mode cepat). Guru bisa langsung mengisi nilai tanpa analisis. Jika nanti ada analisis, hasil analisis yang diutamakan.
-- Field baru: `nilaiPerTp`, `sumberNilai` ('manual' | 'analisis').
-- Halaman siswa `/siswa/kuis`: daftar kuis aktif di kelas siswa + halaman pengerjaan dasar (navigasi soal, placeholder jawaban). Skoring lewat Cloud Function menyusul.
-- File: `src/components/KuisDetail.tsx`, `src/types/kuis.ts`, `src/pages/siswa/SiswaKuis.tsx`, `src/App.tsx`.
-- ANTIREGRESI §70.
+- Halaman pengerjaan kuis siswa: form jawaban untuk PG, PG kompleks, isian, dan uraian.
+- Tombol selesai memanggil Cloud Function `nilaiKuisLms` (skeleton).
+- Skeleton function di repo SDM01Penilaian: `functions/nilaiKuisLms.js` (versi lengkap, siap dilengkapi logika penilaian).
+- ANTIREGRESI §71.
