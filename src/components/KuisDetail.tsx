@@ -226,19 +226,32 @@ export default function KuisDetail({ kuis, onUpdated }: Props) {
             </select>
           </label>
         </div>
-        <label className="block space-y-1 text-sm">
-          <span className="text-xs font-medium text-slate-600">
-            TP yang diukur {jenisPenilaian === 'slm' ? '(biasanya 1)' : jenisPenilaian === 'sts' || jenisPenilaian === 'sas' ? '(boleh lebih dari 1)' : ''}
-          </span>
-          <textarea
-            rows={3}
-            value={tpInput}
-            onChange={e => setTpInput(e.target.value)}
-            placeholder="Satu TP per baris, contoh:&#10;TP 3.1 Memahami siklus air&#10;TP 3.2 Menganalisis perubahan wujud"
-            className="w-full rounded border border-slate-300 px-2 py-1.5 text-sm font-mono"
-          />
-          <p className="text-[11px] text-slate-500">Untuk STS/SAS, daftar TP ini nantinya dipakai untuk menghitung capaian per TP.</p>
-        </label>
+        <div className="space-y-1 text-sm">
+          <div className="text-xs font-medium text-slate-600">
+            TP yang diukur {jenisPenilaian === 'slm' ? '(biasanya 1)' : '(bisa lebih dari 1 untuk STS/SAS)'}
+          </div>
+          <div className="rounded border border-slate-200 bg-white p-2 min-h-[60px]">
+            {tpInput.trim() ? (
+              <ul className="space-y-1">
+                {tpInput.split(/\n|,/).map(s => s.trim()).filter(Boolean).map((tp, i) => (
+                  <li key={i} className="flex items-center justify-between text-sm bg-slate-50 rounded px-+2 py-1">
+                    <span>{tp}</span>
+                    <button type="button" className="text-xs text-red-600" onClick={() => {
+                      const list = tpInput.split(/\n|,/).map(x => x.trim()).filter(Boolean)
+                      list.splice(i, 1)
+                      setTpInput(list.join('\n'))
+                    }}>hapus</button>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-xs text-slate-400">Belum ada TP terdeteksi. TP akan terisi otomatis dari paket soal yang dipilih saat menyusun kuis.</p>
+            )}
+          </div>
+          <p className="text-[11px] text-slate-500">
+            Daftar ini berasal dari TP pada paket bank soal yang dipakai. Untuk STS/SAS, semua TP yang soalnya ikut diujikan akan tercatat di sini.
+          </p>
+        </div>
       </section>
 
       <div className="text-xs text-slate-500">

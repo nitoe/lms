@@ -200,6 +200,18 @@ export default function KuisPanel({ kelas, mapel }: Props) {
     setBusy(true)
     setError('')
     try {
+      // Kumpulkan TP unik dari paket yang dipilih
+      const tpMap = new Map<string, string>()
+      for (const pid of paketIds) {
+        const pk = paketSiap.find((x) => x.id === pid)
+        if (pk?.tpId && pk.tpNama) {
+          const label = pk.tpNomor ? `TP ${pk.tpNomor}. ${pk.tpNama}` : pk.tpNama
+          tpMap.set(pk.tpId, label)
+        }
+      }
+      const tpIds = [...tpMap.keys()]
+      const tpNamaList = [...tpMap.values()]
+
       const id = await buatKuisDariPaket({
         kelas,
         mapel,
@@ -210,6 +222,8 @@ export default function KuisPanel({ kelas, mapel }: Props) {
         modeSusun: mode,
         filterSusun: mode === 'manual' ? undefined : filterSusun,
         soalSiap: pratinjau,
+        tpIds: tpIds.length ? tpIds : undefined,
+        tpNamaList: tpNamaList.length ? tpNamaList : undefined,
       })
       resetWizard()
       await muat()

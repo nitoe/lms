@@ -165,6 +165,8 @@ export async function buatKuisDariPaket(input: InputBuatKuis): Promise<string> {
     aktif: false,
     dibuatOleh: uid,
     dibuatOlehNama: input.namaGuru || '',
+    tpIds: input.tpIds,
+    tpNamaList: input.tpNamaList,
     ...ringkas,
   })
 

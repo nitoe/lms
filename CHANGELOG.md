@@ -332,3 +332,8 @@
 - Guru kelas×mapel dan admin boleh read.
 - Update dari klien ditolak; delete hanya admin.
 - ANTIREGRESI §72.
+
+## 2026-11-09 — TP pada kuis terisi otomatis dari paket soal
+- Saat menyusun kuis, sistem mengumpulkan TP unik dari paket bank soal yang dipilih.
+- Di halaman detail, daftar TP ditampilkan (bisa dihapus) bukan lagi textarea bebas.
+- File: `KuisPanel.tsx`, `KuisDetail.tsx`, `lib/kuis.ts`.
