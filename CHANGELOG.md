@@ -405,3 +405,11 @@
   - ANTIREGRESI §55.
 - **Deploy:** hosting LMS; pastikan rules produksi sudah memuat `lms_jawaban` (`npm run deploy:rules` dari SDM01Penilaian bila belum). Indeks: `siswaId`+`kuisId`.
 
+## 2026-11-09 — Fix permissions tab Hasil siswa (query lms_jawaban)
+
+- **Bug:** tab Hasil siswa menampilkan "Missing or insufficient permissions".
+- **Penyebab:** query hanya `where('kuisId')`. Rules `lms_jawaban` mengizinkan baca guru lewat `lihatMapelKelas(mapel, kelas)` pada field dokumen; Firestore menolak list query yang tidak membatasi field yang sama.
+- **Perbaikan:** `daftarJawabanKuis(kuisId, kelas, mapel)` — filter `kuisId` + `kelas` + `mapel`. ANTIREGRESI §55.3.
+- File: `src/lib/jawabanKuis.ts`, `src/components/HasilKuisPanel.tsx`.
+- **Cek juga:** rules produksi sudah memuat `match /lms_jawaban` (deploy dari SDM01Penilaian). Bila muncul error indeks, buat indeks komposit `kuisId`+`kelas`+`mapel` lewat tautan Console.
+

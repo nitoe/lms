@@ -16,8 +16,7 @@ type Props = {
 
 /**
  * Analisis hasil pengerjaan kuis untuk guru.
- * Berlaku untuk SEMUA jenisPenilaian termasuk latihan
- * (latihan tidak masuk nilai rapor, tetapi jawaban tetap dianalisis).
+ * Berlaku untuk SEMUA jenisPenilaian termasuk latihan.
  * ANTIREGRESI §55.
  */
 export default function HasilKuisPanel({ kuis }: Props) {
@@ -29,17 +28,19 @@ export default function HasilKuisPanel({ kuis }: Props) {
   const muat = useCallback(async () => {
     setError('')
     try {
-      const data = await daftarJawabanKuis(kuis.id)
+      // kelas + mapel wajib di query (rules lihatMapelKelas)
+      const data = await daftarJawabanKuis(kuis.id, kuis.kelas, kuis.mapel)
       setList(data)
     } catch (e) {
       setList([])
+      const msg = e instanceof Error ? e.message : String(e)
       setError(
-        e instanceof Error
-          ? e.message
-          : 'Gagal memuat hasil. Pastikan rules lms_jawaban sudah di-deploy dan indeks kuisId ada.',
+        msg.includes('permission') || msg.includes('Permission')
+          ? 'Tidak punya izin membaca hasil. Pastikan: (1) rules lms_jawaban sudah di-deploy dari SDM01Penilaian, (2) Anda pengampu kelas×mapel kuis ini.'
+          : msg || 'Gagal memuat hasil.',
       )
     }
-  }, [kuis.id])
+  }, [kuis.id, kuis.kelas, kuis.mapel])
 
   useEffect(() => {
     void muat()
@@ -121,7 +122,7 @@ export default function HasilKuisPanel({ kuis }: Props) {
         </span>
       </div>
 
-      {list.length === 0 && (
+      {list.length === 0 && !error && (
         <div className="lms-empty">
           <p className="font-medium text-slate-700">Belum ada jawaban terkirim</p>
           <p className="mt-1">

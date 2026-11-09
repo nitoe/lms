@@ -2,6 +2,9 @@
  * Baca hasil pengerjaan kuis (`lms_jawaban`).
  * Tulis hanya lewat Cloud Function nilaiKuisLms (Admin SDK).
  * Lihat ANTIREGRESI §55.
+ *
+ * Query guru WAJIB menyertakan where kelas + mapel (selaras rules lihatMapelKelas).
+ * Query hanya kuisId → "Missing or insufficient permissions".
  */
 import {
   collection,
@@ -68,9 +71,23 @@ function dariDok(id: string, data: Record<string, unknown>): JawabanKuis {
   }
 }
 
-/** Semua percobaan untuk satu kuis (guru). Query by kuisId. */
-export async function daftarJawabanKuis(kuisId: string): Promise<JawabanKuis[]> {
-  const q = query(collection(db, 'lms_jawaban'), where('kuisId', '==', kuisId))
+/**
+ * Semua percobaan untuk satu kuis (guru).
+ * Filter kelas + mapel wajib agar query lolos firestore.rules (lihatMapelKelas).
+ */
+export async function daftarJawabanKuis(
+  kuisId: string,
+  kelas: string,
+  mapel: string,
+): Promise<JawabanKuis[]> {
+  const kelasNorm = String(kelas).toUpperCase()
+  const mapelNorm = String(mapel).trim()
+  const q = query(
+    collection(db, 'lms_jawaban'),
+    where('kuisId', '==', kuisId),
+    where('kelas', '==', kelasNorm),
+    where('mapel', '==', mapelNorm),
+  )
   const snap = await getDocs(q)
   const list = snap.docs.map((d) => dariDok(d.id, d.data() as Record<string, unknown>))
   list.sort((a, b) => {
@@ -96,7 +113,7 @@ export function ringkasPerSiswa(list: JawabanKuis[]): JawabanKuis[] {
   )
 }
 
-/** Agregat per soal: jumlah benar / salah / kosong / manual dari detail. */
+/** Agregat per soal dari detail jawaban. */
 export function agregatPerSoal(
   list: JawabanKuis[],
   soalIds: string[],
@@ -106,7 +123,15 @@ export function agregatPerSoal(
 > {
   const out: Record<
     string,
-    { benar: number; salah: number; kosong: number; manual: number; total: number; jumlahSkor: number; rataSkor: number }
+    {
+      benar: number
+      salah: number
+      kosong: number
+      manual: number
+      total: number
+      jumlahSkor: number
+      rataSkor: number
+    }
   > = {}
   for (const id of soalIds) {
     out[id] = { benar: 0, salah: 0, kosong: 0, manual: 0, total: 0, jumlahSkor: 0, rataSkor: 0 }
