@@ -3,6 +3,15 @@
 > Append-only: entri baru ditambahkan di BAWAH, entri lama tidak diubah.
 > Versi mengacu ke `package.json` (saat ini `0.1.0`); belum ada rilis bertag.
 
+## 2026-11-09 — Regresi rules: status paket siap→draf (batas soal 100 vs 300)
+
+- **Bug berulang:** mengubah status paket bank soal dari Siap ke Draf gagal dengan "Missing or insufficient permissions".
+- **Penyebab:** `firestore.rules` masih membatasi `lms_paket_soal.soal.size() <= 100` sementara kode (`BATAS_SOAL_PER_PAKET`) sudah 300. Validasi rules memakai dokumen hasil (`request.resource.data`), jadi **setiap** update (termasuk hanya ganti status) ditolak bila paket punya >100 soal.
+- **Perbaikan:** create & update `lms_paket_soal` → `soal.size() <= 300` (selaras `types/soal.ts`).
+- **Prosedur wajib:** setiap patch rules **harus** berangkat dari file terbaru di repo (bukan salinan lama di zip sebelumnya), lalu merge perubahan. Jangan menimpa dengan versi usang.
+- File: `firestore.rules` (lengkap, salin ke SDM01Penilaian lalu `npm run deploy:rules`).
+- ANTIREGRESI §74.
+
 ## 2026-11-09 — Kuis siswa: tampilan lengkap, progres, cegah keluar tidak sengaja
 
 - **Masalah:**

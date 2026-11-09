@@ -351,3 +351,11 @@ Jangan memaksa satu kolom sempit di desktop.
 
 73.5 Import `styles/soal.css` di rute siswa yang menampilkan `SoalTampil`, atau pastikan stylesheet sudah dimuat global.
 
+## §74. Firestore rules — selalu dari sumber terbaru
+
+74.1 **Setiap** perubahan `firestore.rules` wajib dimulai dari file terbaru di repo yang di-deploy (biasanya `main` LMS atau salinan di SDM01Penilaian setelah deploy terakhir). Jangan memakai salinan di zip perbaikan lama sebagai basis — itu sumber regresi berulang (batas soal 100 vs 300, akses siswa kuis, dll.).
+
+74.2 Batas `lms_paket_soal.soal.size()` di rules **harus** sama dengan `BATAS_SOAL_PER_PAKET` di `src/types/soal.ts` (saat ini **300**). Validasi update memakai seluruh dokumen hasil; ganti status saja ikut memeriksa ukuran array `soal`.
+
+74.3 Setelah mengubah rules: salin file **utuh** ke SDM01Penilaian, `npm run deploy:rules`, uji update status paket siap↔draf dengan paket yang soalnya >100 bila ada.
+

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { collection, query, where, getDocs } from 'firebase/firestore'
 import { httpsCallable } from 'firebase/functions'
 import { db, functions } from '../../lib/firebase'
@@ -9,11 +9,16 @@ import type { JawabanSoal } from '../../types/soal'
 import SoalTampil from '../../components/soal/SoalTampil'
 import '../../styles/soal.css'
 
-const PROGRESS_PREFIX = 'lms_kuis_progress_v1_'
+/** Versi kunci progres — naikkan jika bentuk data berubah. */
+const PROGRESS_PREFIX = 'lms_kuis_progress_v2_'
 
 type Progress = {
   jawaban: Record<string, JawabanSoal>
   idx: number
+  /**
+   * Sisa waktu (detik) pada saat terakhir disimpan.
+   * Timer bersifat pause saat siswa keluar: saat kembali, nilai ini dilanjutkan.
+   */
   sisaDetik?: number
   updatedAt: number
 }
@@ -23,11 +28,13 @@ function progressKey(siswaId: string, kuisId: string) {
 }
 
 function loadProgress(siswaId: string, kuisId: string): Progress | null {
+  if (!siswaId || !kuisId) return null
   try {
     const raw = localStorage.getItem(progressKey(siswaId, kuisId))
     if (!raw) return null
     const p = JSON.parse(raw) as Progress
-    if (!p || typeof p !== 'object' || !p.jawaban) return null
+    if (!p || typeof p !== 'object') return null
+    if (typeof p.jawaban !== 'object' || p.jawaban == null) p.jawaban = {}
     return p
   } catch {
     return null
@@ -35,14 +42,19 @@ function loadProgress(siswaId: string, kuisId: string): Progress | null {
 }
 
 function saveProgress(siswaId: string, kuisId: string, p: Progress) {
+  if (!siswaId || !kuisId) return
   try {
-    localStorage.setItem(progressKey(siswaId, kuisId), JSON.stringify(p))
+    localStorage.setItem(
+      progressKey(siswaId, kuisId),
+      JSON.stringify({ ...p, updatedAt: Date.now() }),
+    )
   } catch {
     /* quota / private mode */
   }
 }
 
 function clearProgress(siswaId: string, kuisId: string) {
+  if (!siswaId || !kuisId) return
   try {
     localStorage.removeItem(progressKey(siswaId, kuisId))
   } catch {
@@ -56,6 +68,9 @@ export default function SiswaKuis() {
   const [aktif, setAktif] = useState<KuisLms | null>(null)
   const [error, setError] = useState('')
 
+  // Field sesi: { id, nama, kelas } — bukan siswaId
+  const siswaId = sesi?.id ?? ''
+
   useEffect(() => {
     if (!sesi) return
     const q = query(
@@ -68,11 +83,11 @@ export default function SiswaKuis() {
       .catch((e) => setError(e.message || 'Gagal memuat kuis'))
   }, [sesi])
 
-  if (aktif && sesi) {
+  if (aktif && sesi && siswaId) {
     return (
       <KerjakanKuis
         kuis={aktif}
-        siswaId={sesi.siswaId}
+        siswaId={siswaId}
         onSelesai={() => setAktif(null)}
       />
     )
@@ -86,8 +101,9 @@ export default function SiswaKuis() {
       {list?.length === 0 && <p className="text-slate-500">Belum ada kuis aktif.</p>}
       <ul className="space-y-3">
         {list?.map((k) => {
-          const saved = sesi ? loadProgress(sesi.siswaId, k.id) : null
-          const nJawab = saved ? Object.keys(saved.jawaban).length : 0
+          const saved = siswaId ? loadProgress(siswaId, k.id) : null
+          const nJawab = saved ? Object.keys(saved.jawaban ?? {}).length : 0
+          const sisa = saved?.sisaDetik
           return (
             <li key={k.id} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
               <div className="font-semibold text-slate-800">{k.judul}</div>
@@ -98,6 +114,9 @@ export default function SiswaKuis() {
               {nJawab > 0 && (
                 <div className="mt-2 text-xs font-medium text-emerald-700 bg-emerald-50 inline-block px-2 py-0.5 rounded-full">
                   Progres tersimpan · {nJawab} soal terjawab
+                  {typeof sisa === 'number' && k.durasiMenit
+                    ? ` · sisa ${Math.floor(sisa / 60)}:${String(sisa % 60).padStart(2, '0')}`
+                    : ''}
                 </div>
               )}
               <button type="button" className="mt-3 lms-btn-primary text-sm" onClick={() => setAktif(k)}>
@@ -120,7 +139,13 @@ function KerjakanKuis({
   siswaId: string
   onSelesai: () => void
 }) {
-  const saved = useMemo(() => loadProgress(siswaId, kuis.id), [siswaId, kuis.id])
+  // Baca progres sekali di awal (bukan di render loop)
+  const awalRef = useRef<Progress | null | undefined>(undefined)
+  if (awalRef.current === undefined) {
+    awalRef.current = loadProgress(siswaId, kuis.id)
+  }
+  const saved = awalRef.current
+
   const [idx, setIdx] = useState(() => {
     if (saved && typeof saved.idx === 'number') {
       return Math.min(Math.max(0, saved.idx), Math.max(0, (kuis.soal?.length ?? 1) - 1))
@@ -130,14 +155,22 @@ function KerjakanKuis({
   const [jawaban, setJawaban] = useState<Record<string, JawabanSoal>>(() => saved?.jawaban ?? {})
   const [busy, setBusy] = useState(false)
   const [sisaDetik, setSisaDetik] = useState(() => {
-    if (saved && typeof saved.sisaDetik === 'number' && saved.sisaDetik > 0) return saved.sisaDetik
+    // Lanjutkan sisa waktu yang tersimpan (mode pause saat keluar)
+    if (saved && typeof saved.sisaDetik === 'number' && saved.sisaDetik >= 0) {
+      return saved.sisaDetik
+    }
     return (kuis.durasiMenit ?? 0) * 60
   })
   const [confirmKeluar, setConfirmKeluar] = useState(false)
 
+  // Ref supaya flush saat unmount selalu memakai nilai terbaru
+  const stateRef = useRef({ jawaban, idx, sisaDetik })
+  stateRef.current = { jawaban, idx, sisaDetik }
+
   const soalList: SoalKuis[] = kuis.soal ?? []
   const soal = soalList[idx]
   const seed = `${siswaId}:${kuis.id}`
+  const punyaTimer = !!(kuis.durasiMenit && kuis.durasiMenit > 0)
 
   const sudahJawab = useCallback(
     (id: string) => {
@@ -150,32 +183,54 @@ function KerjakanKuis({
     [jawaban],
   )
 
-  // Simpan progres ke localStorage setiap perubahan
+  function flushProgress() {
+    const s = stateRef.current
+    saveProgress(siswaId, kuis.id, {
+      jawaban: s.jawaban,
+      idx: s.idx,
+      sisaDetik: punyaTimer ? s.sisaDetik : undefined,
+      updatedAt: Date.now(),
+    })
+  }
+
+  // Simpan progres setiap perubahan (jawaban / nomor / sisa waktu)
   useEffect(() => {
     saveProgress(siswaId, kuis.id, {
       jawaban,
       idx,
-      sisaDetik: kuis.durasiMenit ? sisaDetik : undefined,
+      sisaDetik: punyaTimer ? sisaDetik : undefined,
       updatedAt: Date.now(),
     })
-  }, [jawaban, idx, sisaDetik, siswaId, kuis.id, kuis.durasiMenit])
+  }, [jawaban, idx, sisaDetik, siswaId, kuis.id, punyaTimer])
 
-  // Timer
+  // Flush saat komponen dilepas (keluar / navigasi)
   useEffect(() => {
-    if (!kuis.durasiMenit || kuis.durasiMenit <= 0) return
-    const t = setInterval(() => setSisaDetik((s) => Math.max(0, s - 1)), 1000)
-    return () => clearInterval(t)
-  }, [kuis.durasiMenit])
+    return () => {
+      flushProgress()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [siswaId, kuis.id])
 
-  // Cegah refresh / tutup tab tanpa sengaja
+  // Timer: hitung mundur tiap detik
+  useEffect(() => {
+    if (!punyaTimer) return
+    const t = setInterval(() => {
+      setSisaDetik((s) => Math.max(0, s - 1))
+    }, 1000)
+    return () => clearInterval(t)
+  }, [punyaTimer])
+
+  // Cegah refresh / tutup tab tanpa sengaja + flush progres
   useEffect(() => {
     const handler = (e: BeforeUnloadEvent) => {
+      flushProgress()
       e.preventDefault()
       e.returnValue = ''
     }
     window.addEventListener('beforeunload', handler)
     return () => window.removeEventListener('beforeunload', handler)
-  }, [])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [siswaId, kuis.id])
 
   // Sembunyikan navigasi bawah siswa selama mengerjakan
   useEffect(() => {
@@ -188,7 +243,7 @@ function KerjakanKuis({
 
   const menit = Math.floor(sisaDetik / 60)
   const detik = sisaDetik % 60
-  const waktuHabis = !!(kuis.durasiMenit && sisaDetik <= 0)
+  const waktuHabis = punyaTimer && sisaDetik <= 0
 
   async function kirim() {
     if (waktuHabis && Object.keys(jawaban).length === 0) return
@@ -209,14 +264,13 @@ function KerjakanKuis({
   }
 
   function mintaKeluar() {
+    flushProgress()
     setConfirmKeluar(true)
   }
 
-  function konfirmasiKeluar(simpan: boolean) {
+  function konfirmasiKeluar() {
+    flushProgress()
     setConfirmKeluar(false)
-    if (!simpan) {
-      // tetap biarkan progres tersimpan; user bisa lanjut nanti
-    }
     onSelesai()
   }
 
@@ -244,7 +298,7 @@ function KerjakanKuis({
           </div>
         </div>
         <div className="flex items-center gap-3">
-          {kuis.durasiMenit ? (
+          {punyaTimer ? (
             <div
               className={`text-sm font-mono font-semibold px-3 py-1 rounded-full ${
                 sisaDetik < 60 ? 'bg-red-100 text-red-700' : 'bg-slate-100 text-slate-700'
@@ -331,13 +385,14 @@ function KerjakanKuis({
           <div className="bg-white rounded-2xl shadow-xl max-w-sm w-full p-5 space-y-3">
             <h2 className="font-bold text-slate-800 text-base">Keluar dari kuis?</h2>
             <p className="text-sm text-slate-600">
-              Jawaban yang sudah diisi tersimpan di perangkat ini. Kamu bisa melanjutkan nanti dari daftar kuis.
+              Jawaban dan sisa waktu disimpan di perangkat ini. Saat kamu kembali, pengerjaan dilanjutkan
+              dari soal dan timer terakhir.
             </p>
             <div className="flex gap-2 justify-end pt-1">
               <button type="button" className="lms-btn-secondary text-sm" onClick={() => setConfirmKeluar(false)}>
                 Lanjut mengerjakan
               </button>
-              <button type="button" className="lms-btn-primary text-sm" onClick={() => konfirmasiKeluar(true)}>
+              <button type="button" className="lms-btn-primary text-sm" onClick={konfirmasiKeluar}>
                 Keluar
               </button>
             </div>
