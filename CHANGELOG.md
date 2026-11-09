@@ -281,3 +281,10 @@
 - **TipTap:** warning "Duplicate extension names found: ['underline']" dihilangkan dengan menonaktifkan underline di StarterKit (karena sudah ditambahkan eksplisit).
 - File: `firestore.rules` (lengkap, salin ke SDM01Penilaian lalu deploy), `src/components/soal/RichEditor.tsx`.
 - ANTIREGRESI §66.
+
+## 2026-11-09 — Perbaiki regresi: batas prompt ilustrasi AI terlalu pendek (600)
+
+- **Regresi:** batas deskripsi/prompt generate ilustrasi AI kembali ke 600 karakter (UI) dan 500 (server). Terlalu pendek untuk prompt yang stabil.
+- **Perbaikan:** dinaikkan menjadi 3000 karakter di UI (`GambarSoal.tsx` maxLength) dan di Cloud Function (`generateSoalLmsAi.js` potong petunjukGambar).
+- File: `src/components/soal/GambarSoal.tsx` (LMS) + `functions/generateSoalLmsAi.js` (SDM01Penilaian, versi lengkap).
+- ANTIREGRESI §67.

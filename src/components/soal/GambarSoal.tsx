@@ -158,7 +158,7 @@ export function GambarPicker({ gambarId, onChange, kecil = false, label = 'Tamba
             <span>Deskripsi ilustrasi (opsional) — agar AI lebih tepat</span>
             <textarea
               rows={3}
-              maxLength={600}
+              maxLength={3000}
               value={deskripsiAi}
               onChange={(e) => setDeskripsiAi(e.target.value)}
               placeholder={

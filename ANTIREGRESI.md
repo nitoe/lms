@@ -288,3 +288,9 @@
 - Jangan turunkan kembali ke 100; kode di `src/types/soal.ts` (`BATAS_SOAL_PER_PAKET`) sudah 300.
 - Setelah mengubah rules, WAJIB salin file lengkap ke repo SDM01Penilaian dan jalankan `npm run deploy:rules`. Perubahan di GitHub LMS saja tidak langsung berlaku.
 - Ubah status Siap ↔ Draf hanya boleh jika dokumen tetap memenuhi semua validasi rules (kelas/mapel tidak berubah, dibuatOleh sama, dll.).
+
+## §67. Batas prompt ilustrasi AI
+
+- Deskripsi ilustrasi AI (petunjukGambar) minimal 3000 karakter di UI dan di server.
+- Jangan turunkan kembali ke 500/600; prompt pendek sering menghasilkan ilustrasi tidak stabil atau tidak sesuai.
+- Setelah mengubah `functions/generateSoalLmsAi.js`, deploy ulang Cloud Functions dari repo SDM01Penilaian.
