@@ -14,16 +14,7 @@ import type { KuisLms, SoalKuis } from '../types/kuis'
 import { NAMA_JENIS_PENILAIAN, type JenisPenilaianKuis } from '../types/kuis'
 import { NAMA_TIPE, type TipeSoal } from '../types/soal'
 import { useAuth } from '../context/AuthContext'
-import {
-  analisisKuisDenganAi,
-  analisisSiswaDenganAi,
-  bolehAnalisisKuisAi,
-  htmlLaporanKuis,
-  htmlLaporanSiswa,
-  unduhLaporanDoc,
-  type HasilAnalisisKuisAi,
-  type HasilAnalisisSiswaAi,
-} from '../lib/analisisKuisAi'
+import { sinkronNilaiKuisKePenilaian } from '../lib/sinkronNilaiKuis'
 
 type Props = {
   kuis: KuisLms
@@ -163,6 +154,9 @@ export default function HasilKuisPanel({ kuis }: Props) {
   const [busySiswaAi, setBusySiswaAi] = useState(false)
   const [errorSiswaAi, setErrorSiswaAi] = useState('')
   const [terapanAi, setTerapanAi] = useState('')
+  const [busySync, setBusySync] = useState(false)
+  const [overwrite, setOverwrite] = useState(true)
+  const [infoSync, setInfoSync] = useState('')
 
   const muat = useCallback(async () => {
     setError('')
@@ -234,6 +228,30 @@ export default function HasilKuisPanel({ kuis }: Props) {
       setError(e instanceof Error ? e.message : 'Gagal menyimpan skor.')
     } finally {
       setBusySoal(null)
+    }
+  }
+
+  const bisaSinkron = jenis === 'slm' || jenis === 'sts' || jenis === 'sas'
+
+  async function sinkron() {
+    setBusySync(true)
+    setError('')
+    setInfo('')
+    setInfoSync('')
+    try {
+      const h = await sinkronNilaiKuisKePenilaian({
+        kuisId: kuis.id,
+        overwrite,
+      })
+      setInfoSync(
+        `Sinkron OK → ${h.koleksi}: ${h.ditulis} nilai ditulis` +
+          (h.dilewati ? `, ${h.dilewati} dilewati` : '') +
+          ` · ${h.nSiswa} siswa · ${h.nTp} TP · sem ${h.semester} · ${h.tahunAjaran}`,
+      )
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Gagal sinkron ke Penilaian.')
+    } finally {
+      setBusySync(false)
     }
   }
 
@@ -605,7 +623,7 @@ export default function HasilKuisPanel({ kuis }: Props) {
             {labelJenis}
             {jenis === 'latihan'
               ? ' · tidak masuk rapor, tetap dapat dianalisis dan dinilai'
-              : ' · skor LMS; sinkron rapor (SLM/STS/SAS) terpisah bila diaktifkan'}
+              : ' · skor LMS; bisa disinkronkan ke Penilaian'}
           </p>
         </div>
         <button type="button" className="lms-btn-secondary text-xs" onClick={() => void muat()}>
@@ -646,7 +664,42 @@ export default function HasilKuisPanel({ kuis }: Props) {
           {error}
         </div>
       )}
+      {infoSync && (
+        <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3.5 py-2.5 text-sm text-emerald-800">
+          {infoSync}
+        </div>
+      )}
 
+      {bisaSinkron && (
+        <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
+          <div className="min-w-0 flex-1 text-sm text-slate-600">
+            Sinkron ke aplikasi Penilaian (
+            {jenis === 'slm' ? 'nilai_tp / SLM' : jenis === 'sts' ? 'nilai_sts' : 'nilai_sas'}
+            ). Pastikan TP di kuis cocok dengan TP di Penilaian.
+          </div>
+          <label className="flex items-center gap-2 text-xs text-slate-600">
+            <input
+              type="checkbox"
+              checked={overwrite}
+              onChange={(e) => setOverwrite(e.target.checked)}
+            />
+            Timpa nilai yang sudah ada
+          </label>
+          <button
+            type="button"
+            className="lms-btn-primary text-xs"
+            disabled={busySync || ringkas.n === 0}
+            onClick={() => void sinkron()}
+          >
+            {busySync ? 'Menyinkron…' : 'Sinkronkan ke Penilaian'}
+          </button>
+        </div>
+      )}
+      {!bisaSinkron && (
+        <p className="text-xs text-slate-500">
+          Kuis ini berjenis <strong>latihan</strong> — tidak masuk rapor. Ubah jenis di Atur kuis menjadi SLM/STS/SAS bila ingin sinkron.
+        </p>
+      )}
 
       {bolehAi && (
         <div className="overflow-hidden rounded-2xl border border-muh-100 bg-white shadow-sm">

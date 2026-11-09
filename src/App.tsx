@@ -9,7 +9,6 @@ import Beranda from './pages/Beranda'
 import KelasList from './pages/KelasList'
 import KelasDetail from './pages/KelasDetail'
 import TugasDanKuis from './pages/TugasDanKuis'
-import RekapKuis from './pages/RekapKuis'
 import SiswaMasuk from './pages/siswa/SiswaMasuk'
 import SiswaLayout from './pages/siswa/SiswaLayout'
 import SiswaBeranda from './pages/siswa/SiswaBeranda'
@@ -109,7 +108,6 @@ export default function App() {
         <Route path="kelas" element={<KelasList />} />
         <Route path="kelas/:ruangId" element={<KelasDetail />} />
         <Route path="tugas-kuis" element={<TugasDanKuis />} />
-        <Route path="rekap-kuis" element={<RekapKuis />} />
         <Route
           path="kelas/:ruangId/soal/:paketId"
           element={

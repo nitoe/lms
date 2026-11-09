@@ -493,3 +493,12 @@
 - **Bug:** Bantu nilai AI (isian/uraian) di tab Input offline sering tidak jalan karena `jawabanId` hanya di-set setelah simpan di sesi yang sama.
   - **Perbaikan:** AI memakai `jawabanId` dokumen tersimpan; alur Terapkan skor AI memanggil `nilaiManualKuisLms` per butir lalu refresh status; tombol **Simpan skor ini** per soal isian/uraian.
 - File: `src/components/OfflineKuisPanel.tsx`.
+
+## 2026-11-09 — Sinkron nilai kuis dipindah ke tab Hasil siswa; hapus menu Rekap Kuis
+
+- **Perubahan:**
+  - Tombol **Sinkronkan ke Penilaian** (untuk SLM/STS/SAS) sekarang ada langsung di tab **Hasil siswa** pada detail kuis.
+  - Menu sidebar dan halaman **Rekap Kuis** dihapus karena redundant dan dropdown kelas/mapel sering kosong.
+- **Alasan:** Alur guru lebih langsung; tidak perlu pindah halaman hanya untuk sinkron.
+- File: `src/components/HasilKuisPanel.tsx`, `src/components/Layout.tsx`, `src/App.tsx`.
+- ANTIREGRESI §58 (catatan lokasi UI).

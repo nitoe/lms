@@ -422,3 +422,8 @@ Jangan memaksa satu kolom sempit di desktop.
 58.2 Hanya jenis SLM/STS/SAS. Skor = (skorOtomatis/totalPoin)×100; satu nilai per TP terdaftar di kuis (atau `nilaiPerTp` bila diisi).
 
 58.3 TP harus resolve ke `tp_kktp` (id atau nama + mapel/kelas). Gagal resolve → tolak sinkron dengan pesan jelas.
+
+## §58. Sinkron kuis → nilai Penilaian (lanjutan)
+
+58.4 Tombol sinkron **hanya** di tab Hasil siswa (`HasilKuisPanel`). Jangan membuat halaman rekap terpisah hanya untuk sinkron — dropdown kelas/mapel di halaman rekap sering kosong bila penugasan belum lengkap, dan alur guru lebih natural dari detail kuis.
+58.5 Hapus menu sidebar «Rekap Kuis» bila sudah ada sinkron di Hasil siswa.

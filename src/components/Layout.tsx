@@ -16,7 +16,6 @@ const NAV_UTAMA: NavItem[] = [
   { to: '/', end: true, label: 'Beranda', icon: 'home' },
   { to: '/kelas', label: 'Ruang Kelas', icon: 'class' },
   { to: '/tugas-kuis', label: 'Tugas & Kuis', icon: 'task' },
-  { to: '/rekap-kuis', label: 'Rekap Kuis', icon: 'table' },
 ]
 
 const LS_SIDEBAR = 'lms-sidebar-collapsed'
