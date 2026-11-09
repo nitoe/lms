@@ -502,3 +502,11 @@
 - **Alasan:** Alur guru lebih langsung; tidak perlu pindah halaman hanya untuk sinkron.
 - File: `src/components/HasilKuisPanel.tsx`, `src/components/Layout.tsx`, `src/App.tsx`.
 - ANTIREGRESI §58 (catatan lokasi UI).
+
+## 2026-11-09 — Perbaikan build: import analisisKuisAi di HasilKuisPanel dipulihkan
+
+- **Bug:** `npm run deploy` gagal di `tsc -b` (25 error TS2304/TS7006) di `HasilKuisPanel.tsx`: `analisisKuisDenganAi`, `analisisSiswaDenganAi`, `bolehAnalisisKuisAi`, `htmlLaporanKuis`, `htmlLaporanSiswa`, `unduhLaporanDoc`, `HasilAnalisisKuisAi`, `HasilAnalisisSiswaAi` tidak ditemukan.
+  - **Penyebab:** saat menambah import `sinkronNilaiKuisKePenilaian`, seluruh blok import dari `../lib/analisisKuisAi` ikut tertimpa. Error `implicit any` pada `.map((x, i) => …)` hanyalah akibat turunan.
+  - **Perbaikan:** blok import `../lib/analisisKuisAi` dipulihkan dan import `../lib/sinkronNilaiKuis` dipertahankan. `tsc -b` lolos tanpa error.
+- File: `src/components/HasilKuisPanel.tsx`.
+- ANTIREGRESI §59.

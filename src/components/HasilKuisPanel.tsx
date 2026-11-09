@@ -14,6 +14,16 @@ import type { KuisLms, SoalKuis } from '../types/kuis'
 import { NAMA_JENIS_PENILAIAN, type JenisPenilaianKuis } from '../types/kuis'
 import { NAMA_TIPE, type TipeSoal } from '../types/soal'
 import { useAuth } from '../context/AuthContext'
+import {
+  analisisKuisDenganAi,
+  analisisSiswaDenganAi,
+  bolehAnalisisKuisAi,
+  htmlLaporanKuis,
+  htmlLaporanSiswa,
+  unduhLaporanDoc,
+  type HasilAnalisisKuisAi,
+  type HasilAnalisisSiswaAi,
+} from '../lib/analisisKuisAi'
 import { sinkronNilaiKuisKePenilaian } from '../lib/sinkronNilaiKuis'
 
 type Props = {

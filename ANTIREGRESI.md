@@ -427,3 +427,9 @@ Jangan memaksa satu kolom sempit di desktop.
 
 58.4 Tombol sinkron **hanya** di tab Hasil siswa (`HasilKuisPanel`). Jangan membuat halaman rekap terpisah hanya untuk sinkron — dropdown kelas/mapel di halaman rekap sering kosong bila penugasan belum lengkap, dan alur guru lebih natural dari detail kuis.
 58.5 Hapus menu sidebar «Rekap Kuis» bila sudah ada sinkron di Hasil siswa.
+
+## §59. Import tertimpa saat menambah fitur di komponen besar
+
+59.1 Saat menambah import baru di file besar (mis. `HasilKuisPanel.tsx`), **tambahkan** baris import baru; jangan mengganti blok import lama. Menimpa blok import menimbulkan puluhan error TS2304 + TS7006 sekaligus (error `implicit any` hanyalah turunan dari tipe yang hilang).
+59.2 Sebelum push/deploy, jalankan `npx tsc -b` di lokal. Bila error muncul beruntun, periksa dulu bagian import di baris atas file sebelum menelusuri logika.
+59.3 `HasilKuisPanel.tsx` memakai dua sumber import yang harus tetap ada bersamaan: `../lib/analisisKuisAi` (analisis AI & laporan) dan `../lib/sinkronNilaiKuis` (sinkron ke Penilaian).
