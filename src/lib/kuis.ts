@@ -98,6 +98,8 @@ export type InputBuatKuis = {
   durasiMenit?: number
   acakSoal?: boolean
   acakOpsi?: boolean
+  tpIds?: string[]
+  tpNamaList?: string[]
 }
 
 /**
