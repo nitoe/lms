@@ -300,21 +300,25 @@ export default function KuisPanel({ kelas, mapel }: Props) {
         </button>
         {kuis ? (
           <>
-            <div className="flex flex-wrap gap-1 rounded-lg border border-slate-200 bg-slate-50 p-0.5 w-fit">
+                        <div className="flex w-fit rounded-xl bg-slate-100/90 p-1">
               <button
                 type="button"
-                className={`rounded-md px-3 py-1.5 text-xs font-semibold ${
-                  detailTab === 'atur' ? 'bg-white text-muh-700 shadow-sm' : 'text-slate-600'
-                }`}
+                className={
+                  detailTab === 'atur'
+                    ? 'rounded-lg bg-muh-600 px-3.5 py-1.5 text-xs font-semibold text-white shadow-sm'
+                    : 'rounded-lg px-3.5 py-1.5 text-xs font-semibold text-slate-600 hover:bg-white hover:text-slate-900'
+                }
                 onClick={() => setDetailTab('atur')}
               >
                 Atur kuis
               </button>
               <button
                 type="button"
-                className={`rounded-md px-3 py-1.5 text-xs font-semibold ${
-                  detailTab === 'hasil' ? 'bg-white text-muh-700 shadow-sm' : 'text-slate-600'
-                }`}
+                className={
+                  detailTab === 'hasil'
+                    ? 'rounded-lg bg-muh-600 px-3.5 py-1.5 text-xs font-semibold text-white shadow-sm'
+                    : 'rounded-lg px-3.5 py-1.5 text-xs font-semibold text-slate-600 hover:bg-white hover:text-slate-900'
+                }
                 onClick={() => setDetailTab('hasil')}
               >
                 Hasil siswa

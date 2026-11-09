@@ -427,3 +427,10 @@
 - File SDM01Penilaian: `functions/nilaiManualKuisLms.js`, `functions/nilaiKuisLms.js`, `functions/index.js` (lengkap).
 - Deploy: `firebase deploy --only functions:nilaiKuisLms,functions:nilaiManualKuisLms` dari SDM01Penilaian; hosting LMS.
 
+## 2026-11-09 — UI Hasil siswa dirapikan
+
+- Kartu ringkasan (jumlah siswa, rata-rata /100, selesai, perlu dinilai).
+- Tab pill aktif berwarna muh; tabel dengan inisial, badge status, hover baris.
+- Detail siswa: header skor menonjol, nomor soal berwarna, kartu jawaban, area nilai manual.
+- File: `src/components/HasilKuisPanel.tsx`, `src/components/KuisPanel.tsx`.
+
