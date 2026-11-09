@@ -1,4 +1,4 @@
-export type SiswaIconName = 'home' | 'book' | 'pencil' | 'target' | 'star'
+export type SiswaIconName = 'home' | 'book' | 'pencil' | 'target' | 'star' | 'tka'
 
 type Props = {
   name: SiswaIconName
@@ -52,6 +52,14 @@ export default function SiswaIcon({ name, size = 24 }: Props) {
       return (
         <svg {...common}>
           <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+        </svg>
+      )
+    case 'tka':
+      return (
+        <svg {...common}>
+          <path d="M22 10 12 5 2 10l10 5 10-5z" />
+          <path d="M6 12v5c3 2.5 9 2.5 12 0v-5" />
+          <line x1="22" y1="10" x2="22" y2="16" />
         </svg>
       )
   }

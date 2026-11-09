@@ -1,5 +1,6 @@
 import { NavLink, Navigate, Outlet, useNavigate } from 'react-router-dom'
 import { useSiswa } from '../../context/SiswaContext'
+import { bolehTkaSiswa } from '../../lib/tkaAkses'
 import SiswaIcon, { type SiswaIconName } from './SiswaIcon'
 
 const NAV: { to: string; end: boolean; label: string; icon: SiswaIconName }[] = [
@@ -8,6 +9,9 @@ const NAV: { to: string; end: boolean; label: string; icon: SiswaIconName }[] = 
   { to: '/siswa/tugas', end: false, label: 'Tugas', icon: 'pencil' },
   { to: '/siswa/kuis', end: false, label: 'Kuis', icon: 'target' },
 ]
+
+/** Menu TKA hanya untuk siswa kelas 6 (ANTIREGRESI §76). */
+const NAV_TKA = { to: '/siswa/tka', end: false, label: 'TKA', icon: 'tka' as SiswaIconName }
 
 /**
  * Shell area siswa: header + konten full-width + navigasi.
@@ -25,6 +29,8 @@ export default function SiswaLayout() {
     await keluar()
     navigate('/siswa/masuk', { replace: true })
   }
+
+  const navItems = bolehTkaSiswa(sesi.kelas) ? [...NAV, NAV_TKA] : NAV
 
   return (
     <div className="sw-app">
@@ -52,7 +58,7 @@ export default function SiswaLayout() {
 
       <nav className="sw-nav" aria-label="Menu utama siswa">
         <div className="sw-nav-inner">
-          {NAV.map((item) => (
+          {navItems.map((item) => (
             <NavLink
               key={item.to}
               to={item.to}

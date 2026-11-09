@@ -15,8 +15,11 @@ import SiswaBeranda from './pages/siswa/SiswaBeranda'
 import SiswaMateri from './pages/siswa/SiswaMateri'
 import SiswaPlaceholder from './pages/siswa/SiswaPlaceholder'
 import SiswaKuis from './pages/siswa/SiswaKuis'
+import SiswaTka from './pages/siswa/SiswaTka'
+import TkaBeranda from './pages/tka/TkaBeranda'
 import OrangtuaBeranda from './pages/OrangtuaBeranda'
 import { isStaf } from './lib/peran'
+import { bolehAksesTkaStaf } from './lib/tkaAkses'
 
 // Dimuat malas: editor teks kaya (TipTap) cukup besar dan hanya dipakai guru (ANTIREGRESI §13).
 const SoalEditor = lazy(() => import('./pages/SoalEditor'))
@@ -25,6 +28,14 @@ function WajibStaf({ children }: { children: ReactNode }) {
   const { user, profil, peran, loading } = useAuth()
   if (loading) return <div className="p-8 text-sm text-muted">Memuat…</div>
   if (!user || !profil || !isStaf(peran)) return <Navigate to="/masuk" replace />
+  return children
+}
+
+/** Menu TKA: hanya admin TKA (pembuat aplikasi) dan wali kelas 6. Penegak sebenarnya: firestore.rules. */
+function WajibTkaStaf({ children }: { children: ReactNode }) {
+  const { user, profil, loading } = useAuth()
+  if (loading) return <div className="p-8 text-sm text-muted">Memuat…</div>
+  if (!bolehAksesTkaStaf(user, profil)) return <Navigate to="/" replace />
   return children
 }
 
@@ -73,6 +84,7 @@ export default function App() {
           }
         />
         <Route path="kuis" element={<SiswaKuis />} />
+        <Route path="tka" element={<SiswaTka />} />
         <Route
           path="pencapaian"
           element={
@@ -108,6 +120,14 @@ export default function App() {
         <Route path="kelas" element={<KelasList />} />
         <Route path="kelas/:ruangId" element={<KelasDetail />} />
         <Route path="tugas-kuis" element={<TugasDanKuis />} />
+        <Route
+          path="tka"
+          element={
+            <WajibTkaStaf>
+              <TkaBeranda />
+            </WajibTkaStaf>
+          }
+        />
         <Route
           path="kelas/:ruangId/soal/:paketId"
           element={

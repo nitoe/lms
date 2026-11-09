@@ -3,12 +3,13 @@ import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { logout } from '../lib/auth'
 import { NAMA_PERAN } from '../lib/peran'
+import { bolehAksesTkaStaf } from '../lib/tkaAkses'
 
 type NavItem = {
   to: string
   end?: boolean
   label: string
-  icon: 'home' | 'class' | 'task' | 'quiz' | 'table'
+  icon: 'home' | 'class' | 'task' | 'quiz' | 'table' | 'tka'
   soon?: boolean
 }
 
@@ -17,6 +18,9 @@ const NAV_UTAMA: NavItem[] = [
   { to: '/kelas', label: 'Ruang Kelas', icon: 'class' },
   { to: '/tugas-kuis', label: 'Tugas & Kuis', icon: 'task' },
 ]
+
+/** Menu TKA hanya tampil untuk admin TKA dan wali kelas 6 (ANTIREGRESI §76). */
+const NAV_TKA: NavItem = { to: '/tka', label: 'TKA', icon: 'tka' }
 
 const LS_SIDEBAR = 'lms-sidebar-collapsed'
 
@@ -74,6 +78,14 @@ function Icon({ name }: { name: NavItem['icon'] }) {
           <path d="M9 5v14" />
         </svg>
       )
+    case 'tka':
+      return (
+        <svg {...common}>
+          <path d="M22 10 12 5 2 10l10 5 10-5z" />
+          <path d="M6 12v5c3 2.5 9 2.5 12 0v-5" />
+          <line x1="22" y1="10" x2="22" y2="16" />
+        </svg>
+      )
     case 'quiz':
       return (
         <svg {...common}>
@@ -86,7 +98,7 @@ function Icon({ name }: { name: NavItem['icon'] }) {
 }
 
 export default function Layout() {
-  const { profil, peran } = useAuth()
+  const { user, profil, peran } = useAuth()
   const navigate = useNavigate()
   const { pathname } = useLocation()
   /** Drawer mobile */
@@ -107,11 +119,14 @@ export default function Layout() {
     navigate('/masuk', { replace: true })
   }
 
+  const navItems = bolehAksesTkaStaf(user, profil) ? [...NAV_UTAMA, NAV_TKA] : NAV_UTAMA
+
   const judulHalaman =
     pathname.includes('/soal/') ? 'Editor soal'
     : pathname.startsWith('/kelas/') ? 'Detail ruang kelas'
     : pathname.startsWith('/kelas') ? 'Ruang Kelas'
     : pathname.startsWith('/tugas-kuis') ? 'Tugas & Kuis'
+    : pathname.startsWith('/tka') ? 'TKA — Tes Kemampuan Akademik'
     : 'Beranda'
 
   return (
@@ -163,7 +178,7 @@ export default function Layout() {
 
         <nav className="lms-sidebar-nav">
           <div className="lms-sidebar-section">Menu</div>
-          {NAV_UTAMA.map((item) =>
+          {navItems.map((item) =>
             item.soon ? (
               <div
                 key={item.label + item.to}

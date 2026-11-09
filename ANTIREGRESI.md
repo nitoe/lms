@@ -433,3 +433,25 @@ Jangan memaksa satu kolom sempit di desktop.
 59.1 Saat menambah import baru di file besar (mis. `HasilKuisPanel.tsx`), **tambahkan** baris import baru; jangan mengganti blok import lama. Menimpa blok import menimbulkan puluhan error TS2304 + TS7006 sekaligus (error `implicit any` hanyalah turunan dari tipe yang hilang).
 59.2 Sebelum push/deploy, jalankan `npx tsc -b` di lokal. Bila error muncul beruntun, periksa dulu bagian import di baris atas file sebelum menelusuri logika.
 59.3 `HasilKuisPanel.tsx` memakai dua sumber import yang harus tetap ada bersamaan: `../lib/analisisKuisAi` (analisis AI & laporan) dan `../lib/sinkronNilaiKuis` (sinkron ke Penilaian).
+
+## §76. Modul TKA (kelas 6)
+
+76.1 **Akses TKA ditegakkan di tiga tempat yang harus sinkron:** `src/lib/tkaAkses.ts` (tampilan/rute), `firestore.rules` (`tkaAdmin`, `tkaGuruKelas6`, `tkaStaf`, `tkaSiswa`), dan Cloud Function TKA. Menyembunyikan menu saja BUKAN pengamanan. Mengubah salah satunya (mis. menambah guru, mengganti email admin) berarti mengubah ketiganya.
+
+76.2 **Siapa:** admin TKA = UID `v4fQXsqCzYUtHrqcDM0u48sxIfn1` + email `arif.azwar79@gmail.com` (pola sama dengan §56). Guru kelas 6 = `waliKelas` memuat **6A, 6B, atau 6C** (jangan hardcode hanya 6A/6B; kelas 6C ada di `DAFTAR_KELAS_SD`), role `guru`/`guru_akademik`. Siswa = claim `kelas` diawali kelas 6 yang sama.
+
+76.3 **Token try out tidak boleh ada di `tka_paket`** (siswa kelas 6 membaca paket aktif). Token hanya di `tka_token/{paketId}`; rules `tka_paket` menolak field `token`. Pemeriksaan token siswa dilakukan Cloud Function (Admin SDK). TKA lama menyimpan token di dokumen paket dan mengeceknya di browser — jangan dibawa kembali.
+
+76.4 **Kunci jawaban tidak boleh terbaca siswa:** `tka_soal` hanya staf TKA. Jangan membuat koleksi «publik» berisi kunci/hash (pola `soalPublik` + hash SHA-256 di klien dari TKA lama dihapus dari desain). Soal ke siswa dikirim Cloud Function tanpa kunci; penilaian di server.
+
+76.5 **Query vs rules:** siswa membaca `tka_paket` dengan `where('aktif', '==', true)` dan `tka_percobaan` dengan `where('siswaId', '==', <siswaId sendiri>)`. Tanpa filter itu rules menolak seluruh query ("Missing or insufficient permissions"), bukan hanya dokumen yang tidak boleh.
+
+76.6 **Semantik `aktif`:** paket aktif hanya bila `aktif === true`. Paket TKA lama tanpa field `aktif` dianggap nonaktif (perilaku `susun-paket.html`); skrip migrasi menjaga ini.
+
+76.7 **Pemetaan siswa migrasi:** NISN → nama+kelas (dinormalisasi). Lebih dari satu kandidat = ambigu, **tidak ditebak**. Percobaan siswa tak terpetakan **tidak ditulis** dan tercantum di laporan. Selalu dry-run dan baca `pemetaanSiswa` + `percobaanDilewati` sebelum `--apply`.
+
+76.8 **Skrip migrasi:** project sumber/tujuan dikunci, dokumen berbeda tidak ditimpa tanpa `--overwrite`, kunci service account tidak boleh di-commit. firebase-admin dimuat dari `functions/` (jalankan `npm install` di sana).
+
+76.9 **Rules:** mengikuti §74 — basis selalu `firestore.rules` terbaru di SDM01Penilaian. Pada 2026-11-10 salinan di repo LMS ternyata tertinggal dari SDM01Penilaian (batas soal 100 vs 300, `lms_kuis` siswa, `lms_jawaban`); kedua salinan disamakan di Tahap 1. Aturan tulis `tka_paket` sementara longgar untuk staf TKA dan akan diperketat di Tahap 3 bersama alur pengajuan try out.
+
+76.10 **Navigasi siswa:** item TKA ditambahkan dinamis (`SiswaLayout`), bukan di array `NAV` tetap, agar siswa kelas lain tidak melihatnya. Item nav memakai `flex: 1` sehingga 5 item muat di HP; cek lebar ~375px saat menambah item lagi. Ikon baru harus ditambahkan di `SiswaIconName` DAN di `switch` `SiswaIcon` sekaligus.

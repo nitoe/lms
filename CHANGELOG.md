@@ -510,3 +510,15 @@
   - **Perbaikan:** blok import `../lib/analisisKuisAi` dipulihkan dan import `../lib/sinkronNilaiKuis` dipertahankan. `tsc -b` lolos tanpa error.
 - File: `src/components/HasilKuisPanel.tsx`.
 - ANTIREGRESI §59.
+
+## 2026-11-10 — TKA Tahap 1: menu TKA, penjaga akses, rules, skrip migrasi
+
+- **Fitur:** menu baru **TKA (Tes Kemampuan Akademik)** di sidebar guru dan navigasi siswa, dimigrasi bertahap dari repo `nitoe/tka2026`.
+  - Guru: hanya **admin TKA** (`arif.azwar79@gmail.com`) dan **wali kelas 6** (6A/6B/6C). Halaman `/tka` menampilkan jumlah soal/paket/hasil hasil migrasi dan daftar tahap berikutnya.
+  - Siswa: item **TKA** muncul hanya untuk kelas 6; halaman `/siswa/tka` masih placeholder (pengerjaan di Tahap 2).
+- **Data:** koleksi baru `tka_soal`, `tka_paket`, `tka_token`, `tka_percobaan`, `tka_sesi_live` di project LMS (tipe di `src/types/tka.ts`). Token try out dipisah dari paket agar tidak terbaca siswa.
+- **Rules:** fungsi `tkaAdmin`/`tkaGuruKelas6`/`tkaStaf`/`tkaSiswa` + blok `tka_*`. `firestore.rules` di repo ini disinkronkan dengan salinan terbaru di SDM01Penilaian (sebelumnya tertinggal: batas soal 100, `lms_kuis` siswa, `lms_jawaban`).
+- **Migrasi:** `scripts/migrasi-tka.mjs` di SDM01Penilaian (dry-run bawaan, project terkunci, tidak menimpa). Siswa dicocokkan NISN lalu nama+kelas; yang tak cocok/ambigu dilaporkan, tidak ditebak.
+- **Dokumentasi:** `docs/TKA.md` (akses, koleksi, langkah migrasi, tahapan).
+- File (LMS): `src/lib/tkaAkses.ts`, `src/types/tka.ts`, `src/pages/tka/TkaBeranda.tsx`, `src/pages/siswa/SiswaTka.tsx`, `src/App.tsx`, `src/components/Layout.tsx`, `src/pages/siswa/SiswaLayout.tsx`, `src/pages/siswa/SiswaIcon.tsx`, `firestore.rules`, `docs/TKA.md`. File (SDM01Penilaian): `firestore.rules` (lengkap), `scripts/migrasi-tka.mjs`, `scripts/cek-migrasi-tka.mjs`.
+- ANTIREGRESI §76.
