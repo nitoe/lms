@@ -104,12 +104,6 @@ export default function HasilKuisPanel({ kuis }: Props) {
   }, [list, hanyaTerbaru])
 
   const soalIds = useMemo(() => (kuis.soal ?? []).map((s) => s.id), [kuis.soal])
-  const soalById = useMemo(() => {
-    const m = new Map<string, SoalKuis>()
-    for (const s of kuis.soal ?? []) m.set(s.id, s)
-    return m
-  }, [kuis.soal])
-
   const agregat = useMemo(() => {
     if (!list || list.length === 0) return {}
     return agregatPerSoal(tampil, soalIds)
