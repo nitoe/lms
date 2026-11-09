@@ -72,28 +72,33 @@ Batas: PDF/gambar 10 MB, video 50 MB.
 
 **Storage gambar soal:** `lms/kuis/{kuisId}/{timestamp}_{namaFile}` (maks 5 MB)
 
-### Rencana berikutnya
-
-- `lms_tugas/{id}` — tugas + tenggat
-- `lms_pengumpulan/{id}` — pengumpulan siswa
-- `lms_nilai_tugas/{id}` — nilai & komentar guru
-
 ### `lms_tugas/{id}`
 
 | Field | Tipe | Keterangan |
 |-------|------|------------|
-| kelas | string | Rombel |
-| mapel | string | Nama mapel |
+| kelas | string | Rombel (satu kelas utama) |
+| mapel | string | Mapel utama / penanggung jawab |
+| mapelLain | string[]? | Mapel tambahan (jenis `proyek`) |
 | judul | string | Judul tugas |
-| deskripsi | string? | Opsional |
-| tpId / tpNomor / tpNama | | Opsional |
+| deskripsi | string? | Ringkasan untuk katalog |
+| instruksi | string? | Instruksi lengkap (tab Isi Tugas) |
+| jenis | string | `mapel` \| `proyek` |
+| tpList | array? | `[{id, nomor, nama, mapel?}]` — boleh lebih dari satu TP |
+| tpId / tpNomor / tpNama | | Mirror TP pertama (kompatibilitas) |
 | tenggat | timestamp? | Tenggat waktu |
 | aktif | boolean | Status publish |
+| pengaturanPenilaian | map? | `{skalaMaks, bobot, sinkronKePenilaian, jenisAsesmen, catatan}` |
 | dibuatOleh / dibuatOlehNama | string | |
 | jumlahPengumpulan | number | Denormalisasi |
 | createdAt / updatedAt | timestamp | |
 
-Query: `where kelas == … && where mapel == …`.
+Query utama: `where kelas == … && where mapel == …`.
+
+### Rencana berikutnya (Tugas)
+
+- `lms_pengumpulan/{id}` — pengumpulan file/jawaban siswa
+- `lms_nilai_tugas/{id}` — nilai & komentar guru (input manual)
+- Sinkron nilai ke koleksi nilai di SDM01Penilaian bila `pengaturanPenilaian.sinkronKePenilaian`
 
 ### `lms_jawaban/{id}`
 

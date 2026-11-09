@@ -3,6 +3,17 @@
 > Append-only: entri baru ditambahkan di BAWAH, entri lama tidak diubah.
 > Versi mengacu ke `package.json` (saat ini `0.1.0`); belum ada rilis bertag.
 
+## 2026-11-10 — Fondasi fitur Tugas (v0.5.0)
+
+- **Navigasi:** menu sidebar **Tugas** menggantikan «Tugas & Kuis». Tab Tugas dihapus dari ruang kelas (`KelasDetail`); kuis tetap di tab Ruang Kelas. Alias `/tugas-kuis` → `/tugas`.
+- **Dashboard `/tugas`:** katalog kartu (jenis mapel/proyek, kelas, mapel, tenggat, status, jumlah pengumpulan) + filter + buat tugas baru.
+- **Detail `/tugas/:id` & `/tugas/baru`:** tab **Pengaturan** (jenis, kelas, mapel, multi-mapel proyek, multi-TP, tenggat, aktif), **Isi Tugas** (deskripsi + instruksi), **Input Nilai** (sub-tab Pengaturan penilaian + placeholder Daftar nilai).
+- **Model:** `jenis` (`mapel` | `proyek`), `mapelLain[]`, `tpList[]`, `instruksi`, `pengaturanPenilaian` (skala, bobot, sinkronKePenilaian). Kompatibilitas baca dokumen lama (satu TP).
+- **Lib:** `daftarTugasGuru`, `ambilTugas`, perluasan `buatTugas` / `updateTugas`.
+- File: `src/types/tugas.ts`, `src/lib/tugas.ts`, `src/pages/TugasDashboard.tsx`, `src/pages/TugasDetail.tsx`, `src/App.tsx`, `src/components/Layout.tsx`, `src/pages/KelasDetail.tsx`, `docs/DATA_MODEL.md`.
+- **Belum:** rules `lms_tugas` (masih mengandalkan pola yang sudah ada / default — akan ditambahkan hati-hati), pengumpulan siswa, input nilai per siswa, sinkron ke Penilaian.
+- `TugasPanel` di ruang kelas tidak lagi dipakai; file lama boleh dihapus kemudian.
+
 ## 2026-11-09 — Latihan: riwayat pengerjaan + opsi kerjakan lagi dari awal
 
 - **Perilaku:**

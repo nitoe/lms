@@ -8,7 +8,8 @@ import OrangtuaMasuk from './pages/OrangtuaMasuk'
 import Beranda from './pages/Beranda'
 import KelasList from './pages/KelasList'
 import KelasDetail from './pages/KelasDetail'
-import TugasDanKuis from './pages/TugasDanKuis'
+import TugasDashboard from './pages/TugasDashboard'
+import TugasDetail from './pages/TugasDetail'
 import SiswaMasuk from './pages/siswa/SiswaMasuk'
 import SiswaLayout from './pages/siswa/SiswaLayout'
 import SiswaBeranda from './pages/siswa/SiswaBeranda'
@@ -119,7 +120,10 @@ export default function App() {
         <Route index element={<Beranda />} />
         <Route path="kelas" element={<KelasList />} />
         <Route path="kelas/:ruangId" element={<KelasDetail />} />
-        <Route path="tugas-kuis" element={<TugasDanKuis />} />
+        <Route path="tugas" element={<TugasDashboard />} />
+        <Route path="tugas/:tugasId" element={<TugasDetail />} />
+        {/* Alias lama: /tugas-kuis → /tugas */}
+        <Route path="tugas-kuis" element={<Navigate to="/tugas" replace />} />
         <Route
           path="tka"
           element={

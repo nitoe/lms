@@ -1,21 +1,89 @@
 /** Dokumen tugas di `lms_tugas/{id}`. */
+
+/** Jenis tugas: terikat satu mapel, atau proyek lintas mapel. */
+export type JenisTugas = 'mapel' | 'proyek'
+
+/** Satu Tujuan Pembelajaran yang dilampirkan ke tugas (bisa banyak). */
+export interface TpTugas {
+  id: string
+  nomor: number
+  nama: string
+  /** Mapel asal TP (penting untuk proyek lintas mapel). */
+  mapel?: string
+}
+
+/** Pengaturan penilaian tugas (tab Input Nilai → Pengaturan). */
+export interface PengaturanPenilaianTugas {
+  /** Skala nilai maksimal (default 100). */
+  skalaMaks?: number
+  /** Bobot terhadap nilai mapel (0–100), opsional. */
+  bobot?: number
+  /** Apakah nilai akan disinkronkan ke koleksi nilai di Penilaian. */
+  sinkronKePenilaian?: boolean
+  /** Jenis asesmen di Penilaian bila sinkron (mis. 'tugas', 'projek'). */
+  jenisAsesmen?: string
+  catatan?: string
+}
+
+/** Dokumen `lms_tugas/{id}`. */
 export interface TugasLms {
   id: string
+  /** Rombel, mis. `5A`. Untuk proyek bisa satu kelas utama. */
   kelas: string
+  /**
+   * Mapel utama (selalu ada).
+   * Untuk jenis `mapel`: satu mapel.
+   * Untuk jenis `proyek`: mapel utama / penanggung jawab; mapel lain di `mapelLain`.
+   */
   mapel: string
+  /** Mapel tambahan (hanya untuk jenis `proyek`). */
+  mapelLain?: string[]
   judul: string
   deskripsi?: string
+  /** Instruksi lengkap (bisa HTML dari rich editor di tab Isi Tugas). */
+  instruksi?: string
+  jenis: JenisTugas
+  /** Daftar TP yang dilampirkan (boleh lebih dari satu). */
+  tpList?: TpTugas[]
+  /** Field lama (kompatibilitas baca); prefer `tpList`. */
   tpId?: string
   tpNomor?: number
   tpNama?: string
-  /** ISO string atau timestamp. */
+  /** ISO string atau Firestore Timestamp. */
   tenggat?: unknown
   aktif: boolean
   dibuatOleh: string
   dibuatOlehNama?: string
   jumlahPengumpulan?: number
+  pengaturanPenilaian?: PengaturanPenilaianTugas
   createdAt?: unknown
   updatedAt?: unknown
 }
 
+/** Input pembuatan / pembaruan tugas (tanpa id & meta). */
+export type TugasInput = {
+  kelas: string
+  mapel: string
+  mapelLain?: string[]
+  judul: string
+  deskripsi?: string
+  instruksi?: string
+  jenis: JenisTugas
+  tpList?: TpTugas[]
+  tenggat?: Date | null
+  aktif?: boolean
+  pengaturanPenilaian?: PengaturanPenilaianTugas
+  namaGuru?: string
+}
+
 export const BATAS_UKURAN_FILE_TUGAS = 10 * 1024 * 1024 // 10 MB
+
+export function labelJenisTugas(j: JenisTugas): string {
+  return j === 'proyek' ? 'Proyek' : 'Mapel'
+}
+
+/** Semua mapel yang terlibat (utama + lain). */
+export function semuaMapelTugas(t: Pick<TugasLms, 'mapel' | 'mapelLain'>): string[] {
+  const lain = Array.isArray(t.mapelLain) ? t.mapelLain.filter(Boolean) : []
+  return [t.mapel, ...lain].filter((m, i, arr) => m && arr.indexOf(m) === i)
+}

@@ -6,16 +6,14 @@ import { aksenMapel, inisialMapel } from '../lib/uiAksen'
 import MateriPanel from '../components/MateriPanel'
 import KuisPanel from '../components/KuisPanel'
 import BankSoalPanel from '../components/BankSoalPanel'
-import TugasPanel from '../components/TugasPanel'
 
-type TabId = 'pengumuman' | 'materi' | 'kuis' | 'soal' | 'tugas'
+type TabId = 'pengumuman' | 'materi' | 'kuis' | 'soal'
 
 const TABS: { id: TabId; label: string }[] = [
   { id: 'pengumuman', label: 'Pengumuman' },
   { id: 'materi', label: 'Materi' },
   { id: 'kuis', label: 'Kuis' },
   { id: 'soal', label: 'Bank Soal' },
-  { id: 'tugas', label: 'Tugas' },
 ]
 
 export default function KelasDetail() {
@@ -24,7 +22,7 @@ export default function KelasDetail() {
   const [searchParams] = useSearchParams()
   const tabAwal = searchParams.get('tab')
   const [tab, setTab] = useState<TabId>(
-    tabAwal === 'soal' || tabAwal === 'kuis' || tabAwal === 'pengumuman' || tabAwal === 'tugas' ? tabAwal : 'materi',
+    tabAwal === 'soal' || tabAwal === 'kuis' || tabAwal === 'pengumuman' ? tabAwal : 'materi',
   )
 
   const decoded = decodeURIComponent(ruangId)
@@ -68,7 +66,7 @@ export default function KelasDetail() {
                 {judulMapel}
               </h2>
               <p className="mt-1 text-sm text-white/80">
-                Materi, tugas, dan pengumuman untuk rombel ini
+                Materi, kuis, dan pengumuman untuk rombel ini
               </p>
             </div>
             <div className="kelas-hero-mark" style={{ color: a.coverFg }} aria-hidden>
@@ -102,7 +100,6 @@ export default function KelasDetail() {
       {tab === 'materi' && <MateriPanel kelas={judulKelas} mapel={judulMapel} />}
       {tab === 'kuis' && <KuisPanel kelas={judulKelas} mapel={judulMapel} />}
       {tab === 'soal' && <BankSoalPanel kelas={judulKelas} mapel={judulMapel} ruangId={decoded} />}
-      {tab === 'tugas' && <TugasPanel kelas={judulKelas} mapel={judulMapel} />}
     </div>
   )
 }
