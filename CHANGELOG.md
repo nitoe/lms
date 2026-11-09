@@ -3,6 +3,22 @@
 > Append-only: entri baru ditambahkan di BAWAH, entri lama tidak diubah.
 > Versi mengacu ke `package.json` (saat ini `0.1.0`); belum ada rilis bertag.
 
+## 2026-11-10 — Rules lms_tugas + input nilai manual
+
+- **Rules (file lengkap):** ditambah `lms_tugas` dan `lms_nilai_tugas` di blok REPO nitoe/lms. Tidak mengubah rules Penilaian/Sarpras/Perpustakaan/materi/kuis/soal. Salin utuh ke SDM01Penilaian lalu `npm run deploy:rules`.
+  - `lms_tugas`: baca guru (lihatMapelKelas) + siswa aktif kelas sendiri; tulis guru penugasan/wali.
+  - `lms_nilai_tugas`: baca/tulis guru mapel×kelas; siswa baca milik sendiri.
+- **Input nilai:** tab Daftar nilai memuat roster `siswa` per kelas + form nilai/komentar per baris (`src/lib/nilaiTugas.ts`).
+- File LMS: `src/lib/nilaiTugas.ts`, `src/pages/TugasDetail.tsx`, `docs/DATA_MODEL.md`.
+- File shared: `firestore.rules` (lengkap → SDM01Penilaian).
+- Belum: pengumpulan file siswa, sinkron CF ke nilai Penilaian.
+
+## 2026-11-10 — Perbaikan build: TugasPanel & TugasDanKuis
+
+- `buatTugas` di `TugasPanel` wajib `jenis: 'mapel'` (sesuai `TugasInput`).
+- `TugasDanKuis.tsx` diganti redirect ke `/tugas` (hindari error union tipe dengan `TugasLms` baru).
+- File: `src/components/TugasPanel.tsx`, `src/pages/TugasDanKuis.tsx`.
+
 ## 2026-11-10 — Fondasi fitur Tugas (v0.5.0)
 
 - **Navigasi:** menu sidebar **Tugas** menggantikan «Tugas & Kuis». Tab Tugas dihapus dari ruang kelas (`KelasDetail`); kuis tetap di tab Ruang Kelas. Alias `/tugas-kuis` → `/tugas`.

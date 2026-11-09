@@ -1,4 +1,10 @@
+/**
+ * Panel lama di tab Ruang Kelas — tidak lagi ditampilkan (tab Tugas dihapus).
+ * File dipertahankan agar tidak memutus import tak terduga; gunakan /tugas.
+ * Jika ingin menghapus file ini, pastikan tidak ada import tersisa.
+ */
 import { useCallback, useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { daftarTugas, buatTugas, hapusTugas, updateTugas } from '../lib/tugas'
 import type { TugasLms } from '../types/tugas'
@@ -42,6 +48,7 @@ export default function TugasPanel({ kelas, mapel }: Props) {
         mapel,
         judul: judulBaru,
         deskripsi: deskripsiBaru,
+        jenis: 'mapel',
         namaGuru: profil?.nama,
       })
       setJudulBaru('')
@@ -83,6 +90,14 @@ export default function TugasPanel({ kelas, mapel }: Props) {
 
   return (
     <div className="space-y-4">
+      <div className="rounded-xl border border-amber-200 bg-amber-50 px-3.5 py-2.5 text-sm text-amber-900">
+        Pengelolaan tugas dipindah ke menu{' '}
+        <Link to="/tugas" className="font-semibold underline">
+          Tugas
+        </Link>
+        . Panel ini hanya menampilkan tugas mapel «{mapel}» kelas {kelas}.
+      </div>
+
       <div className="lms-toolbar">
         <div className="flex min-w-0 flex-1 items-center gap-2">
           <span className="lms-count-pill">
@@ -146,7 +161,13 @@ export default function TugasPanel({ kelas, mapel }: Props) {
       {list && list.length === 0 && !modeTambah && (
         <div className="lms-empty">
           <p className="font-medium text-slate-700">Belum ada tugas</p>
-          <p className="mt-1">Buat tugas pertama untuk mulai memberikan pekerjaan kepada siswa.</p>
+          <p className="mt-1">
+            Buat dari menu{' '}
+            <Link to="/tugas/baru" className="font-semibold text-muh-600 underline">
+              Tugas
+            </Link>
+            .
+          </p>
         </div>
       )}
 
@@ -155,7 +176,11 @@ export default function TugasPanel({ kelas, mapel }: Props) {
           {list.map((t) => (
             <li key={t.id} className="materi-item">
               <div className="materi-item-body">
-                <div className="materi-item-title">{t.judul}</div>
+                <div className="materi-item-title">
+                  <Link to={`/tugas/${t.id}`} className="hover:underline">
+                    {t.judul}
+                  </Link>
+                </div>
                 {t.deskripsi && <div className="text-sm text-muted mt-1">{t.deskripsi}</div>}
                 <div className="materi-item-meta">
                   <span className={t.aktif ? 'text-emerald-700' : 'text-slate-500'}>

@@ -94,11 +94,28 @@ Batas: PDF/gambar 10 MB, video 50 MB.
 
 Query utama: `where kelas == … && where mapel == …`.
 
+### `lms_nilai_tugas/{id}`
+
+ID disarankan: `{tugasId}_{siswaId}`.
+
+| Field | Tipe | Keterangan |
+|-------|------|------------|
+| tugasId | string | |
+| siswaId | string | ID dokumen `siswa` |
+| siswaNama | string | Denormalisasi |
+| kelas | string | Rombel |
+| mapel | string | Mapel utama tugas |
+| nilai | number | 0–skalaMaks (default 100) |
+| komentar | string? | |
+| dinilaiOleh / dinilaiOlehNama | string | |
+| createdAt / updatedAt | timestamp | |
+
+Query: `where tugasId == … && where kelas == … && where mapel == …`.
+
 ### Rencana berikutnya (Tugas)
 
 - `lms_pengumpulan/{id}` — pengumpulan file/jawaban siswa
-- `lms_nilai_tugas/{id}` — nilai & komentar guru (input manual)
-- Sinkron nilai ke koleksi nilai di SDM01Penilaian bila `pengaturanPenilaian.sinkronKePenilaian`
+- Sinkron nilai ke koleksi nilai di SDM01Penilaian (Cloud Function) bila `pengaturanPenilaian.sinkronKePenilaian`
 
 ### `lms_jawaban/{id}`
 

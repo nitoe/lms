@@ -9,6 +9,7 @@ import {
   formatTenggat,
   updateTugas,
 } from '../lib/tugas'
+import { muatBarisNilaiTugas, simpanNilaiTugas, type BarisNilaiTugas } from '../lib/nilaiTugas'
 import type { JenisTugas, PengaturanPenilaianTugas, TpTugas, TugasLms } from '../types/tugas'
 import { labelJenisTugas } from '../types/tugas'
 import type { TpRingkas } from '../types/materi'
@@ -60,6 +61,12 @@ export default function TugasDetail() {
     skalaMaks: 100,
     sinkronKePenilaian: false,
   })
+
+  // Input nilai manual
+  const [barisNilai, setBarisNilai] = useState<BarisNilaiTugas[] | null>(null)
+  const [loadingNilai, setLoadingNilai] = useState(false)
+  const [draftNilai, setDraftNilai] = useState<Record<string, { nilai: string; komentar: string }>>({})
+  const [menyimpanSiswaId, setMenyimpanSiswaId] = useState<string | null>(null)
 
   const ruang = useMemo(() => daftarRuangKelas(profil), [profil])
   const opsiKelas = useMemo(() => {
@@ -239,6 +246,80 @@ export default function TugasDetail() {
       setError(err instanceof Error ? err.message : 'Gagal menyimpan.')
     } finally {
       setBusy(false)
+    }
+  }
+
+  const muatNilai = useCallback(async () => {
+    if (isBaru || !tugas) {
+      setBarisNilai(null)
+      return
+    }
+    setLoadingNilai(true)
+    setError('')
+    try {
+      const rows = await muatBarisNilaiTugas(tugas.id, tugas.kelas, tugas.mapel)
+      setBarisNilai(rows)
+      const draft: Record<string, { nilai: string; komentar: string }> = {}
+      for (const r of rows) {
+        draft[r.siswaId] = {
+          nilai: r.nilai === null || r.nilai === undefined ? '' : String(r.nilai),
+          komentar: r.komentar || '',
+        }
+      }
+      setDraftNilai(draft)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Gagal memuat daftar nilai.')
+      setBarisNilai([])
+    } finally {
+      setLoadingNilai(false)
+    }
+  }, [isBaru, tugas])
+
+  useEffect(() => {
+    if (tab === 'nilai' && subNilai === 'daftar-nilai' && !isBaru && tugas) {
+      void muatNilai()
+    }
+  }, [tab, subNilai, isBaru, tugas, muatNilai])
+
+  async function simpanSatuNilai(siswaId: string, siswaNama: string) {
+    if (!tugas) return
+    const d = draftNilai[siswaId]
+    if (!d) return
+    const raw = d.nilai.trim()
+    if (raw === '') {
+      setError(`Isi nilai untuk ${siswaNama} terlebih dahulu.`)
+      return
+    }
+    const num = Number(raw.replace(',', '.'))
+    if (Number.isNaN(num)) {
+      setError(`Nilai untuk ${siswaNama} tidak valid.`)
+      return
+    }
+    const maks = pengaturan.skalaMaks ?? 100
+    if (num < 0 || num > maks) {
+      setError(`Nilai untuk ${siswaNama} harus antara 0 dan ${maks}.`)
+      return
+    }
+    setMenyimpanSiswaId(siswaId)
+    setError('')
+    setSukses('')
+    try {
+      await simpanNilaiTugas({
+        tugasId: tugas.id,
+        siswaId,
+        siswaNama,
+        kelas: tugas.kelas,
+        mapel: tugas.mapel,
+        nilai: num,
+        komentar: d.komentar,
+        namaGuru: profil?.nama,
+      })
+      setSukses(`Nilai ${siswaNama} disimpan.`)
+      await muatNilai()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Gagal menyimpan nilai.')
+    } finally {
+      setMenyimpanSiswaId(null)
     }
   }
 
@@ -606,17 +687,117 @@ export default function TugasDetail() {
           )}
 
           {subNilai === 'daftar-nilai' && (
-            <div className="lms-empty">
-              <p className="font-medium text-slate-700">Input nilai manual per siswa</p>
-              <p className="mt-1 max-w-lg">
-                Daftar siswa kelas ini akan dimuat di sini. Guru mengisi nilai dan komentar secara
-                manual. Fitur pengumpulan file siswa dan sinkronisasi penuh ke koleksi nilai
-                Penilaian akan dilanjutkan pada langkah berikutnya.
-              </p>
+            <div className="space-y-4">
               {isBaru && (
-                <p className="mt-2 text-sm text-amber-700">
-                  Simpan pengaturan tugas terlebih dahulu.
-                </p>
+                <div className="lms-empty">
+                  <p className="font-medium text-slate-700">Simpan pengaturan tugas dulu</p>
+                  <p className="mt-1">Setelah tugas tersimpan, daftar siswa kelas dapat diisi nilainya di sini.</p>
+                </div>
+              )}
+              {!isBaru && (
+                <>
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <p className="text-sm text-muted">
+                      Input nilai manual untuk kelas {tugas?.kelas}. Skala 0–{pengaturan.skalaMaks ?? 100}.
+                      {pengaturan.sinkronKePenilaian
+                        ? ' Sinkron ke Penilaian: aktif (akan dihubungkan kemudian).'
+                        : ''}
+                    </p>
+                    <button
+                      type="button"
+                      className="lms-btn-secondary text-xs"
+                      disabled={loadingNilai}
+                      onClick={() => void muatNilai()}
+                    >
+                      {loadingNilai ? 'Memuat…' : 'Muat ulang'}
+                    </button>
+                  </div>
+
+                  {loadingNilai && barisNilai === null && (
+                    <div className="lms-empty">Memuat daftar siswa…</div>
+                  )}
+
+                  {barisNilai && barisNilai.length === 0 && (
+                    <div className="lms-empty">
+                      <p className="font-medium text-slate-700">Tidak ada siswa di kelas ini</p>
+                      <p className="mt-1">Pastikan data siswa aktif sudah ada di koleksi siswa untuk kelas {tugas?.kelas}.</p>
+                    </div>
+                  )}
+
+                  {barisNilai && barisNilai.length > 0 && (
+                    <div className="overflow-x-auto rounded-xl border border-slate-200">
+                      <table className="w-full min-w-[520px] text-left text-sm">
+                        <thead className="bg-slate-50 text-xs uppercase text-slate-600">
+                          <tr>
+                            <th className="px-3 py-2 font-semibold">No</th>
+                            <th className="px-3 py-2 font-semibold">Nama</th>
+                            <th className="px-3 py-2 font-semibold w-28">Nilai</th>
+                            <th className="px-3 py-2 font-semibold">Komentar</th>
+                            <th className="px-3 py-2 font-semibold w-24" />
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {barisNilai.map((r, i) => {
+                            const d = draftNilai[r.siswaId] || { nilai: '', komentar: '' }
+                            return (
+                              <tr key={r.siswaId} className="border-t border-slate-100">
+                                <td className="px-3 py-2 text-muted">{i + 1}</td>
+                                <td className="px-3 py-2 font-medium text-slate-800">
+                                  {r.siswaNama}
+                                  {r.sudahAda && (
+                                    <span className="ml-1 text-[10px] font-normal text-emerald-700">tersimpan</span>
+                                  )}
+                                </td>
+                                <td className="px-3 py-2">
+                                  <input
+                                    type="number"
+                                    min={0}
+                                    max={pengaturan.skalaMaks ?? 100}
+                                    step="0.1"
+                                    className="lms-input w-24"
+                                    value={d.nilai}
+                                    onChange={(e) =>
+                                      setDraftNilai((prev) => ({
+                                        ...prev,
+                                        [r.siswaId]: { ...d, nilai: e.target.value },
+                                      }))
+                                    }
+                                    aria-label={`Nilai ${r.siswaNama}`}
+                                  />
+                                </td>
+                                <td className="px-3 py-2">
+                                  <input
+                                    type="text"
+                                    className="lms-input w-full min-w-[120px]"
+                                    placeholder="Opsional"
+                                    value={d.komentar}
+                                    onChange={(e) =>
+                                      setDraftNilai((prev) => ({
+                                        ...prev,
+                                        [r.siswaId]: { ...d, komentar: e.target.value },
+                                      }))
+                                    }
+                                    aria-label={`Komentar ${r.siswaNama}`}
+                                  />
+                                </td>
+                                <td className="px-3 py-2">
+                                  <button
+                                    type="button"
+                                    className="lms-btn-primary text-xs"
+                                    disabled={menyimpanSiswaId === r.siswaId}
+                                    onClick={() => void simpanSatuNilai(r.siswaId, r.siswaNama)}
+                                  >
+                                    {menyimpanSiswaId === r.siswaId ? '…' : 'Simpan'}
+                                  </button>
+                                </td>
+                              </tr>
+                            )
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </>
               )}
             </div>
           )}
