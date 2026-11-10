@@ -3,7 +3,7 @@
  * Tahap 2: sumber otomatis tugas/kuis, bobot SLM live; daftar kelas×mapel = penugasan + perluasan wali.
  * Belum: tulis cache nilai akhir + Cloud Function sinkron ke Penilaian.
  */
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { getTpMapelKelas } from '../lib/tpData'
 import { muatSiswaKelas, type SiswaDasar } from '../lib/siswaAuth'
@@ -37,6 +37,43 @@ type SubTab = JenisNilaiTp
 function formatNilai(n: number | null | undefined): string {
   if (typeof n !== 'number' || Number.isNaN(n)) return '—'
   return Number.isInteger(n) ? String(n) : n.toLocaleString('id-ID', { maximumFractionDigits: 1 })
+}
+
+/** Warna skor: hijau ≥75, amber 60–74, merah <60, netral jika kosong */
+function skorClass(n: number | null | undefined): string {
+  if (typeof n !== 'number' || Number.isNaN(n)) return 'text-slate-400'
+  if (n >= 75) return 'text-emerald-700'
+  if (n >= 60) return 'text-amber-700'
+  return 'text-red-700'
+}
+
+function skorBadgeClass(n: number | null | undefined): string {
+  if (typeof n !== 'number' || Number.isNaN(n)) return 'bg-slate-100 text-slate-500'
+  if (n >= 75) return 'bg-emerald-50 text-emerald-800 ring-1 ring-emerald-200/80'
+  if (n >= 60) return 'bg-amber-50 text-amber-800 ring-1 ring-amber-200/80'
+  return 'bg-red-50 text-red-800 ring-1 ring-red-200/80'
+}
+
+function ringkasNilai(nilai: NilaiSiswaTp[] | null): {
+  rata: number | null
+  min: number | null
+  max: number | null
+  terisi: number
+  total: number
+} {
+  if (!nilai?.length) return { rata: null, min: null, max: null, terisi: 0, total: 0 }
+  const angka = nilai
+    .map((r) => r.nilaiAkhir)
+    .filter((n): n is number => typeof n === 'number' && !Number.isNaN(n))
+  if (!angka.length) return { rata: null, min: null, max: null, terisi: 0, total: nilai.length }
+  const sum = angka.reduce((a, b) => a + b, 0)
+  return {
+    rata: Math.round((sum / angka.length) * 10) / 10,
+    min: Math.min(...angka),
+    max: Math.max(...angka),
+    terisi: angka.length,
+    total: nilai.length,
+  }
 }
 
 export default function RekapNilai() {
@@ -300,32 +337,39 @@ export default function RekapNilai() {
     }
   }
 
+  const ringkasAktif = useMemo(() => {
+    if (subTab === 'slm') return ringkasNilai(nilaiSlm)
+    if (subTab === 'sts') return ringkasNilai(nilaiSts)
+    return ringkasNilai(nilaiSas)
+  }, [subTab, nilaiSlm, nilaiSts, nilaiSas])
+
   if (muatPasangan && !pasangan.length) {
     return (
-      <div className="space-y-4">
-        <div className="lms-page-intro">
-          <h2 className="text-lg font-semibold">Rekap Nilai</h2>
-          <p className="mt-1 max-w-2xl text-sm text-muted">
-            Pusat sinkronisasi nilai TP (SLM, STS, SAS) ke aplikasi Penilaian.
-          </p>
+      <div className="space-y-5">
+        <HeaderRekap />
+        <div className="card-soft flex items-center gap-3 px-4 py-5 text-sm text-muted">
+          <Spinner />
+          Memuat daftar kelas × mapel…
         </div>
-        <p className="text-sm text-muted">Memuat daftar kelas × mapel…</p>
       </div>
     )
   }
 
   if (!pasangan.length) {
     return (
-      <div className="space-y-4">
-        <div className="lms-page-intro">
-          <h2 className="text-lg font-semibold">Rekap Nilai</h2>
-          <p className="mt-1 max-w-2xl text-sm text-muted">
-            Pusat sinkronisasi nilai TP (SLM, STS, SAS) ke aplikasi Penilaian.
+      <div className="space-y-5">
+        <HeaderRekap />
+        <div className="lms-empty">
+          <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-amber-50 text-amber-700">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+              <path d="M12 9v4M12 17h.01M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+            </svg>
+          </div>
+          <p className="font-medium text-slate-800">Belum ada kelas × mapel</p>
+          <p className="mx-auto mt-1 max-w-md text-sm">
+            Pastikan penugasan mapel atau status wali kelas sudah diisi di aplikasi Penilaian
+            (sumber yang sama dengan kartu di Ruang Kelas).
           </p>
-        </div>
-        <div className="lms-empty rounded-xl border border-amber-200 bg-amber-50 px-4 py-6 text-sm text-amber-900">
-          Belum ada kelas × mapel yang bisa dibuka. Pastikan penugasan mapel atau status wali kelas
-          sudah diisi di aplikasi Penilaian (sama seperti sumber kartu di Ruang Kelas).
         </div>
       </div>
     )
@@ -333,17 +377,19 @@ export default function RekapNilai() {
 
   return (
     <div className="space-y-5">
-      <div className="lms-page-intro">
-        <h2 className="text-lg font-semibold">Rekap Nilai</h2>
-        <p className="mt-1 max-w-2xl text-sm text-muted">
-          Agregasi nilai per Tujuan Pembelajaran (SLM dari tugas &amp; kuis, STS &amp; SAS dari
-          asesmen) untuk disinkronkan ke aplikasi Penilaian.
-        </p>
-      </div>
+      <HeaderRekap
+        meta={
+          kelas && mapel
+            ? `${kelas} · ${mapel}${tpList?.length ? ` · ${tpList.length} TP` : ''}${
+                siswa?.length ? ` · ${siswa.length} siswa` : ''
+              }`
+            : undefined
+        }
+      />
 
       {/* Filter kelas + mapel */}
-      <div className="lms-toolbar flex flex-wrap items-end gap-3">
-        <label className="flex flex-col gap-1 text-xs font-medium text-slate-600">
+      <div className="card-soft flex flex-wrap items-end gap-3 px-4 py-3.5">
+        <label className="flex min-w-[7rem] flex-col gap-1 text-xs font-semibold text-slate-600">
           Kelas
           <select
             className="lms-input min-w-[100px]"
@@ -362,10 +408,10 @@ export default function RekapNilai() {
             ))}
           </select>
         </label>
-        <label className="flex flex-col gap-1 text-xs font-medium text-slate-600">
+        <label className="flex min-w-[12rem] flex-1 flex-col gap-1 text-xs font-semibold text-slate-600">
           Mata pelajaran
           <select
-            className="lms-input min-w-[180px]"
+            className="lms-input w-full min-w-[180px]"
             value={mapel}
             onChange={(e) => setMapel(e.target.value)}
           >
@@ -384,31 +430,57 @@ export default function RekapNilai() {
             void muatTpDanSiswa()
           }}
         >
-          {busy || busyNilai ? 'Memuat…' : 'Muat ulang'}
+          {busy || busyNilai ? (
+            <span className="inline-flex items-center gap-1.5">
+              <Spinner small /> Memuat…
+            </span>
+          ) : (
+            'Muat ulang'
+          )}
         </button>
       </div>
 
       {error && (
-        <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
-          {error}
+        <div
+          className="flex items-start gap-2.5 rounded-xl border border-red-200 bg-red-50 px-3.5 py-2.5 text-sm text-red-800"
+          role="alert"
+        >
+          <span className="mt-0.5 shrink-0 font-bold" aria-hidden>
+            !
+          </span>
+          <span>{error}</span>
         </div>
       )}
       {pesan && (
-        <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
-          {pesan}
+        <div
+          className="flex items-start gap-2.5 rounded-xl border border-emerald-200 bg-emerald-50 px-3.5 py-2.5 text-sm text-emerald-800"
+          role="status"
+        >
+          <span className="mt-0.5 shrink-0" aria-hidden>
+            ✓
+          </span>
+          <span>{pesan}</span>
         </div>
       )}
 
       {tpList && tpList.length === 0 && !busy && (
-        <div className="lms-empty rounded-xl border border-slate-200 bg-slate-50 px-4 py-6 text-sm text-slate-600">
-          Belum ada Tujuan Pembelajaran untuk {mapel} · {kelas}. Buat TP di aplikasi Penilaian
-          terlebih dahulu.
+        <div className="lms-empty">
+          <p className="font-medium text-slate-800">Belum ada Tujuan Pembelajaran</p>
+          <p className="mx-auto mt-1 max-w-md text-sm">
+            Tidak ada TP untuk <strong>{mapel}</strong> · <strong>{kelas}</strong>. Buat TP di
+            aplikasi Penilaian terlebih dahulu.
+          </p>
         </div>
       )}
 
       {tpList && tpList.length > 0 && (
         <>
-          <div className="lms-tabs overflow-x-auto" role="tablist" aria-label="Tujuan Pembelajaran">
+          {/* TP tabs */}
+          <div
+            className="lms-tabs overflow-x-auto pb-px"
+            role="tablist"
+            aria-label="Tujuan Pembelajaran"
+          >
             {tpList.map((t) => (
               <button
                 key={t.id}
@@ -429,167 +501,361 @@ export default function RekapNilai() {
 
           {tpAktif && (
             <div className="space-y-4">
-              <div className="rounded-lg border border-slate-200 bg-white px-4 py-3">
-                <div className="text-xs font-medium uppercase tracking-wide text-muted">
-                  Tujuan Pembelajaran {tpAktif.nomorTp}
+              {/* Konteks TP */}
+              <div className="card-soft overflow-hidden">
+                <div className="flex flex-wrap items-start gap-3 border-b border-slate-100 bg-gradient-to-r from-muh-50/80 to-white px-4 py-3.5">
+                  <span className="inline-flex shrink-0 items-center rounded-lg bg-muh-600 px-2.5 py-1 text-xs font-bold tracking-wide text-white">
+                    TP {tpAktif.nomorTp}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <div className="text-[11px] font-semibold uppercase tracking-wider text-muh-600">
+                      Tujuan Pembelajaran
+                    </div>
+                    <p className="mt-0.5 text-sm font-semibold leading-snug text-slate-800">
+                      {tpAktif.namaTp}
+                    </p>
+                  </div>
                 </div>
-                <div className="mt-0.5 text-sm font-semibold text-slate-800">{tpAktif.namaTp}</div>
-              </div>
 
-              <div className="lms-tabs" role="tablist" aria-label="Jenis penilaian">
-                {(['slm', 'sts', 'sas'] as SubTab[]).map((j) => (
-                  <button
-                    key={j}
-                    type="button"
-                    role="tab"
-                    aria-selected={subTab === j}
-                    onClick={() => setSubTab(j)}
-                    className={`lms-tab ${subTab === j ? 'lms-tab--active' : ''}`}
-                  >
-                    {NAMA_JENIS_NILAI_TP[j]}
-                  </button>
-                ))}
-              </div>
+                {/* Sub-tab jenis + ringkasan */}
+                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 px-2 pt-1">
+                  <div className="lms-tabs border-0" role="tablist" aria-label="Jenis penilaian">
+                    {(['slm', 'sts', 'sas'] as SubTab[]).map((j) => {
+                      const count =
+                        j === 'slm'
+                          ? sumberSlm.length
+                          : j === 'sts'
+                            ? sumberSts.length
+                            : sumberSas.length
+                      return (
+                        <button
+                          key={j}
+                          type="button"
+                          role="tab"
+                          aria-selected={subTab === j}
+                          onClick={() => setSubTab(j)}
+                          className={`lms-tab ${subTab === j ? 'lms-tab--active' : ''}`}
+                        >
+                          <span className="inline-flex items-center gap-1.5">
+                            {NAMA_JENIS_NILAI_TP[j]}
+                            {count > 0 && (
+                              <span
+                                className={`inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full px-1.5 text-[10px] font-bold ${
+                                  subTab === j
+                                    ? 'bg-muh-100 text-muh-800'
+                                    : 'bg-slate-100 text-slate-600'
+                                }`}
+                              >
+                                {count}
+                              </span>
+                            )}
+                          </span>
+                        </button>
+                      )
+                    })}
+                  </div>
 
-              <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
-                {busyNilai && (
-                  <p className="p-4 text-sm text-muted">Memuat nilai dari tugas &amp; kuis…</p>
-                )}
+                  {!busyNilai && ringkasAktif.total > 0 && (
+                    <div className="flex flex-wrap items-center gap-2 px-2 pb-2 text-xs text-muted">
+                      <StatChip
+                        label="Rata-rata"
+                        value={formatNilai(ringkasAktif.rata)}
+                        emphasize
+                      />
+                      <StatChip label="Min" value={formatNilai(ringkasAktif.min)} />
+                      <StatChip label="Max" value={formatNilai(ringkasAktif.max)} />
+                      <StatChip
+                        label="Terisi"
+                        value={`${ringkasAktif.terisi}/${ringkasAktif.total}`}
+                      />
+                    </div>
+                  )}
+                </div>
 
-                {!busyNilai && subTab === 'slm' && (
-                  <div className="space-y-4 p-4">
-                    <p className="text-sm text-muted">
-                      Nilai SLM digabung dari tugas dan kuis yang terhubung ke TP ini. Atur{' '}
-                      <strong>bobot persen</strong> tiap sumber (jumlah harus 100%), lalu simpan.
-                    </p>
+                <div className="min-h-[12rem]">
+                  {busyNilai && (
+                    <div className="flex items-center gap-3 p-6 text-sm text-muted">
+                      <Spinner />
+                      Memuat nilai dari tugas &amp; kuis…
+                    </div>
+                  )}
 
-                    {sumberSlm.length === 0 ? (
-                      <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 px-3 py-4 text-sm text-slate-600">
-                        Belum ada tugas atau kuis SLM yang terhubung ke TP ini. Buat tugas (lampirkan
-                        TP) atau kuis dengan jenis penilaian <strong>SLM</strong> dan pilih TP ini.
-                      </div>
-                    ) : (
-                      <>
-                        <div className="flex flex-wrap items-end gap-3">
-                          {sumberSlm.map((s) => (
-                            <div
-                              key={s.id}
-                              className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2"
-                            >
-                              <div className="text-xs text-muted">
-                                {s.jenis === 'tugas' ? 'Tugas' : 'Kuis'}
-                              </div>
-                              <div className="max-w-[200px] truncate text-sm font-medium text-slate-800" title={s.judul}>
-                                {s.judul}
-                              </div>
-                              <label className="mt-1 flex items-center gap-1 text-xs text-slate-600">
-                                Bobot
-                                <input
-                                  type="number"
-                                  min={0}
-                                  max={100}
-                                  step={1}
-                                  className="lms-input w-16 py-1 text-sm"
-                                  value={s.bobot}
-                                  onChange={(e) => {
-                                    const v = parseFloat(e.target.value)
-                                    ubahBobot(s.id, Number.isFinite(v) ? v : 0)
-                                  }}
-                                />
-                                <span className="font-medium text-slate-700">%</span>
-                              </label>
-                            </div>
-                          ))}
-                          <div className="flex flex-col gap-1">
-                            <span
-                              className={
-                                persenOk
-                                  ? 'text-xs font-medium text-emerald-700'
-                                  : 'text-xs font-medium text-amber-700'
-                              }
-                            >
-                              Total {totalPersenSlm}%
-                              {persenOk ? ' (OK)' : ' — harus 100%'}
-                            </span>
-                            <button
-                              type="button"
-                              className="lms-btn-primary text-sm"
-                              disabled={!bobotDirty || menyimpanBobot || !persenOk}
-                              onClick={() => void simpanBobot()}
-                            >
-                              {menyimpanBobot ? 'Menyimpan…' : 'Simpan bobot'}
-                            </button>
-                          </div>
-                        </div>
+                  {!busyNilai && subTab === 'slm' && (
+                    <div className="space-y-4 p-4">
+                      <p className="text-sm leading-relaxed text-muted">
+                        Nilai SLM digabung dari tugas dan kuis yang terhubung ke TP ini. Atur{' '}
+                        <strong className="text-slate-700">bobot persen</strong> tiap sumber
+                        (jumlah harus 100%), lalu simpan.
+                      </p>
 
-                        <TabelNilaiSlm
-                          siswa={siswa}
-                          sumber={sumberSlm}
-                          nilai={nilaiSlm}
+                      {sumberSlm.length === 0 ? (
+                        <EmptySumber
+                          judul="Belum ada sumber SLM"
+                          deskripsi={
+                            <>
+                              Buat tugas (lampirkan TP) atau kuis dengan jenis penilaian{' '}
+                              <strong>SLM</strong> dan pilih TP ini.
+                            </>
+                          }
                         />
-                      </>
-                    )}
-                  </div>
-                )}
+                      ) : (
+                        <>
+                          {/* Panel bobot */}
+                          <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-3.5">
+                            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                              <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                                Bobot sumber
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <span
+                                  className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold ${
+                                    persenOk
+                                      ? 'bg-emerald-50 text-emerald-800 ring-1 ring-emerald-200'
+                                      : 'bg-amber-50 text-amber-800 ring-1 ring-amber-200'
+                                  }`}
+                                >
+                                  <span
+                                    className={`h-1.5 w-1.5 rounded-full ${
+                                      persenOk ? 'bg-emerald-500' : 'bg-amber-500'
+                                    }`}
+                                  />
+                                  Total {totalPersenSlm}%
+                                  {persenOk ? ' · OK' : ' · harus 100%'}
+                                </span>
+                                <button
+                                  type="button"
+                                  className="lms-btn-primary text-sm"
+                                  disabled={!bobotDirty || menyimpanBobot || !persenOk}
+                                  onClick={() => void simpanBobot()}
+                                >
+                                  {menyimpanBobot ? 'Menyimpan…' : 'Simpan bobot'}
+                                </button>
+                              </div>
+                            </div>
 
-                {!busyNilai && subTab === 'sts' && (
-                  <div className="space-y-3 p-4">
-                    <p className="text-sm text-muted">
-                      Nilai STS dari kuis/asesmen dengan jenis penilaian <strong>STS</strong>
-                      {sumberSts.length
-                        ? ` (${sumberSts.map((s) => s.judul).join(', ')})`
-                        : ''}.
-                      Input offline tersedia di modul Kuis.
-                    </p>
-                    {sumberSts.length === 0 ? (
-                      <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 px-3 py-4 text-sm text-slate-600">
-                        Belum ada kuis STS untuk TP / mapel ini.
-                      </div>
-                    ) : (
-                      <TabelNilaiSederhana
-                        siswa={siswa}
-                        nilai={nilaiSts}
-                        labelKolom="Nilai STS"
-                      />
-                    )}
-                  </div>
-                )}
+                            {/* Progress total */}
+                            <div className="mb-3 h-1.5 overflow-hidden rounded-full bg-slate-200">
+                              <div
+                                className={`h-full rounded-full transition-all ${
+                                  persenOk
+                                    ? 'bg-emerald-500'
+                                    : totalPersenSlm > 100
+                                      ? 'bg-red-500'
+                                      : 'bg-amber-500'
+                                }`}
+                                style={{
+                                  width: `${Math.min(100, Math.max(0, totalPersenSlm))}%`,
+                                }}
+                              />
+                            </div>
 
-                {!busyNilai && subTab === 'sas' && (
-                  <div className="space-y-3 p-4">
-                    <p className="text-sm text-muted">
-                      Nilai SAS dari kuis/asesmen dengan jenis penilaian <strong>SAS</strong>
-                      {sumberSas.length
-                        ? ` (${sumberSas.map((s) => s.judul).join(', ')})`
-                        : ''}.
-                    </p>
-                    {sumberSas.length === 0 ? (
-                      <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 px-3 py-4 text-sm text-slate-600">
-                        Belum ada kuis SAS untuk TP / mapel ini.
-                      </div>
-                    ) : (
-                      <TabelNilaiSederhana
-                        siswa={siswa}
-                        nilai={nilaiSas}
-                        labelKolom="Nilai SAS"
-                      />
-                    )}
-                  </div>
-                )}
+                            <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
+                              {sumberSlm.map((s) => (
+                                <div
+                                  key={s.id}
+                                  className="flex flex-col rounded-lg border border-slate-200 bg-white px-3 py-2.5 shadow-sm"
+                                >
+                                  <div className="flex items-start justify-between gap-2">
+                                    <span
+                                      className={`inline-flex rounded px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide ${
+                                        s.jenis === 'tugas'
+                                          ? 'bg-sky-50 text-sky-800'
+                                          : 'bg-violet-50 text-violet-800'
+                                      }`}
+                                    >
+                                      {s.jenis === 'tugas' ? 'Tugas' : 'Kuis'}
+                                    </span>
+                                  </div>
+                                  <div
+                                    className="mt-1.5 line-clamp-2 text-sm font-semibold leading-snug text-slate-800"
+                                    title={s.judul}
+                                  >
+                                    {s.judul}
+                                  </div>
+                                  <label className="mt-2.5 flex items-center gap-2 text-xs text-slate-600">
+                                    <span className="font-medium">Bobot</span>
+                                    <input
+                                      type="number"
+                                      min={0}
+                                      max={100}
+                                      step={1}
+                                      className="lms-input w-16 py-1 text-center text-sm font-semibold"
+                                      value={s.bobot}
+                                      onChange={(e) => {
+                                        const v = parseFloat(e.target.value)
+                                        ubahBobot(s.id, Number.isFinite(v) ? v : 0)
+                                      }}
+                                    />
+                                    <span className="font-semibold text-slate-700">%</span>
+                                  </label>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+
+                          <TabelNilaiSlm
+                            siswa={siswa}
+                            sumber={sumberSlm}
+                            nilai={nilaiSlm}
+                          />
+                        </>
+                      )}
+                    </div>
+                  )}
+
+                  {!busyNilai && subTab === 'sts' && (
+                    <div className="space-y-3 p-4">
+                      <p className="text-sm leading-relaxed text-muted">
+                        Nilai STS dari kuis/asesmen dengan jenis penilaian{' '}
+                        <strong className="text-slate-700">STS</strong>
+                        {sumberSts.length
+                          ? ` (${sumberSts.map((s) => s.judul).join(', ')})`
+                          : ''}
+                        . Input offline tersedia di modul Kuis.
+                      </p>
+                      {sumberSts.length === 0 ? (
+                        <EmptySumber
+                          judul="Belum ada kuis STS"
+                          deskripsi="Buat kuis dengan jenis penilaian STS dan kaitkan ke TP / mapel ini."
+                        />
+                      ) : (
+                        <TabelNilaiSederhana
+                          siswa={siswa}
+                          nilai={nilaiSts}
+                          labelKolom="Nilai STS"
+                        />
+                      )}
+                    </div>
+                  )}
+
+                  {!busyNilai && subTab === 'sas' && (
+                    <div className="space-y-3 p-4">
+                      <p className="text-sm leading-relaxed text-muted">
+                        Nilai SAS dari kuis/asesmen dengan jenis penilaian{' '}
+                        <strong className="text-slate-700">SAS</strong>
+                        {sumberSas.length
+                          ? ` (${sumberSas.map((s) => s.judul).join(', ')})`
+                          : ''}
+                        .
+                      </p>
+                      {sumberSas.length === 0 ? (
+                        <EmptySumber
+                          judul="Belum ada kuis SAS"
+                          deskripsi="Buat kuis dengan jenis penilaian SAS dan kaitkan ke TP / mapel ini."
+                        />
+                      ) : (
+                        <TabelNilaiSederhana
+                          siswa={siswa}
+                          nilai={nilaiSas}
+                          labelKolom="Nilai SAS"
+                        />
+                      )}
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           )}
         </>
       )}
 
-      <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50/80 px-4 py-5">
-        <h3 className="text-sm font-semibold text-slate-700">Rekap nilai akhir mapel</h3>
-        <p className="mt-1 text-sm text-muted">
-          Tabel seluruh nilai akhir TP (SLM / STS / SAS) untuk dikirim ke aplikasi Penilaian akan
-          ditampilkan di sini pada tahap sinkronisasi (Tahap 3).
-        </p>
+      <div className="rounded-xl border border-dashed border-slate-300 bg-white/60 px-4 py-5">
+        <div className="flex items-start gap-3">
+          <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-500">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+              <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
+            </svg>
+          </div>
+          <div>
+            <h3 className="text-sm font-semibold text-slate-800">Rekap nilai akhir mapel</h3>
+            <p className="mt-1 text-sm leading-relaxed text-muted">
+              Tabel seluruh nilai akhir TP (SLM / STS / SAS) untuk dikirim ke aplikasi Penilaian
+              akan ditampilkan di sini pada tahap sinkronisasi (Tahap 3).
+            </p>
+          </div>
+        </div>
       </div>
     </div>
+  )
+}
+
+function HeaderRekap({ meta }: { meta?: string }) {
+  return (
+    <div className="lms-page-intro">
+      <div className="flex flex-wrap items-end justify-between gap-2">
+        <div>
+          <h2 className="text-lg font-semibold tracking-tight text-slate-900">Rekap Nilai</h2>
+          <p className="mt-1 max-w-2xl text-sm leading-relaxed text-muted">
+            Agregasi nilai per Tujuan Pembelajaran (SLM dari tugas &amp; kuis, STS &amp; SAS dari
+            asesmen) untuk disinkronkan ke aplikasi Penilaian.
+          </p>
+        </div>
+        {meta && (
+          <div className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 shadow-sm">
+            {meta}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function StatChip({
+  label,
+  value,
+  emphasize,
+}: {
+  label: string
+  value: string
+  emphasize?: boolean
+}) {
+  return (
+    <span className="inline-flex items-center gap-1 rounded-md bg-slate-50 px-2 py-1 ring-1 ring-slate-200/80">
+      <span className="text-slate-500">{label}</span>
+      <span className={`font-semibold tabular-nums ${emphasize ? 'text-muh-800' : 'text-slate-800'}`}>
+        {value}
+      </span>
+    </span>
+  )
+}
+
+function EmptySumber({
+  judul,
+  deskripsi,
+}: {
+  judul: string
+  deskripsi: ReactNode
+}) {
+  return (
+    <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50/80 px-4 py-8 text-center">
+      <div className="mx-auto mb-2 flex h-10 w-10 items-center justify-center rounded-full bg-white text-slate-400 shadow-sm ring-1 ring-slate-200">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+          <path d="M14 2v6h6M12 18v-6M9 15h6" />
+        </svg>
+      </div>
+      <p className="text-sm font-semibold text-slate-800">{judul}</p>
+      <p className="mx-auto mt-1 max-w-sm text-sm text-slate-600">{deskripsi}</p>
+    </div>
+  )
+}
+
+function Spinner({ small }: { small?: boolean }) {
+  const size = small ? 'h-3.5 w-3.5' : 'h-4 w-4'
+  return (
+    <svg
+      className={`animate-spin text-muh-600 ${size}`}
+      viewBox="0 0 24 24"
+      fill="none"
+      aria-hidden
+    >
+      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" />
+      <path
+        className="opacity-90"
+        fill="currentColor"
+        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+      />
+    </svg>
   )
 }
 
@@ -603,48 +869,74 @@ function TabelNilaiSlm({
   nilai: NilaiSiswaTp[] | null
 }) {
   if (siswa === null || nilai === null) {
-    return <p className="text-sm text-muted">Memuat roster…</p>
+    return (
+      <div className="flex items-center gap-2 py-4 text-sm text-muted">
+        <Spinner small /> Memuat roster…
+      </div>
+    )
   }
   if (siswa.length === 0) {
-    return <p className="text-sm text-muted">Belum ada siswa aktif di kelas ini.</p>
+    return <p className="py-4 text-sm text-muted">Belum ada siswa aktif di kelas ini.</p>
   }
   const byId = new Map(nilai.map((n) => [n.siswaId, n]))
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full min-w-[480px] border-collapse text-sm">
-        <thead>
-          <tr className="border-b border-slate-200 text-left text-xs uppercase tracking-wide text-muted">
-            <th className="px-2 py-2 font-medium">No</th>
-            <th className="px-2 py-2 font-medium">Nama siswa</th>
-            {sumber.map((s) => (
-              <th key={s.id} className="px-2 py-2 font-medium text-right" title={s.judul}>
-                <span className="block max-w-[120px] truncate">{s.judul}</span>
-                <span className="font-normal normal-case text-[10px]">{s.bobot}%</span>
+    <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[520px] border-collapse text-sm">
+          <thead>
+            <tr className="border-b border-slate-200 bg-slate-50/90 text-left text-[11px] uppercase tracking-wide text-slate-500">
+              <th className="sticky left-0 z-10 bg-slate-50/95 px-3 py-2.5 font-semibold">No</th>
+              <th className="sticky left-8 z-10 min-w-[10rem] bg-slate-50/95 px-3 py-2.5 font-semibold">
+                Nama siswa
               </th>
-            ))}
-            <th className="px-2 py-2 font-medium text-right text-muh-800">Nilai SLM</th>
-          </tr>
-        </thead>
-        <tbody>
-          {siswa.map((s, i) => {
-            const row = byId.get(s.id)
-            return (
-              <tr key={s.id} className="border-b border-slate-100 last:border-0">
-                <td className="px-2 py-2 text-muted">{i + 1}</td>
-                <td className="px-2 py-2 font-medium text-slate-800">{s.nama}</td>
-                {sumber.map((src) => (
-                  <td key={src.id} className="px-2 py-2 text-right tabular-nums text-slate-700">
-                    {formatNilai(row?.perSumber?.[src.id])}
+              {sumber.map((s) => (
+                <th key={s.id} className="px-3 py-2.5 text-right font-semibold" title={s.judul}>
+                  <span className="block max-w-[7.5rem] truncate normal-case tracking-normal text-slate-700">
+                    {s.judul}
+                  </span>
+                  <span className="mt-0.5 block font-normal normal-case text-[10px] text-slate-400">
+                    {s.bobot}%
+                  </span>
+                </th>
+              ))}
+              <th className="px-3 py-2.5 text-right font-semibold text-muh-800">Nilai SLM</th>
+            </tr>
+          </thead>
+          <tbody>
+            {siswa.map((s, i) => {
+              const row = byId.get(s.id)
+              return (
+                <tr
+                  key={s.id}
+                  className="border-b border-slate-100 transition-colors last:border-0 hover:bg-muh-50/40"
+                >
+                  <td className="sticky left-0 z-10 bg-white px-3 py-2.5 text-muted group-hover:bg-muh-50/40">
+                    {i + 1}
                   </td>
-                ))}
-                <td className="px-2 py-2 text-right font-semibold tabular-nums text-muh-900">
-                  {formatNilai(row?.nilaiAkhir)}
-                </td>
-              </tr>
-            )
-          })}
-        </tbody>
-      </table>
+                  <td className="sticky left-8 z-10 bg-white px-3 py-2.5 font-medium text-slate-800">
+                    {s.nama}
+                  </td>
+                  {sumber.map((src) => (
+                    <td
+                      key={src.id}
+                      className={`px-3 py-2.5 text-right tabular-nums ${skorClass(row?.perSumber?.[src.id])}`}
+                    >
+                      {formatNilai(row?.perSumber?.[src.id])}
+                    </td>
+                  ))}
+                  <td className="px-3 py-2.5 text-right">
+                    <span
+                      className={`inline-flex min-w-[2.5rem] justify-center rounded-md px-2 py-0.5 text-sm font-bold tabular-nums ${skorBadgeClass(row?.nilaiAkhir)}`}
+                    >
+                      {formatNilai(row?.nilaiAkhir)}
+                    </span>
+                  </td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
+      </div>
     </div>
   )
 }
@@ -659,32 +951,50 @@ function TabelNilaiSederhana({
   labelKolom: string
 }) {
   if (siswa === null || nilai === null) {
-    return <p className="text-sm text-muted">Memuat roster…</p>
+    return (
+      <div className="flex items-center gap-2 py-4 text-sm text-muted">
+        <Spinner small /> Memuat roster…
+      </div>
+    )
   }
   if (siswa.length === 0) {
-    return <p className="text-sm text-muted">Belum ada siswa aktif di kelas ini.</p>
+    return <p className="py-4 text-sm text-muted">Belum ada siswa aktif di kelas ini.</p>
   }
   const byId = new Map(nilai.map((n) => [n.siswaId, n]))
   return (
-    <table className="w-full min-w-[320px] border-collapse text-sm">
-      <thead>
-        <tr className="border-b border-slate-200 text-left text-xs uppercase tracking-wide text-muted">
-          <th className="px-2 py-2 font-medium">No</th>
-          <th className="px-2 py-2 font-medium">Nama siswa</th>
-          <th className="px-2 py-2 font-medium text-right">{labelKolom}</th>
-        </tr>
-      </thead>
-      <tbody>
-        {siswa.map((s, i) => (
-          <tr key={s.id} className="border-b border-slate-100 last:border-0">
-            <td className="px-2 py-2 text-muted">{i + 1}</td>
-            <td className="px-2 py-2 font-medium text-slate-800">{s.nama}</td>
-            <td className="px-2 py-2 text-right font-semibold tabular-nums text-slate-800">
-              {formatNilai(byId.get(s.id)?.nilaiAkhir)}
-            </td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
+    <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[320px] border-collapse text-sm">
+          <thead>
+            <tr className="border-b border-slate-200 bg-slate-50/90 text-left text-[11px] uppercase tracking-wide text-slate-500">
+              <th className="px-3 py-2.5 font-semibold">No</th>
+              <th className="px-3 py-2.5 font-semibold">Nama siswa</th>
+              <th className="px-3 py-2.5 text-right font-semibold">{labelKolom}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {siswa.map((s, i) => {
+              const n = byId.get(s.id)?.nilaiAkhir
+              return (
+                <tr
+                  key={s.id}
+                  className="border-b border-slate-100 transition-colors last:border-0 hover:bg-muh-50/40"
+                >
+                  <td className="px-3 py-2.5 text-muted">{i + 1}</td>
+                  <td className="px-3 py-2.5 font-medium text-slate-800">{s.nama}</td>
+                  <td className="px-3 py-2.5 text-right">
+                    <span
+                      className={`inline-flex min-w-[2.5rem] justify-center rounded-md px-2 py-0.5 text-sm font-bold tabular-nums ${skorBadgeClass(n)}`}
+                    >
+                      {formatNilai(n)}
+                    </span>
+                  </td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
   )
 }

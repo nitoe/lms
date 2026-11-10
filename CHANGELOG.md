@@ -669,3 +669,14 @@
 - Data lama (bobot relatif) dikonversi otomatis ke persen saat dibaca.
 - UI: input %, indikator total, simpan hanya jika total ≈ 100%.
 - File: `src/types/rekapNilai.ts`, `src/lib/rekapNilai.ts`, `src/pages/RekapNilai.tsx`.
+
+## 2026-11-10 — UI/UX Rekap Nilai (polish)
+
+- Halaman **Rekap Nilai** diperhalus agar lebih profesional dan mudah dibaca (bukan tampilan generik).
+- Header dengan konteks kelas×mapel×TP×siswa; filter di kartu; badge jumlah sumber di tab SLM/STS/SAS.
+- Kartu konteks TP (badge nomor + deskripsi); panel bobot sumber dengan progress bar total % dan status OK.
+- Ringkasan statistik (rata-rata, min, max, terisi) di header sub-tab.
+- Tabel nilai: header sticky, hover baris, badge skor berwarna (hijau ≥75, amber 60–74, merah <60).
+- Empty state dan loading lebih jelas; footer tahap sinkronisasi dirapikan.
+- Logika agregasi/bobot **tidak diubah** — hanya presentasi.
+- File: `src/pages/RekapNilai.tsx`.
