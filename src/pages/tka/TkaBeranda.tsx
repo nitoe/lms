@@ -1,12 +1,40 @@
 import { Link } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
-import { aksenMapel, inisialMapel } from '../../lib/uiAksen'
-import { EMAIL_AKSES_KHUSUS_TKA, MAPEL_TKA, bolehAksesTkaStaf, ruangTka } from '../../lib/tkaAkses'
+import {
+  EMAIL_AKSES_KHUSUS_TKA,
+  LABEL_MAPEL_TKA,
+  MAPEL_TKA,
+  MATERI_TKA,
+  bolehAksesTkaStaf,
+  ruangTka,
+  type MapelTkaNama,
+} from '../../lib/tkaAkses'
+import '../../styles/tka.css'
 
-/**
- * Pusat menu TKA untuk guru. Satu kartu per mapel TKA (Matematika, Bahasa Indonesia, IPA).
- * Bank soal bersama untuk 6A dan 6B — tidak ada pemisahan per rombel (ANTIREGRESI §85).
- */
+const META_MAPEL: Record<
+  MapelTkaNama,
+  { inisial: string; gradien: string; aksen: string; ringkas: string }
+> = {
+  'TKA Matematika': {
+    inisial: 'MTK',
+    gradien: 'linear-gradient(145deg, #0f766e 0%, #14b8a6 55%, #5eead4 100%)',
+    aksen: '#ccfbf1',
+    ringkas: 'Bilangan · Geometri · Data',
+  },
+  'TKA Bahasa Indonesia': {
+    inisial: 'BI',
+    gradien: 'linear-gradient(145deg, #1e3a8a 0%, #3b82f6 55%, #93c5fd 100%)',
+    aksen: '#dbeafe',
+    ringkas: 'Tekstual · Inferensial · Evaluasi',
+  },
+  'TKA IPA': {
+    inisial: 'IPA',
+    gradien: 'linear-gradient(145deg, #9f1239 0%, #e11d48 55%, #fb7185 100%)',
+    aksen: '#ffe4e6',
+    ringkas: 'Fase B & C · keterampilan proses',
+  },
+}
+
 export default function TkaBeranda() {
   const { user, profil } = useAuth()
   const akunUji = (user?.email || '').toLowerCase() === EMAIL_AKSES_KHUSUS_TKA
@@ -24,52 +52,50 @@ export default function TkaBeranda() {
   }
 
   return (
-    <div className="space-y-6">
-      <section className="lms-hero">
-        <div className="min-w-0 flex-1">
-          <p className="text-xs font-semibold uppercase tracking-wider text-muh-200/90">Kelas 6</p>
-          <h2 className="mt-0.5 text-xl font-semibold tracking-tight text-white sm:text-2xl">
-            TKA — Tes Kemampuan Akademik
-          </h2>
-          <p className="mt-1 max-w-xl text-sm text-white/80">
-            Kelola bank soal dan kuis TKA. Bank soal berlaku untuk seluruh kelas 6 (6A dan 6B).
-            Siswa mengerjakannya dari menu <strong className="text-white">TKA</strong> di dashboard mereka.
-            {akunUji && ' Akun ini memiliki akses uji sistem.'}
+    <div className="tka-dash space-y-6">
+      <section className="tka-dash-hero">
+        <div className="tka-dash-hero-inner">
+          <p className="tka-dash-eyebrow">Kelas 6 · Bank bersama 6A &amp; 6B</p>
+          <h1 className="tka-dash-judul">Tes Kemampuan Akademik</h1>
+          <p className="tka-dash-lead">
+            Kelola bank soal dan kuis TKA. Siswa mengerjakan dari menu <strong>TKA</strong> di
+            dashboard mereka.
+            {akunUji ? ' Akun ini memiliki akses uji sistem.' : null}
           </p>
         </div>
       </section>
 
-      <section className="space-y-3">
-        <h3 className="text-sm font-semibold text-slate-900">Mata pelajaran TKA</h3>
-        <div className="lms-card-grid">
-          {MAPEL_TKA.map((mapel) => {
-            const r = ruangTka(mapel)
-            const a = aksenMapel(mapel)
-            const label = mapel.replace(/^TKA\s+/, '')
-            return (
-              <Link
-                key={r.id}
-                to={`/kelas/${encodeURIComponent(r.id)}?tab=soal`}
-                className="lms-card"
-                style={{ textDecoration: 'none' }}
-              >
-                <div className="lms-card-body flex items-center gap-3">
-                  <div
-                    className="grid h-11 w-11 shrink-0 place-items-center rounded-xl text-sm font-bold"
-                    style={{ background: a.cover, color: a.coverFg }}
-                    aria-hidden
-                  >
-                    {inisialMapel(label)}
-                  </div>
-                  <div className="min-w-0">
-                    <div className="lms-card-title">{label}</div>
-                    <p className="text-sm text-muted">Bank soal · Kuis · Hasil</p>
-                  </div>
-                </div>
-              </Link>
-            )
-          })}
-        </div>
+      <section className="tka-dash-grid" aria-label="Mata pelajaran TKA">
+        {MAPEL_TKA.map((mapel) => {
+          const r = ruangTka(mapel)
+          const meta = META_MAPEL[mapel]
+          const label = LABEL_MAPEL_TKA[mapel]
+          const materi = MATERI_TKA[mapel]
+          return (
+            <Link
+              key={r.id}
+              to={`/kelas/${encodeURIComponent(r.id)}?tab=soal`}
+              className="tka-dash-kartu"
+            >
+              <div className="tka-dash-kartu-head" style={{ background: meta.gradien }}>
+                <span className="tka-dash-inisial" style={{ color: meta.aksen }}>
+                  {meta.inisial}
+                </span>
+                <span className="tka-dash-kartu-label">{label}</span>
+              </div>
+              <div className="tka-dash-kartu-body">
+                <p className="tka-dash-kartu-ringkas">{meta.ringkas}</p>
+                <ul className="tka-dash-materi">
+                  {materi.slice(0, 4).map((m) => (
+                    <li key={m}>{m}</li>
+                  ))}
+                  {materi.length > 4 && <li>+{materi.length - 4} materi lain</li>}
+                </ul>
+                <p className="tka-dash-kartu-cta">Bank soal · Kuis · Hasil →</p>
+              </div>
+            </Link>
+          )
+        })}
       </section>
     </div>
   )

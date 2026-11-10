@@ -18,16 +18,28 @@ export function perluEditorTka(soal: Soal, mapel?: string): boolean {
 export default function TkaFieldEditor({
   soal,
   mapel,
+  paketMateri,
   onChange,
 }: {
   soal: Soal
   mapel?: string
+  /** Jika diisi, materi dikunci dari paket (ANTIREGRESI §86). */
+  paketMateri?: string
   onChange: (s: Soal) => void
 }) {
   const idMateri = useId()
   const tka = adalahMapelTka(mapel)
   const saran = materiTkaUntuk(mapel)
+  const materiTerkunci = !!paketMateri
   const set = (patch: Partial<Soal>) => onChange({ ...soal, ...patch } as Soal)
+
+  // Samakan materi soal dengan paket bila paket sudah menetapkan materi.
+  useEffect(() => {
+    if (paketMateri && soal.tipeMateri !== paketMateri) {
+      onChange({ ...soal, tipeMateri: paketMateri } as Soal)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [paketMateri, soal.id])
 
   // Soal baru di ruang TKA: rumus aktif secara bawaan (soal hasil migrasi sudah true).
   useEffect(() => {
@@ -72,6 +84,8 @@ export default function TkaFieldEditor({
             <select
               className="soal-input"
               value={soal.tipeMateri ?? ''}
+              disabled={materiTerkunci}
+              title={materiTerkunci ? 'Materi dikunci dari paket bank soal' : undefined}
               onChange={(e) => set({ tipeMateri: e.target.value.trim() ? e.target.value : undefined })}
             >
               <option value="">— pilih materi —</option>

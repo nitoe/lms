@@ -56,22 +56,28 @@ export default function KelasDetail() {
       <section className="kelas-hero" style={{ background: a.cover }}>
         <div className="kelas-hero-deco" aria-hidden />
         <div className="kelas-hero-inner">
-          <Link to="/kelas" className="kelas-hero-back">
-            ← Semua ruang kelas
-          </Link>
+          {ruangTka ? (
+            <Link to="/tka" className="kelas-hero-back tka-ruang-back">
+              ← Kembali ke dashboard TKA
+            </Link>
+          ) : (
+            <Link to="/kelas" className="kelas-hero-back">
+              ← Semua ruang kelas
+            </Link>
+          )}
           <div className="mt-3 flex flex-wrap items-end justify-between gap-3">
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2">
-                <span className="kelas-hero-badge">Kelas {judulKelas}</span>
-                {ruang?.sebagaiWali && (
+                <span className="kelas-hero-badge">{ruangTka ? 'TKA · Kelas 6' : `Kelas ${judulKelas}`}</span>
+                {!ruangTka && ruang?.sebagaiWali && (
                   <span className="kelas-hero-badge kelas-hero-badge--wali">Wali kelas</span>
                 )}
               </div>
               <h2 className="mt-2 text-xl font-bold tracking-tight text-white sm:text-2xl">
-                {judulMapel}
+                {ruangTka ? judulMapel.replace(/^TKA\s+/, '') : judulMapel}
               </h2>
               <p className="mt-1 text-sm text-white/80">
-                {ruangTka ? 'Bank soal dan kuis TKA untuk kelas 6' : 'Materi, kuis, dan pengumuman untuk rombel ini'}
+                {ruangTka ? 'Bank soal dan kuis TKA (berlaku untuk 6A & 6B)' : 'Materi, kuis, dan pengumuman untuk rombel ini'}
               </p>
             </div>
             <div className="kelas-hero-mark" style={{ color: a.coverFg }} aria-hidden>

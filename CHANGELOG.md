@@ -3,6 +3,18 @@
 > Append-only: entri baru ditambahkan di BAWAH, entri lama tidak diubah.
 > Versi mengacu ke `package.json` (saat ini `0.1.0`); belum ada rilis bertag.
 
+## 2026-11-10 — TKA: UI dashboard, materi paket, template, AI stimulus
+
+- **Dashboard TKA** diperbarui (kartu mapel + daftar materi, bukan kartu generik).
+- **Navigasi balik** dari ruang TKA → `/tka` (bukan daftar ruang kelas).
+- **Materi IPA** mencakup Fase B + Fase C.
+- **Paket TKA** wajib pilih materi saat dibuat; materi diwariskan ke semua soal; filter bank memakai materi paket.
+- **Unduh template / import TKA** memakai materi (bukan TP); template JSON/CSV khusus TKA (`stimulus` + `teks`).
+- **AI generate** (akun khusus): pada mapel TKA, narasi panjang masuk ke **bahan bacaan/stimulus**, bukan kotak soal.
+- Mapel biasa tidak berubah.
+- File: `tkaAkses.ts`, `TkaBeranda.tsx`, `tka.css`, `KelasDetail.tsx`, `BankSoalPanel.tsx`, `importSoal.ts`, `soal.ts`, `types/soal.ts`, `SoalEditor.tsx`, `SoalEditorKartu.tsx`, `TkaFieldEditor.tsx`, `AiSoalPanel.tsx`.
+- ANTIREGRESI §86.
+
 ## 2026-11-10 — TKA: bank bersama, 3 mapel, filter materi
 
 - **Dashboard TKA:** 3 kontainer saja (Matematika, Bahasa Indonesia, IPA) — tanpa pemisahan 6A/6B/6C.

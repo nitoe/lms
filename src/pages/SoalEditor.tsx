@@ -21,7 +21,7 @@ import { getTpMapelKelas } from '../lib/tpData'
 import type { TpRingkas } from '../types/materi'
 import type { PaketSoal, Soal, TipeSoal } from '../types/soal'
 import { BATAS_SOAL_PER_PAKET, NAMA_TIPE, URUTAN_TIPE, normalisasiKompleksitas } from '../types/soal'
-import { adalahMapelTka, TIPE_SOAL_TKA } from '../lib/tkaAkses'
+import { adalahMapelTka, materiTkaUntuk, TIPE_SOAL_TKA } from '../lib/tkaAkses'
 import '../styles/soal.css'
 
 type StatusSimpan = 'tersimpan' | 'menunggu' | 'menyimpan' | 'gagal'
@@ -171,6 +171,12 @@ export default function SoalEditor() {
   function tambahSoal(tipe: TipeSoal) {
     if (soalList.length >= BATAS_SOAL_PER_PAKET) return
     const s = soalBaru(tipe)
+    if (paket.tipeMateri) {
+      ;(s as { tipeMateri?: string }).tipeMateri = paket.tipeMateri
+    }
+    if (adalahMapelTka(paket.mapel)) {
+      ;(s as { rumus?: boolean }).rumus = true
+    }
     const idx = soalList.length ? aktifIdx + 1 : 0
     const baru = [...soalList.slice(0, idx), s, ...soalList.slice(idx)]
     setSoal(baru)
@@ -302,16 +308,44 @@ export default function SoalEditor() {
               <textarea rows={2} maxLength={1000} value={paket.deskripsi ?? ''}
                 disabled={terkunci} onChange={(e) => ubah({ deskripsi: e.target.value })} placeholder="Contoh: Kerjakan dengan teliti ya." />
             </label>
-            <label className="materi-field">
-              <span>Tujuan Pembelajaran</span>
-              <select value={paket.tpId ?? ''} disabled={terkunci} onChange={(e) => {
-                const tp = tpList.find((t) => t.id === e.target.value)
-                ubah({ tpId: tp?.id ?? '', tpNomor: tp?.nomorTp ?? 0, tpNama: tp?.namaTp ?? '' })
-              }}>
-                <option value="">— tanpa TP —</option>
-                {tpList.map((t) => <option key={t.id} value={t.id}>TP {t.nomorTp}. {t.namaTp}</option>)}
-              </select>
-            </label>
+            {adalahMapelTka(paket.mapel) ? (
+              <label className="materi-field">
+                <span>Materi TKA</span>
+                <select
+                  value={paket.tipeMateri ?? ''}
+                  disabled={terkunci}
+                  onChange={(e) => {
+                    const m = e.target.value.trim()
+                    // Wariskan ke semua soal yang belum punya materi / ikut paket
+                    const soalBaru = (paket.soal || []).map((s) =>
+                      !s.tipeMateri || s.tipeMateri === paket.tipeMateri
+                        ? ({ ...s, tipeMateri: m || undefined } as typeof s)
+                        : s,
+                    )
+                    ubah({ tipeMateri: m || undefined, soal: soalBaru })
+                  }}
+                >
+                  <option value="">— pilih materi —</option>
+                  {materiTkaUntuk(paket.mapel).map((m) => (
+                    <option key={m} value={m}>{m}</option>
+                  ))}
+                  {paket.tipeMateri && !materiTkaUntuk(paket.mapel).includes(paket.tipeMateri) && (
+                    <option value={paket.tipeMateri}>{paket.tipeMateri} (lama)</option>
+                  )}
+                </select>
+              </label>
+            ) : (
+              <label className="materi-field">
+                <span>Tujuan Pembelajaran</span>
+                <select value={paket.tpId ?? ''} disabled={terkunci} onChange={(e) => {
+                  const tp = tpList.find((t) => t.id === e.target.value)
+                  ubah({ tpId: tp?.id ?? '', tpNomor: tp?.nomorTp ?? 0, tpNama: tp?.namaTp ?? '' })
+                }}>
+                  <option value="">— tanpa TP —</option>
+                  {tpList.map((t) => <option key={t.id} value={t.id}>TP {t.nomorTp}. {t.namaTp}</option>)}
+                </select>
+              </label>
+            )}
             <label className="soal-cek">
               <input type="checkbox" checked={paket.acakSoal} disabled={terkunci} onChange={(e) => ubah({ acakSoal: e.target.checked })} />
               <span>Acak urutan soal untuk tiap siswa</span>
@@ -416,6 +450,7 @@ export default function SoalEditor() {
                 mapel={paket.mapel}
                 tpNama={paket.tpNama}
                 tpNomor={paket.tpNomor}
+                paketMateri={paket.tipeMateri}
                 uid={user?.uid}
                 soalLain={soalList.filter((s) => s.id !== aktif.id).map((s) => ringkasSoal(s))}
               />

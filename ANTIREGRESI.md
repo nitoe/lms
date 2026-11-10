@@ -576,3 +576,15 @@ Jangan memaksa satu kolom sempit di desktop.
 
 85.7 **`ruangTka(mapel)`** hanya menerima mapel (kelas selalu `6`). Pemanggil lama yang mengirim `(kelas, mapel)` harus disesuaikan.
 
+## §86. TKA materi paket, template, AI stimulus
+
+86.1 **Materi di level paket.** Paket TKA menyimpan `tipeMateri`. Soal baru mewarisi nilai itu; editor soal mengunci pilihan materi bila paket sudah menetapkan. Jangan mengembalikan pemilihan materi per-soal sebagai satu-satunya cara mengelompokkan.
+
+86.2 **Template/import TKA ≠ mapel biasa.** Gunakan `buatTemplateJsonTka` / `buatTemplateCsvTka` dan `validasiMetadataTka` (field `tipeMateri`). Jangan memaksa TP pada ruang TKA.
+
+86.3 **AI stimulus TKA.** Untuk mapel TKA + level stimulus ≠ `tanpa`, narasi AI masuk ke `stimulus`; `teks` hanya pertanyaan singkat. Mapel non-TKA tetap menaruh narasi di `teks`.
+
+86.4 **Navigasi.** Dari ruang TKA, tautan kembali mengarah ke `/tka`, bukan `/kelas`.
+
+86.5 **IPA materi** mencakup Fase B dan Fase C di `MATERI_TKA['TKA IPA']`.
+

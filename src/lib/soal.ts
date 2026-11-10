@@ -224,6 +224,8 @@ export async function buatPaket(input: {
   tpId?: string
   tpNomor?: number
   tpNama?: string
+  /** Materi TKA tingkat paket — diwariskan ke setiap soal. */
+  tipeMateri?: string
   namaGuru?: string
 }): Promise<string> {
   const uid = auth?.currentUser?.uid
@@ -231,6 +233,9 @@ export async function buatPaket(input: {
   const judul = input.judul.trim()
   if (!judul) throw new Error('Judul paket wajib diisi.')
   const awal = soalBaru('pg')
+  if (input.tipeMateri) {
+    ;(awal as { tipeMateri?: string }).tipeMateri = input.tipeMateri
+  }
   const data = bersihkan({
     kelas: String(input.kelas).toUpperCase(),
     mapel: input.mapel,
@@ -238,6 +243,7 @@ export async function buatPaket(input: {
     tpId: input.tpId,
     tpNomor: input.tpNomor,
     tpNama: input.tpNama,
+    ...(input.tipeMateri ? { tipeMateri: input.tipeMateri } : {}),
     status: 'draf',
     acakSoal: false,
     soal: [awal],
@@ -249,7 +255,7 @@ export async function buatPaket(input: {
   return ref.id
 }
 
-export type PerubahanPaket = Partial<Pick<PaketSoal, 'judul' | 'deskripsi' | 'status' | 'acakSoal' | 'soal' | 'tpId' | 'tpNomor' | 'tpNama'>>
+export type PerubahanPaket = Partial<Pick<PaketSoal, 'judul' | 'deskripsi' | 'status' | 'acakSoal' | 'soal' | 'tpId' | 'tpNomor' | 'tpNama' | 'tipeMateri'>>
 
 export async function simpanPaket(id: string, p: PerubahanPaket): Promise<void> {
   const data: Record<string, unknown> = { ...p }

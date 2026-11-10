@@ -5,6 +5,7 @@ import {
   type LevelStimulusAi,
 } from '../../lib/generateSoalAi'
 import type { KompleksitasSoal, Soal } from '../../types/soal'
+import { adalahMapelTka } from '../../lib/tkaAkses'
 import { NAMA_KOMPLEKSITAS, NAMA_TIPE, normalisasiKompleksitas } from '../../types/soal'
 
 const OPSI_STIMULUS: { id: LevelStimulusAi; label: string; deskripsi: string }[] = [
@@ -88,9 +89,27 @@ export default function AiSoalPanel({
       if (!teksBaru) throw new Error('AI tidak mengisi narasi soal. Coba generate lagi.')
 
       const { butuhGambar: _b, petunjukGambar: _p, ...isi } = draf
+      const tka = adalahMapelTka(mapel)
+      const level = levelStimulus
+      // TKA: teks panjang dari AI masuk ke kotak stimulus; pertanyaan singkat di teks soal.
+      // Mapel biasa: perilaku lama (semua di teks soal). ANTIREGRESI §86.
+      let stimulus: string | undefined = (draf as { stimulus?: string }).stimulus?.trim() || undefined
+      let teksHasil = teksBaru
+      if (tka && level && level !== 'tanpa') {
+        if (!stimulus) {
+          stimulus = teksBaru
+          teksHasil =
+            soal.tipe === 'bs'
+              ? 'Berdasarkan bacaan di atas, tentukan kebenaran setiap pernyataan.'
+              : soal.tipe === 'pgk'
+                ? 'Berdasarkan bacaan di atas, pilihlah semua jawaban yang tepat.'
+                : 'Berdasarkan bacaan di atas, pilihlah jawaban yang tepat.'
+        }
+      }
       onTerapkan({
         ...isi,
-        teks: teksBaru,
+        teks: teksHasil,
+        ...(stimulus ? { stimulus } : {}),
         id: soal.id,
         // Gambar lama sering tidak cocok dengan narasi baru — lepas agar guru pilih ulang / AI ilustrasi.
         gambarId: undefined,

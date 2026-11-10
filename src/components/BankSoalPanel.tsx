@@ -15,10 +15,13 @@ import {
 } from '../types/soal'
 import {
   buatTemplateCsv,
+  buatTemplateCsvTka,
   buatTemplateJson,
+  buatTemplateJsonTka,
   parseCsvImport,
   parseJsonImport,
   validasiMetadata,
+  validasiMetadataTka,
 } from '../lib/importSoal'
 import '../styles/soal.css'
 
@@ -68,6 +71,7 @@ export default function BankSoalPanel({ kelas, mapel, ruangId }: Props) {
   const [formBuka, setFormBuka] = useState(false)
   const [judul, setJudul] = useState('')
   const [tpId, setTpId] = useState('')
+  const [materiId, setMateriId] = useState('')
   const [q, setQ] = useState('')
 
   /* Import */
@@ -76,12 +80,14 @@ export default function BankSoalPanel({ kelas, mapel, ruangId }: Props) {
   const [fileImportKePaket, setFileImportKePaket] = useState<File | null>(null)
   const [judulImport, setJudulImport] = useState('')
   const [tpIdImport, setTpIdImport] = useState('')
+  const [materiIdImport, setMateriIdImport] = useState('')
   const [fileImport, setFileImport] = useState<File | null>(null)
   const [infoImport, setInfoImport] = useState('')
 
   /* Export template */
   const [formExport, setFormExport] = useState(false)
   const [tpIdExport, setTpIdExport] = useState('')
+  const [materiIdExport, setMateriIdExport] = useState('')
 
   /* Filter & pengelompokan */
   const [filterTp, setFilterTp] = useState('')
@@ -140,8 +146,9 @@ export default function BankSoalPanel({ kelas, mapel, ruangId }: Props) {
       if (filterStatus && p.status !== filterStatus) return false
       if (isTka) {
         if (filterMateri) {
-          const ada = (p.soal ?? []).some((x) => (x.tipeMateri ?? '') === filterMateri)
-          if (!ada) return false
+          const dariPaket = (p.tipeMateri ?? '') === filterMateri
+          const dariSoal = (p.soal ?? []).some((x) => (x.tipeMateri ?? '') === filterMateri)
+          if (!dariPaket && !dariSoal) return false
         }
       } else if (filterTp) {
         if (filterTp === '__tanpa__') {
@@ -231,6 +238,11 @@ export default function BankSoalPanel({ kelas, mapel, ruangId }: Props) {
     setBusy(true)
     setError('')
     try {
+      if (isTka && !materiId.trim()) {
+        setError('Pilih materi TKA untuk paket ini.')
+        setBusy(false)
+        return
+      }
       const tp = !isTka ? tpList.find((t) => t.id === tpId) : undefined
       const id = await buatPaket({
         kelas: isTka ? KELAS_TKA_BANK : kelas,
@@ -239,6 +251,7 @@ export default function BankSoalPanel({ kelas, mapel, ruangId }: Props) {
         tpId: tp?.id,
         tpNomor: tp?.nomorTp,
         tpNama: tp?.namaTp,
+        tipeMateri: isTka ? materiId.trim() : undefined,
         namaGuru: profil?.nama,
       })
       navigate(`/kelas/${encodeURIComponent(ruangId)}/soal/${id}`)
@@ -263,6 +276,26 @@ export default function BankSoalPanel({ kelas, mapel, ruangId }: Props) {
   }
 
   function unduhTemplate(format: 'json' | 'csv') {
+    if (isTka) {
+      if (!materiIdExport.trim()) {
+        setError('Pilih materi TKA terlebih dahulu.')
+        return
+      }
+      const materi = materiIdExport.trim()
+      const slug = materi.replace(/\s+/g, '-').slice(0, 40)
+      const nama = `template-tka-${mapel.replace(/\s+/g, '-')}-${slug}.${format}`
+      const isi = format === 'json' ? buatTemplateJsonTka(mapel, materi) : buatTemplateCsvTka(mapel, materi)
+      const blob = new Blob([isi], { type: format === 'json' ? 'application/json' : 'text/csv;charset=utf-8' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = nama
+      a.click()
+      URL.revokeObjectURL(url)
+      setFormExport(false)
+      setMateriIdExport('')
+      return
+    }
     const tp = tpList.find((t) => t.id === tpIdExport)
     if (!tp) {
       setError('Pilih Tujuan Pembelajaran terlebih dahulu.')
@@ -292,8 +325,11 @@ export default function BankSoalPanel({ kelas, mapel, ruangId }: Props) {
       const isJson = fileImport.name.toLowerCase().endsWith('.json') || teks.trim().startsWith('{') || teks.trim().startsWith('[')
       const hasil = isJson ? parseJsonImport(teks) : parseCsvImport(teks)
 
-      const tpDipilih = tpList.find((t) => t.id === tpIdImport) || null
-      const galatMeta = validasiMetadata(hasil.metadata, mapel, tpDipilih)
+      const tpDipilih = !isTka ? (tpList.find((t) => t.id === tpIdImport) || null) : null
+      const materiDipilih = isTka ? materiIdImport.trim() : ''
+      const galatMeta = isTka
+        ? validasiMetadataTka(hasil.metadata, mapel, materiDipilih || null)
+        : validasiMetadata(hasil.metadata, mapel, tpDipilih)
       const semuaGalat = [...galatMeta, ...hasil.galat]
 
       if (semuaGalat.length) {
@@ -308,6 +344,13 @@ export default function BankSoalPanel({ kelas, mapel, ruangId }: Props) {
       }
 
       // Buat paket baru dengan soal hasil import (ganti soal awal)
+      const materiPaket = isTka
+        ? (materiDipilih || hasil.metadata.tipeMateri || '').trim()
+        : undefined
+      // Warisi materi paket ke setiap soal TKA
+      const soalImpor = isTka && materiPaket
+        ? hasil.soal.map((s) => ({ ...s, tipeMateri: s.tipeMateri || materiPaket }))
+        : hasil.soal
       const id = await buatPaket({
         kelas: isTka ? KELAS_TKA_BANK : kelas,
         mapel,
@@ -315,10 +358,11 @@ export default function BankSoalPanel({ kelas, mapel, ruangId }: Props) {
         tpId: isTka ? undefined : tpDipilih?.id,
         tpNomor: isTka ? undefined : tpDipilih?.nomorTp,
         tpNama: isTka ? undefined : tpDipilih?.namaTp,
+        tipeMateri: materiPaket,
         namaGuru: profil?.nama,
       })
       // Simpan soal hasil import (buatPaket membuat 1 soal kosong; kita timpa)
-      await simpanPaket(id, { soal: hasil.soal as any })
+      await simpanPaket(id, { soal: soalImpor as any, ...(materiPaket ? { tipeMateri: materiPaket } : {}) })
 
       setInfoImport(`Berhasil mengimpor ${hasil.soal.length} soal ke paket baru.`)
       setFormImport(false)
@@ -344,8 +388,11 @@ export default function BankSoalPanel({ kelas, mapel, ruangId }: Props) {
       const isJson = fileImportKePaket.name.toLowerCase().endsWith('.json') || teks.trim().startsWith('{') || teks.trim().startsWith('[')
       const hasil = isJson ? parseJsonImport(teks) : parseCsvImport(teks)
 
-      const tpPaket = tpList.find((t) => t.id === paketTargetImport.tpId) || null
-      const galatMeta = validasiMetadata(hasil.metadata, mapel, tpPaket)
+      const tpPaket = !isTka ? (tpList.find((t) => t.id === paketTargetImport.tpId) || null) : null
+      const materiPaket = isTka ? (paketTargetImport.tipeMateri || '').trim() : ''
+      const galatMeta = isTka
+        ? validasiMetadataTka(hasil.metadata, mapel, materiPaket || null)
+        : validasiMetadata(hasil.metadata, mapel, tpPaket)
       const semuaGalat = [...galatMeta, ...hasil.galat]
 
       if (semuaGalat.length) {
@@ -359,7 +406,10 @@ export default function BankSoalPanel({ kelas, mapel, ruangId }: Props) {
         return
       }
 
-      const soalBaru = [...(paketTargetImport.soal || []), ...hasil.soal]
+      const tambahan = isTka && materiPaket
+        ? hasil.soal.map((s) => ({ ...s, tipeMateri: s.tipeMateri || materiPaket }))
+        : hasil.soal
+      const soalBaru = [...(paketTargetImport.soal || []), ...tambahan]
       await simpanPaket(paketTargetImport.id, { soal: soalBaru as any })
 
       setInfoImport(`Berhasil menambahkan ${hasil.soal.length} soal ke paket «${paketTargetImport.judul}».`)
@@ -394,7 +444,12 @@ export default function BankSoalPanel({ kelas, mapel, ruangId }: Props) {
             <span className={`paket-status paket-status--${p.status}`}>{p.status === 'siap' ? 'Siap' : 'Draf'}</span>
             <span>{p.jumlahSoal} soal</span>
             <span>{p.totalPoin} poin</span>
-            {p.tpNama && (
+            {p.tipeMateri && (
+              <span className="paket-tp" title={p.tipeMateri}>
+                {p.tipeMateri}
+              </span>
+            )}
+            {!p.tipeMateri && p.tpNama && (
               <span className="paket-tp" title={p.tpNama}>
                 TP {p.tpNomor ? `${p.tpNomor}. ` : ''}{p.tpNama}
               </span>
@@ -546,7 +601,17 @@ export default function BankSoalPanel({ kelas, mapel, ruangId }: Props) {
                 placeholder="Contoh: Latihan pecahan senilai"
               />
             </label>
-            {!isTka && (
+            {isTka ? (
+              <label className="materi-field">
+                <span>Materi TKA</span>
+                <select required value={materiId} onChange={(e) => setMateriId(e.target.value)}>
+                  <option value="">— pilih materi —</option>
+                  {materiTka.map((m) => (
+                    <option key={m} value={m}>{m}</option>
+                  ))}
+                </select>
+              </label>
+            ) : (
               <label className="materi-field">
                 <span>Tujuan Pembelajaran (opsional)</span>
                 <select value={tpId} onChange={(e) => setTpId(e.target.value)}>
@@ -559,7 +624,7 @@ export default function BankSoalPanel({ kelas, mapel, ruangId }: Props) {
             )}
           </div>
           <div className="mt-3 flex justify-end">
-            <button type="submit" className="lms-btn-primary" disabled={busy || !judul.trim()}>
+            <button type="submit" className="lms-btn-primary" disabled={busy || !judul.trim() || (isTka && !materiId.trim())}>
               {busy ? 'Membuat…' : 'Buat & buka editor'}
             </button>
           </div>
@@ -573,24 +638,38 @@ export default function BankSoalPanel({ kelas, mapel, ruangId }: Props) {
             <button type="button" className="lms-btn-ghost" onClick={() => setFormExport(false)}>Batal</button>
           </div>
           <p className="mb-3 text-sm text-slate-600">
-            Template hanya berisi satu Tujuan Pembelajaran yang Anda pilih. Isi soal di dalamnya, lalu impor kembali.
+            {isTka
+              ? 'Template TKA berisi satu materi yang Anda pilih. Isi soal (pg / pgk / bs), lalu impor kembali.'
+              : 'Template hanya berisi satu Tujuan Pembelajaran yang Anda pilih. Isi soal di dalamnya, lalu impor kembali.'}
           </p>
           <div className="materi-form-grid">
-            <label className="materi-field">
-              <span>Pilih TP</span>
-              <select value={tpIdExport} onChange={(e) => setTpIdExport(e.target.value)} required>
-                <option value="">— pilih TP —</option>
-                {tpList.map((t) => (
-                  <option key={t.id} value={t.id}>TP {t.nomorTp}. {t.namaTp}</option>
-                ))}
-              </select>
-            </label>
+            {isTka ? (
+              <label className="materi-field">
+                <span>Pilih materi</span>
+                <select value={materiIdExport} onChange={(e) => setMateriIdExport(e.target.value)} required>
+                  <option value="">— pilih materi —</option>
+                  {materiTka.map((m) => (
+                    <option key={m} value={m}>{m}</option>
+                  ))}
+                </select>
+              </label>
+            ) : (
+              <label className="materi-field">
+                <span>Pilih TP</span>
+                <select value={tpIdExport} onChange={(e) => setTpIdExport(e.target.value)} required>
+                  <option value="">— pilih TP —</option>
+                  {tpList.map((t) => (
+                    <option key={t.id} value={t.id}>TP {t.nomorTp}. {t.namaTp}</option>
+                  ))}
+                </select>
+              </label>
+            )}
           </div>
           <div className="mt-3 flex flex-wrap justify-end gap-2">
-            <button type="button" className="lms-btn-secondary" disabled={!tpIdExport} onClick={() => unduhTemplate('csv')}>
+            <button type="button" className="lms-btn-secondary" disabled={isTka ? !materiIdExport : !tpIdExport} onClick={() => unduhTemplate('csv')}>
               Unduh CSV (Excel)
             </button>
-            <button type="button" className="lms-btn-primary" disabled={!tpIdExport} onClick={() => unduhTemplate('json')}>
+            <button type="button" className="lms-btn-primary" disabled={isTka ? !materiIdExport : !tpIdExport} onClick={() => unduhTemplate('json')}>
               Unduh JSON
             </button>
           </div>
@@ -604,7 +683,9 @@ export default function BankSoalPanel({ kelas, mapel, ruangId }: Props) {
             <button type="button" className="lms-btn-ghost" onClick={() => { setFormImport(false); setError(""); setInfoImport(""); setFileImport(null) }}>Batal</button>
           </div>
           <p className="mb-3 text-sm text-slate-600">
-            Masukkan judul paket dan TP terlebih dahulu. File harus memuat mata pelajaran dan TP yang sama (satu TP saja). Jika berbeda, impor ditolak.
+            {isTka
+              ? 'Masukkan judul paket dan materi TKA. File harus memuat mata pelajaran dan materi yang sama (satu materi saja).'
+              : 'Masukkan judul paket dan TP terlebih dahulu. File harus memuat mata pelajaran dan TP yang sama (satu TP saja). Jika berbeda, impor ditolak.'}
           </p>
           <div className="materi-form-grid">
             <label className="materi-field">
@@ -614,18 +695,30 @@ export default function BankSoalPanel({ kelas, mapel, ruangId }: Props) {
                 value={judulImport}
                 maxLength={200}
                 onChange={(e) => setJudulImport(e.target.value)}
-                placeholder="Contoh: Bank soal pecahan — TP 1"
+                placeholder={isTka ? 'Contoh: Latihan Bilangan — paket 1' : 'Contoh: Bank soal pecahan — TP 1'}
               />
             </label>
-            <label className="materi-field">
-              <span>Tujuan Pembelajaran</span>
-              <select value={tpIdImport} onChange={(e) => setTpIdImport(e.target.value)} required>
-                <option value="">— pilih TP —</option>
-                {tpList.map((t) => (
-                  <option key={t.id} value={t.id}>TP {t.nomorTp}. {t.namaTp}</option>
-                ))}
-              </select>
-            </label>
+            {isTka ? (
+              <label className="materi-field">
+                <span>Materi TKA</span>
+                <select value={materiIdImport} onChange={(e) => setMateriIdImport(e.target.value)} required>
+                  <option value="">— pilih materi —</option>
+                  {materiTka.map((m) => (
+                    <option key={m} value={m}>{m}</option>
+                  ))}
+                </select>
+              </label>
+            ) : (
+              <label className="materi-field">
+                <span>Tujuan Pembelajaran</span>
+                <select value={tpIdImport} onChange={(e) => setTpIdImport(e.target.value)} required>
+                  <option value="">— pilih TP —</option>
+                  {tpList.map((t) => (
+                    <option key={t.id} value={t.id}>TP {t.nomorTp}. {t.namaTp}</option>
+                  ))}
+                </select>
+              </label>
+            )}
             <label className="materi-field materi-field--full">
               <span>File JSON atau CSV</span>
               <input
@@ -637,7 +730,7 @@ export default function BankSoalPanel({ kelas, mapel, ruangId }: Props) {
             </label>
           </div>
           <div className="mt-3 flex justify-end">
-            <button type="submit" className="lms-btn-primary" disabled={busy || !judulImport.trim() || !tpIdImport || !fileImport}>
+            <button type="submit" className="lms-btn-primary" disabled={busy || !judulImport.trim() || !(isTka ? materiIdImport : tpIdImport) || !fileImport}>
               {busy ? 'Memproses…' : 'Impor & buka editor'}
             </button>
           </div>

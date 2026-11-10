@@ -18,13 +18,15 @@ type Props = {
   mapel?: string
   tpNama?: string
   tpNomor?: number
+  /** Materi tingkat paket TKA — kunci materi per soal. */
+  paketMateri?: string
   uid?: string
   soalLain?: string[]
 }
 
 /** Kartu editor satu soal (mengikuti tata letak referensi: tipe, teks + gambar, pilihan, pengaturan bawah). */
 export default function SoalEditorKartu({
-  soal, nomor, onChange, kelas, mapel, tpNama, tpNomor, uid, soalLain,
+  soal, nomor, onChange, kelas, mapel, tpNama, tpNomor, paketMateri, uid, soalLain,
 }: Props) {
   const [pembahasanTerbuka, setPembahasanTerbuka] = useState(!!soal.pembahasan)
   const masalah = masalahSoal(soal)
@@ -97,7 +99,7 @@ export default function SoalEditorKartu({
           </div>
         </div>
 
-        {perluEditorTka(soal, mapel) && <TkaFieldEditor soal={soal} mapel={mapel} onChange={onChange} />}
+        {perluEditorTka(soal, mapel) && <TkaFieldEditor soal={soal} mapel={mapel} paketMateri={paketMateri} onChange={onChange} />}
 
         <JawabanEditor soal={soal} onChange={onChange} />
 

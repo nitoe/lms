@@ -10,6 +10,8 @@ export interface MetadataImport {
   tpId?: string
   tpNomor?: number
   tpNama?: string
+  /** Materi TKA (pengganti TP). */
+  tipeMateri?: string
 }
 
 /** Hasil parse file import. */
@@ -69,17 +71,24 @@ export function normalisasiSoalDariImport(raw: Record<string, unknown>, index: n
   const tipe = mapTipe[tipeRaw]
   if (!tipe) return { galat: `Baris ${index + 1}: tipe soal tidak dikenali («${tipeRaw || 'kosong'}»).` }
 
-  const teks = String(raw.teks || raw.narasi || raw.pertanyaan || raw.stimulus || '').trim()
-  if (!teks) return { galat: `Baris ${index + 1}: narasi/teks soal kosong.` }
+  const stimulusRaw = String(raw.stimulus || raw.bacaan || '').trim()
+  const teks = String(raw.teks || raw.narasi || raw.pertanyaan || '').trim()
+  // Kompatibilitas lama: jika hanya ada stimulus, anggap itu teks soal (mapel biasa).
+  const teksFinal = teks || (!stimulusRaw ? '' : '')
+  if (!teksFinal && !stimulusRaw) return { galat: `Baris ${index + 1}: narasi/teks soal kosong.` }
 
   const dasar = soalBaru(tipe)
   const soal: Partial<Soal> = {
     ...dasar,
-    teks,
+    teks: teksFinal || (stimulusRaw ? 'Berdasarkan bacaan di atas, pilihlah jawaban yang tepat.' : ''),
     kompleksitas: normalisasiKompleksitas(raw.kompleksitas),
     poin: Number(raw.poin) > 0 ? Number(raw.poin) : dasar.poin,
     waktuMenit: Number(raw.waktuMenit) > 0 ? Number(raw.waktuMenit) : dasar.waktuMenit,
     pembahasan: String(raw.pembahasan || raw.penjelasan || '').trim() || undefined,
+    ...(stimulusRaw ? { stimulus: stimulusRaw } : {}),
+    ...(String(raw.tipeMateri || raw.materi || '').trim()
+      ? { tipeMateri: String(raw.tipeMateri || raw.materi).trim() }
+      : {}),
   }
 
   // --- PG / PGK ---
@@ -224,6 +233,9 @@ export function parseJsonImport(teks: string): HasilParseImport {
     tpId: data.tpId || data.tujuanPembelajaranId || undefined,
     tpNomor: typeof data.tpNomor === 'number' ? data.tpNomor : undefined,
     tpNama: data.tpNama || data.tujuanPembelajaran || undefined,
+    tipeMateri: data.tipeMateri || data.materi
+      ? String(data.tipeMateri || data.materi).trim()
+      : undefined,
   }
   const daftar = Array.isArray(data.soal) ? data.soal : Array.isArray(data) ? data : []
   const soal: Partial<Soal>[] = []
@@ -259,6 +271,7 @@ export function parseCsvImport(teks: string): HasilParseImport {
   const iTpId = idx(['tpid', 'tp id'])
   const iTpNomor = idx(['tpnomor', 'tp nomor', 'nomor tp'])
   const iTpNama = idx(['tpnama', 'tp nama', 'tujuan'])
+  const iMateri = idx(['tipemateri', 'tipe materi', 'materi'])
   if (iMapel < 0) return { metadata: { mapel: '' }, soal: [], galat: ['Kolom mata pelajaran tidak ditemukan.'] }
 
   const meta: MetadataImport = {
@@ -266,6 +279,7 @@ export function parseCsvImport(teks: string): HasilParseImport {
     tpId: undefined,
     tpNomor: undefined,
     tpNama: undefined,
+    tipeMateri: undefined,
   }
   const soal: Partial<Soal>[] = []
   const galat: string[] = []
@@ -280,6 +294,7 @@ export function parseCsvImport(teks: string): HasilParseImport {
     if (iTpId >= 0 && cols[iTpId]) meta.tpId = cols[iTpId]
     if (iTpNomor >= 0 && cols[iTpNomor]) meta.tpNomor = Number(cols[iTpNomor]) || undefined
     if (iTpNama >= 0 && cols[iTpNama]) meta.tpNama = cols[iTpNama]
+    if (iMateri >= 0 && cols[iMateri]) meta.tipeMateri = cols[iMateri]
     const tpKey = `${meta.tpId || ''}|${meta.tpNomor || ''}|${meta.tpNama || ''}`
     if (tpKey) tpSet.add(tpKey)
 
@@ -376,3 +391,88 @@ export function buatTemplateCsv(mapel: string, tp: TpRingkas): string {
   ]
   return `${header}\n${rows.join('\n')}\n`
 }
+
+/** Validasi metadata import untuk bank TKA (materi, bukan TP). */
+export function validasiMetadataTka(
+  meta: MetadataImport,
+  mapelDiharapkan: string,
+  materiDiharapkan?: string | null,
+): string[] {
+  const galat: string[] = []
+  if (!meta.mapel || !meta.mapel.trim()) {
+    galat.push('File import tidak memuat mata pelajaran. Import dibatalkan.')
+  } else if (meta.mapel.trim().toLowerCase() !== mapelDiharapkan.trim().toLowerCase()) {
+    galat.push(`Mata pelajaran di file («${meta.mapel}») tidak cocok dengan ruang TKA («${mapelDiharapkan}»).`)
+  }
+  if (!meta.tipeMateri || !meta.tipeMateri.trim()) {
+    galat.push('File import TKA wajib memuat materi (tipeMateri). Import dibatalkan.')
+  }
+  if (materiDiharapkan && meta.tipeMateri && meta.tipeMateri.trim() !== materiDiharapkan.trim()) {
+    galat.push(
+      `Materi di file («${meta.tipeMateri}») tidak sesuai dengan materi yang dipilih («${materiDiharapkan}»).`,
+    )
+  }
+  return galat
+}
+
+/** Template JSON bank soal TKA — satu materi, tipe pg/pgk/bs saja. */
+export function buatTemplateJsonTka(mapel: string, materi: string): string {
+  const contoh = {
+    mapel,
+    tipeMateri: materi,
+    catatan:
+      'Import TKA: satu file = satu materi. Tipe: pg, pgk, bs. Field stimulus = bahan bacaan (opsional); teks = pertanyaan.',
+    soal: [
+      {
+        tipe: 'pg',
+        stimulus: 'Bahan bacaan singkat (opsional). Boleh HTML sederhana atau tabel.',
+        teks: 'Berdasarkan bacaan, manakah pernyataan yang benar?',
+        kompleksitas: 'L2',
+        poin: 1,
+        waktuMenit: 2,
+        opsi: ['Pilihan A', 'Pilihan B', 'Pilihan C', 'Pilihan D'],
+        kunci: 'A',
+        pembahasan: 'Penjelasan jawaban.',
+      },
+      {
+        tipe: 'pgk',
+        teks: 'Pilih dua pernyataan yang sesuai dengan materi.',
+        kompleksitas: 'L2',
+        poin: 1,
+        waktuMenit: 2,
+        opsi: ['Pernyataan 1', 'Pernyataan 2', 'Pernyataan 3', 'Pernyataan 4'],
+        kunci: ['A', 'C'],
+        pembahasan: 'Penjelasan.',
+      },
+      {
+        tipe: 'bs',
+        teks: 'Tentukan apakah setiap pernyataan sesuai.',
+        kompleksitas: 'L1',
+        poin: 1,
+        waktuMenit: 2,
+        pernyataan: [
+          { teks: 'Pernyataan pertama sesuai.', benar: true },
+          { teks: 'Pernyataan kedua tidak sesuai.', benar: false },
+          { teks: 'Pernyataan ketiga sesuai.', benar: true },
+          { teks: 'Pernyataan keempat tidak sesuai.', benar: false },
+        ],
+        labelBenar: 'Sesuai',
+        labelSalah: 'Tidak sesuai',
+        pembahasan: 'Penjelasan.',
+      },
+    ],
+  }
+  return JSON.stringify(contoh, null, 2)
+}
+
+/** Template CSV bank soal TKA. */
+export function buatTemplateCsvTka(mapel: string, materi: string): string {
+  const header =
+    'mapel,tipeMateri,tipe,stimulus,teks,kompleksitas,poin,waktuMenit,opsiA,opsiB,opsiC,opsiD,kunci,pembahasan'
+  const rows = [
+    `${mapel},"${materi}",pg,"Bahan bacaan singkat.","Berdasarkan bacaan, manakah yang benar?",L2,1,2,"Pilihan A","Pilihan B","Pilihan C","Pilihan D",A,"Penjelasan."`,
+    `${mapel},"${materi}",pgk,,"Pilih dua pernyataan yang sesuai.",L2,1,2,"P1","P2","P3","P4","A;C","Penjelasan."`,
+  ]
+  return `${header}\n${rows.join('\n')}\n`
+}
+

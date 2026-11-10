@@ -140,6 +140,11 @@ export interface PaketSoal {
   tpId?: string
   tpNomor?: number
   tpNama?: string
+  /**
+   * Kategori materi TKA pada level paket (ANTIREGRESI §86).
+   * Semua soal dalam paket mewarisi nilai ini. Hanya dipakai mapel TKA.
+   */
+  tipeMateri?: string
   status: StatusPaket
   acakSoal: boolean
   soal: Soal[]
