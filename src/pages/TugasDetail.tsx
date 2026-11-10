@@ -102,14 +102,17 @@ export default function TugasDetail() {
   const [judul, setJudul] = useState('')
   const [jenis, setJenis] = useState<JenisTugas>('mapel')
   const [kelas, setKelas] = useState('')
-  const [mapel, setMapel] = useState('')
-  const [mapelLain, setMapelLain] = useState<string[]>([])
+  /** Satu atau lebih blok mapel; indeks 0 = mapel utama. */
+  const [blokMapel, setBlokMapel] = useState<{ key: string; mapel: string }[]>([
+    { key: 'utama', mapel: '' },
+  ])
   const [deskripsi, setDeskripsi] = useState('')
   const [instruksi, setInstruksi] = useState('')
   const [tenggatStr, setTenggatStr] = useState('')
   const [aktif, setAktif] = useState(false)
   const [tpDipilih, setTpDipilih] = useState<TpTugas[]>([])
-  const [tpOpsi, setTpOpsi] = useState<TpRingkas[]>([])
+  /** Opsi TP per nama mapel. */
+  const [tpByMapel, setTpByMapel] = useState<Record<string, TpRingkas[]>>({})
   const [pengaturan, setPengaturan] = useState<PengaturanPenilaianTugas>(pengaturanPenilaianDefault())
   const [masterMapel, setMasterMapel] = useState<string[]>([])
   const [mapelLoading, setMapelLoading] = useState(true)
@@ -152,12 +155,20 @@ export default function TugasDetail() {
     return [...new Set(gabung)].sort((a, b) => a.localeCompare(b, 'id'))
   }, [ruang, kelas, masterMapel])
 
+  const mapel = blokMapel[0]?.mapel?.trim() || ''
+  const mapelLain = blokMapel
+    .slice(1)
+    .map((b) => b.mapel.trim())
+    .filter(Boolean)
   const mapelUntukTp = useMemo(() => {
-    if (jenis === 'proyek') {
-      return [mapel, ...mapelLain].map((m) => m.trim()).filter(Boolean)
-    }
-    return mapel.trim() ? [mapel.trim()] : []
-  }, [jenis, mapel, mapelLain])
+    const list =
+      jenis === 'proyek'
+        ? blokMapel.map((b) => b.mapel.trim()).filter(Boolean)
+        : mapel
+          ? [mapel]
+          : []
+    return [...new Set(list)]
+  }, [jenis, blokMapel, mapel])
 
   const kategoriAktif = useMemo(
     () => pengaturan.kategori.filter((k) => k.nama.trim()),
@@ -168,8 +179,11 @@ export default function TugasDetail() {
     setJudul(t.judul)
     setJenis(t.jenis || 'mapel')
     setKelas(t.kelas)
-    setMapel(t.mapel)
-    setMapelLain(t.mapelLain || [])
+    const lain = Array.isArray(t.mapelLain) ? t.mapelLain.filter(Boolean) : []
+    setBlokMapel([
+      { key: 'utama', mapel: t.mapel || '' },
+      ...lain.map((m, i) => ({ key: `lain-${i}-${m}`, mapel: m })),
+    ])
     setDeskripsi(t.deskripsi || '')
     setInstruksi(t.instruksi || '')
     setTenggatStr(tenggatKeInput(t.tenggat))
@@ -210,12 +224,19 @@ export default function TugasDetail() {
 
   useEffect(() => {
     if (!kelas || mapelUntukTp.length === 0) {
-      setTpOpsi([])
+      setTpByMapel({})
       return
     }
     let batal = false
     void getTpMultiMapelKelas(mapelUntukTp, kelas).then((list) => {
-      if (!batal) setTpOpsi(list)
+      if (batal) return
+      const by: Record<string, TpRingkas[]> = {}
+      for (const tp of list) {
+        const m = tp.mapel || ''
+        if (!by[m]) by[m] = []
+        by[m].push(tp)
+      }
+      setTpByMapel(by)
     })
     return () => {
       batal = true
@@ -230,8 +251,48 @@ export default function TugasDetail() {
     })
   }
 
-  function toggleMapelLain(m: string) {
-    setMapelLain((prev) => (prev.includes(m) ? prev.filter((x) => x !== m) : [...prev, m]))
+  function setMapelBlok(key: string, namaMapel: string) {
+    setBlokMapel((prev) => {
+      const lama = prev.find((b) => b.key === key)?.mapel || ''
+      const next = prev.map((b) => (b.key === key ? { ...b, mapel: namaMapel } : b))
+      if (lama && lama !== namaMapel) {
+        setTpDipilih((tp) => tp.filter((x) => x.mapel !== lama))
+      }
+      return next
+    })
+  }
+
+  function tambahBlokMapel() {
+    setBlokMapel((prev) => [
+      ...prev,
+      { key: `lain-${Date.now().toString(36)}`, mapel: '' },
+    ])
+  }
+
+  function hapusBlokMapel(key: string) {
+    if (key === 'utama') return
+    setBlokMapel((prev) => {
+      const target = prev.find((b) => b.key === key)
+      if (target?.mapel) {
+        setTpDipilih((tp) => tp.filter((x) => x.mapel !== target.mapel))
+      }
+      return prev.filter((b) => b.key !== key)
+    })
+  }
+
+  function onGantiJenis(j: JenisTugas) {
+    setJenis(j)
+    if (j === 'mapel') {
+      setBlokMapel((prev) => {
+        const utama = prev[0] || { key: 'utama', mapel: '' }
+        return [{ key: 'utama', mapel: utama.mapel }]
+      })
+      setTpDipilih((tp) => {
+        const m = blokMapel[0]?.mapel
+        if (!m) return tp
+        return tp.filter((x) => !x.mapel || x.mapel === m)
+      })
+    }
   }
 
   async function simpanPengaturan(e?: React.FormEvent) {
@@ -722,7 +783,7 @@ export default function TugasDetail() {
           <div className="grid gap-4 sm:grid-cols-2">
             <label className="materi-field">
               <span>Jenis tugas</span>
-              <select value={jenis} onChange={(e) => setJenis(e.target.value as JenisTugas)}>
+              <select value={jenis} onChange={(e) => onGantiJenis(e.target.value as JenisTugas)}>
                 <option value="mapel">Mapel (satu mata pelajaran)</option>
                 <option value="proyek">Proyek (lintas mata pelajaran)</option>
               </select>
@@ -734,8 +795,9 @@ export default function TugasDetail() {
                 value={kelas}
                 onChange={(e) => {
                   setKelas(e.target.value)
-                  setMapel('')
+                  setBlokMapel((prev) => prev.map((b) => ({ ...b, mapel: '' })))
                   setTpDipilih([])
+                  setTpByMapel({})
                 }}
               >
                 <option value="">— Pilih kelas —</option>
@@ -745,42 +807,127 @@ export default function TugasDetail() {
               </select>
             </label>
           </div>
-          <label className="materi-field">
-            <span>{jenis === 'proyek' ? 'Mapel utama' : 'Mata pelajaran'}</span>
-            <select
-              required
-              value={mapel}
-              onChange={(e) => {
-                setMapel(e.target.value)
-                setTpDipilih([])
-              }}
-            >
-              <option value="">
-                {mapelLoading ? 'Memuat mapel…' : '— Pilih mapel —'}
-              </option>
-              {opsiMapel.map((m) => (
-                <option key={m} value={m}>{m}</option>
-              ))}
-            </select>
+          {/* Blok mapel + TP (utama, lalu tambahan untuk proyek) */}
+          <div className="space-y-4">
+            {blokMapel.map((blok, idx) => {
+              const dipakaiLain = blokMapel
+                .filter((b) => b.key !== blok.key)
+                .map((b) => b.mapel)
+                .filter(Boolean)
+              const opsiBlok = opsiMapel.filter(
+                (m) => m === blok.mapel || !dipakaiLain.includes(m),
+              )
+              const daftarTp = blok.mapel ? tpByMapel[blok.mapel] || [] : []
+              const nTpPilih = tpDipilih.filter(
+                (p) => p.mapel === blok.mapel || (!p.mapel && idx === 0),
+              ).length
+              return (
+                <section
+                  key={blok.key}
+                  className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden"
+                >
+                  <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 bg-slate-50/90 px-4 py-2.5">
+                    <h3 className="text-sm font-semibold text-slate-900">
+                      {idx === 0
+                        ? jenis === 'proyek'
+                          ? 'Mapel utama'
+                          : 'Mata pelajaran'
+                        : `Mapel tambahan ${idx}`}
+                    </h3>
+                    {idx > 0 && (
+                      <button
+                        type="button"
+                        className="text-xs font-medium text-red-600 hover:underline"
+                        onClick={() => hapusBlokMapel(blok.key)}
+                      >
+                        Hapus mapel
+                      </button>
+                    )}
+                  </div>
+                  <div className="space-y-3 p-4">
+                    <label className="materi-field">
+                      <span className="sr-only">Pilih mapel</span>
+                      <select
+                        required={idx === 0}
+                        value={blok.mapel}
+                        onChange={(e) => setMapelBlok(blok.key, e.target.value)}
+                      >
+                        <option value="">
+                          {mapelLoading ? 'Memuat mapel…' : '— Pilih mapel —'}
+                        </option>
+                        {opsiBlok.map((m) => (
+                          <option key={m} value={m}>
+                            {m}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+
+                    <div className="rounded-xl border border-slate-100 bg-slate-50/50 p-3">
+                      <div className="mb-2 flex items-center justify-between gap-2">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-slate-600">
+                          Tujuan Pembelajaran
+                        </p>
+                        {nTpPilih > 0 && (
+                          <span className="text-[11px] font-medium text-muh-700">
+                            {nTpPilih} dipilih
+                          </span>
+                        )}
+                      </div>
+                      {!kelas ? (
+                        <p className="text-xs text-muted">Pilih kelas dulu.</p>
+                      ) : !blok.mapel ? (
+                        <p className="text-xs text-muted">Pilih mapel di atas untuk memuat TP.</p>
+                      ) : daftarTp.length === 0 ? (
+                        <p className="text-xs text-muted">
+                          Belum ada TP di tp_kktp untuk {blok.mapel} · kelas {kelas}.
+                        </p>
+                      ) : (
+                        <ul className="max-h-44 space-y-1.5 overflow-y-auto">
+                          {daftarTp.map((tp) => (
+                            <li key={tp.id}>
+                              <label className="flex cursor-pointer items-start gap-2 text-sm">
+                                <input
+                                  type="checkbox"
+                                  className="mt-1"
+                                  checked={tpDipilih.some((p) => p.id === tp.id)}
+                                  onChange={() => toggleTp(tp)}
+                                />
+                                <span>
+                                  <span className="font-medium">TP {tp.nomorTp}</span>{' '}
+                                  <span className="text-slate-700">{tp.namaTp}</span>
+                                </span>
+                              </label>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                      <p className="mt-2 text-[11px] text-muted">
+                        Boleh memilih lebih dari satu TP untuk mapel ini.
+                      </p>
+                    </div>
+                  </div>
+                </section>
+              )
+            })}
+
             {!mapelLoading && opsiMapel.length === 0 && (
-              <p className="mt-1 text-xs text-amber-700">
+              <p className="text-xs text-amber-700">
                 Daftar mapel kosong. Pastikan koleksi mapel di Penilaian terisi, atau isi penugasan guru.
               </p>
             )}
-          </label>
-          {jenis === 'proyek' && (
-            <fieldset className="rounded-xl border border-slate-200 p-3">
-              <legend className="px-1 text-xs font-semibold text-slate-600">Mapel lain</legend>
-              <div className="flex flex-wrap gap-2">
-                {opsiMapel.filter((m) => m !== mapel).map((m) => (
-                  <label key={m} className="inline-flex items-center gap-1.5 text-sm">
-                    <input type="checkbox" checked={mapelLain.includes(m)} onChange={() => toggleMapelLain(m)} />
-                    {m}
-                  </label>
-                ))}
-              </div>
-            </fieldset>
-          )}
+
+            {jenis === 'proyek' && (
+              <button
+                type="button"
+                className="w-full rounded-xl border border-dashed border-muh-300 bg-muh-50/50 px-4 py-3 text-sm font-semibold text-muh-800 hover:bg-muh-50"
+                onClick={tambahBlokMapel}
+              >
+                + Tambah mata pelajaran
+              </button>
+            )}
+          </div>
+
           <label className="materi-field">
             <span>Deskripsi singkat</span>
             <textarea value={deskripsi} onChange={(e) => setDeskripsi(e.target.value)} rows={2} />
@@ -789,38 +936,7 @@ export default function TugasDetail() {
             <span>Tenggat</span>
             <input type="datetime-local" value={tenggatStr} onChange={(e) => setTenggatStr(e.target.value)} />
           </label>
-          <fieldset className="rounded-xl border border-slate-200 p-3">
-            <legend className="px-1 text-xs font-semibold text-slate-600">Tujuan Pembelajaran</legend>
-            {!kelas || mapelUntukTp.length === 0 ? (
-              <p className="text-xs text-muted">Pilih kelas dan mapel dulu (untuk proyek: mapel utama ± mapel lain).</p>
-            ) : tpOpsi.length === 0 ? (
-              <p className="text-xs text-muted">
-                Belum ada TP di koleksi tp_kktp untuk {mapelUntukTp.join(', ')} · kelas {kelas}.
-              </p>
-            ) : (
-              <ul className="max-h-48 space-y-1.5 overflow-y-auto">
-                {tpOpsi.map((tp) => (
-                  <li key={tp.id}>
-                    <label className="flex cursor-pointer items-start gap-2 text-sm">
-                      <input
-                        type="checkbox"
-                        className="mt-1"
-                        checked={tpDipilih.some((p) => p.id === tp.id)}
-                        onChange={() => toggleTp(tp)}
-                      />
-                      <span>
-                        <span className="font-medium">TP {tp.nomorTp}</span>
-                        {jenis === 'proyek' && tp.mapel ? (
-                          <span className="text-muted"> · {tp.mapel}</span>
-                        ) : null}{' '}
-                        {tp.namaTp}
-                      </span>
-                    </label>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </fieldset>
+          
           <label className="inline-flex items-center gap-2 text-sm">
             <input type="checkbox" checked={aktif} onChange={(e) => setAktif(e.target.checked)} />
             Aktifkan tugas (tampil untuk siswa)
