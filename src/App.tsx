@@ -10,6 +10,7 @@ import KelasList from './pages/KelasList'
 import KelasDetail from './pages/KelasDetail'
 import TugasDashboard from './pages/TugasDashboard'
 import TugasDetail from './pages/TugasDetail'
+import RekapNilai from './pages/RekapNilai'
 import SiswaMasuk from './pages/siswa/SiswaMasuk'
 import SiswaLayout from './pages/siswa/SiswaLayout'
 import SiswaBeranda from './pages/siswa/SiswaBeranda'
@@ -124,6 +125,7 @@ export default function App() {
         <Route path="tugas/:tugasId" element={<TugasDetail />} />
         {/* Alias lama: /tugas-kuis → /tugas */}
         <Route path="tugas-kuis" element={<Navigate to="/tugas" replace />} />
+        <Route path="rekap-nilai" element={<RekapNilai />} />
         <Route
           path="tka"
           element={

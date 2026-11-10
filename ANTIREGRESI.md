@@ -479,3 +479,20 @@ Jangan memaksa satu kolom sempit di desktop.
 77.10 **Migrasi:** `migrasi-tka-soal.mjs` dry-run bawaan, project terkunci, paket/gambar yang ada tidak ditimpa tanpa `--overwrite`, ID paket deterministik (`tka-<kelas>-<mapel>-<materi>-<n>`) sehingga aman diulang. Soal yang kuncinya tidak cocok dilewati dan dilaporkan; jangan menebak kunci.
 
 77.11 **Pengerjaan TKA:** timer berbasis tenggat (`mulaiMs` disimpan di progres; waktu tetap jalan saat keluar) dan kirim otomatis saat habis (dijaga `kirimRef` agar tidak ganda). Jadwal dan token hanya dicek di klien — bukan keamanan sungguhan; `nilaiKuisLms` belum menegakkannya.
+
+## §78. Rekap Nilai (sinkron ke Penilaian)
+
+78.1 **Rekap Nilai adalah pusat agregasi**, bukan pengganti input di Tugas/Kuis. Nilai tetap diinput di modul sumber (`lms_nilai_tugas`, kuis offline/online). Halaman Rekap hanya menggabungkan dan (nanti) menulis nilai akhir TP untuk sinkron.
+
+78.2 **Struktur UI:** kelas × mapel → tab per TP (`tp_kktp`) → sub-tab SLM | STS | SAS. Jangan meratakan semua TP ke satu tabel besar tanpa tab; guru butuh konteks per TP.
+
+78.3 **SLM multi-sumber:** satu TP bisa punya banyak tugas + kuis (jenisPenilaian=`slm`). Bobot per sumber disimpan di `lms_bobot_slm` (ID: `{kelas}__{mapelSlug}__{tpId}`). Jangan hard-code bobot di klien tanpa dokumen.
+
+78.4 **STS/SAS biasanya satu sumber** (satu event kuis). Tetap tampilkan sub-tab terpisah agar konsisten dengan model Penilaian (`nilai_sts` / `nilai_sas`).
+
+78.5 **Jangan menulis langsung ke koleksi Penilaian** (`nilai_tp`, `nilai_sts`, `nilai_sas`) dari klien LMS. Sinkron hanya lewat Cloud Function (Admin SDK), sama pola `sinkronNilaiKuisLms`.
+
+78.6 **Tahap 1 hanya shell.** Jangan menganggap nilai di tabel Rekap sudah final sampai tahap agregasi + bobot + CF selesai. Placeholder menampilkan "—" dengan sengaja.
+
+78.7 Koleksi baru `lms_bobot_slm` (dan nanti cache nilai akhir bila ada) **wajib** didaftarkan di `firestore.rules` (helper `lmsTulisMapelKelas` / `lmsLihatMapelKelas`) sebelum dipakai tulis dari klien. Salin rules lengkap ke SDM01Penilaian.
+

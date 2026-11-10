@@ -151,3 +151,29 @@ Indeks: `siswaId` Asc + `kuisId` Asc. Bila perlu orderBy waktu di klien, urutkan
 
 **Catatan latihan:** `jenisPenilaian === 'latihan'` tidak menulis ke koleksi nilai rapor (SLM/STS/SAS), tetapi dokumen `lms_jawaban` **tetap** dibuat agar guru bisa menganalisis.
 
+### Rekap Nilai (rencana & fondasi)
+
+Pusat agregasi nilai per TP untuk sinkron ke aplikasi Penilaian.
+
+#### `lms_bobot_slm/{id}` (Tahap 2+)
+
+ID: `{kelas}__{mapelSlug}__{tpId}` (lihat `idBobotSlm`).
+
+| Field | Tipe | Keterangan |
+|-------|------|------------|
+| kelas | string | Rombel |
+| mapel | string | Nama mapel |
+| tpId | string | ID `tp_kktp` |
+| tpNomor / tpNama | number? / string? | Denormalisasi |
+| sumber | array | `{ id, jenis: 'tugas'\|'kuis', sumberId, judul, bobot }` |
+| diubahOleh | string? | uid |
+| createdAt / updatedAt | timestamp | |
+
+**Belum di-deploy rules.** Tulis hanya guru mapel×kelas (`lmsTulisMapelKelas`).
+
+#### Alur nilai (konsep)
+
+1. **SLM TP:** gabungan skor dari `lms_nilai_tugas` (tugas yang `tpList` memuat tpId) + skor kuis `jenisPenilaian=slm` yang `tpIds` memuat tpId, dihitung berbobot dari `lms_bobot_slm`.
+2. **STS / SAS TP:** dari kuis `jenisPenilaian=sts|sas` (biasanya satu sumber); input offline lewat modul Kuis.
+3. **Rekap mapel:** tabel nilai akhir semua TP → CF sinkron ke koleksi nilai di SDM01Penilaian (bukan tulis langsung dari klien).
+

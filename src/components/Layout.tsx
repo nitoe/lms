@@ -17,6 +17,7 @@ const NAV_UTAMA: NavItem[] = [
   { to: '/', end: true, label: 'Beranda', icon: 'home' },
   { to: '/kelas', label: 'Ruang Kelas', icon: 'class' },
   { to: '/tugas', label: 'Tugas', icon: 'task' },
+  { to: '/rekap-nilai', label: 'Rekap Nilai', icon: 'table' },
 ]
 
 /** Menu TKA hanya tampil untuk admin TKA dan wali kelas 6 (ANTIREGRESI §76). */
@@ -127,6 +128,7 @@ export default function Layout() {
     : pathname.startsWith('/kelas') ? 'Ruang Kelas'
     : pathname.startsWith('/tugas/') ? 'Detail tugas'
     : pathname.startsWith('/tugas') ? 'Tugas'
+    : pathname.startsWith('/rekap-nilai') ? 'Rekap Nilai'
     : pathname.startsWith('/tka') ? 'TKA — Tes Kemampuan Akademik'
     : 'Beranda'
 

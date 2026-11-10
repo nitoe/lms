@@ -3,6 +3,16 @@
 > Append-only: entri baru ditambahkan di BAWAH, entri lama tidak diubah.
 > Versi mengacu ke `package.json` (saat ini `0.1.0`); belum ada rilis bertag.
 
+## 2026-11-10 — Rekap Nilai: fondasi (Tahap 1)
+
+- Menu sidebar **Rekap Nilai** (`/rekap-nilai`) — pusat agregasi nilai TP untuk sinkron ke aplikasi Penilaian.
+- Halaman shell: pilih kelas × mapel (dari penugasan guru) → tab per TP → sub-tab **SLM / STS / SAS** + tabel roster siswa (placeholder nilai).
+- Tipe: `src/types/rekapNilai.ts` (`SumberNilaiSlm`, `BobotSlmDok`, `NilaiSiswaTp`).
+- Lib util: `src/lib/rekapNilai.ts` (`daftarMapelKelasGuru`, `idBobotSlm`, `hitungNilaiBerbobot`).
+- **Belum:** agregasi otomatis dari tugas/kuis, input bobot live, tulis nilai akhir, Cloud Function sinkron.
+- File: `src/pages/RekapNilai.tsx`, `src/types/rekapNilai.ts`, `src/lib/rekapNilai.ts`, `src/components/Layout.tsx`, `src/App.tsx`, `docs/DATA_MODEL.md`.
+- ANTIREGRESI §78.
+
 ## 2026-11-10 — Fix simpan nilai tugas (permission write)
 
 - Create/update `lms_nilai_tugas`: izinkan **admin** di samping `lmsTulisMapelKelas` (admin tidak lolos penugasan mapel).
