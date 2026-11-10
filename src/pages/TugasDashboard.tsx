@@ -17,16 +17,23 @@ export default function TugasDashboard() {
 
   const ruang = useMemo(() => daftarRuangKelas(profil), [profil])
 
+  const sebagaiAdmin = profil?.role === 'admin' || profil?.peranLms === 'admin'
+
   const muat = useCallback(async () => {
     setError('')
     try {
-      const data = await daftarTugasGuru(ruang)
+      const data = await daftarTugasGuru(ruang, { sebagaiAdmin })
       setList(data)
+      if (data.length === 0 && ruang.length === 0 && !sebagaiAdmin) {
+        setError(
+          'Profil Anda belum punya penugasan kelas×mapel. Atur penugasan di aplikasi Penilaian, atau pastikan tugas lama masih tercatat dengan dibuatOleh akun ini.',
+        )
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Gagal memuat daftar tugas.')
       setList([])
     }
-  }, [ruang])
+  }, [ruang, sebagaiAdmin])
 
   useEffect(() => {
     void muat()

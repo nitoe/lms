@@ -143,17 +143,21 @@ export async function daftarTugas(kelas: string, mapel: string): Promise<TugasLm
 }
 
 /**
- * Semua tugas milik guru (berdasarkan penugasan / dibuatOleh).
- * Untuk dashboard katalog: query per kelas dari daftar ruang, digabung.
+ * Semua tugas untuk katalog guru:
+ * 1) query per penugasan kelas×mapel
+ * 2) plus semua tugas yang dibuatOleh == uid saat ini (agar tugas lama tetap muncul
+ *    meski string mapel / penugasan berubah)
+ * 3) admin tanpa penugasan: seluruh koleksi (rules isAdmin)
+ * Error permission tidak ditelan diam-diam.
  */
 export async function daftarTugasGuru(
   ruang: { kelas: string; mapel: string }[],
+  opsi?: { sebagaiAdmin?: boolean },
 ): Promise<TugasLms[]> {
-  if (!ruang.length) return []
   const kunci = new Set<string>()
   const semua: TugasLms[] = []
+  const errors: string[] = []
 
-  // Batch per pasangan unik kelas×mapel (hindari duplikat query)
   const pasangan = new Map<string, { kelas: string; mapel: string }>()
   for (const r of ruang) {
     const k = `${String(r.kelas).toUpperCase()}::${r.mapel}`
@@ -169,11 +173,53 @@ export async function daftarTugasGuru(
           kunci.add(t.id)
           semua.push(t)
         }
-      } catch {
-        /* satu gagal tidak menggagalkan seluruh dashboard */
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e)
+        errors.push(`${kelas}/${mapel}: ${msg}`)
+        console.warn('daftarTugas gagal', kelas, mapel, e)
       }
     }),
   )
+
+  // Tugas yang saya buat (tanpa bergantung penugasan)
+  const uid = auth.currentUser?.uid
+  if (uid) {
+    try {
+      const q = query(koleksi(), where('dibuatOleh', '==', uid))
+      const snap = await getDocs(q)
+      for (const d of snap.docs) {
+        if (kunci.has(d.id)) continue
+        kunci.add(d.id)
+        semua.push(docKeTugas(d.id, d.data() as Record<string, unknown>))
+      }
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e)
+      errors.push(`milik-saya: ${msg}`)
+      console.warn('daftarTugas dibuatOleh gagal', e)
+    }
+  }
+
+  // Admin tanpa penugasan: muat semua (rules allow isAdmin list)
+  if (opsi?.sebagaiAdmin && semua.length === 0) {
+    try {
+      const snap = await getDocs(koleksi())
+      for (const d of snap.docs) {
+        if (kunci.has(d.id)) continue
+        kunci.add(d.id)
+        semua.push(docKeTugas(d.id, d.data() as Record<string, unknown>))
+      }
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e)
+      errors.push(`admin-semua: ${msg}`)
+      console.warn('daftarTugas admin gagal', e)
+    }
+  }
+
+  if (semua.length === 0 && errors.length > 0) {
+    throw new Error(
+      'Gagal memuat tugas (permission/rules?). ' + errors.slice(0, 3).join(' | '),
+    )
+  }
 
   return sortTerbaru(semua)
 }

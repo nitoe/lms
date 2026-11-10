@@ -4,6 +4,7 @@ import { bolehGenerateSoalAi } from '../lib/generateSoalAi'
 import {
   buatKuisDariPaket,
   daftarKuis,
+  daftarKuisDibuatOleh,
   daftarPaketSiap,
   hapusKuis,
   updateKuis,
@@ -77,12 +78,37 @@ export default function KuisPanel({ kelas, mapel }: Props) {
   const muat = useCallback(async () => {
     setError('')
     try {
-      const [k, p] = await Promise.all([
-        daftarKuis(kelas, mapel),
+      const kelasU = String(kelas).toUpperCase()
+      const [k, milikSaya, p] = await Promise.all([
+        daftarKuis(kelas, mapel).catch((e) => {
+          console.warn('daftarKuis', e)
+          return [] as KuisLms[]
+        }),
+        daftarKuisDibuatOleh().catch((e) => {
+          console.warn('daftarKuisDibuatOleh', e)
+          return [] as KuisLms[]
+        }),
         daftarPaketSiap(kelas, mapel).catch(() => []),
       ])
-      setList(k)
+      // Gabung: query kelas×mapel + kuis saya di kelas yang sama (mapel sama ATAU
+      // mapel beda sedikit — tetap ditampilkan agar data lama tidak hilang dari UI).
+      const map = new Map<string, KuisLms>()
+      for (const item of k) map.set(item.id, item)
+      for (const item of milikSaya) {
+        if (String(item.kelas || '').toUpperCase() !== kelasU) continue
+        // prioritaskan mapel yang sama; tetap sertakan mapel lain di kelas ini milik saya
+        if (!map.has(item.id)) map.set(item.id, item)
+      }
+      const gabung = [...map.values()].sort((a, b) => {
+        const ta = (a.updatedAt as { seconds?: number })?.seconds ?? 0
+        const tb = (b.updatedAt as { seconds?: number })?.seconds ?? 0
+        return tb - ta
+      })
+      setList(gabung)
       setPaketSiap(p)
+      if (gabung.length === 0 && k.length === 0) {
+        // biarkan empty state; error hanya jika keduanya gagal total sudah di-catch di atas
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Gagal memuat kuis.')
       setList([])

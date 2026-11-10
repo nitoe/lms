@@ -67,6 +67,26 @@ export async function daftarKuis(kelas: string, mapel: string): Promise<KuisLms[
   return list
 }
 
+/** Semua kuis yang dibuat user saat ini (agar kuis lama tetap bisa digabung di panel). */
+export async function daftarKuisDibuatOleh(uid?: string): Promise<KuisLms[]> {
+  const id = uid || auth.currentUser?.uid
+  if (!id) return []
+  const q = query(koleksi(), where('dibuatOleh', '==', id))
+  const snap = await getDocs(q)
+  return snap.docs.map((d) => {
+    const data = d.data()
+    return {
+      id: d.id,
+      ...data,
+      sumberPaketIds: Array.isArray(data.sumberPaketIds) ? data.sumberPaketIds : [],
+      soal: Array.isArray(data.soal) ? data.soal : [],
+      modeSusun: (data.modeSusun as ModeSusunKuis) || 'manual',
+      jumlahSoal: typeof data.jumlahSoal === 'number' ? data.jumlahSoal : (data.soal?.length ?? 0),
+      totalPoin: typeof data.totalPoin === 'number' ? data.totalPoin : 0,
+    } as KuisLms
+  })
+}
+
 export async function ambilKuis(id: string): Promise<KuisLms | null> {
   const s = await getDoc(doc(db, 'lms_kuis', id))
   if (!s.exists()) return null
