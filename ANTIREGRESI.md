@@ -496,3 +496,46 @@ Jangan memaksa satu kolom sempit di desktop.
 
 78.7 Koleksi baru `lms_bobot_slm` (dan nanti cache nilai akhir bila ada) **wajib** didaftarkan di `firestore.rules` (helper `lmsTulisMapelKelas` / `lmsLihatMapelKelas`) sebelum dipakai tulis dari klien. Salin rules lengkap ke SDM01Penilaian.
 
+## §79. Rekap Nilai — agregasi & bobot SLM (Tahap 2)
+
+79.1 Sumber SLM hanya tugas yang `tpList`/`tpId` memuat `tpId` aktif dan `jenisPenilaian` bukan `latihan`/`sts`/`sas` (field kosong = SLM legacy), serta kuis dengan `jenisPenilaian == 'slm'` dan `tpIds` memuat `tpId`.
+
+79.2 Skor kuis selalu dinormalisasi ke 0–100 lewat `skorKe100(skorOtomatis, totalPoin)`. Jangan menampilkan poin mentah di tabel rekap.
+
+79.3 Satu siswa bisa punya beberapa `lms_jawaban` (percobaan). Pakai `ringkasPerSiswa` (percobaan/terbaru) — konsisten dengan Hasil Kuis.
+
+79.4 Bobot default = 1 untuk sumber baru. Sumber yang hilang tidak ikut dihitung; `gabungSumberDenganBobot` hanya menggabungkan sumber yang masih terdeteksi.
+
+79.5 `lms_bobot_slm` ditulis klien dengan `lmsTulisMapelKelas`. Rules wajib di-deploy sebelum Simpan bobot dipakai di produksi.
+
+79.6 Jangan tulis langsung ke koleksi nilai di SDM01Penilaian dari klien LMS. Sinkron nilai akhir TP → Penilaian hanya lewat Cloud Function (Tahap 3).
+
+79.7 Query tugas/kuis/nilai tetap `where kelas + mapel` agar lolos rules yang ada.
+
+## §80. Firestore rules LMS harus selalu dari salinan lengkap SDM01Penilaian
+
+80.1 Sumber kebenaran rules bersama = repo SDM01Penilaian. Setiap perubahan match `lms_*` dibuat di situ (atau disalin utuh ke situ) lalu `deploy:rules` dari situ.
+
+80.2 Repo LMS boleh menyimpan salinan `firestore.rules` yang **identik**, hanya untuk referensi. Jangan deploy dari repo LMS jika file di sana lebih pendek / lebih lama.
+
+80.3 Sebelum deploy rules, cek keberadaan `match /lms_tugas` dan `match /lms_nilai_tugas`. Jika hilang, UI tugas/nilai akan kosong meski data masih ada.
+
+80.4 Jangan pernah menimpa rules produksi dengan snippet atau file partial. Selalu file **lengkap**.
+
+## §81. Daftar tugas/kuis tidak boleh mengandalkan penugasan saja
+
+81.1 Katalog tugas guru wajib menggabungkan query penugasan kelas×mapel DENGAN query `dibuatOleh == uid` (dan admin: opsi muat semua).
+
+81.2 Jangan menelan error permission di `catch` kosong — tampilkan ke UI jika hasil akhir kosong.
+
+81.3 Rules baca `lms_tugas` / `lms_kuis` harus mengizinkan pembuat (`dibuatOleh == uid`) agar data lama tidak "hilang" saat penugasan/mapel berubah.
+
+81.4 Tugas tidak lagi di tab Ruang Kelas — hanya menu `/tugas`.
+
+## §82. Jenis penilaian tugas (selaras kuis)
+
+82.1 Field `jenisPenilaian` pada `lms_tugas`: `latihan` | `slm` | `sts` | `sas`. Default create = `slm`. Baca dokumen lama tanpa field → perlakukan sebagai `slm`.
+
+82.2 Rekap Nilai memfilter sumber tugas menurut `jenisPenilaian`. Jangan memasukkan tugas `latihan` ke nilai SLM/STS/SAS.
+
+82.3 Kuis sudah memakai field yang sama di `lms_kuis`; jangan menduplikasi konstanta label dengan teks berbeda — selaraskan makna dengan `NAMA_JENIS_PENILAIAN` / `NAMA_JENIS_PENILAIAN_TUGAS`.

@@ -13,6 +13,7 @@ import {
 } from 'firebase/firestore'
 import { auth, db } from './firebase'
 import type {
+  JenisPenilaianTugas,
   PengaturanPenilaianTugas,
   TugasInput,
   TugasLms,
@@ -66,6 +67,13 @@ function koleksi() {
   return collection(db, 'lms_tugas')
 }
 
+function normalisasiJenisPenilaian(v: unknown): JenisPenilaianTugas {
+  if (v === 'latihan' || v === 'slm' || v === 'sts' || v === 'sas') return v
+  // Dokumen lama tanpa field: anggap SLM (masuk rekap formatif)
+  return 'slm'
+}
+
+
 function normalisasiTpList(list?: TpTugas[]): TpTugas[] | undefined {
   if (!list || list.length === 0) return undefined
   return list
@@ -80,6 +88,7 @@ function normalisasiTpList(list?: TpTugas[]): TpTugas[] | undefined {
 
 function docKeTugas(id: string, data: Record<string, unknown>): TugasLms {
   const jenis = data.jenis === 'proyek' ? 'proyek' : 'mapel'
+  const jenisPenilaian = normalisasiJenisPenilaian(data.jenisPenilaian)
   let tpList = normalisasiTpList(data.tpList as TpTugas[] | undefined)
   // Kompatibilitas dokumen lama (satu TP)
   if ((!tpList || tpList.length === 0) && data.tpId) {
@@ -103,6 +112,7 @@ function docKeTugas(id: string, data: Record<string, unknown>): TugasLms {
     deskripsi: typeof data.deskripsi === 'string' ? data.deskripsi : undefined,
     instruksi: typeof data.instruksi === 'string' ? data.instruksi : undefined,
     jenis,
+    jenisPenilaian,
     tpList,
     tpId: typeof data.tpId === 'string' ? data.tpId : undefined,
     tpNomor: typeof data.tpNomor === 'number' ? data.tpNomor : undefined,
@@ -247,6 +257,7 @@ export async function buatTugas(input: TugasInput): Promise<string> {
     mapel: input.mapel.trim(),
     judul,
     jenis,
+    jenisPenilaian: normalisasiJenisPenilaian(input.jenisPenilaian ?? 'slm'),
     aktif: input.aktif === true,
     dibuatOleh: uid,
     dibuatOlehNama: input.namaGuru || '',

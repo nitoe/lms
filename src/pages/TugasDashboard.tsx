@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext'
 import { daftarRuangKelas } from '../lib/kelasLms'
 import { daftarTugasGuru, formatTenggat, hapusTugas, updateTugas } from '../lib/tugas'
 import type { TugasLms } from '../types/tugas'
-import { labelJenisTugas, semuaMapelTugas } from '../types/tugas'
+import { labelJenisTugas, NAMA_JENIS_PENILAIAN_TUGAS, semuaMapelTugas } from '../types/tugas'
 
 export default function TugasDashboard() {
   const { profil } = useAuth()
@@ -205,6 +205,17 @@ export default function TugasDashboard() {
                   <div>
                     <span className="font-medium text-slate-600">Mapel</span>{' '}
                     {mapels.join(', ')}
+                  </div>
+                  <div>
+                    <span className="font-medium text-slate-600">Penilaian</span>{' '}
+                    {NAMA_JENIS_PENILAIAN_TUGAS[
+                      t.jenisPenilaian === 'latihan' ||
+                      t.jenisPenilaian === 'sts' ||
+                      t.jenisPenilaian === 'sas' ||
+                      t.jenisPenilaian === 'slm'
+                        ? t.jenisPenilaian
+                        : 'slm'
+                    ].split(' ')[0]}
                   </div>
                   <div>
                     <span className="font-medium text-slate-600">Tenggat</span>{' '}

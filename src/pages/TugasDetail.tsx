@@ -23,6 +23,7 @@ import { getDaftarMapel } from '../lib/mapelData'
 import { getTpMultiMapelKelas } from '../lib/tpData'
 import { generateIsiTugasAi, generateKategoriTugasAi } from '../lib/tugasAi'
 import type {
+  JenisPenilaianTugas,
   JenisTugas,
   KategoriPenilaian,
   PengaturanPenilaianTugas,
@@ -30,7 +31,7 @@ import type {
   TpTugas,
   TugasLms,
 } from '../types/tugas'
-import { labelJenisTugas } from '../types/tugas'
+import { labelJenisTugas, NAMA_JENIS_PENILAIAN_TUGAS } from '../types/tugas'
 import type { TpRingkas } from '../types/materi'
 
 type TabId = 'pengaturan' | 'isi' | 'nilai'
@@ -110,6 +111,7 @@ export default function TugasDetail() {
   const [instruksi, setInstruksi] = useState('')
   const [tenggatStr, setTenggatStr] = useState('')
   const [aktif, setAktif] = useState(false)
+  const [jenisPenilaian, setJenisPenilaian] = useState<JenisPenilaianTugas>('slm')
   const [tpDipilih, setTpDipilih] = useState<TpTugas[]>([])
   /** Opsi TP per nama mapel. */
   const [tpByMapel, setTpByMapel] = useState<Record<string, TpRingkas[]>>({})
@@ -188,6 +190,14 @@ export default function TugasDetail() {
     setInstruksi(t.instruksi || '')
     setTenggatStr(tenggatKeInput(t.tenggat))
     setAktif(t.aktif)
+    setJenisPenilaian(
+      t.jenisPenilaian === 'latihan' ||
+        t.jenisPenilaian === 'sts' ||
+        t.jenisPenilaian === 'sas' ||
+        t.jenisPenilaian === 'slm'
+        ? t.jenisPenilaian
+        : 'slm',
+    )
     setTpDipilih(t.tpList || [])
     setPengaturan(normalisasiPengaturan(t.pengaturanPenilaian))
   }, [])
@@ -306,6 +316,7 @@ export default function TugasDetail() {
         const id = await buatTugas({
           judul,
           jenis,
+          jenisPenilaian,
           kelas,
           mapel,
           mapelLain: jenis === 'proyek' ? mapelLain : undefined,
@@ -323,6 +334,7 @@ export default function TugasDetail() {
         await updateTugas(tugasId, {
           judul,
           jenis,
+          jenisPenilaian,
           kelas,
           mapel,
           mapelLain: jenis === 'proyek' ? mapelLain : [],
@@ -937,10 +949,30 @@ export default function TugasDetail() {
             <input type="datetime-local" value={tenggatStr} onChange={(e) => setTenggatStr(e.target.value)} />
           </label>
           
+
+          <label className="materi-field">
+            <span>Jenis penilaian</span>
+            <select
+              value={jenisPenilaian}
+              onChange={(e) => setJenisPenilaian(e.target.value as JenisPenilaianTugas)}
+            >
+              {(Object.keys(NAMA_JENIS_PENILAIAN_TUGAS) as JenisPenilaianTugas[]).map((k) => (
+                <option key={k} value={k}>
+                  {NAMA_JENIS_PENILAIAN_TUGAS[k]}
+                </option>
+              ))}
+            </select>
+            <span className="mt-1 block text-[11px] text-muted">
+              Menentukan apakah nilai tugas ini masuk rekap SLM, STS, atau SAS (atau hanya latihan).
+              Pilih TP di atas agar terhubung ke Tujuan Pembelajaran yang sama.
+            </span>
+          </label>
+
           <label className="inline-flex items-center gap-2 text-sm">
             <input type="checkbox" checked={aktif} onChange={(e) => setAktif(e.target.checked)} />
             Aktifkan tugas (tampil untuk siswa)
           </label>
+
           <div className="flex justify-end gap-2 pt-2">
             <Link to="/tugas" className="lms-btn-secondary">Batal</Link>
             <button type="submit" className="lms-btn-primary" disabled={busy}>

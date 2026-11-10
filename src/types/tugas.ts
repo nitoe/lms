@@ -3,6 +3,16 @@
 /** Jenis tugas: terikat satu mapel, atau proyek lintas mapel. */
 export type JenisTugas = 'mapel' | 'proyek'
 
+/** Tujuan penilaian tugas — selaras kuis, untuk rekap nilai TP. */
+export type JenisPenilaianTugas = 'latihan' | 'slm' | 'sts' | 'sas'
+
+export const NAMA_JENIS_PENILAIAN_TUGAS: Record<JenisPenilaianTugas, string> = {
+  latihan: 'Latihan (tidak masuk nilai)',
+  slm: 'SLM (masuk nilai SLM TP)',
+  sts: 'STS (masuk nilai STS)',
+  sas: 'SAS (masuk nilai SAS)',
+}
+
 /** Satu Tujuan Pembelajaran yang dilampirkan ke tugas (bisa banyak). */
 export interface TpTugas {
   id: string
@@ -67,6 +77,8 @@ export interface TugasLms {
   /** Instruksi lengkap (bisa HTML dari rich editor di tab Isi Tugas). */
   instruksi?: string
   jenis: JenisTugas
+  /** Tujuan penilaian (SLM/STS/SAS/latihan). Default legacy = slm. */
+  jenisPenilaian?: JenisPenilaianTugas
   /** Daftar TP yang dilampirkan (boleh lebih dari satu). */
   tpList?: TpTugas[]
   /** Field lama (kompatibilitas baca); prefer `tpList`. */
@@ -93,6 +105,7 @@ export type TugasInput = {
   deskripsi?: string
   instruksi?: string
   jenis: JenisTugas
+  jenisPenilaian?: JenisPenilaianTugas
   tpList?: TpTugas[]
   tenggat?: Date | null
   aktif?: boolean

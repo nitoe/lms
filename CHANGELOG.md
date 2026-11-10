@@ -611,3 +611,39 @@
 - **Dokumentasi:** `docs/TKA.md` (akses, koleksi, langkah migrasi, tahapan).
 - File (LMS): `src/lib/tkaAkses.ts`, `src/types/tka.ts`, `src/pages/tka/TkaBeranda.tsx`, `src/pages/siswa/SiswaTka.tsx`, `src/App.tsx`, `src/components/Layout.tsx`, `src/pages/siswa/SiswaLayout.tsx`, `src/pages/siswa/SiswaIcon.tsx`, `firestore.rules`, `docs/TKA.md`. File (SDM01Penilaian): `firestore.rules` (lengkap), `scripts/migrasi-tka.mjs`, `scripts/cek-migrasi-tka.mjs`.
 - ANTIREGRESI §76.
+
+## 2026-11-10 — Fix: tugas/kuis lama terlihat (rules + query pembuat)
+
+- Gejala: tugas/kuis yang dibuat sebelum update rules tidak tampil di UI.
+- Sebab: katalog hanya query penugasan kelas×mapel; error permission ditelan; rules baca tidak mengizinkan pembuat.
+- Rules (file **lengkap**): `lms_tugas` / `lms_kuis` read = `isAdmin()` **atau** penugasan/wali **atau** `dibuatOleh == uid` (siswa: tugas aktif kelas sendiri).
+- Klien: `daftarTugasGuru` menggabungkan penugasan + query `dibuatOleh`; admin opsi muat semua; `KuisPanel` menggabungkan `daftarKuisDibuatOleh`.
+- Deploy rules hanya dari SDM01Penilaian (salinan lengkap).
+- File: `firestore.rules` (lengkap), `src/lib/tugas.ts`, `src/lib/kuis.ts`, `src/pages/TugasDashboard.tsx`, `src/components/KuisPanel.tsx`.
+- ANTIREGRESI §80, §81.
+
+## 2026-11-10 — Rekap Nilai Tahap 2: agregasi SLM/STS/SAS + bobot live
+
+- Sumber SLM otomatis dari tugas (terhubung TP, jenisPenilaian SLM) + kuis `jenisPenilaian=slm`.
+- Bobot live per sumber; simpan ke `lms_bobot_slm`; nilai akhir berbobot di tabel.
+- STS/SAS dari kuis (dan tugas) dengan jenis sesuai.
+- **Belum:** matriks rekap seluruh TP + Cloud Function sinkron ke Penilaian.
+- File: `src/lib/rekapNilai.ts`, `src/pages/RekapNilai.tsx`; rules `lms_bobot_slm` di `firestore.rules` (lengkap).
+- ANTIREGRESI §79.
+
+## 2026-11-10 — Monitor tugas & kuis aktif di Ruang Kelas
+
+- Panel **Penugasan aktif** di atas katalog ruang: jumlah + daftar singkat tugas/kuis aktif (tautan).
+- Mengganti teks intro generik; catatan wali dipendekkan.
+- Kartu mapel menampilkan badge jumlah tugas/kuis aktif.
+- File: `src/pages/KelasList.tsx`, `src/components/RuangCard.tsx`.
+
+## 2026-11-10 — Jenis penilaian tugas (SLM / STS / SAS)
+
+- **Kuis:** sudah punya `jenisPenilaian` di pengaturan — tidak diubah.
+- **Tugas:** field baru `jenisPenilaian` (`latihan` | `slm` | `sts` | `sas`), default `slm`; dokumen lama tanpa field dianggap SLM.
+- UI tab Pengaturan tugas: dropdown **Jenis penilaian**.
+- Katalog tugas menampilkan label Penilaian.
+- Rekap: filter sumber sesuai jenis (bukan semua tugas = SLM).
+- File: `src/types/tugas.ts`, `src/lib/tugas.ts`, `src/pages/TugasDetail.tsx`, `src/pages/TugasDashboard.tsx`, `src/lib/rekapNilai.ts`.
+- Rules: tidak perlu diubah (field opsional).
