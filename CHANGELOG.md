@@ -680,3 +680,10 @@
 - Empty state dan loading lebih jelas; footer tahap sinkronisasi dirapikan.
 - Logika agregasi/bobot **tidak diubah** — hanya presentasi.
 - File: `src/pages/RekapNilai.tsx`.
+
+## 2026-11-10 — Rekap Nilai: filter bar rapi
+
+- Filter kelas/mapel tidak lagi melebar penuh: layout horizontal kompak, select mapel dibatasi lebar.
+- Pill jumlah TP & siswa digabung ke bar filter (bukan chip mengambang di header).
+- Tombol Muat ulang dengan ikon; jarak vertikal halaman sedikit dirapatkan.
+- File: `src/pages/RekapNilai.tsx`.

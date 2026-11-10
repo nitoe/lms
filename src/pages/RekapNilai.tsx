@@ -345,7 +345,7 @@ export default function RekapNilai() {
 
   if (muatPasangan && !pasangan.length) {
     return (
-      <div className="space-y-5">
+      <div className="space-y-4">
         <HeaderRekap />
         <div className="card-soft flex items-center gap-3 px-4 py-5 text-sm text-muted">
           <Spinner />
@@ -357,7 +357,7 @@ export default function RekapNilai() {
 
   if (!pasangan.length) {
     return (
-      <div className="space-y-5">
+      <div className="space-y-4">
         <HeaderRekap />
         <div className="lms-empty">
           <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-amber-50 text-amber-700">
@@ -376,68 +376,81 @@ export default function RekapNilai() {
   }
 
   return (
-    <div className="space-y-5">
-      <HeaderRekap
-        meta={
-          kelas && mapel
-            ? `${kelas} · ${mapel}${tpList?.length ? ` · ${tpList.length} TP` : ''}${
-                siswa?.length ? ` · ${siswa.length} siswa` : ''
-              }`
-            : undefined
-        }
-      />
+    <div className="space-y-4">
+      <HeaderRekap />
 
-      {/* Filter kelas + mapel */}
-      <div className="card-soft flex flex-wrap items-end gap-3 px-4 py-3.5">
-        <label className="flex min-w-[7rem] flex-col gap-1 text-xs font-semibold text-slate-600">
-          Kelas
-          <select
-            className="lms-input min-w-[100px]"
-            value={kelas}
-            onChange={(e) => {
-              const k = e.target.value
-              setKelas(k)
-              const mapels = pasangan.filter((p) => p.kelas === k).map((p) => p.mapel)
-              setMapel(mapels[0] ?? '')
-            }}
-          >
-            {opsiKelas.map((k) => (
-              <option key={k} value={k}>
-                {k}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="flex min-w-[12rem] flex-1 flex-col gap-1 text-xs font-semibold text-slate-600">
-          Mata pelajaran
-          <select
-            className="lms-input w-full min-w-[180px]"
-            value={mapel}
-            onChange={(e) => setMapel(e.target.value)}
-          >
-            {opsiMapel.map((m) => (
-              <option key={m} value={m}>
-                {m}
-              </option>
-            ))}
-          </select>
-        </label>
-        <button
-          type="button"
-          className="lms-btn-secondary text-sm"
-          disabled={busy || busyNilai}
-          onClick={() => {
-            void muatTpDanSiswa()
-          }}
-        >
-          {busy || busyNilai ? (
-            <span className="inline-flex items-center gap-1.5">
-              <Spinner small /> Memuat…
-            </span>
-          ) : (
-            'Muat ulang'
-          )}
-        </button>
+      {/* Filter kelas × mapel + ringkasan konteks */}
+      <div className="card-soft px-3.5 py-3 sm:px-4">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-2.5">
+          <label className="flex items-center gap-2 text-xs font-semibold text-slate-500">
+            <span className="shrink-0">Kelas</span>
+            <select
+              className="lms-input w-auto min-w-[4.5rem] py-1.5 text-sm font-semibold text-slate-800"
+              value={kelas}
+              onChange={(e) => {
+                const k = e.target.value
+                setKelas(k)
+                const mapels = pasangan.filter((p) => p.kelas === k).map((p) => p.mapel)
+                setMapel(mapels[0] ?? '')
+              }}
+            >
+              {opsiKelas.map((k) => (
+                <option key={k} value={k}>
+                  {k}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <span className="hidden h-5 w-px bg-slate-200 sm:block" aria-hidden />
+
+          <label className="flex min-w-0 items-center gap-2 text-xs font-semibold text-slate-500">
+            <span className="shrink-0">Mapel</span>
+            <select
+              className="lms-input max-w-[16rem] py-1.5 text-sm font-medium text-slate-800 sm:max-w-[18rem]"
+              value={mapel}
+              onChange={(e) => setMapel(e.target.value)}
+            >
+              {opsiMapel.map((m) => (
+                <option key={m} value={m}>
+                  {m}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <div className="ml-auto flex flex-wrap items-center gap-2">
+            {tpList && tpList.length > 0 && (
+              <span className="lms-count-pill">{tpList.length} TP</span>
+            )}
+            {siswa && siswa.length > 0 && (
+              <span className="lms-count-pill">{siswa.length} siswa</span>
+            )}
+            <button
+              type="button"
+              className="lms-btn-secondary text-sm"
+              disabled={busy || busyNilai}
+              onClick={() => {
+                void muatTpDanSiswa()
+              }}
+              title="Muat ulang data TP dan nilai"
+            >
+              {busy || busyNilai ? (
+                <span className="inline-flex items-center gap-1.5">
+                  <Spinner small /> Memuat…
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1.5">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden>
+                    <path d="M21 12a9 9 0 1 1-2.64-6.36" />
+                    <path d="M21 3v6h-6" />
+                  </svg>
+                  Muat ulang
+                </span>
+              )}
+            </button>
+          </div>
+        </div>
       </div>
 
       {error && (
@@ -779,23 +792,14 @@ export default function RekapNilai() {
   )
 }
 
-function HeaderRekap({ meta }: { meta?: string }) {
+function HeaderRekap() {
   return (
     <div className="lms-page-intro">
-      <div className="flex flex-wrap items-end justify-between gap-2">
-        <div>
-          <h2 className="text-lg font-semibold tracking-tight text-slate-900">Rekap Nilai</h2>
-          <p className="mt-1 max-w-2xl text-sm leading-relaxed text-muted">
-            Agregasi nilai per Tujuan Pembelajaran (SLM dari tugas &amp; kuis, STS &amp; SAS dari
-            asesmen) untuk disinkronkan ke aplikasi Penilaian.
-          </p>
-        </div>
-        {meta && (
-          <div className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 shadow-sm">
-            {meta}
-          </div>
-        )}
-      </div>
+      <h2 className="text-lg font-semibold tracking-tight text-slate-900">Rekap Nilai</h2>
+      <p className="mt-1 max-w-2xl text-sm leading-relaxed text-muted">
+        Agregasi nilai per Tujuan Pembelajaran (SLM dari tugas &amp; kuis, STS &amp; SAS dari
+        asesmen) untuk disinkronkan ke aplikasi Penilaian.
+      </p>
     </div>
   )
 }
