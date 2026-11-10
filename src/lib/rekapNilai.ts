@@ -10,7 +10,7 @@ export function daftarMapelKelasGuru(profil: AppUser | null | undefined): {
   kelas: string
   mapel: string
 }[] {
-  const ruang = daftarRuangKelas(profil)
+  const ruang = daftarRuangKelas(profil ?? null)
   const seen = new Set<string>()
   const out: { kelas: string; mapel: string }[] = []
   for (const r of ruang) {
