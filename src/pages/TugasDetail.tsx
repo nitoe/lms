@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { daftarRuangKelas, DAFTAR_KELAS_SD } from '../lib/kelasLms'
-import { getTpMapelKelas } from '../lib/tpData'
 import { ambilTugas, buatTugas, formatTenggat, updateTugas } from '../lib/tugas'
 import {
   hitungRataRata,
@@ -13,7 +12,6 @@ import {
 } from '../lib/nilaiTugas'
 import {
   bolehAiTugas,
-  generateKategoriRubrikAi,
   generateSkorPerKategoriDariPredikat,
   normalisasiPengaturan,
   pengaturanPenilaianDefault,
@@ -21,6 +19,9 @@ import {
   RENTANG_PREDIKAT_DEFAULT,
   validasiRentang,
 } from '../lib/penilaianTugas'
+import { getDaftarMapel } from '../lib/mapelData'
+import { getTpMultiMapelKelas } from '../lib/tpData'
+import { generateIsiTugasAi, generateKategoriTugasAi } from '../lib/tugasAi'
 import type {
   JenisTugas,
   KategoriPenilaian,
@@ -110,6 +111,8 @@ export default function TugasDetail() {
   const [tpDipilih, setTpDipilih] = useState<TpTugas[]>([])
   const [tpOpsi, setTpOpsi] = useState<TpRingkas[]>([])
   const [pengaturan, setPengaturan] = useState<PengaturanPenilaianTugas>(pengaturanPenilaianDefault())
+  const [masterMapel, setMasterMapel] = useState<string[]>([])
+  const [mapelLoading, setMapelLoading] = useState(true)
 
   const [barisNilai, setBarisNilai] = useState<BarisNilaiTugas[] | null>(null)
   const [loadingNilai, setLoadingNilai] = useState(false)
@@ -118,14 +121,43 @@ export default function TugasDetail() {
   const [genAiBusy, setGenAiBusy] = useState(false)
 
   const ruang = useMemo(() => daftarRuangKelas(profil), [profil])
+
+  useEffect(() => {
+    let batal = false
+    setMapelLoading(true)
+    void getDaftarMapel()
+      .then((list) => {
+        if (!batal) setMasterMapel(list)
+      })
+      .catch(() => {
+        if (!batal) setMasterMapel([])
+      })
+      .finally(() => {
+        if (!batal) setMapelLoading(false)
+      })
+    return () => {
+      batal = true
+    }
+  }, [])
+
   const opsiKelas = useMemo(() => {
     const dariRuang = [...new Set(ruang.map((r) => r.kelas))]
     return dariRuang.length ? dariRuang : [...DAFTAR_KELAS_SD]
   }, [ruang])
   const opsiMapel = useMemo(() => {
-    if (!kelas) return [...new Set(ruang.map((r) => r.mapel))].sort()
-    return [...new Set(ruang.filter((r) => r.kelas === kelas).map((r) => r.mapel))].sort()
-  }, [ruang, kelas])
+    const dariRuang = kelas
+      ? ruang.filter((r) => r.kelas === kelas).map((r) => r.mapel)
+      : ruang.map((r) => r.mapel)
+    const gabung = [...dariRuang, ...masterMapel].filter(Boolean)
+    return [...new Set(gabung)].sort((a, b) => a.localeCompare(b, 'id'))
+  }, [ruang, kelas, masterMapel])
+
+  const mapelUntukTp = useMemo(() => {
+    if (jenis === 'proyek') {
+      return [mapel, ...mapelLain].map((m) => m.trim()).filter(Boolean)
+    }
+    return mapel.trim() ? [mapel.trim()] : []
+  }, [jenis, mapel, mapelLain])
 
   const kategoriAktif = useMemo(
     () => pengaturan.kategori.filter((k) => k.nama.trim()),
@@ -177,18 +209,18 @@ export default function TugasDetail() {
   }, [tugasId, isBaru, isiFormDariTugas])
 
   useEffect(() => {
-    if (!mapel || !kelas) {
+    if (!kelas || mapelUntukTp.length === 0) {
       setTpOpsi([])
       return
     }
     let batal = false
-    void getTpMapelKelas(mapel, kelas).then((list) => {
+    void getTpMultiMapelKelas(mapelUntukTp, kelas).then((list) => {
       if (!batal) setTpOpsi(list)
     })
     return () => {
       batal = true
     }
-  }, [mapel, kelas])
+  }, [kelas, mapelUntukTp])
 
   function toggleTp(tp: TpRingkas) {
     setTpDipilih((prev) => {
@@ -493,11 +525,30 @@ export default function TugasDetail() {
     }
   }
 
-  function generateKategoriAi() {
+  async function generateKategoriAi() {
     if (!bisaAi) return
+    const isi = `${instruksi || ''} ${deskripsi || ''}`.trim()
+    // Utamakan isi tersimpan di dokumen tugas
+    const isiTersimpan = `${tugas?.instruksi || ''} ${tugas?.deskripsi || ''}`.trim()
+    const sumber = isiTersimpan.length >= 40 ? isiTersimpan : isi
+    if (sumber.length < 40) {
+      setError(
+        'Isi tugas belum disimpan atau terlalu pendek. Buka tab Isi Tugas, tulis instruksi, simpan, lalu generate kategori.',
+      )
+      return
+    }
     setGenAiBusy(true)
+    setError('')
+    setSukses('')
     try {
-      const list = generateKategoriRubrikAi({ judul, mapel, deskripsi, instruksi })
+      const list = await generateKategoriTugasAi({
+        judul: tugas?.judul || judul,
+        mapel: tugas?.mapel || mapel,
+        kelas: tugas?.kelas || kelas,
+        deskripsi: tugas?.deskripsi || deskripsi,
+        instruksi: tugas?.instruksi || instruksi,
+        tpList: tugas?.tpList || tpDipilih,
+      })
       setPengaturan((p) => ({
         ...p,
         kategori: [
@@ -505,7 +556,42 @@ export default function TugasDetail() {
           ...list.filter((k) => !p.kategori.some((x) => x.nama === k.nama)),
         ],
       }))
-      setSukses(`${list.length} kategori diusulkan. Edit bila perlu, lalu simpan pengaturan.`)
+      setSukses(`${list.length} kategori rubrik dari AI (berdasarkan isi tugas). Periksa lalu simpan pengaturan.`)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Gagal generate kategori AI.')
+    } finally {
+      setGenAiBusy(false)
+    }
+  }
+
+  async function generateIsiDenganAi() {
+    if (!bisaAi) return
+    if (isBaru || !tugas) {
+      setError('Simpan pengaturan tugas (judul, kelas, mapel) terlebih dahulu, lalu generate isi.')
+      return
+    }
+    if (!tugas.judul?.trim()) {
+      setError('Judul tugas belum tersimpan.')
+      return
+    }
+    setGenAiBusy(true)
+    setError('')
+    setSukses('')
+    try {
+      const hasil = await generateIsiTugasAi({
+        judul: tugas.judul,
+        mapel: tugas.mapel,
+        mapelLain: tugas.mapelLain,
+        kelas: tugas.kelas,
+        jenis: tugas.jenis,
+        deskripsi: tugas.deskripsi || deskripsi,
+        tpList: tugas.tpList || tpDipilih,
+      })
+      setInstruksi(hasil.instruksi)
+      if (hasil.deskripsi) setDeskripsi(hasil.deskripsi)
+      setSukses('Draf isi tugas dari AI siap. Periksa, sesuaikan, lalu simpan.')
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Gagal generate isi tugas.')
     } finally {
       setGenAiBusy(false)
     }
@@ -669,11 +755,18 @@ export default function TugasDetail() {
                 setTpDipilih([])
               }}
             >
-              <option value="">— Pilih mapel —</option>
+              <option value="">
+                {mapelLoading ? 'Memuat mapel…' : '— Pilih mapel —'}
+              </option>
               {opsiMapel.map((m) => (
                 <option key={m} value={m}>{m}</option>
               ))}
             </select>
+            {!mapelLoading && opsiMapel.length === 0 && (
+              <p className="mt-1 text-xs text-amber-700">
+                Daftar mapel kosong. Pastikan koleksi mapel di Penilaian terisi, atau isi penugasan guru.
+              </p>
+            )}
           </label>
           {jenis === 'proyek' && (
             <fieldset className="rounded-xl border border-slate-200 p-3">
@@ -698,10 +791,12 @@ export default function TugasDetail() {
           </label>
           <fieldset className="rounded-xl border border-slate-200 p-3">
             <legend className="px-1 text-xs font-semibold text-slate-600">Tujuan Pembelajaran</legend>
-            {!mapel || !kelas ? (
-              <p className="text-xs text-muted">Pilih kelas dan mapel dulu.</p>
+            {!kelas || mapelUntukTp.length === 0 ? (
+              <p className="text-xs text-muted">Pilih kelas dan mapel dulu (untuk proyek: mapel utama ± mapel lain).</p>
             ) : tpOpsi.length === 0 ? (
-              <p className="text-xs text-muted">Belum ada TP di data Penilaian.</p>
+              <p className="text-xs text-muted">
+                Belum ada TP di koleksi tp_kktp untuk {mapelUntukTp.join(', ')} · kelas {kelas}.
+              </p>
             ) : (
               <ul className="max-h-48 space-y-1.5 overflow-y-auto">
                 {tpOpsi.map((tp) => (
@@ -713,7 +808,13 @@ export default function TugasDetail() {
                         checked={tpDipilih.some((p) => p.id === tp.id)}
                         onChange={() => toggleTp(tp)}
                       />
-                      <span><span className="font-medium">TP {tp.nomorTp}</span> {tp.namaTp}</span>
+                      <span>
+                        <span className="font-medium">TP {tp.nomorTp}</span>
+                        {jenis === 'proyek' && tp.mapel ? (
+                          <span className="text-muted"> · {tp.mapel}</span>
+                        ) : null}{' '}
+                        {tp.namaTp}
+                      </span>
                     </label>
                   </li>
                 ))}
@@ -735,13 +836,34 @@ export default function TugasDetail() {
 
       {tab === 'isi' && (
         <div className="materi-form max-w-3xl space-y-4">
+          <div className="flex flex-wrap items-start justify-between gap-3 rounded-2xl border border-slate-200 bg-slate-50/80 px-4 py-3">
+            <div>
+              <h3 className="text-sm font-semibold text-slate-900">Instruksi untuk siswa</h3>
+              <p className="mt-0.5 text-xs text-muted">
+                {isBaru
+                  ? 'Simpan pengaturan (judul, kelas, mapel) dulu sebelum generate AI atau menyimpan isi.'
+                  : 'Tulis manual atau generate AI dari pengaturan yang sudah disimpan.'}
+              </p>
+            </div>
+            {bisaAi && (
+              <button
+                type="button"
+                className="inline-flex items-center gap-1.5 rounded-lg border border-violet-200 bg-violet-50 px-3 py-1.5 text-xs font-semibold text-violet-800 hover:bg-violet-100 disabled:opacity-50"
+                disabled={genAiBusy || isBaru || !tugas?.judul}
+                onClick={() => void generateIsiDenganAi()}
+              >
+                <IconSparkle />
+                {genAiBusy ? 'AI menulis…' : 'Generate isi (AI)'}
+              </button>
+            )}
+          </div>
           <label className="materi-field">
             <span>Deskripsi singkat</span>
             <textarea value={deskripsi} onChange={(e) => setDeskripsi(e.target.value)} rows={2} />
           </label>
           <label className="materi-field">
             <span>Instruksi lengkap</span>
-            <textarea value={instruksi} onChange={(e) => setInstruksi(e.target.value)} rows={10} placeholder="Langkah, kriteria, format pengumpulan…" />
+            <textarea value={instruksi} onChange={(e) => setInstruksi(e.target.value)} rows={12} placeholder="Langkah, kriteria, format pengumpulan…" />
           </label>
           <div className="flex justify-end">
             <button type="button" className="lms-btn-primary" disabled={busy || isBaru} onClick={() => void simpanIsi()}>
@@ -800,7 +922,7 @@ export default function TugasDetail() {
                         type="button"
                         className="inline-flex items-center gap-1.5 rounded-lg border border-violet-200 bg-violet-50 px-3 py-1.5 text-xs font-semibold text-violet-800 hover:bg-violet-100"
                         disabled={genAiBusy}
-                        onClick={generateKategoriAi}
+                        onClick={() => void generateKategoriAi()}
                       >
                         <IconSparkle />
                         {genAiBusy ? 'Menghasilkan…' : 'Generate AI'}

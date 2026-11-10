@@ -3,6 +3,15 @@
 > Append-only: entri baru ditambahkan di BAWAH, entri lama tidak diubah.
 > Versi mengacu ke `package.json` (saat ini `0.1.0`); belum ada rilis bertag.
 
+## 2026-11-10 — Mapel/TP dari Penilaian + AI tugas (CF)
+
+- **Mapel:** opsi mapel di pengaturan tugas memuat koleksi `mapel` (Penilaian) + penugasan guru (`getDaftarMapel`).
+- **TP:** multi-mapel via `getTpMultiMapelKelas` (proyek: TP dari mapel utama + mapel lain); label mapel pada daftar TP.
+- **Generate kategori AI:** Cloud Function `generateKategoriTugasLmsAi` — wajib isi tugas tersimpan (≥40 karakter); 4–6 kategori; tidak lagi random lokal.
+- **Generate isi AI:** `generateIsiTugasLmsAi` — wajib judul tugas sudah disimpan; hanya akun AI.
+- File LMS: `src/lib/tugasAi.ts`, `src/lib/tpData.ts`, `src/pages/TugasDetail.tsx`.
+- File SDM01Penilaian: `functions/generateTugasLmsAi.js`, `functions/index.js` (lengkap).
+
 ## 2026-11-10 — Daftar nilai terhubung rubrik + UI penilaian
 
 - Setiap **kategori penilaian** menjadi kolom skor di Daftar nilai; rata-rata otomatis; nilai akhir + predikat.
