@@ -661,3 +661,11 @@
 - **Ruang Kelas:** panel **Penugasan aktif** (daftar tugas/kuis aktif) mengganti teks intro lama; badge jumlah di kartu mapel.
 - File: `src/pages/RekapNilai.tsx`, `src/lib/rekapNilai.ts`, `src/pages/KelasList.tsx`, `src/components/RuangCard.tsx`.
 - ANTIREGRESI §83.
+
+## 2026-11-10 — Bobot SLM dalam persen
+
+- Bobot sumber SLM di Rekap Nilai memakai **persen (0–100%)**, bukan bobot relatif (b=1).
+- Satu sumber → default 100%; banyak sumber → dibagi merata (total 100%).
+- Data lama (bobot relatif) dikonversi otomatis ke persen saat dibaca.
+- UI: input %, indikator total, simpan hanya jika total ≈ 100%.
+- File: `src/types/rekapNilai.ts`, `src/lib/rekapNilai.ts`, `src/pages/RekapNilai.tsx`.

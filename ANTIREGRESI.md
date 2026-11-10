@@ -545,3 +545,13 @@ Jangan memaksa satu kolom sempit di desktop.
 83.1 Jangan mengisi dropdown Rekap hanya dari `daftarRuangKelas` (penugasan murni) jika Ruang Kelas memakai `perluasDenganMapelMaster` untuk wali. Keduanya harus konsisten agar wali tidak melihat “belum ada penugasan” di Rekap padahal kartu ruang penuh.
 
 83.2 Panel **Penugasan aktif** di `KelasList` menggantikan teks intro generik. Jangan mengembalikan copy “Setiap kartu adalah satu mata pelajaran…” sebagai konten utama di atas katalog.
+
+## §84. Bobot SLM dalam persen
+
+84.1 Field `bobot` di `lms_bobot_slm.sumber[]` disimpan sebagai **persen 0–100**. Jumlah semua sumber idealnya 100.
+
+84.2 Jangan menampilkan label `b=1` (bobot relatif). Tampilkan `40%`, `60%`, dll.
+
+84.3 Saat memuat bobot lama yang jumlahnya ≠ 100, konversi relatif → persen (`normalisasiKePersen`). Sumber baru tanpa data tersimpan: bagi 100% merata.
+
+84.4 Perhitungan nilai akhir tetap weighted average; persen dan bobot relatif matematis setara selama proporsi sama.

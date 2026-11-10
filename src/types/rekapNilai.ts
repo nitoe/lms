@@ -26,7 +26,7 @@ export type SumberNilaiSlm = {
   /** ID dokumen sumber (tugasId / kuisId) */
   sumberId: string
   judul: string
-  /** Bobot relatif (default 1). Guru bisa ubah live. */
+  /** Bobot dalam persen (0–100). Jumlah semua sumber idealnya 100. */
   bobot: number
 }
 
@@ -41,7 +41,7 @@ export type BobotSlmDok = {
   tpId: string
   tpNomor?: number
   tpNama?: string
-  /** Daftar sumber + bobot. Urutan tampil = urutan array. */
+  /** Daftar sumber + bobot persen. Urutan tampil = urutan array. */
   sumber: SumberNilaiSlm[]
   /** uid guru yang terakhir menyimpan */
   diubahOleh?: string

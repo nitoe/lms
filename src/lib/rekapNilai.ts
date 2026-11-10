@@ -58,8 +58,9 @@ export function idBobotSlm(kelas: string, mapel: string, tpId: string): string {
 }
 
 /**
- * Hitung nilai akhir berbobot dari map skor + daftar bobot.
- * Skor null/undefined diabaikan; jika tidak ada skor valid → null.
+ * Hitung nilai akhir berbobot (bobot dalam persen atau relatif).
+ * Skor null/undefined diabaikan; bobot hanya dihitung untuk sumber yang punya skor.
+ * Jika tidak ada skor valid → null.
  */
 export function hitungNilaiBerbobot(
   perSumber: Record<string, number | null | undefined>,
@@ -70,12 +71,48 @@ export function hitungNilaiBerbobot(
   for (const s of sumber) {
     const v = perSumber[s.id]
     if (typeof v !== 'number' || Number.isNaN(v)) continue
-    const b = typeof s.bobot === 'number' && s.bobot > 0 ? s.bobot : 1
+    const b = typeof s.bobot === 'number' && s.bobot > 0 ? s.bobot : 0
+    if (b <= 0) continue
     sum += v * b
     totalBobot += b
   }
   if (totalBobot <= 0) return null
   return Math.round((sum / totalBobot) * 10) / 10
+}
+
+/** Bagi 100% merata ke n sumber (sisa pembulatan ke sumber pertama). */
+export function bagiPersenMerata(n: number): number[] {
+  if (n <= 0) return []
+  if (n === 1) return [100]
+  const base = Math.floor((100 / n) * 10) / 10
+  const arr = Array.from({ length: n }, () => base)
+  const total = Math.round(arr.reduce((s, x) => s + x, 0) * 10) / 10
+  arr[0] = Math.round((arr[0] + (100 - total)) * 10) / 10
+  return arr
+}
+
+/** Jumlah bobot persen (1 desimal). */
+export function jumlahPersen(sumber: { bobot: number }[]): number {
+  return Math.round(sumber.reduce((s, x) => s + (typeof x.bobot === 'number' ? x.bobot : 0), 0) * 10) / 10
+}
+
+/**
+ * Konversi bobot lama (relatif, mis. semua 1) → persen.
+ * Jika sudah mirip persen (jumlah ≈ 100), biarkan.
+ */
+export function normalisasiKePersen(bobotList: number[]): number[] {
+  if (!bobotList.length) return []
+  const sum = bobotList.reduce((s, x) => s + (x > 0 ? x : 0), 0)
+  if (sum <= 0) return bagiPersenMerata(bobotList.length)
+  // Sudah persen
+  if (sum >= 99 && sum <= 101) {
+    return bobotList.map((b) => Math.round(Math.max(0, b) * 10) / 10)
+  }
+  // Relatif → persen
+  return bobotList.map((b) => {
+    const v = b > 0 ? b : 0
+    return Math.round((v / sum) * 1000) / 10
+  })
 }
 
 function tugasMemuatTp(t: TugasLms, tpId: string): boolean {
@@ -115,7 +152,7 @@ export async function temukanSumberSlm(
       jenis: 'tugas',
       sumberId: t.id,
       judul: t.judul || `Tugas ${t.id.slice(0, 6)}`,
-      bobot: 1,
+      bobot: 0, // diisi merata di gabungSumberDenganBobot
     })
   }
 
@@ -128,7 +165,7 @@ export async function temukanSumberSlm(
       jenis: 'kuis',
       sumberId: k.id,
       judul: k.judul || `Kuis ${k.id.slice(0, 6)}`,
-      bobot: 1,
+      bobot: 0,
     })
   }
 
@@ -184,23 +221,35 @@ export async function muatBobotSlm(
 }
 
 /**
- * Gabungkan sumber terdeteksi + bobot tersimpan.
- * Sumber baru mendapat bobot 1; sumber hilang dihapus dari daftar efektif.
+ * Gabungkan sumber terdeteksi + bobot tersimpan (persen).
+ * Sumber baru / tanpa data: bagi 100% merata.
+ * Bobot lama relatif (jumlah ≠ 100) dikonversi ke persen.
  */
 export function gabungSumberDenganBobot(
   terdeteksi: SumberNilaiSlm[],
   tersimpan: BobotSlmDok | null,
 ): SumberNilaiSlm[] {
+  if (!terdeteksi.length) return []
+
   const mapBobot = new Map<string, number>()
   if (tersimpan?.sumber) {
     for (const s of tersimpan.sumber) {
-      if (s.id) mapBobot.set(s.id, typeof s.bobot === 'number' && s.bobot > 0 ? s.bobot : 1)
+      if (s.id && typeof s.bobot === 'number' && s.bobot > 0) {
+        mapBobot.set(s.id, s.bobot)
+      }
     }
   }
-  return terdeteksi.map((s) => ({
-    ...s,
-    bobot: mapBobot.get(s.id) ?? 1,
-  }))
+
+  const punyaSemua = terdeteksi.every((s) => mapBobot.has(s.id))
+  if (punyaSemua) {
+    const mentah = terdeteksi.map((s) => mapBobot.get(s.id) ?? 0)
+    const persen = normalisasiKePersen(mentah)
+    return terdeteksi.map((s, i) => ({ ...s, bobot: persen[i] ?? 0 }))
+  }
+
+  // Ada sumber baru: bagi merata 100%
+  const merata = bagiPersenMerata(terdeteksi.length)
+  return terdeteksi.map((s, i) => ({ ...s, bobot: merata[i] ?? 0 }))
 }
 
 /** Simpan pengaturan bobot SLM. */
@@ -225,7 +274,10 @@ export async function simpanBobotSlm(input: {
       jenis: s.jenis,
       sumberId: s.sumberId,
       judul: s.judul,
-      bobot: typeof s.bobot === 'number' && s.bobot > 0 ? s.bobot : 1,
+      bobot:
+        typeof s.bobot === 'number' && Number.isFinite(s.bobot)
+          ? Math.round(Math.max(0, Math.min(100, s.bobot)) * 10) / 10
+          : 0,
     })),
     diubahOleh: uid,
     updatedAt: serverTimestamp(),
@@ -326,7 +378,7 @@ export async function temukanSumberStsSas(
       jenis: 'kuis',
       sumberId: k.id,
       judul: k.judul || `Kuis ${jenis.toUpperCase()}`,
-      bobot: 1,
+      bobot: 100,
     })
   }
 
@@ -338,7 +390,7 @@ export async function temukanSumberStsSas(
       jenis: 'tugas',
       sumberId: t.id,
       judul: t.judul || `Tugas ${jenis.toUpperCase()}`,
-      bobot: 1,
+      bobot: 100,
     })
   }
 

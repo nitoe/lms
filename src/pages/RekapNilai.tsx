@@ -17,6 +17,7 @@ import {
   temukanSumberStsSas,
   muatNilaiStsSas,
   hitungNilaiBerbobot,
+  jumlahPersen,
 } from '../lib/rekapNilai'
 import {
   daftarRuangKelas,
@@ -237,12 +238,20 @@ export default function RekapNilai() {
     setSumberSlm((prev) =>
       prev.map((s) =>
         s.id === sumberId
-          ? { ...s, bobot: Number.isFinite(bobotBaru) && bobotBaru > 0 ? bobotBaru : 1 }
+          ? {
+              ...s,
+              bobot: Number.isFinite(bobotBaru)
+                ? Math.round(Math.max(0, Math.min(100, bobotBaru)) * 10) / 10
+                : 0,
+            }
           : s,
       ),
     )
     setBobotDirty(true)
   }
+
+  const totalPersenSlm = useMemo(() => jumlahPersen(sumberSlm), [sumberSlm])
+  const persenOk = Math.abs(totalPersenSlm - 100) < 0.15
 
   // Hitung ulang nilai akhir SLM saat bobot berubah (tanpa fetch ulang)
   useEffect(() => {
@@ -260,6 +269,12 @@ export default function RekapNilai() {
 
   const simpanBobot = async () => {
     if (!kelas || !mapel || !tpAktifId || !tpAktif) return
+    if (!persenOk) {
+      setError(
+        `Jumlah bobot ${totalPersenSlm}% — harus 100%. Sesuaikan persen tiap sumber.`,
+      )
+      return
+    }
     setMenyimpanBobot(true)
     setError('')
     setPesan('')
@@ -444,8 +459,8 @@ export default function RekapNilai() {
                 {!busyNilai && subTab === 'slm' && (
                   <div className="space-y-4 p-4">
                     <p className="text-sm text-muted">
-                      Nilai SLM digabung dari tugas dan kuis yang terhubung ke TP ini. Atur bobot
-                      relatif di bawah judul sumber, lalu simpan.
+                      Nilai SLM digabung dari tugas dan kuis yang terhubung ke TP ini. Atur{' '}
+                      <strong>bobot persen</strong> tiap sumber (jumlah harus 100%), lalu simpan.
                     </p>
 
                     {sumberSlm.length === 0 ? (
@@ -467,30 +482,44 @@ export default function RekapNilai() {
                               <div className="max-w-[200px] truncate text-sm font-medium text-slate-800" title={s.judul}>
                                 {s.judul}
                               </div>
-                              <label className="mt-1 flex items-center gap-1.5 text-xs text-slate-600">
+                              <label className="mt-1 flex items-center gap-1 text-xs text-slate-600">
                                 Bobot
                                 <input
                                   type="number"
-                                  min={0.1}
-                                  step={0.5}
+                                  min={0}
+                                  max={100}
+                                  step={1}
                                   className="lms-input w-16 py-1 text-sm"
                                   value={s.bobot}
                                   onChange={(e) => {
                                     const v = parseFloat(e.target.value)
-                                    ubahBobot(s.id, Number.isFinite(v) ? v : 1)
+                                    ubahBobot(s.id, Number.isFinite(v) ? v : 0)
                                   }}
                                 />
+                                <span className="font-medium text-slate-700">%</span>
                               </label>
                             </div>
                           ))}
-                          <button
-                            type="button"
-                            className="lms-btn-primary text-sm"
-                            disabled={!bobotDirty || menyimpanBobot}
-                            onClick={() => void simpanBobot()}
-                          >
-                            {menyimpanBobot ? 'Menyimpan…' : 'Simpan bobot'}
-                          </button>
+                          <div className="flex flex-col gap-1">
+                            <span
+                              className={
+                                persenOk
+                                  ? 'text-xs font-medium text-emerald-700'
+                                  : 'text-xs font-medium text-amber-700'
+                              }
+                            >
+                              Total {totalPersenSlm}%
+                              {persenOk ? ' (OK)' : ' — harus 100%'}
+                            </span>
+                            <button
+                              type="button"
+                              className="lms-btn-primary text-sm"
+                              disabled={!bobotDirty || menyimpanBobot || !persenOk}
+                              onClick={() => void simpanBobot()}
+                            >
+                              {menyimpanBobot ? 'Menyimpan…' : 'Simpan bobot'}
+                            </button>
+                          </div>
                         </div>
 
                         <TabelNilaiSlm
@@ -590,7 +619,7 @@ function TabelNilaiSlm({
             {sumber.map((s) => (
               <th key={s.id} className="px-2 py-2 font-medium text-right" title={s.judul}>
                 <span className="block max-w-[120px] truncate">{s.judul}</span>
-                <span className="font-normal normal-case text-[10px]">b={s.bobot}</span>
+                <span className="font-normal normal-case text-[10px]">{s.bobot}%</span>
               </th>
             ))}
             <th className="px-2 py-2 font-medium text-right text-muh-800">Nilai SLM</th>
