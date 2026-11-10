@@ -588,3 +588,14 @@ Jangan memaksa satu kolom sempit di desktop.
 
 86.5 **IPA materi** mencakup Fase B dan Fase C di `MATERI_TKA['TKA IPA']`.
 
+
+## §87. Generate ilustrasi AI untuk bank soal TKA
+
+87.1 Generate ilustrasi AI untuk mapel yang diawali "TKA " (TKA Matematika, TKA Bahasa Indonesia, TKA IPA) menggunakan prompt terpisah di `susunPromptIlustrasiSoal` (`functions/generateSoalLmsAi.js`).
+- Petunjuk guru (`petunjukGambar`) harus menjadi prioritas mutlak.
+- Default gaya adalah ilustrasi vektor naratif/scene, bukan diagram ilmiah/anatomi.
+- Jangan mengembalikan prompt TKA ke gaya diagram organ seperti yang dipakai mapel biasa.
+
+87.2 Mapel non-TKA tetap memakai prompt ilustrasi yang sudah ada (fokus diagram/anatomi bila relevan). Jangan mencampur kedua cabang.
+
+87.3 Setelah mengubah prompt ilustrasi TKA, uji dengan petunjuk naratif panjang (mis. karakter di sofa dengan makanan cepat saji) dan pastikan hasilnya tidak berubah menjadi diagram pembuluh darah.

@@ -695,3 +695,16 @@
 - **Tampilan:** stimulus berupa teks biasa dirender sebagai paragraf (`stimulusKeHtml`).
 - File: `src/components/soal/{TkaFieldEditor,SoalEditorKartu,StimulusSoal}.tsx`, `src/lib/{soal,analisisSoal,html}.ts`, `src/styles/soal.css`, `docs/TKA.md`.
 - ANTIREGRESI §84.
+
+## 2026-11-10 — Generate ilustrasi AI khusus bank soal TKA
+
+- **Masalah:** generate gambar AI di bank soal TKA berulang kali menghasilkan diagram ilmiah/anatomi (mis. pembuluh darah) meskipun petunjuk guru meminta ilustrasi naratif/scene.
+- **Penyebab:** prompt sistem di Cloud Function lebih mengutamakan teksSoal dan secara default diarahkan ke diagram ilmiah/organ.
+- **Perbaikan (hanya untuk mapel TKA):**
+  - Petunjuk ilustrasi guru menjadi prioritas absolut (mengalahkan teksSoal).
+  - Gaya default diubah menjadi ilustrasi vektor naratif/scene edukatif, bukan diagram ilmiah.
+  - Tidak otomatis menggambar organ/pembuluh darah hanya karena teks soal menyebut sistem organ.
+  - Mendukung susunan beberapa panel berdampingan dengan caption/keterangan di bawah masing-masing panel.
+- **Tidak memengaruhi:** generate gambar di bank soal mata pelajaran biasa (non-TKA).
+- File: `functions/generateSoalLmsAi.js` (SDM01Penilaian, versi lengkap).
+- ANTIREGRESI §87.
