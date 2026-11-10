@@ -730,3 +730,15 @@
 .soal-analisis-item:hover { background: #fef2f2; }
 .soal-analisis-nomor { font-weight: 600; color: #dc2626; min-width: 28px; }
 .soal-analisis-catatan { margin-top: 10px; font-size: 12px; color: #6b7280; }
+
+/* —— Stimulus / bahan bacaan soal (TKA) —— */
+.stimulus-soal {
+  background: #f8f9fc; border: 1px solid var(--color-border); border-radius: 0.9rem;
+  padding: 0.9rem 1.05rem; display: grid; gap: 0.7rem; align-content: start;
+}
+.stimulus-teks { font-size: 1rem; line-height: 1.7; }
+.stimulus-teks table, .tampil-teks table { border-collapse: collapse; max-width: 100%; display: block; overflow-x: auto; }
+.stimulus-teks th, .stimulus-teks td { border: 1px solid #cbd0dc; padding: 0.3rem 0.55rem; text-align: left; font-size: 0.92rem; }
+.stimulus-teks th { background: #eef0f6; }
+.stimulus-teks caption { font-weight: 700; padding: 0.3rem 0; text-align: left; }
+.soal-rich-view .katex-display { overflow-x: auto; overflow-y: hidden; }

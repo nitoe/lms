@@ -23,3 +23,17 @@ export function teksPolos(html: string | undefined): string {
 export function htmlKosong(html: string | undefined): boolean {
   return teksPolos(html) === ''
 }
+
+/**
+ * Stimulus / bacaan soal TKA: seperti bersihHtml, ditambah tabel (data numerasi).
+ * Tetap tanpa atribut gaya/kelas/skrip (ANTIREGRESI §9).
+ */
+const TAG_STIMULUS = [...TAG_BOLEH, 'table', 'thead', 'tbody', 'tfoot', 'tr', 'th', 'td', 'caption']
+
+export function bersihHtmlStimulus(html: string | undefined): string {
+  if (!html) return ''
+  return DOMPurify.sanitize(html, {
+    ALLOWED_TAGS: TAG_STIMULUS,
+    ALLOWED_ATTR: ['colspan', 'rowspan', 'scope'],
+  })
+}

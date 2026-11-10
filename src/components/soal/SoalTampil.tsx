@@ -1,6 +1,8 @@
 import { useMemo } from 'react'
 import { GambarSoal } from './GambarSoal'
 import RichView from './RichView'
+import StimulusSoal from './StimulusSoal'
+import { teksDenganRumus, useKatexSiap } from '../../lib/matematika'
 import type { HasilNilai } from '../../lib/penilaian'
 import type { JawabanSoal, OpsiSoal, Soal } from '../../types/soal'
 import { NAMA_TIPE } from '../../types/soal'
@@ -38,6 +40,8 @@ type Props = {
   /** Tampilkan kunci & hasil (setelah diperiksa). */
   diperiksa?: boolean
   hasil?: HasilNilai
+  /** Halaman pemanggil yang menampilkan stimulus/gambar sendiri (mis. TKA dua kolom). */
+  tanpaStimulus?: boolean
 }
 
 const LABEL_STATUS: Record<string, string> = {
@@ -48,17 +52,24 @@ const LABEL_STATUS: Record<string, string> = {
   manual: 'Dinilai guru',
 }
 
-function KontenOpsi({ o }: { o: OpsiSoal }) {
+/** Teks polos; bila `rumus` dan KaTeX siap, `$...$` dirender sebagai rumus. */
+function TeksPolos({ teks, rumus }: { teks: string; rumus?: boolean }) {
+  const siap = useKatexSiap(!!rumus)
+  if (!siap) return <>{teks}</>
+  return <span dangerouslySetInnerHTML={{ __html: teksDenganRumus(teks) }} />
+}
+
+function KontenOpsi({ o, rumus }: { o: OpsiSoal; rumus?: boolean }) {
   return (
     <span className="tampil-opsi-isi">
-      {o.teks && <span>{o.teks}</span>}
+      {o.teks && <span><TeksPolos teks={o.teks} rumus={rumus} /></span>}
       {o.gambarId && <GambarSoal id={o.gambarId} className="soal-img--kecil" />}
     </span>
   )
 }
 
 /** Tampilan soal seperti yang dilihat siswa. Dipakai pratinjau guru (2a) dan pengerjaan siswa (2b). */
-export default function SoalTampil({ soal, nomor, jawaban, onJawab, seed, diperiksa = false, hasil }: Props) {
+export default function SoalTampil({ soal, nomor, jawaban, onJawab, seed, diperiksa = false, hasil, tanpaStimulus = false }: Props) {
   const opsiTampil = useMemo(() => {
     if (soal.tipe !== 'pg' && soal.tipe !== 'pgk') return []
     return soal.acakOpsi ? acakStabil(soal.opsi, `${seed}:${soal.id}`) : soal.opsi
@@ -85,8 +96,11 @@ export default function SoalTampil({ soal, nomor, jawaban, onJawab, seed, diperi
         )}
       </header>
 
-      <RichView html={soal.teks} className="tampil-teks" />
-      {soal.gambarId && <GambarSoal id={soal.gambarId} className="soal-img--soal" />}
+      {!tanpaStimulus && soal.stimulus?.trim() && <StimulusSoal soal={soal} />}
+      <RichView html={soal.teks} className="tampil-teks" rumus={soal.rumus} />
+      {!tanpaStimulus && !soal.stimulus?.trim() && soal.gambarId && (
+        <GambarSoal id={soal.gambarId} className="soal-img--soal" />
+      )}
 
       {(soal.tipe === 'pg' || soal.tipe === 'pgk') && (
         <ul className="tampil-opsi">
@@ -112,7 +126,7 @@ export default function SoalTampil({ soal, nomor, jawaban, onJawab, seed, diperi
                       }
                     }}
                   />
-                  <KontenOpsi o={o} />
+                  <KontenOpsi o={o} rumus={soal.rumus} />
                   {diperiksa && benar && <span className="tampil-tanda" aria-label="Jawaban benar">✓</span>}
                 </label>
               </li>
@@ -160,7 +174,7 @@ export default function SoalTampil({ soal, nomor, jawaban, onJawab, seed, diperi
       {soal.tipe === 'bs' && (
         <table className="tampil-bs">
           <thead>
-            <tr><th>Pernyataan</th><th>Benar</th><th>Salah</th></tr>
+            <tr><th>Pernyataan</th><th>{soal.labelBenar || 'Benar'}</th><th>{soal.labelSalah || 'Salah'}</th></tr>
           </thead>
           <tbody>
             {soal.pernyataan.map((p) => {
@@ -172,15 +186,17 @@ export default function SoalTampil({ soal, nomor, jawaban, onJawab, seed, diperi
               return (
                 <tr key={p.id} className={ok ? 'tampil-bs--ok' : salah || (diperiksa && v === undefined) ? 'tampil-bs--no' : ''}>
                   <td>
-                    {p.teks}
+                    <TeksPolos teks={p.teks} rumus={soal.rumus} />
                     {diperiksa && v !== p.benar && (
-                      <span className="tampil-kunci tampil-kunci--salah"> Kunci: {p.benar ? 'Benar' : 'Salah'}</span>
+                      <span className="tampil-kunci tampil-kunci--salah">
+                        {' '}Kunci: {p.benar ? soal.labelBenar || 'Benar' : soal.labelSalah || 'Salah'}
+                      </span>
                     )}
                   </td>
                   <td><input type="radio" name={`bs-${soal.id}-${p.id}`} checked={v === true} disabled={diperiksa}
-                    aria-label="Benar" onChange={() => onJawab({ ...j, [p.id]: true })} /></td>
+                    aria-label={soal.labelBenar || 'Benar'} onChange={() => onJawab({ ...j, [p.id]: true })} /></td>
                   <td><input type="radio" name={`bs-${soal.id}-${p.id}`} checked={v === false} disabled={diperiksa}
-                    aria-label="Salah" onChange={() => onJawab({ ...j, [p.id]: false })} /></td>
+                    aria-label={soal.labelSalah || 'Salah'} onChange={() => onJawab({ ...j, [p.id]: false })} /></td>
                 </tr>
               )
             })}
@@ -229,7 +245,7 @@ export default function SoalTampil({ soal, nomor, jawaban, onJawab, seed, diperi
       {diperiksa && soal.pembahasan && (
         <div className="tampil-bahas">
           <strong>Pembahasan</strong>
-          <RichView html={soal.pembahasan} />
+          <RichView html={soal.pembahasan} rumus={soal.rumus} />
         </div>
       )}
     </section>

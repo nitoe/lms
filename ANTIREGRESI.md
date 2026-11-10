@@ -455,3 +455,27 @@ Jangan memaksa satu kolom sempit di desktop.
 76.9 **Rules:** mengikuti §74 — basis selalu `firestore.rules` terbaru di SDM01Penilaian. Pada 2026-11-10 salinan di repo LMS ternyata tertinggal dari SDM01Penilaian (batas soal 100 vs 300, `lms_kuis` siswa, `lms_jawaban`); kedua salinan disamakan di Tahap 1. Aturan tulis `tka_paket` sementara longgar untuk staf TKA dan akan diperketat di Tahap 3 bersama alur pengajuan try out.
 
 76.10 **Navigasi siswa:** item TKA ditambahkan dinamis (`SiswaLayout`), bukan di array `NAV` tetap, agar siswa kelas lain tidak melihatnya. Item nav memakai `flex: 1` sehingga 5 item muat di HP; cek lebar ~375px saat menambah item lagi. Ikon baru harus ditambahkan di `SiswaIconName` DAN di `switch` `SiswaIcon` sekaligus.
+
+## §77. Koreksi arah TKA: ruang khusus di pipeline kuis (menggantikan §76.3–76.5)
+
+77.1 **TKA tidak punya koleksi sendiri.** §76.3–76.5 (token/kunci/query pada `tka_*`) tidak berlaku karena koleksi `tka_*` tidak dibuat. Data TKA hidup di `lms_paket_soal` / `lms_kuis` / `lms_jawaban` / `lms_gambar` dengan mapel «TKA Matematika» atau «TKA Bahasa Indonesia» dan kelas 6A/6B/6C. Jangan membuat koleksi `tka_*` baru tanpa mengubah dokumen ini.
+
+77.2 **Akun `arif.azwar79@gmail.com` BUKAN admin** — wali kelas 5A dengan pengecualian email khusus TKA (uji sistem). Jangan menyebutnya admin di UI/dokumen, dan jangan mengandalkan role admin untuk akses TKA. Kode: `tkaAkses.ts` (`EMAIL_AKSES_KHUSUS_TKA`); rules: `tkaEmailKhusus()`. UID tidak dipakai; hanya email.
+
+77.3 **Rules: jangan ubah `tulisMapelKelas` / `lihatMapelKelas`** (dipakai Penilaian) untuk TKA. Akses TKA ditambahkan lewat `lmsTulisMapelKelas` / `lmsLihatMapelKelas` yang HANYA dipakai koleksi `lms_*`. Koleksi `lms_*` baru wajib memakai helper `lms…` agar ruang TKA ikut bekerja. Guru kelas 6 hanya untuk kelasnya (`tkaGuruKelas6(kelas)`); akun email khusus untuk semua kelas 6.
+
+77.4 **Daftar mapel TKA ada di tiga tempat:** `MAPEL_TKA` (`tkaAkses.ts`), `mapelTka()` (rules), dan `MAPEL_LMS` (skrip migrasi). Mengubah nama mapel berarti mengubah ketiganya dan menyalin ulang `firestore.rules` ke SDM01Penilaian.
+
+77.5 **Menu siswa:** kuis TKA tampil hanya di `SiswaTka`; `SiswaKuis` menyaringnya (`adalahMapelTka`). Jangan menghapus filter itu, atau kuis TKA muncul ganda. Item nav TKA dinamis (kelas 6), bukan di array `NAV` tetap.
+
+77.6 **Ruang TKA di `KelasDetail`** hanya menampilkan tab Bank Soal dan Kuis (Materi/Tugas/Pengumuman disembunyikan). Ruang TKA tidak muncul di `/kelas` (daftar berasal dari penugasan); masuknya lewat menu TKA.
+
+77.7 **Rumus (KaTeX):** hanya untuk soal bertanda `rumus: true` (soal TKA hasil migrasi), supaya tanda `$` di konten lain tidak berubah. Rumus dirender SETELAH HTML dibersihkan, dan hasilnya tidak dibersihkan ulang (keluaran KaTeX dari teks ter-escape). Jangan memanggil KaTeX pada node yang dikelola React (mutasi DOM merusak rekonsiliasi); pakai `htmlDenganRumus`/`teksDenganRumus` + `dangerouslySetInnerHTML`. KaTeX dimuat malas (`muatKatex`), jangan diimpor statis.
+
+77.8 **Stimulus:** gunakan `bersihHtmlStimulus` (mengizinkan tabel + colspan/rowspan/scope), bukan `bersihHtml`. Soal dengan `stimulus` menampilkan bacaan + gambar lewat `StimulusSoal`; `SoalTampil` memakai prop `tanpaStimulus` bila halaman pemanggil menampilkannya sendiri (jangan tampil dobel).
+
+77.9 **Soal B/S kustom (`labelBenar`/`labelSalah`)** hanya mengubah tampilan; skor tetap boolean di `nilaiKuisLms`. `pgk-cat` dengan ≠ 2 kolom belum didukung dan dilewati migrasi.
+
+77.10 **Migrasi:** `migrasi-tka-soal.mjs` dry-run bawaan, project terkunci, paket/gambar yang ada tidak ditimpa tanpa `--overwrite`, ID paket deterministik (`tka-<kelas>-<mapel>-<materi>-<n>`) sehingga aman diulang. Soal yang kuncinya tidak cocok dilewati dan dilaporkan; jangan menebak kunci.
+
+77.11 **Pengerjaan TKA:** timer berbasis tenggat (`mulaiMs` disimpan di progres; waktu tetap jalan saat keluar) dan kirim otomatis saat habis (dijaga `kirimRef` agar tidak ganda). Jadwal dan token hanya dicek di klien — bukan keamanan sungguhan; `nilaiKuisLms` belum menegakkannya.

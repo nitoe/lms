@@ -576,3 +576,17 @@
 - **Dokumentasi:** `docs/TKA.md` (akses, koleksi, langkah migrasi, tahapan).
 - File (LMS): `src/lib/tkaAkses.ts`, `src/types/tka.ts`, `src/pages/tka/TkaBeranda.tsx`, `src/pages/siswa/SiswaTka.tsx`, `src/App.tsx`, `src/components/Layout.tsx`, `src/pages/siswa/SiswaLayout.tsx`, `src/pages/siswa/SiswaIcon.tsx`, `firestore.rules`, `docs/TKA.md`. File (SDM01Penilaian): `firestore.rules` (lengkap), `scripts/migrasi-tka.mjs`, `scripts/cek-migrasi-tka.mjs`.
 - ANTIREGRESI §76.
+
+## 2026-11-10 — TKA Tahap 1 (revisi arah): TKA sebagai ruang khusus di pipeline kuis LMS
+
+Menggantikan rancangan koleksi `tka_*` pada entri TKA Tahap 1 di atas (belum dipakai; rules `tka_*` tidak jadi dipasang).
+
+- **Akses:** akun `arif.azwar79@gmail.com` adalah wali kelas 5A, bukan admin; mendapat **pengecualian berdasarkan email** untuk mengelola TKA semua kelas 6 (uji sistem). Guru kelas 6 = wali kelas 6A/6B/6C, mengelola kelasnya sendiri.
+- **Arsitektur:** TKA = ruang kelas khusus (6A/6B/6C × «TKA Matematika» / «TKA Bahasa Indonesia») memakai halaman ruang LMS (tab Bank Soal + Kuis), `lms_paket_soal`, `lms_kuis`, `nilaiKuisLms`, `lms_jawaban`. Tidak ada koleksi baru.
+- **Menu:** sidebar guru **TKA** → `/tka` (pilih kelas × mapel → ruang). Navigasi siswa kelas 6 mendapat **TKA** → `/siswa/tka`; kuis TKA tidak muncul di menu Kuis biasa.
+- **UI pengerjaan siswa:** halaman TKA baru menyempurnakan UI kuis: bacaan + soal dua kolom, rumus KaTeX, ragu-ragu, status sebagian, tinjau sebelum kirim, zoom huruf, timer berbasis tenggat + kirim otomatis, navigasi ←/→, rincian hasil per kompleksitas/materi, pemeriksaan jadwal & token (klien).
+- **Model soal:** field opsional baru `stimulus`, `tipeMateri`, `rumus` (semua soal) dan `labelBenar`/`labelSalah` (soal B/S). Komponen `StimulusSoal`, sanitizer `bersihHtmlStimulus` (mengizinkan tabel), `lib/matematika.ts` (KaTeX dimuat malas; hanya untuk soal `rumus: true`). Dependensi baru: `katex`, `@types/katex`.
+- **Rules:** helper `tkaEmailKhusus`, `tkaGuruKelas6`, `ruangTka`, `lmsTulisMapelKelas`, `lmsLihatMapelKelas`; hanya koleksi `lms_*` yang memakai helper baru (helper bersama Penilaian tidak diubah). `firestore.rules` LMS disinkronkan dengan salinan SDM01Penilaian.
+- **Migrasi:** hanya **bank soal** (`questionPool` → `lms_paket_soal` + `lms_gambar`) lewat `scripts/migrasi-tka-soal.mjs` (SDM01Penilaian); paket, token, hasil, dan akun tidak dibawa. Detail: `docs/TKA.md`.
+- File (LMS): `package.json`, `package-lock.json`, `src/lib/{tkaAkses,matematika,html}.ts`, `src/types/soal.ts`, `src/components/soal/{RichView,SoalTampil,StimulusSoal}.tsx`, `src/pages/tka/TkaBeranda.tsx`, `src/pages/siswa/{SiswaTka,SiswaKuis}.tsx`, `src/pages/KelasDetail.tsx`, `src/styles/{tka,soal}.css`, `firestore.rules` (salinan cermin), `docs/TKA.md`. Dihapus: `src/types/tka.ts` (tidak lagi dipakai). File (SDM01Penilaian): `firestore.rules` (lengkap), `scripts/migrasi-tka-soal.mjs`, `scripts/cek-migrasi-tka-soal.mjs`. Usang & dihapus: `scripts/migrasi-tka.mjs`, `scripts/cek-migrasi-tka.mjs`. Dibangun di atas LMS `584f616` dan SDM01Penilaian `09069e9`.
+- ANTIREGRESI §77.

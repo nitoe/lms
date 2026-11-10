@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { daftarRuangKelas, parseRuangId } from '../lib/kelasLms'
+import { adalahMapelTka } from '../lib/tkaAkses'
 import { aksenMapel, inisialMapel } from '../lib/uiAksen'
 import MateriPanel from '../components/MateriPanel'
 import KuisPanel from '../components/KuisPanel'
@@ -21,12 +22,16 @@ export default function KelasDetail() {
   const { profil } = useAuth()
   const [searchParams] = useSearchParams()
   const tabAwal = searchParams.get('tab')
-  const [tab, setTab] = useState<TabId>(
-    tabAwal === 'soal' || tabAwal === 'kuis' || tabAwal === 'pengumuman' ? tabAwal : 'materi',
-  )
-
   const decoded = decodeURIComponent(ruangId)
   const parsed = useMemo(() => parseRuangId(decoded), [decoded])
+  /** Ruang TKA (kelas 6): hanya Bank Soal dan Kuis (ANTIREGRESI §77). */
+  const ruangTka = adalahMapelTka(parsed?.mapel)
+  const tabsTampil = ruangTka ? TABS.filter((t) => t.id === 'soal' || t.id === 'kuis') : TABS
+  const [tab, setTab] = useState<TabId>(
+    ruangTka
+      ? tabAwal === 'kuis' ? 'kuis' : 'soal'
+      : tabAwal === 'soal' || tabAwal === 'kuis' || tabAwal === 'pengumuman' ? tabAwal : 'materi',
+  )
   const ruangList = useMemo(() => daftarRuangKelas(profil), [profil])
   const ruang = ruangList.find((r) => r.id === decoded)
 
@@ -66,7 +71,7 @@ export default function KelasDetail() {
                 {judulMapel}
               </h2>
               <p className="mt-1 text-sm text-white/80">
-                Materi, kuis, dan pengumuman untuk rombel ini
+                {ruangTka ? 'Bank soal dan kuis TKA untuk kelas 6' : 'Materi, kuis, dan pengumuman untuk rombel ini'}
               </p>
             </div>
             <div className="kelas-hero-mark" style={{ color: a.coverFg }} aria-hidden>
@@ -77,7 +82,7 @@ export default function KelasDetail() {
       </section>
 
       <div className="lms-tabs" role="tablist" aria-label="Bag ruang kelas">
-        {TABS.map((t) => (
+        {tabsTampil.map((t) => (
           <button
             key={t.id}
             type="button"

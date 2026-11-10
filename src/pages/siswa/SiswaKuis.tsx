@@ -4,6 +4,7 @@ import { httpsCallable } from 'firebase/functions'
 import { db, functions } from '../../lib/firebase'
 import { useSiswa } from '../../context/SiswaContext'
 import type { KuisLms, SoalKuis } from '../../types/kuis'
+import { adalahMapelTka } from '../../lib/tkaAkses'
 import { NAMA_JENIS_PENILAIAN } from '../../types/kuis'
 import type { JawabanSoal } from '../../types/soal'
 import SoalTampil from '../../components/soal/SoalTampil'
@@ -139,8 +140,9 @@ type HasilKirim = {
   status: string
 }
 
-function kuisUntukSiswa(k: { aktif?: boolean; modePelaksanaan?: string }) {
-  return k.aktif === true && k.modePelaksanaan !== 'offline'
+function kuisUntukSiswa(k: { aktif?: boolean; modePelaksanaan?: string; mapel?: string }) {
+  // Kuis TKA tampil di menu TKA (SiswaTka), bukan di sini (ANTIREGRESI §77).
+  return k.aktif === true && k.modePelaksanaan !== 'offline' && !adalahMapelTka(k.mapel)
 }
 
 export default function SiswaKuis() {

@@ -53,6 +53,15 @@ interface SoalDasar {
   kompleksitas: KompleksitasSoal
   /** HTML terbatas. Tampil setelah siswa menjawab. */
   pembahasan?: string
+  /**
+   * Stimulus / teks bacaan bersama soal (HTML; boleh tabel). Dipakai soal TKA.
+   * Dibersihkan dengan bersihHtmlStimulus (lib/html.ts), bukan bersihHtml.
+   */
+  stimulus?: string
+  /** Kategori materi (mis. Bilangan, Pemahaman Tekstual). Dipakai analisis TKA. */
+  tipeMateri?: string
+  /** true = tampilkan rumus `$...$` / `$$...$$` dengan KaTeX (soal TKA hasil migrasi). */
+  rumus?: boolean
 }
 
 export interface SoalPg extends SoalDasar {
@@ -99,6 +108,9 @@ export interface SoalBs extends SoalDasar {
   tipe: 'bs'
   pernyataan: PernyataanBs[]
   nilaiParsial: boolean
+  /** Label kolom kustom (soal TKA, mis. «Fakta» / «Opini»). Kosong = «Benar» / «Salah». */
+  labelBenar?: string
+  labelSalah?: string
 }
 
 export interface SoalIsian extends SoalDasar {

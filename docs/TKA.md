@@ -1,60 +1,81 @@
-# TKA (Tes Kemampuan Akademik) — modul kelas 6
+# TKA (Tes Kemampuan Akademik) — kelas 6
 
-Dimigrasi dari repo `nitoe/tka2026` (project Firebase `tka2026-sdm01`) ke LMS (`sdm01kukusan-2e735`).
-Catatan aturan agar tidak regresi: `ANTIREGRESI.md` §76.
+Dimigrasi dari repo `nitoe/tka2026`. **Hanya bank soal yang dimigrasi.** Kuis TKA berjalan di mesin kuis
+LMS (`lms_kuis` → Cloud Function `nilaiKuisLms` → `lms_jawaban`) dengan tampilan pengerjaan yang
+disempurnakan. Aturan agar tidak regresi: `ANTIREGRESI.md` §76–§77.
+
+## Konsep: TKA = ruang khusus kelas 6
+
+Tidak ada koleksi baru. Tiap kelas 6 punya dua ruang: **TKA Matematika** dan **TKA Bahasa Indonesia**
+(kelas 6A/6B/6C × dua mapel). Ruang itu memakai halaman ruang LMS biasa, hanya tab **Bank Soal** dan **Kuis**.
+
+| Data | Tempat |
+|---|---|
+| Bank soal TKA | `lms_paket_soal` (kelas 6x, mapel «TKA …», status `siap`) |
+| Gambar soal | `lms_gambar` |
+| Kuis TKA | `lms_kuis` (dibuat dari paket lewat wizard Kuis biasa) |
+| Hasil | `lms_jawaban` |
 
 ## Siapa boleh apa
 
 | Pihak | Dasar | Akses |
 |---|---|---|
-| **Admin TKA** (pembuat aplikasi) | UID `v4fQXsqCzYUtHrqcDM0u48sxIfn1` + email `arif.azwar79@gmail.com` | Semua: impor/hapus soal, hapus paket, lihat semua kelas 6 |
-| **Guru kelas 6** | `users/{uid}.waliKelas` memuat 6A/6B/6C, role `guru`/`guru_akademik` | Menu TKA, lihat bank soal, edit soal, susun paket, lihat hasil kelas 6 (kedua/ketiga kelas) |
-| **Siswa kelas 6** | claim `kelas` token `loginSiswaLms` = 6A/6B/6C | Menu TKA di navigasi siswa, paket aktif, hasil miliknya |
+| **Guru kelas 6** | `users/{uid}.waliKelas` memuat 6A/6B/6C, role `guru`/`guru_akademik` | Menu TKA; mengelola ruang TKA **kelasnya sendiri** |
+| **Akun uji** `arif.azwar79@gmail.com` | pengecualian berdasarkan email (wali kelas 5A, bukan admin) | Menu TKA; mengelola ruang TKA **semua kelas 6** |
+| **Siswa kelas 6** | claim `kelas` token `loginSiswaLms` = 6A/6B/6C | Menu TKA di navigasi siswa; hanya kuis TKA kelasnya |
 | Lainnya | — | Menu tidak tampil; rules menolak |
 
-Tiga tempat yang HARUS sinkron: `src/lib/tkaAkses.ts` (tampilan), `firestore.rules` (fungsi `tkaAdmin`, `tkaGuruKelas6`, `tkaStaf`, `tkaSiswa`), dan Cloud Function TKA (Tahap 2).
+Tiga tempat yang HARUS sinkron: `src/lib/tkaAkses.ts` (tampilan), `firestore.rules`
+(`tkaEmailKhusus`, `tkaGuruKelas6`, `ruangTka`, `lmsTulisMapelKelas`, `lmsLihatMapelKelas`), dan menu siswa
+(`SiswaLayout`). Helper bersama `tulisMapelKelas`/`lihatMapelKelas` (dipakai Penilaian) tidak diubah.
 
-## Koleksi
+## Migrasi bank soal dari tka2026
 
-| Koleksi | Isi | Baca | Tulis |
-|---|---|---|---|
-| `tka_soal` | bank soal + kunci | staf TKA | admin (buat/hapus), staf (edit) |
-| `tka_paket` | paket latihan/try out (tanpa token) | staf; siswa kelas 6 hanya `aktif == true` | staf (hapus: admin) |
-| `tka_token` | token try out per paket | staf | staf |
-| `tka_percobaan` | hasil pengerjaan | staf; siswa miliknya | Cloud Function / skrip migrasi; hapus (reset): staf |
-| `tka_sesi_live` | pemantauan langsung | staf | siswa (dokumen sendiri) |
-
-Tipe data ada di `src/types/tka.ts`.
-
-## Migrasi data dari tka2026
-
-Skrip ada di repo **SDM01Penilaian**: `scripts/migrasi-tka.mjs`.
+Skrip di repo **SDM01Penilaian**: `scripts/migrasi-tka-soal.mjs`.
 
 1. Deploy `firestore.rules` terbaru (`npm run deploy:rules` dari SDM01Penilaian).
 2. Siapkan dua kunci service account (jangan di-commit): project `tka2026-sdm01` (sumber) dan `sdm01kukusan-2e735` (tujuan).
 3. `cd functions && npm install` (sekali).
-4. Uji logika: `node scripts/cek-migrasi-tka.mjs`.
-5. **Dry-run** (tidak menulis): `node scripts/migrasi-tka.mjs --source-key=./tka-key.json --target-key=./baru-key.json`
-6. Baca ringkasan di layar dan file `migrasi-tka-laporan-*.json`: terutama `pemetaanSiswa.tidakCocok`, `ambigu`, `namaBeda`, dan `percobaanDilewati`.
-7. Perbaiki data siswa bila perlu (mis. NISN/nama kelas 6 di koleksi `siswa`), ulangi dry-run.
+4. Uji logika: `node scripts/cek-migrasi-tka-soal.mjs`.
+5. **Dry-run** (tidak menulis): `node scripts/migrasi-tka-soal.mjs --source-key=./tka-key.json --target-key=./baru-key.json`
+6. Baca ringkasan di layar dan `migrasi-tka-soal-laporan-*.json`: terutama `dilewati` (soal yang kuncinya tak bisa dicocokkan, atau `pgk-cat` bukan 2 kolom) dan `peringatan`.
+7. Perbaiki di sumber bila perlu, ulangi dry-run.
 8. **Apply**: tambahkan `--apply`.
-9. Buka menu **TKA** di LMS: kartu Soal/Paket/Hasil menampilkan jumlah dokumen.
+9. Buka menu **TKA** → pilih ruang → tab Bank Soal. Cek tampilan rumus, bacaan, dan gambar lewat tombol pratinjau.
+10. Buat kuis dari paket (tab Kuis), atur durasi/jadwal/token, lalu aktifkan.
 
-Pemetaan:
+Konversi:
 
-| tka2026 | LMS | Catatan |
-|---|---|---|
-| `questionPool` | `tka_soal` | ID tetap; `sekolahId`, `kunciHash` dibuang |
-| `packages` | `tka_paket` + `tka_token` | `token` dipisah; paket menyimpan `butuhToken`; `aktif` hanya `true` bila memang `true` |
-| `attempts` | `tka_percobaan` | `studentId` → `siswaId` (NISN, lalu nama+kelas); percobaan tak terpetakan tidak ditulis |
-| `students`, `staff`, `loginRoster`, `sekolah`, `subjects`, `soalPublik`, `liveSessions` | — | digantikan LMS / tidak diperlukan |
-| `pengajuanPaket`, `notifikasi` | — | dibawa di Tahap 3 |
+| tka2026 | LMS |
+|---|---|
+| `pg` | `pg` (opsi a, b, c…; kunci dicocokkan dari teks opsi) |
+| `pgk` | `pgk`, harus benar semua (`nilaiParsial=false`) |
+| `pgk-cat` 2 kolom | `bs` (label kolom kustom → `labelBenar`/`labelSalah`) |
+| `pgk-cat` ≠ 2 kolom | dilewati & dilaporkan |
+| `stimulus`/`bacaan` | `soal.stimulus` (HTML, boleh tabel) |
+| `stimulusImage` (data URL) | `lms_gambar` + `soal.gambarId` |
+| `tipeMateri`, `kompleksitas` (L1-…/L2-…/L3-…) | `tipeMateri`, `L1`/`L2`/`L3` |
+| `$...$`, `$$...$$` | tetap; `soal.rumus=true` → KaTeX |
 
-Skrip aman diulang: dokumen yang sudah ada tidak ditimpa kecuali `--overwrite`.
+Satu paket per (kelas, mapel, tipeMateri); dipecah bila >300 soal atau ±700 KB. Opsi tidak diacak secara
+bawaan (`--acak-opsi` untuk mengacak). Skrip aman diulang: paket/gambar yang sudah ada tidak ditimpa
+kecuali `--overwrite`.
 
-## Tahapan
+## Tampilan pengerjaan siswa (menyempurnakan kuis LMS)
 
-1. **Tahap 1 (ini):** menu TKA guru + siswa, penjaga akses, tipe data, rules, skrip migrasi.
-2. **Tahap 2:** pengerjaan siswa — Cloud Function `mulaiTkaLms` (cek token, jendela waktu, batas percobaan, kelas 6; kirim soal tanpa kunci) dan `kirimTkaLms` (nilai di server); timer, autosave, KaTeX.
-3. **Tahap 3:** bank soal (impor Excel/JSON) dan susun paket; alur pengajuan try out; rules tulis diperketat.
-4. **Tahap 4:** monitor langsung, rekap per kelas, analisis, regresi, perbandingan paket, PDF.
+`src/pages/siswa/SiswaTka.tsx`: bacaan + soal dua kolom di layar lebar, rumus KaTeX, penanda
+ragu-ragu, status «sebagian» (tabel B/S belum lengkap), tinjau sebelum kirim, zoom huruf (A−/A+),
+timer berbasis tenggat (tetap berjalan saat keluar) berwarna, kirim otomatis saat waktu habis, ←/→
+berpindah soal, rincian hasil per kompleksitas dan materi. Jadwal buka/tutup dan token diperiksa di
+klien.
+
+## Batasan yang perlu diketahui
+
+- Token dan jadwal kuis diperiksa **di klien** (token ikut terbaca dari dokumen kuis). `nilaiKuisLms`
+  belum menegakkan jadwal/token/batas percobaan. Bila TKA dipakai sebagai ujian berisiko tinggi, tambahkan
+  penegakan di Cloud Function.
+- Kuis LMS menyimpan snapshot soal **beserta kunci** di dokumen kuis yang dibaca siswa (pola yang sudah
+  ada, ANTIREGRESI §73). Dengan TKA ini sama saja.
+- Penilaian manual (`uraian`) tidak dipakai TKA. Fitur nilai manual di Cloud Function berbasis penugasan,
+  jadi tidak mencakup ruang TKA.
+- Soal `pgk-cat` dengan lebih dari 2 kolom belum didukung.
