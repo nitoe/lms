@@ -647,3 +647,9 @@
 - Rekap: filter sumber sesuai jenis (bukan semua tugas = SLM).
 - File: `src/types/tugas.ts`, `src/lib/tugas.ts`, `src/pages/TugasDetail.tsx`, `src/pages/TugasDashboard.tsx`, `src/lib/rekapNilai.ts`.
 - Rules: tidak perlu diubah (field opsional).
+
+## 2026-11-10 — Fix build: rekapNilai.ts TypeScript
+
+- `daftarRuangKelas(profil ?? null)` — `undefined` tidak lolos tipe `AppUser | null`.
+- Mapping `lms_bobot_slm.sumber`: `jenis` ditegaskan sebagai `'tugas' | 'kuis'` (`SumberNilaiSlm['jenis']`).
+- File: `src/lib/rekapNilai.ts` (lengkap).

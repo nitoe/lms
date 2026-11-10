@@ -34,7 +34,7 @@ export function daftarMapelKelasGuru(profil: AppUser | null | undefined): {
   kelas: string
   mapel: string
 }[] {
-  const ruang = daftarRuangKelas(profil)
+  const ruang = daftarRuangKelas(profil ?? null)
   const seen = new Set<string>()
   const out: { kelas: string; mapel: string }[] = []
   for (const r of ruang) {
@@ -154,13 +154,16 @@ export async function muatBobotSlm(
     const sumberRaw = Array.isArray(d.sumber) ? d.sumber : []
     const sumber: SumberNilaiSlm[] = sumberRaw
       .filter((x: unknown) => x && typeof x === 'object')
-      .map((x: Record<string, unknown>) => ({
-        id: String(x.id || ''),
-        jenis: x.jenis === 'kuis' ? 'kuis' : 'tugas',
-        sumberId: String(x.sumberId || ''),
-        judul: String(x.judul || ''),
-        bobot: typeof x.bobot === 'number' && x.bobot > 0 ? x.bobot : 1,
-      }))
+      .map((x: Record<string, unknown>): SumberNilaiSlm => {
+        const jenis: SumberNilaiSlm['jenis'] = x.jenis === 'kuis' ? 'kuis' : 'tugas'
+        return {
+          id: String(x.id || ''),
+          jenis,
+          sumberId: String(x.sumberId || ''),
+          judul: String(x.judul || ''),
+          bobot: typeof x.bobot === 'number' && x.bobot > 0 ? x.bobot : 1,
+        }
+      })
       .filter((s) => s.id)
     return {
       id: snap.id,
