@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { buatPaket, daftarPaket, hapusPaket, simpanPaket } from '../lib/soal'
 import { getTpMapelKelas } from '../lib/tpData'
+import { adalahMapelTka, materiTkaUntuk, TIPE_SOAL_TKA, KELAS_TKA_BANK } from '../lib/tkaAkses'
 import type { TpRingkas } from '../types/materi'
 import type { KompleksitasSoal, PaketSoal, TipeSoal } from '../types/soal'
 import {
@@ -57,6 +58,9 @@ function hitungKompleksitas(p: PaketSoal): Partial<Record<KompleksitasSoal, numb
 export default function BankSoalPanel({ kelas, mapel, ruangId }: Props) {
   const { profil } = useAuth()
   const navigate = useNavigate()
+  const isTka = adalahMapelTka(mapel)
+  const materiTka = materiTkaUntuk(mapel)
+  const tipePilihan: readonly TipeSoal[] = isTka ? TIPE_SOAL_TKA : URUTAN_TIPE
   const [list, setList] = useState<PaketSoal[] | null>(null)
   const [tpList, setTpList] = useState<TpRingkas[]>([])
   const [error, setError] = useState('')
@@ -81,6 +85,7 @@ export default function BankSoalPanel({ kelas, mapel, ruangId }: Props) {
 
   /* Filter & pengelompokan */
   const [filterTp, setFilterTp] = useState('')
+  const [filterMateri, setFilterMateri] = useState('')
   const [filterTipe, setFilterTipe] = useState<'' | TipeSoal>('')
   const [filterKompleksitas, setFilterKompleksitas] = useState<'' | KompleksitasSoal>('')
   const [filterStatus, setFilterStatus] = useState<'' | 'draf' | 'siap'>('')
@@ -89,17 +94,35 @@ export default function BankSoalPanel({ kelas, mapel, ruangId }: Props) {
   const muat = useCallback(async () => {
     setError('')
     try {
-      const [p, tp] = await Promise.all([
-        daftarPaket(kelas, mapel),
-        getTpMapelKelas(mapel, kelas).catch(() => []),
-      ])
-      setList(p)
-      setTpList(tp)
+      if (isTka) {
+        // Bank bersama: kelas kanonik «6» + sisa migrasi 6A/6B.
+        const kelasCari = Array.from(new Set([kelas, KELAS_TKA_BANK, '6A', '6B']))
+        const packs = await Promise.all(kelasCari.map((k) => daftarPaket(k, mapel)))
+        const byId = new Map<string, PaketSoal>()
+        for (const arr of packs) {
+          for (const p of arr) byId.set(p.id, p)
+        }
+        const merged = [...byId.values()]
+        const ms = (v: unknown) =>
+          v && typeof (v as { toMillis?: () => number }).toMillis === 'function'
+            ? (v as { toMillis: () => number }).toMillis()
+            : 0
+        merged.sort((a, b) => ms(b.updatedAt) - ms(a.updatedAt))
+        setList(merged)
+        setTpList([])
+      } else {
+        const [p, tp] = await Promise.all([
+          daftarPaket(kelas, mapel),
+          getTpMapelKelas(mapel, kelas).catch(() => []),
+        ])
+        setList(p)
+        setTpList(tp)
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Gagal memuat bank soal.')
       setList([])
     }
-  }, [kelas, mapel])
+  }, [kelas, mapel, isTka])
 
   useEffect(() => {
     void muat()
@@ -110,11 +133,17 @@ export default function BankSoalPanel({ kelas, mapel, ruangId }: Props) {
     const s = q.trim().toLowerCase()
     return list.filter((p) => {
       if (s) {
-        const hay = `${p.judul} ${p.tpNama ?? ''}`.toLowerCase()
+        const materiHay = (p.soal ?? []).map((x) => x.tipeMateri ?? '').join(' ')
+        const hay = `${p.judul} ${p.tpNama ?? ''} ${materiHay}`.toLowerCase()
         if (!hay.includes(s)) return false
       }
       if (filterStatus && p.status !== filterStatus) return false
-      if (filterTp) {
+      if (isTka) {
+        if (filterMateri) {
+          const ada = (p.soal ?? []).some((x) => (x.tipeMateri ?? '') === filterMateri)
+          if (!ada) return false
+        }
+      } else if (filterTp) {
         if (filterTp === '__tanpa__') {
           if (p.tpId) return false
         } else if (p.tpId !== filterTp) return false
@@ -129,7 +158,7 @@ export default function BankSoalPanel({ kelas, mapel, ruangId }: Props) {
       }
       return true
     })
-  }, [list, q, filterStatus, filterTp, filterTipe, filterKompleksitas])
+  }, [list, q, filterStatus, filterTp, filterMateri, filterTipe, filterKompleksitas, isTka])
 
   type Grup = { kunci: string; label: string; item: PaketSoal[] }
 
@@ -202,9 +231,9 @@ export default function BankSoalPanel({ kelas, mapel, ruangId }: Props) {
     setBusy(true)
     setError('')
     try {
-      const tp = tpList.find((t) => t.id === tpId)
+      const tp = !isTka ? tpList.find((t) => t.id === tpId) : undefined
       const id = await buatPaket({
-        kelas,
+        kelas: isTka ? KELAS_TKA_BANK : kelas,
         mapel,
         judul,
         tpId: tp?.id,
@@ -280,12 +309,12 @@ export default function BankSoalPanel({ kelas, mapel, ruangId }: Props) {
 
       // Buat paket baru dengan soal hasil import (ganti soal awal)
       const id = await buatPaket({
-        kelas,
+        kelas: isTka ? KELAS_TKA_BANK : kelas,
         mapel,
         judul: judulImport,
-        tpId: tpDipilih?.id,
-        tpNomor: tpDipilih?.nomorTp,
-        tpNama: tpDipilih?.namaTp,
+        tpId: isTka ? undefined : tpDipilih?.id,
+        tpNomor: isTka ? undefined : tpDipilih?.nomorTp,
+        tpNama: isTka ? undefined : tpDipilih?.namaTp,
         namaGuru: profil?.nama,
       })
       // Simpan soal hasil import (buatPaket membuat 1 soal kosong; kita timpa)
@@ -429,21 +458,33 @@ export default function BankSoalPanel({ kelas, mapel, ruangId }: Props) {
 
       {/* Filter & grup — bantu merancang kuis dari bank */}
       <div className="paket-filter" role="search" aria-label="Filter dan kelompokkan bank soal">
-        <label className="paket-filter-field">
-          <span>TP / materi</span>
-          <select value={filterTp} onChange={(e) => setFilterTp(e.target.value)}>
-            <option value="">Semua TP</option>
-            <option value="__tanpa__">Tanpa TP</option>
-            {tpList.map((t) => (
-              <option key={t.id} value={t.id}>TP {t.nomorTp}. {t.namaTp}</option>
-            ))}
-          </select>
-        </label>
+        {isTka ? (
+          <label className="paket-filter-field">
+            <span>Materi</span>
+            <select value={filterMateri} onChange={(e) => setFilterMateri(e.target.value)}>
+              <option value="">Semua materi</option>
+              {materiTka.map((m) => (
+                <option key={m} value={m}>{m}</option>
+              ))}
+            </select>
+          </label>
+        ) : (
+          <label className="paket-filter-field">
+            <span>TP / materi</span>
+            <select value={filterTp} onChange={(e) => setFilterTp(e.target.value)}>
+              <option value="">Semua TP</option>
+              <option value="__tanpa__">Tanpa TP</option>
+              {tpList.map((t) => (
+                <option key={t.id} value={t.id}>TP {t.nomorTp}. {t.namaTp}</option>
+              ))}
+            </select>
+          </label>
+        )}
         <label className="paket-filter-field">
           <span>Bentuk soal</span>
           <select value={filterTipe} onChange={(e) => setFilterTipe(e.target.value as '' | TipeSoal)}>
             <option value="">Semua bentuk</option>
-            {URUTAN_TIPE.map((t) => (
+            {tipePilihan.map((t) => (
               <option key={t} value={t}>{NAMA_TIPE[t]}</option>
             ))}
           </select>
@@ -468,15 +509,17 @@ export default function BankSoalPanel({ kelas, mapel, ruangId }: Props) {
             <option value="siap">Siap</option>
           </select>
         </label>
-        <label className="paket-filter-field">
-          <span>Kelompokkan</span>
-          <select value={grupMode} onChange={(e) => setGrupMode(e.target.value as GrupMode)}>
-            <option value="tidak">Tidak dikelompokkan</option>
-            <option value="tp">Menurut TP / materi</option>
-            <option value="tipe">Menurut bentuk soal</option>
-            <option value="kompleksitas">Menurut kompleksitas</option>
-          </select>
-        </label>
+        {!isTka && (
+          <label className="paket-filter-field">
+            <span>Kelompokkan</span>
+            <select value={grupMode} onChange={(e) => setGrupMode(e.target.value as GrupMode)}>
+              <option value="tidak">Tidak dikelompokkan</option>
+              <option value="tp">Menurut TP / materi</option>
+              <option value="tipe">Menurut bentuk soal</option>
+              <option value="kompleksitas">Menurut kompleksitas</option>
+            </select>
+          </label>
+        )}
       </div>
 
       {error && (
@@ -503,15 +546,17 @@ export default function BankSoalPanel({ kelas, mapel, ruangId }: Props) {
                 placeholder="Contoh: Latihan pecahan senilai"
               />
             </label>
-            <label className="materi-field">
-              <span>Tujuan Pembelajaran (opsional)</span>
-              <select value={tpId} onChange={(e) => setTpId(e.target.value)}>
-                <option value="">— tanpa TP —</option>
-                {tpList.map((t) => (
-                  <option key={t.id} value={t.id}>TP {t.nomorTp}. {t.namaTp}</option>
-                ))}
-              </select>
-            </label>
+            {!isTka && (
+              <label className="materi-field">
+                <span>Tujuan Pembelajaran (opsional)</span>
+                <select value={tpId} onChange={(e) => setTpId(e.target.value)}>
+                  <option value="">— tanpa TP —</option>
+                  {tpList.map((t) => (
+                    <option key={t.id} value={t.id}>TP {t.nomorTp}. {t.namaTp}</option>
+                  ))}
+                </select>
+              </label>
+            )}
           </div>
           <div className="mt-3 flex justify-end">
             <button type="submit" className="lms-btn-primary" disabled={busy || !judul.trim()}>

@@ -559,3 +559,20 @@ Jangan memaksa satu kolom sempit di desktop.
 84.5 **`rumus: true` otomatis untuk soal baru di ruang TKA** (efek di `TkaFieldEditor`). Bila efek itu dihapus, rumus `$…$` tampil mentah di soal baru.
 
 84.6 **`analisisSoal`:** soal dengan `stimulus` teks dianggap sudah punya stimulus. Jangan mengembalikan pemeriksaan hanya-gambar.
+
+## §85. TKA bank bersama + 3 mapel (tanpa 6C)
+
+85.1 **Tidak ada pemisahan bank per rombel.** Bank soal TKA memakai kelas kanonik `6` (`KELAS_TKA_BANK`). Dashboard menampilkan 3 kartu mapel saja. Jangan mengembalikan grid 6A/6B/6C × mapel.
+
+85.2 **Kelas 6C tidak dipakai.** `KELAS_TKA` = `['6A','6B']`. Rules `tkaKelas6` menerima `6`, `6A`, `6B` saja.
+
+85.3 **Mapel TKA** = `TKA Matematika`, `TKA Bahasa Indonesia`, `TKA IPA`. Harus sama di `tkaAkses.ts` (`MAPEL_TKA`), `firestore.rules` (`mapelTka`), dan skrip migrasi.
+
+85.4 **Filter bank TKA ≠ filter mapel biasa.** Ganti TP dengan **Materi** (daftar tetap di `MATERI_TKA`). Sembunyikan «Kelompokkan». Bentuk soal hanya `pg` | `pgk` | `bs`.
+
+85.5 **Akses guru:** wali 6A **atau** 6B (atau email khusus) boleh baca/tulis semua ruang TKA (kelas `6` dan sisa 6A/6B). Jangan membatasi lagi ke «hanya kelas wali» untuk mapel TKA.
+
+85.6 **Siswa:** query kuis aktif untuk `kelas` token **dan** kelas `6` (mapel TKA). Rules `lms_kuis` read siswa harus mengizinkan keduanya.
+
+85.7 **`ruangTka(mapel)`** hanya menerima mapel (kelas selalu `6`). Pemanggil lama yang mengirim `(kelas, mapel)` harus disesuaikan.
+

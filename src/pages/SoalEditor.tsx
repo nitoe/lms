@@ -21,6 +21,7 @@ import { getTpMapelKelas } from '../lib/tpData'
 import type { TpRingkas } from '../types/materi'
 import type { PaketSoal, Soal, TipeSoal } from '../types/soal'
 import { BATAS_SOAL_PER_PAKET, NAMA_TIPE, URUTAN_TIPE, normalisasiKompleksitas } from '../types/soal'
+import { adalahMapelTka, TIPE_SOAL_TKA } from '../lib/tkaAkses'
 import '../styles/soal.css'
 
 type StatusSimpan = 'tersimpan' | 'menunggu' | 'menyimpan' | 'gagal'
@@ -34,6 +35,11 @@ const LABEL_SIMPAN: Record<StatusSimpan, string> = {
 
 const SINGKAT_TIPE: Record<TipeSoal, string> = {
   pg: 'PG', pgk: 'PG kompleks', jodoh: 'Jodoh', bs: 'B/S', isian: 'Isian', uraian: 'Uraian',
+}
+
+
+function daftarTipeUntuk(mapel?: string): readonly TipeSoal[] {
+  return adalahMapelTka(mapel) ? TIPE_SOAL_TKA : URUTAN_TIPE
 }
 
 export default function SoalEditor() {
@@ -324,7 +330,7 @@ export default function SoalEditor() {
                 disabled={terkunci || soalList.length >= BATAS_SOAL_PER_PAKET} onClick={() => setMenuTambah((v) => !v)}>+</button>
               {menuTambah && (
                 <ul className="soal-menu soal-menu--tambah" role="menu">
-                  {URUTAN_TIPE.map((t) => (
+                  {daftarTipeUntuk(paket?.mapel).map((t) => (
                     <li key={t}><button type="button" role="menuitem" onClick={() => tambahSoal(t)}>{NAMA_TIPE[t]}</button></li>
                   ))}
                 </ul>
@@ -427,7 +433,7 @@ export default function SoalEditor() {
               <p className="font-medium text-slate-700">Paket ini belum punya soal</p>
               <p className="mt-1">Pilih tipe soal pertama:</p>
               <div className="mt-3 flex flex-wrap justify-center gap-2">
-                {URUTAN_TIPE.map((t) => (
+                {daftarTipeUntuk(paket?.mapel).map((t) => (
                   <button key={t} type="button" className="lms-btn-secondary" onClick={() => tambahSoal(t)}>{NAMA_TIPE[t]}</button>
                 ))}
               </div>

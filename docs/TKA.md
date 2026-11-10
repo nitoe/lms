@@ -2,32 +2,50 @@
 
 Dimigrasi dari repo `nitoe/tka2026`. **Hanya bank soal yang dimigrasi.** Kuis TKA berjalan di mesin kuis
 LMS (`lms_kuis` → Cloud Function `nilaiKuisLms` → `lms_jawaban`) dengan tampilan pengerjaan yang
-disempurnakan. Aturan agar tidak regresi: `ANTIREGRESI.md` §76–§77.
+disempurnakan. Aturan agar tidak regresi: `ANTIREGRESI.md` §76–§77 dan **§85**.
 
-## Konsep: TKA = ruang khusus kelas 6
+## Konsep: TKA = bank bersama kelas 6
 
-Tidak ada koleksi baru. Tiap kelas 6 punya dua ruang: **TKA Matematika** dan **TKA Bahasa Indonesia**
-(kelas 6A/6B/6C × dua mapel). Ruang itu memakai halaman ruang LMS biasa, hanya tab **Bank Soal** dan **Kuis**.
+Tidak ada koleksi baru. Bank soal TKA disimpan dengan **kelas kanonik `6`** (berlaku untuk 6A dan 6B)
+dan tiga mapel: **TKA Matematika**, **TKA Bahasa Indonesia**, **TKA IPA**. Dashboard guru menampilkan
+tiga kontainer mapel — tanpa pemisahan per rombel dan tanpa 6C.
 
 | Data | Tempat |
 |---|---|
-| Bank soal TKA | `lms_paket_soal` (kelas 6x, mapel «TKA …», status `siap`) |
+| Bank soal TKA | `lms_paket_soal` (kelas `6`, mapel «TKA …», status `siap`) |
 | Gambar soal | `lms_gambar` |
-| Kuis TKA | `lms_kuis` (dibuat dari paket lewat wizard Kuis biasa) |
+| Kuis TKA | `lms_kuis` (kelas `6` atau rombel 6A/6B; dibuat dari paket lewat wizard Kuis) |
 | Hasil | `lms_jawaban` |
+
+### Materi (pengganti TP)
+
+| Mapel | Materi tetap |
+|---|---|
+| TKA Matematika | Bilangan · Geometri dan Pengukuran · Data |
+| TKA Bahasa Indonesia | Pemahaman Tekstual · Pemahaman Inferensial · Evaluasi dan Apresiasi |
+| TKA IPA | Sistem Organ Manusia · Ekosistem dan Lingkungan · Gelombang Bunyi dan Cahaya · Energi Alternatif · Bumi dan Antariksa |
+
+Soal TKA mengukur **keterampilan proses** pada materi di atas, bukan hapalan semata.
+
+### Bentuk soal TKA
+
+Hanya tiga: **pilihan ganda (pg)**, **pilihan ganda kompleks (pgk)**, **benar/salah–kategori (bs)**
+dengan label kolom kustom (Sesuai/Tidak sesuai, Relevan/Tidak relevan, dll.). PGK dan BS: maksimal
+4 pernyataan/opsi; biasanya 2 yang benar/sesuai.
 
 ## Siapa boleh apa
 
 | Pihak | Dasar | Akses |
 |---|---|---|
-| **Guru kelas 6** | `users/{uid}.waliKelas` memuat 6A/6B/6C, role `guru`/`guru_akademik` | Menu TKA; mengelola ruang TKA **kelasnya sendiri** |
-| **Akun uji** `arif.azwar79@gmail.com` | pengecualian berdasarkan email (wali kelas 5A, bukan admin) | Menu TKA; mengelola ruang TKA **semua kelas 6** |
-| **Siswa kelas 6** | claim `kelas` token `loginSiswaLms` = 6A/6B/6C | Menu TKA di navigasi siswa; hanya kuis TKA kelasnya |
+| **Guru kelas 6** | `users/{uid}.waliKelas` memuat 6A atau 6B, role `guru`/`guru_akademik` | Menu TKA; mengelola **bank bersama** ketiga mapel |
+| **Akun uji** `arif.azwar79@gmail.com` | pengecualian berdasarkan email (wali kelas 5A, bukan admin) | Menu TKA; akses uji bank bersama |
+| **Siswa kelas 6** | claim `kelas` token `loginSiswaLms` = 6A/6B | Menu TKA; kuis aktif kelasnya atau kelas `6` mapel TKA |
 | Lainnya | — | Menu tidak tampil; rules menolak |
 
 Tiga tempat yang HARUS sinkron: `src/lib/tkaAkses.ts` (tampilan), `firestore.rules`
-(`tkaEmailKhusus`, `tkaGuruKelas6`, `ruangTka`, `lmsTulisMapelKelas`, `lmsLihatMapelKelas`), dan menu siswa
+(`tkaEmailKhusus`, `tkaGuruKelas6Any`, `ruangTka`, `mapelTka`, `lmsTulisMapelKelas`, `lmsLihatMapelKelas`), dan menu siswa
 (`SiswaLayout`). Helper bersama `tulisMapelKelas`/`lihatMapelKelas` (dipakai Penilaian) tidak diubah.
+
 
 ## Migrasi bank soal dari tka2026
 

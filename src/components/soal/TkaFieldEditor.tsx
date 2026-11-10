@@ -1,6 +1,6 @@
 import { useEffect, useId } from 'react'
 import StimulusSoal from './StimulusSoal'
-import { adalahMapelTka } from '../../lib/tkaAkses'
+import { adalahMapelTka, materiTkaUntuk } from '../../lib/tkaAkses'
 import type { Soal } from '../../types/soal'
 
 /** Editor field khusus TKA hanya untuk ruang TKA atau soal yang sudah memuat field TKA. */
@@ -8,13 +8,12 @@ export function perluEditorTka(soal: Soal, mapel?: string): boolean {
   return adalahMapelTka(mapel) || !!soal.stimulus || !!soal.rumus || !!soal.tipeMateri
 }
 
-const MATERI_BI = ['Pemahaman Tekstual', 'Inferensial', 'Evaluasi dan Apresiasi']
-const MATERI_MTK = ['Bilangan', 'Geometri', 'Pengukuran', 'Data dan Peluang', 'Aljabar']
-
 /**
  * Bahan bacaan (stimulus), materi, rumus, dan label kolom Benar/Salah kustom untuk soal TKA.
  * Stimulus disimpan apa adanya (teks biasa atau HTML) dan dibersihkan saat ditampilkan
  * (bersihHtmlStimulus) — textarea dipakai, bukan RichEditor, agar tabel tidak hilang saat disunting.
+ *
+ * Materi memakai daftar tetap per mapel (ANTIREGRESI §85), bukan TP.
  */
 export default function TkaFieldEditor({
   soal,
@@ -27,7 +26,7 @@ export default function TkaFieldEditor({
 }) {
   const idMateri = useId()
   const tka = adalahMapelTka(mapel)
-  const saran = mapel === 'TKA Bahasa Indonesia' ? MATERI_BI : mapel === 'TKA Matematika' ? MATERI_MTK : []
+  const saran = materiTkaUntuk(mapel)
   const set = (patch: Partial<Soal>) => onChange({ ...soal, ...patch } as Soal)
 
   // Soal baru di ruang TKA: rumus aktif secara bawaan (soal hasil migrasi sudah true).
@@ -69,24 +68,47 @@ export default function TkaFieldEditor({
       <div className="tka-editor-baris">
         <label className="tka-editor-kolom">
           <span>Materi</span>
-          <input
-            className="soal-input"
-            list={idMateri}
-            maxLength={80}
-            value={soal.tipeMateri ?? ''}
-            placeholder={saran[0] ? `mis. ${saran[0]}` : 'mis. Bilangan'}
-            onChange={(e) => set({ tipeMateri: e.target.value.trim() ? e.target.value : undefined })}
-          />
-          <datalist id={idMateri}>
-            {saran.map((m) => (
-              <option key={m} value={m} />
-            ))}
-          </datalist>
+          {saran.length > 0 ? (
+            <select
+              className="soal-input"
+              value={soal.tipeMateri ?? ''}
+              onChange={(e) => set({ tipeMateri: e.target.value.trim() ? e.target.value : undefined })}
+            >
+              <option value="">— pilih materi —</option>
+              {saran.map((m) => (
+                <option key={m} value={m}>
+                  {m}
+                </option>
+              ))}
+              {/* Pertahankan nilai lama yang tidak ada di daftar (hasil migrasi). */}
+              {soal.tipeMateri && !saran.includes(soal.tipeMateri) && (
+                <option value={soal.tipeMateri}>{soal.tipeMateri} (lama)</option>
+              )}
+            </select>
+          ) : (
+            <input
+              className="soal-input"
+              list={idMateri}
+              maxLength={80}
+              value={soal.tipeMateri ?? ''}
+              placeholder="mis. Bilangan"
+              onChange={(e) => set({ tipeMateri: e.target.value.trim() ? e.target.value : undefined })}
+            />
+          )}
+          {saran.length === 0 && (
+            <datalist id={idMateri}>
+              {saran.map((m) => (
+                <option key={m} value={m} />
+              ))}
+            </datalist>
+          )}
         </label>
 
         <label className="tka-editor-cek">
           <input type="checkbox" checked={!!soal.rumus} onChange={(e) => set({ rumus: e.target.checked || undefined })} />
-          <span>Tampilkan rumus (<code>$…$</code>)</span>
+          <span>
+            Tampilkan rumus (<code>$…$</code>)
+          </span>
         </label>
       </div>
 
@@ -98,7 +120,7 @@ export default function TkaFieldEditor({
               className="soal-input"
               maxLength={30}
               value={soal.labelBenar ?? ''}
-              placeholder="Benar"
+              placeholder="Benar / Sesuai / Relevan"
               onChange={(e) => set({ labelBenar: e.target.value.trim() ? e.target.value : undefined })}
             />
           </label>
@@ -108,7 +130,7 @@ export default function TkaFieldEditor({
               className="soal-input"
               maxLength={30}
               value={soal.labelSalah ?? ''}
-              placeholder="Salah"
+              placeholder="Salah / Tidak sesuai / Tidak relevan"
               onChange={(e) => set({ labelSalah: e.target.value.trim() ? e.target.value : undefined })}
             />
           </label>

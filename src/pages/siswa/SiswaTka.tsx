@@ -4,7 +4,7 @@ import { collection, getDocs, query, where } from 'firebase/firestore'
 import { httpsCallable } from 'firebase/functions'
 import { db, functions } from '../../lib/firebase'
 import { useSiswa } from '../../context/SiswaContext'
-import { MAPEL_TKA, adalahMapelTka, bolehTkaSiswa } from '../../lib/tkaAkses'
+import { MAPEL_TKA, KELAS_TKA_BANK, adalahMapelTka, bolehTkaSiswa } from '../../lib/tkaAkses'
 import type { KuisLms, SoalKuis } from '../../types/kuis'
 import { NAMA_JENIS_PENILAIAN } from '../../types/kuis'
 import type { JawabanSoal } from '../../types/soal'
@@ -192,12 +192,22 @@ function TkaIsi({ siswaId, kelas }: { siswaId: string; kelas: string }) {
     setGalat('')
     try {
       // Hanya equality (tanpa composite index). Filter mapel TKA di klien.
-      const snap = await getDocs(
-        query(collection(db, 'lms_kuis'), where('kelas', '==', kelas), where('aktif', '==', true)),
+      // Bank/kuis bersama kelas «6» + kuis yang menarget rombel siswa.
+      const kelasCari = Array.from(new Set([kelas, KELAS_TKA_BANK]))
+      const snaps = await Promise.all(
+        kelasCari.map((k) =>
+          getDocs(query(collection(db, 'lms_kuis'), where('kelas', '==', k), where('aktif', '==', true))),
+        ),
       )
-      const kuis = snap.docs
-        .map((d) => ({ id: d.id, ...d.data() }) as KuisLms)
-        .filter((k) => adalahMapelTka(k.mapel) && k.modePelaksanaan !== 'offline')
+      const byId = new Map<string, KuisLms>()
+      for (const snap of snaps) {
+        for (const d of snap.docs) {
+          byId.set(d.id, { id: d.id, ...d.data() } as KuisLms)
+        }
+      }
+      const kuis = [...byId.values()].filter(
+        (k) => adalahMapelTka(k.mapel) && k.modePelaksanaan !== 'offline',
+      )
       setList(kuis)
       const pasang = await Promise.all(
         kuis.map(async (k) => {

@@ -3,6 +3,20 @@
 > Append-only: entri baru ditambahkan di BAWAH, entri lama tidak diubah.
 > Versi mengacu ke `package.json` (saat ini `0.1.0`); belum ada rilis bertag.
 
+## 2026-11-10 — TKA: bank bersama, 3 mapel, filter materi
+
+- **Dashboard TKA:** 3 kontainer saja (Matematika, Bahasa Indonesia, IPA) — tanpa pemisahan 6A/6B/6C.
+- **Kelas 6C dihapus** dari ruang TKA; rombel siswa = 6A & 6B.
+- **Bank soal bersama:** disimpan dengan kelas kanonik `6`; berlaku untuk 6A dan 6B. Paket lama 6A/6B tetap terbaca (merge di klien).
+- **Filter bank TKA:** Materi (daftar tetap) menggantikan TP; bentuk soal hanya PG / PG kompleks / Benar-Salah (kategori); tanpa «Kelompokkan».
+- **Materi tetap:**
+  - Matematika: Bilangan, Geometri dan Pengukuran, Data
+  - Bahasa Indonesia: Pemahaman Tekstual, Pemahaman Inferensial, Evaluasi dan Apresiasi
+  - IPA: Sistem Organ Manusia, Ekosistem dan Lingkungan, Gelombang Bunyi dan Cahaya, Energi Alternatif, Bumi dan Antariksa
+- **Rules:** `mapelTka` + `TKA IPA`; `tkaKelas6` = `6`/`6A`/`6B`; wali 6A atau 6B kelola bank bersama; siswa 6A/6B baca kuis aktif kelasnya **atau** kelas `6` mapel TKA.
+- File: `src/lib/tkaAkses.ts`, `src/pages/tka/TkaBeranda.tsx`, `src/components/BankSoalPanel.tsx`, `src/components/soal/TkaFieldEditor.tsx`, `src/pages/SoalEditor.tsx`, `src/pages/siswa/SiswaTka.tsx`, `firestore.rules` (lengkap → SDM01Penilaian), `docs/TKA.md`.
+- ANTIREGRESI §85.
+
 ## 2026-11-10 — Rekap Nilai: fondasi (Tahap 1)
 
 - Menu sidebar **Rekap Nilai** (`/rekap-nilai`) — pusat agregasi nilai TP untuk sinkron ke aplikasi Penilaian.
