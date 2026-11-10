@@ -40,10 +40,12 @@ export interface KategoriPenilaian {
  * Skala selalu 0–100. Sinkron ke Penilaian dilakukan lewat tombol di Daftar nilai, bukan di sini.
  */
 export interface PengaturanPenilaianTugas {
-  /** Aspek rubrik (asesmen kinerja). */
+  /** Aspek rubrik (asesmen kinerja) — menjadi kolom di daftar nilai. */
   kategori: KategoriPenilaian[]
-  /** Tabel konversi nilai → predikat (boleh diedit guru). */
+  /** Tabel konversi nilai → predikat (boleh diedit guru kecuali terkunci). */
   rentangPredikat: RentangPredikat[]
+  /** Jika true, tabel rentang tidak bisa diubah (terkunci guru). */
+  rentangTerkunci?: boolean
   catatan?: string
 }
 

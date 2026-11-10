@@ -3,6 +3,16 @@
 > Append-only: entri baru ditambahkan di BAWAH, entri lama tidak diubah.
 > Versi mengacu ke `package.json` (saat ini `0.1.0`); belum ada rilis bertag.
 
+## 2026-11-10 — Daftar nilai terhubung rubrik + UI penilaian
+
+- Setiap **kategori penilaian** menjadi kolom skor di Daftar nilai; rata-rata otomatis; nilai akhir + predikat.
+- Predikat **hanya bisa dipilih** oleh akun AI (`arif.azwar79@gmail.com`); guru lain melihat predikat otomatis dari nilai.
+- Tombol generate (ikon) di samping predikat: mengisi skor tiap kategori dari predikat (akun AI saja).
+- **Kunci rentang** predikat: guru bisa mengunci/membuka edit tabel KKM.
+- Simpan `nilaiPerKategori` + `nilaiRataRata` di `lms_nilai_tugas`.
+- UI pengaturan penilaian & lembar nilai diperjelas (kartu rubrik, tabel sticky nama, highlight C-).
+- File: `src/types/tugas.ts`, `src/lib/nilaiTugas.ts`, `src/lib/penilaianTugas.ts`, `src/pages/TugasDetail.tsx`.
+
 ## 2026-11-10 — Pengaturan penilaian: rubrik + predikat KKM 70
 
 - Hapus skala maks, bobot mapel, dan opsi sinkron dari form pengaturan penilaian.

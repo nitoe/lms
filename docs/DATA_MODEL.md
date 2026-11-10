@@ -87,7 +87,7 @@ Batas: PDF/gambar 10 MB, video 50 MB.
 | tpId / tpNomor / tpNama | | Mirror TP pertama (kompatibilitas) |
 | tenggat | timestamp? | Tenggat waktu |
 | aktif | boolean | Status publish |
-| pengaturanPenilaian | map? | `{kategori[], rentangPredikat[], catatan}` — rubrik + predikat KKM 70 |
+| pengaturanPenilaian | map? | `{kategori[], rentangPredikat[], rentangTerkunci?, catatan}` |
 | dibuatOleh / dibuatOlehNama | string | |
 | jumlahPengumpulan | number | Denormalisasi |
 | createdAt / updatedAt | timestamp | |
@@ -105,7 +105,9 @@ ID disarankan: `{tugasId}_{siswaId}`.
 | siswaNama | string | Denormalisasi |
 | kelas | string | Rombel |
 | mapel | string | Mapel utama tugas |
-| nilai | number | 0–100 |
+| nilaiPerKategori | map? | skor per `kategoriId` (0–100) |
+| nilaiRataRata | number? | rata-rata / berbobot |
+| nilai | number | nilai akhir 0–100 |
 | predikat | string? | mis. B+, C- |
 | komentar | string? | |
 | dinilaiOleh / dinilaiOlehNama | string | |

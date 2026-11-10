@@ -76,6 +76,7 @@ export function normalisasiPengaturan(
   return {
     kategori,
     rentangPredikat: rentang,
+    rentangTerkunci: r.rentangTerkunci === true,
     catatan: typeof r.catatan === 'string' ? r.catatan : undefined,
   }
 }
@@ -191,4 +192,32 @@ export function validasiRentang(rentang: RentangPredikat[]): string | null {
     }
   }
   return null
+}
+
+/**
+ * Dari predikat target, hasilkan skor per kategori (variasi acak dalam rentang predikat)
+ * lalu rata-rata. Dipakai tombol generate AI di daftar nilai.
+ */
+export function generateSkorPerKategoriDariPredikat(
+  predikat: string,
+  kategori: KategoriPenilaian[],
+  rentang: RentangPredikat[] = RENTANG_PREDIKAT_DEFAULT,
+): { perKategori: Record<string, number>; rataRata: number; nilaiAkhir: number } {
+  const r = rentang.find((x) => x.predikat === predikat)
+  const min = r ? Math.ceil(r.min) : 70
+  const max = r ? Math.floor(r.max) : 100
+  const perKategori: Record<string, number> = {}
+  if (!kategori.length) {
+    const n = nilaiDariPredikat(predikat, rentang, 'acak')
+    return { perKategori: {}, rataRata: n, nilaiAkhir: n }
+  }
+  const scores: number[] = []
+  for (const k of kategori) {
+    const span = Math.max(0, max - min)
+    const skor = span === 0 ? min : min + Math.floor(Math.random() * (span + 1))
+    perKategori[k.id] = skor
+    scores.push(skor)
+  }
+  const rata = Math.round((scores.reduce((a, b) => a + b, 0) / scores.length) * 10) / 10
+  return { perKategori, rataRata: rata, nilaiAkhir: Math.round(rata) }
 }
