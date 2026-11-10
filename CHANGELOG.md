@@ -3,6 +3,11 @@
 > Append-only: entri baru ditambahkan di BAWAH, entri lama tidak diubah.
 > Versi mengacu ke `package.json` (saat ini `0.1.0`); belum ada rilis bertag.
 
+## 2026-11-10 — Fix simpan pengaturan penilaian (undefined Firestore)
+
+- `updateDoc` gagal karena `pengaturanPenilaian.catatan` (dan field opsional lain) bernilai `undefined`.
+- `sanitasiPengaturanPenilaian` di `src/lib/tugas.ts`: kosong → `null` / dihilangkan; dipakai di buat & update tugas.
+
 ## 2026-11-10 — Blok mapel + TP per mapel (proyek)
 
 - Pengaturan tugas: setiap mapel (utama / tambahan) punya dropdown mapel **dan** daftar TP di bawahnya; multi-TP per mapel.

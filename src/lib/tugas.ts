@@ -12,7 +12,55 @@ import {
   Timestamp,
 } from 'firebase/firestore'
 import { auth, db } from './firebase'
-import type { TugasInput, TugasLms, TpTugas } from '../types/tugas'
+import type {
+  PengaturanPenilaianTugas,
+  TugasInput,
+  TugasLms,
+  TpTugas,
+} from '../types/tugas'
+
+/**
+ * Firestore menolak `undefined`. Rapikan pengaturan penilaian:
+ * field opsional kosong → dihilangkan atau `null`.
+ */
+function sanitasiPengaturanPenilaian(
+  p: PengaturanPenilaianTugas | Record<string, unknown>,
+): Record<string, unknown> {
+  const raw = p as PengaturanPenilaianTugas
+  const kategori = (Array.isArray(raw.kategori) ? raw.kategori : [])
+    .filter((k) => k && String(k.nama || '').trim())
+    .map((k) => {
+      const item: Record<string, unknown> = {
+        id: String(k.id || ''),
+        nama: String(k.nama).trim(),
+      }
+      if (k.deskripsi?.trim()) item.deskripsi = k.deskripsi.trim()
+      if (typeof k.bobot === 'number' && !Number.isNaN(k.bobot)) item.bobot = k.bobot
+      return item
+    })
+
+  const rentangPredikat = (Array.isArray(raw.rentangPredikat) ? raw.rentangPredikat : []).map(
+    (r) => {
+      const item: Record<string, unknown> = {
+        predikat: String(r.predikat || '').trim(),
+        min: typeof r.min === 'number' ? r.min : 0,
+        max: typeof r.max === 'number' ? r.max : 100,
+      }
+      if (r.keterangan?.trim()) item.keterangan = r.keterangan.trim()
+      return item
+    },
+  )
+
+  const out: Record<string, unknown> = {
+    kategori,
+    rentangPredikat,
+    rentangTerkunci: raw.rentangTerkunci === true,
+  }
+  if (raw.catatan?.trim()) out.catatan = raw.catatan.trim()
+  else out.catatan = null
+
+  return out
+}
 
 function koleksi() {
   return collection(db, 'lms_tugas')
@@ -177,7 +225,7 @@ export async function buatTugas(input: TugasInput): Promise<string> {
     payload.tenggat = Timestamp.fromDate(input.tenggat)
   }
   if (input.pengaturanPenilaian) {
-    payload.pengaturanPenilaian = input.pengaturanPenilaian
+    payload.pengaturanPenilaian = sanitasiPengaturanPenilaian(input.pengaturanPenilaian)
   }
 
   const refDoc = await addDoc(koleksi(), payload)
@@ -229,9 +277,10 @@ export async function updateTugas(
   }
   if (data.aktif !== undefined) payload.aktif = data.aktif === true
   if (data.pengaturanPenilaian !== undefined) {
-    payload.pengaturanPenilaian = data.pengaturanPenilaian
+    payload.pengaturanPenilaian = sanitasiPengaturanPenilaian(data.pengaturanPenilaian)
   }
 
+  // Hapus undefined di top-level (nested sudah dirapikan sanitasi)
   for (const k of Object.keys(payload)) {
     if (payload[k] === undefined) delete payload[k]
   }
