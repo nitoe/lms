@@ -10,7 +10,24 @@ import {
   updateTugas,
 } from '../lib/tugas'
 import { muatBarisNilaiTugas, simpanNilaiTugas, type BarisNilaiTugas } from '../lib/nilaiTugas'
-import type { JenisTugas, PengaturanPenilaianTugas, TpTugas, TugasLms } from '../types/tugas'
+import {
+  bolehAiTugas,
+  generateKategoriRubrikAi,
+  nilaiDariPredikat,
+  normalisasiPengaturan,
+  pengaturanPenilaianDefault,
+  predikatDariNilai,
+  RENTANG_PREDIKAT_DEFAULT,
+  validasiRentang,
+} from '../lib/penilaianTugas'
+import type {
+  JenisTugas,
+  KategoriPenilaian,
+  PengaturanPenilaianTugas,
+  RentangPredikat,
+  TpTugas,
+  TugasLms,
+} from '../types/tugas'
 import { labelJenisTugas } from '../types/tugas'
 import type { TpRingkas } from '../types/materi'
 
@@ -31,11 +48,16 @@ function tenggatKeInput(tenggat: unknown): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
 }
 
+function idBaru(): string {
+  return `kat-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`
+}
+
 export default function TugasDetail() {
   const { tugasId = '' } = useParams()
   const isBaru = tugasId === 'baru' || !tugasId
   const navigate = useNavigate()
-  const { profil } = useAuth()
+  const { user, profil } = useAuth()
+  const bisaAi = bolehAiTugas(user?.uid)
 
   const [tab, setTab] = useState<TabId>('pengaturan')
   const [subNilai, setSubNilai] = useState<SubNilai>('pengaturan-nilai')
@@ -45,7 +67,6 @@ export default function TugasDetail() {
   const [sukses, setSukses] = useState('')
   const [tugas, setTugas] = useState<TugasLms | null>(null)
 
-  // Form state
   const [judul, setJudul] = useState('')
   const [jenis, setJenis] = useState<JenisTugas>('mapel')
   const [kelas, setKelas] = useState('')
@@ -57,16 +78,15 @@ export default function TugasDetail() {
   const [aktif, setAktif] = useState(false)
   const [tpDipilih, setTpDipilih] = useState<TpTugas[]>([])
   const [tpOpsi, setTpOpsi] = useState<TpRingkas[]>([])
-  const [pengaturan, setPengaturan] = useState<PengaturanPenilaianTugas>({
-    skalaMaks: 100,
-    sinkronKePenilaian: false,
-  })
+  const [pengaturan, setPengaturan] = useState<PengaturanPenilaianTugas>(pengaturanPenilaianDefault())
 
-  // Input nilai manual
   const [barisNilai, setBarisNilai] = useState<BarisNilaiTugas[] | null>(null)
   const [loadingNilai, setLoadingNilai] = useState(false)
-  const [draftNilai, setDraftNilai] = useState<Record<string, { nilai: string; komentar: string }>>({})
+  const [draftNilai, setDraftNilai] = useState<
+    Record<string, { nilai: string; predikat: string; komentar: string }>
+  >({})
   const [menyimpanSiswaId, setMenyimpanSiswaId] = useState<string | null>(null)
+  const [genAiBusy, setGenAiBusy] = useState(false)
 
   const ruang = useMemo(() => daftarRuangKelas(profil), [profil])
   const opsiKelas = useMemo(() => {
@@ -91,9 +111,7 @@ export default function TugasDetail() {
     setTenggatStr(tenggatKeInput(t.tenggat))
     setAktif(t.aktif)
     setTpDipilih(t.tpList || [])
-    setPengaturan(
-      t.pengaturanPenilaian || { skalaMaks: 100, sinkronKePenilaian: false },
-    )
+    setPengaturan(normalisasiPengaturan(t.pengaturanPenilaian))
   }, [])
 
   useEffect(() => {
@@ -127,7 +145,6 @@ export default function TugasDetail() {
     }
   }, [tugasId, isBaru, isiFormDariTugas])
 
-  // Muat opsi TP saat mapel + kelas berubah
   useEffect(() => {
     if (!mapel || !kelas) {
       setTpOpsi([])
@@ -236,12 +253,19 @@ export default function TugasDetail() {
       setTab('pengaturan')
       return
     }
+    const errRentang = validasiRentang(pengaturan.rentangPredikat)
+    if (errRentang) {
+      setError(errRentang)
+      return
+    }
     setBusy(true)
     setError('')
     setSukses('')
     try {
       await updateTugas(tugasId, { pengaturanPenilaian: pengaturan })
       setSukses('Pengaturan penilaian disimpan.')
+      const t = await ambilTugas(tugasId)
+      if (t) setTugas(t)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Gagal menyimpan.')
     } finally {
@@ -258,11 +282,17 @@ export default function TugasDetail() {
     setError('')
     try {
       const rows = await muatBarisNilaiTugas(tugas.id, tugas.kelas, tugas.mapel)
+      const rentang = normalisasiPengaturan(tugas.pengaturanPenilaian).rentangPredikat
       setBarisNilai(rows)
-      const draft: Record<string, { nilai: string; komentar: string }> = {}
+      const draft: Record<string, { nilai: string; predikat: string; komentar: string }> = {}
       for (const r of rows) {
+        let pred = r.predikat
+        if (!pred && r.nilai !== null) {
+          pred = predikatDariNilai(r.nilai, rentang)?.predikat || ''
+        }
         draft[r.siswaId] = {
           nilai: r.nilai === null || r.nilai === undefined ? '' : String(r.nilai),
+          predikat: pred,
           komentar: r.komentar || '',
         }
       }
@@ -281,6 +311,16 @@ export default function TugasDetail() {
     }
   }, [tab, subNilai, isBaru, tugas, muatNilai])
 
+  function setDraftSiswa(
+    siswaId: string,
+    patch: Partial<{ nilai: string; predikat: string; komentar: string }>,
+  ) {
+    setDraftNilai((prev) => {
+      const cur = prev[siswaId] || { nilai: '', predikat: '', komentar: '' }
+      return { ...prev, [siswaId]: { ...cur, ...patch } }
+    })
+  }
+
   async function simpanSatuNilai(siswaId: string, siswaNama: string) {
     if (!tugas) return
     const d = draftNilai[siswaId]
@@ -291,15 +331,13 @@ export default function TugasDetail() {
       return
     }
     const num = Number(raw.replace(',', '.'))
-    if (Number.isNaN(num)) {
-      setError(`Nilai untuk ${siswaNama} tidak valid.`)
+    if (Number.isNaN(num) || num < 0 || num > 100) {
+      setError(`Nilai untuk ${siswaNama} harus antara 0 dan 100.`)
       return
     }
-    const maks = pengaturan.skalaMaks ?? 100
-    if (num < 0 || num > maks) {
-      setError(`Nilai untuk ${siswaNama} harus antara 0 dan ${maks}.`)
-      return
-    }
+    const rentang = pengaturan.rentangPredikat
+    const pred =
+      d.predikat || predikatDariNilai(num, rentang)?.predikat || ''
     setMenyimpanSiswaId(siswaId)
     setError('')
     setSukses('')
@@ -311,6 +349,7 @@ export default function TugasDetail() {
         kelas: tugas.kelas,
         mapel: tugas.mapel,
         nilai: num,
+        predikat: pred,
         komentar: d.komentar,
         namaGuru: profil?.nama,
       })
@@ -321,6 +360,100 @@ export default function TugasDetail() {
     } finally {
       setMenyimpanSiswaId(null)
     }
+  }
+
+  /** Generate nilai angka dari predikat (AI-assist, hanya akun berwenang). */
+  function generateNilaiDariPredikat(siswaId: string) {
+    if (!bisaAi) return
+    const d = draftNilai[siswaId]
+    if (!d?.predikat) {
+      setError('Pilih predikat dulu, lalu generate nilai.')
+      return
+    }
+    const n = nilaiDariPredikat(d.predikat, pengaturan.rentangPredikat, 'acak')
+    setDraftSiswa(siswaId, { nilai: String(n) })
+    setSukses(`Nilai diusulkan: ${n} (predikat ${d.predikat}). Simpan untuk menyimpan.`)
+  }
+
+  function onNilaiChange(siswaId: string, nilaiStr: string) {
+    const patch: { nilai: string; predikat?: string } = { nilai: nilaiStr }
+    const num = Number(nilaiStr.replace(',', '.'))
+    if (!Number.isNaN(num) && nilaiStr.trim() !== '') {
+      const p = predikatDariNilai(num, pengaturan.rentangPredikat)
+      if (p) patch.predikat = p.predikat
+    }
+    setDraftSiswa(siswaId, patch)
+  }
+
+  function onPredikatChange(siswaId: string, predikat: string) {
+    setDraftSiswa(siswaId, { predikat })
+  }
+
+  function generateKategoriAi() {
+    if (!bisaAi) return
+    setGenAiBusy(true)
+    setError('')
+    try {
+      const list = generateKategoriRubrikAi({
+        judul,
+        mapel,
+        deskripsi,
+        instruksi,
+      })
+      setPengaturan((p) => ({
+        ...p,
+        kategori: [...p.kategori, ...list.filter((k) => !p.kategori.some((x) => x.nama === k.nama))],
+      }))
+      setSukses(`${list.length} kategori rubrik diusulkan. Sesuaikan lalu simpan.`)
+    } finally {
+      setGenAiBusy(false)
+    }
+  }
+
+  function tambahKategori() {
+    setPengaturan((p) => ({
+      ...p,
+      kategori: [...p.kategori, { id: idBaru(), nama: '', deskripsi: '' }],
+    }))
+  }
+
+  function updateKategori(id: string, patch: Partial<KategoriPenilaian>) {
+    setPengaturan((p) => ({
+      ...p,
+      kategori: p.kategori.map((k) => (k.id === id ? { ...k, ...patch } : k)),
+    }))
+  }
+
+  function hapusKategori(id: string) {
+    setPengaturan((p) => ({
+      ...p,
+      kategori: p.kategori.filter((k) => k.id !== id),
+    }))
+  }
+
+  function updateRentang(i: number, patch: Partial<RentangPredikat>) {
+    setPengaturan((p) => ({
+      ...p,
+      rentangPredikat: p.rentangPredikat.map((r, idx) =>
+        idx === i ? { ...r, ...patch } : r,
+      ),
+    }))
+  }
+
+  function resetRentangDefault() {
+    setPengaturan((p) => ({
+      ...p,
+      rentangPredikat: RENTANG_PREDIKAT_DEFAULT.map((r) => ({ ...r })),
+    }))
+  }
+
+  async function sinkronKePenilaian() {
+    setError('')
+    setSukses('')
+    // Tombol siap di UI; CF sinkron akan dihubungkan kemudian (mirip sinkronNilaiKuisLms).
+    setSukses(
+      'Sinkron ke database Penilaian belum diaktifkan di server. Pastikan daftar nilai sudah tersimpan; fitur CF akan menyusul.',
+    )
   }
 
   if (loading) {
@@ -339,6 +472,7 @@ export default function TugasDetail() {
   }
 
   const judulHalaman = isBaru ? 'Tugas baru' : tugas?.judul || 'Detail tugas'
+  const daftarPredikat = pengaturan.rentangPredikat.map((r) => r.predikat)
 
   return (
     <div className="space-y-5">
@@ -390,7 +524,6 @@ export default function TugasDetail() {
         </div>
       )}
 
-      {/* ===== TAB PENGATURAN ===== */}
       {tab === 'pengaturan' && (
         <form onSubmit={(e) => void simpanPengaturan(e)} className="materi-form max-w-3xl space-y-4">
           <label className="materi-field">
@@ -554,7 +687,6 @@ export default function TugasDetail() {
         </form>
       )}
 
-      {/* ===== TAB ISI TUGAS ===== */}
       {tab === 'isi' && (
         <div className="materi-form max-w-3xl space-y-4">
           <label className="materi-field">
@@ -576,8 +708,7 @@ export default function TugasDetail() {
             />
           </label>
           <p className="text-xs text-muted">
-            Editor teks kaya (format tebal, daftar, gambar) akan ditambahkan pada iterasi berikutnya.
-            Untuk sekarang gunakan teks biasa atau HTML sederhana.
+            Editor teks kaya akan ditambahkan kemudian. Untuk sekarang teks biasa / HTML sederhana.
           </p>
           <div className="flex justify-end gap-2">
             <button
@@ -592,7 +723,6 @@ export default function TugasDetail() {
         </div>
       )}
 
-      {/* ===== TAB INPUT NILAI ===== */}
       {tab === 'nilai' && (
         <div className="space-y-4">
           <div className="lms-tabs" role="tablist" aria-label="Sub tab nilai">
@@ -617,52 +747,143 @@ export default function TugasDetail() {
           </div>
 
           {subNilai === 'pengaturan-nilai' && (
-            <div className="materi-form max-w-xl space-y-4">
-              <label className="materi-field">
-                <span>Skala maksimal</span>
-                <input
-                  type="number"
-                  min={1}
-                  max={1000}
-                  value={pengaturan.skalaMaks ?? 100}
-                  onChange={(e) =>
-                    setPengaturan((p) => ({
-                      ...p,
-                      skalaMaks: Number(e.target.value) || 100,
-                    }))
-                  }
-                />
-              </label>
-              <label className="materi-field">
-                <span>Bobot terhadap mapel (opsional, 0–100)</span>
-                <input
-                  type="number"
-                  min={0}
-                  max={100}
-                  value={pengaturan.bobot ?? ''}
-                  onChange={(e) =>
-                    setPengaturan((p) => ({
-                      ...p,
-                      bobot: e.target.value === '' ? undefined : Number(e.target.value),
-                    }))
-                  }
-                  placeholder="Contoh: 20"
-                />
-              </label>
-              <label className="inline-flex items-center gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  checked={pengaturan.sinkronKePenilaian === true}
-                  onChange={(e) =>
-                    setPengaturan((p) => ({
-                      ...p,
-                      sinkronKePenilaian: e.target.checked,
-                    }))
-                  }
-                />
-                Sinkronkan nilai ke database Penilaian (SDM01Penilaian)
-              </label>
-              <label className="materi-field">
+            <div className="space-y-6 max-w-3xl">
+              <p className="text-sm text-muted">
+                Tugas biasanya asesmen <strong>kinerja</strong>. Atur kategori rubrik dan tabel
+                predikat (default KKM/KKTP 70). Skala nilai selalu 0–100.
+              </p>
+
+              {/* Kategori rubrik */}
+              <section className="space-y-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <h3 className="text-sm font-semibold text-slate-800">Kategori penilaian (rubrik)</h3>
+                  <div className="flex flex-wrap gap-2">
+                    {bisaAi && (
+                      <button
+                        type="button"
+                        className="lms-btn-secondary text-xs"
+                        disabled={genAiBusy}
+                        onClick={generateKategoriAi}
+                      >
+                        {genAiBusy ? 'Menghasilkan…' : 'Generate kategori (AI)'}
+                      </button>
+                    )}
+                    <button type="button" className="lms-btn-primary text-xs" onClick={tambahKategori}>
+                      + Kategori
+                    </button>
+                  </div>
+                </div>
+                {pengaturan.kategori.length === 0 && (
+                  <p className="text-xs text-muted">
+                    Belum ada kategori. Contoh: «Tebal-tipis garis», «Tekstur», «Komposisi».
+                  </p>
+                )}
+                <ul className="space-y-2">
+                  {pengaturan.kategori.map((k) => (
+                    <li
+                      key={k.id}
+                      className="rounded-xl border border-slate-200 bg-white p-3 space-y-2"
+                    >
+                      <div className="flex gap-2">
+                        <input
+                          className="lms-input flex-1"
+                          placeholder="Nama kategori / aspek"
+                          value={k.nama}
+                          onChange={(e) => updateKategori(k.id, { nama: e.target.value })}
+                        />
+                        <button
+                          type="button"
+                          className="materi-btn-danger text-xs shrink-0"
+                          onClick={() => hapusKategori(k.id)}
+                        >
+                          Hapus
+                        </button>
+                      </div>
+                      <input
+                        className="lms-input w-full text-sm"
+                        placeholder="Deskripsi / indikator (opsional)"
+                        value={k.deskripsi || ''}
+                        onChange={(e) => updateKategori(k.id, { deskripsi: e.target.value })}
+                      />
+                    </li>
+                  ))}
+                </ul>
+              </section>
+
+              {/* Rentang predikat */}
+              <section className="space-y-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <h3 className="text-sm font-semibold text-slate-800">
+                    Rentang nilai & predikat (skala 0–100)
+                  </h3>
+                  <button type="button" className="lms-btn-ghost text-xs" onClick={resetRentangDefault}>
+                    Kembalikan default KKM 70
+                  </button>
+                </div>
+                <div className="overflow-x-auto rounded-xl border border-slate-200">
+                  <table className="w-full min-w-[480px] text-left text-sm">
+                    <thead className="bg-slate-50 text-xs uppercase text-slate-600">
+                      <tr>
+                        <th className="px-3 py-2">Predikat</th>
+                        <th className="px-3 py-2">Min</th>
+                        <th className="px-3 py-2">Max</th>
+                        <th className="px-3 py-2">Keterangan</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {pengaturan.rentangPredikat.map((r, i) => (
+                        <tr key={`${r.predikat}-${i}`} className="border-t border-slate-100">
+                          <td className="px-3 py-1.5">
+                            <input
+                              className="lms-input w-16"
+                              value={r.predikat}
+                              onChange={(e) => updateRentang(i, { predikat: e.target.value })}
+                            />
+                          </td>
+                          <td className="px-3 py-1.5">
+                            <input
+                              type="number"
+                              min={0}
+                              max={100}
+                              className="lms-input w-20"
+                              value={r.min}
+                              onChange={(e) =>
+                                updateRentang(i, { min: Number(e.target.value) })
+                              }
+                            />
+                          </td>
+                          <td className="px-3 py-1.5">
+                            <input
+                              type="number"
+                              min={0}
+                              max={100}
+                              className="lms-input w-20"
+                              value={r.max}
+                              onChange={(e) =>
+                                updateRentang(i, { max: Number(e.target.value) })
+                              }
+                            />
+                          </td>
+                          <td className="px-3 py-1.5">
+                            <input
+                              className="lms-input w-full min-w-[140px]"
+                              value={r.keterangan || ''}
+                              onChange={(e) =>
+                                updateRentang(i, { keterangan: e.target.value })
+                              }
+                            />
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <p className="text-xs text-muted">
+                  Default: C- mulai 70 (batas KKM/KKTP). Sesuaikan bila perlu analisis ketuntasan kelas.
+                </p>
+              </section>
+
+              <label className="materi-field max-w-xl">
                 <span>Catatan penilaian (opsional)</span>
                 <textarea
                   rows={2}
@@ -670,9 +891,10 @@ export default function TugasDetail() {
                   onChange={(e) =>
                     setPengaturan((p) => ({ ...p, catatan: e.target.value }))
                   }
-                  placeholder="Rubrik singkat, kriteria ketuntasan…"
+                  placeholder="Catatan rubrik untuk guru…"
                 />
               </label>
+
               <div className="flex justify-end">
                 <button
                   type="button"
@@ -691,26 +913,32 @@ export default function TugasDetail() {
               {isBaru && (
                 <div className="lms-empty">
                   <p className="font-medium text-slate-700">Simpan pengaturan tugas dulu</p>
-                  <p className="mt-1">Setelah tugas tersimpan, daftar siswa kelas dapat diisi nilainya di sini.</p>
+                  <p className="mt-1">Setelah tugas tersimpan, daftar siswa dapat diisi nilainya.</p>
                 </div>
               )}
               {!isBaru && (
                 <>
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <p className="text-sm text-muted">
-                      Input nilai manual untuk kelas {tugas?.kelas}. Skala 0–{pengaturan.skalaMaks ?? 100}.
-                      {pengaturan.sinkronKePenilaian
-                        ? ' Sinkron ke Penilaian: aktif (akan dihubungkan kemudian).'
-                        : ''}
+                      Kelas {tugas?.kelas} · skala 0–100 · predikat mengikuti tabel di Pengaturan penilaian
                     </p>
-                    <button
-                      type="button"
-                      className="lms-btn-secondary text-xs"
-                      disabled={loadingNilai}
-                      onClick={() => void muatNilai()}
-                    >
-                      {loadingNilai ? 'Memuat…' : 'Muat ulang'}
-                    </button>
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        className="lms-btn-secondary text-xs"
+                        disabled={loadingNilai}
+                        onClick={() => void muatNilai()}
+                      >
+                        {loadingNilai ? 'Memuat…' : 'Muat ulang'}
+                      </button>
+                      <button
+                        type="button"
+                        className="lms-btn-primary text-xs"
+                        onClick={() => void sinkronKePenilaian()}
+                      >
+                        Sinkronkan ke Penilaian
+                      </button>
+                    </div>
                   </div>
 
                   {loadingNilai && barisNilai === null && (
@@ -720,64 +948,92 @@ export default function TugasDetail() {
                   {barisNilai && barisNilai.length === 0 && (
                     <div className="lms-empty">
                       <p className="font-medium text-slate-700">Tidak ada siswa di kelas ini</p>
-                      <p className="mt-1">Pastikan data siswa aktif sudah ada di koleksi siswa untuk kelas {tugas?.kelas}.</p>
                     </div>
                   )}
 
                   {barisNilai && barisNilai.length > 0 && (
                     <div className="overflow-x-auto rounded-xl border border-slate-200">
-                      <table className="w-full min-w-[520px] text-left text-sm">
+                      <table className="w-full min-w-[640px] text-left text-sm">
                         <thead className="bg-slate-50 text-xs uppercase text-slate-600">
                           <tr>
-                            <th className="px-3 py-2 font-semibold">No</th>
-                            <th className="px-3 py-2 font-semibold">Nama</th>
-                            <th className="px-3 py-2 font-semibold w-28">Nilai</th>
-                            <th className="px-3 py-2 font-semibold">Komentar</th>
-                            <th className="px-3 py-2 font-semibold w-24" />
+                            <th className="px-3 py-2">No</th>
+                            <th className="px-3 py-2">Nama</th>
+                            <th className="px-3 py-2">Predikat</th>
+                            <th className="px-3 py-2">Nilai</th>
+                            {bisaAi && <th className="px-3 py-2">AI</th>}
+                            <th className="px-3 py-2">Komentar</th>
+                            <th className="px-3 py-2" />
                           </tr>
                         </thead>
                         <tbody>
                           {barisNilai.map((r, i) => {
-                            const d = draftNilai[r.siswaId] || { nilai: '', komentar: '' }
+                            const d = draftNilai[r.siswaId] || {
+                              nilai: '',
+                              predikat: '',
+                              komentar: '',
+                            }
                             return (
                               <tr key={r.siswaId} className="border-t border-slate-100">
                                 <td className="px-3 py-2 text-muted">{i + 1}</td>
                                 <td className="px-3 py-2 font-medium text-slate-800">
                                   {r.siswaNama}
                                   {r.sudahAda && (
-                                    <span className="ml-1 text-[10px] font-normal text-emerald-700">tersimpan</span>
+                                    <span className="ml-1 text-[10px] font-normal text-emerald-700">
+                                      tersimpan
+                                    </span>
                                   )}
+                                </td>
+                                <td className="px-3 py-2">
+                                  <select
+                                    className="lms-input w-24"
+                                    value={d.predikat}
+                                    onChange={(e) =>
+                                      onPredikatChange(r.siswaId, e.target.value)
+                                    }
+                                    aria-label={`Predikat ${r.siswaNama}`}
+                                  >
+                                    <option value="">—</option>
+                                    {daftarPredikat.map((p) => (
+                                      <option key={p} value={p}>
+                                        {p}
+                                      </option>
+                                    ))}
+                                  </select>
                                 </td>
                                 <td className="px-3 py-2">
                                   <input
                                     type="number"
                                     min={0}
-                                    max={pengaturan.skalaMaks ?? 100}
-                                    step="0.1"
-                                    className="lms-input w-24"
+                                    max={100}
+                                    step="1"
+                                    className="lms-input w-20"
                                     value={d.nilai}
-                                    onChange={(e) =>
-                                      setDraftNilai((prev) => ({
-                                        ...prev,
-                                        [r.siswaId]: { ...d, nilai: e.target.value },
-                                      }))
-                                    }
+                                    onChange={(e) => onNilaiChange(r.siswaId, e.target.value)}
                                     aria-label={`Nilai ${r.siswaNama}`}
                                   />
                                 </td>
+                                {bisaAi && (
+                                  <td className="px-3 py-2">
+                                    <button
+                                      type="button"
+                                      className="lms-btn-ghost text-xs"
+                                      title="Generate nilai dari predikat"
+                                      disabled={!d.predikat}
+                                      onClick={() => generateNilaiDariPredikat(r.siswaId)}
+                                    >
+                                      Gen
+                                    </button>
+                                  </td>
+                                )}
                                 <td className="px-3 py-2">
                                   <input
                                     type="text"
-                                    className="lms-input w-full min-w-[120px]"
+                                    className="lms-input w-full min-w-[100px]"
                                     placeholder="Opsional"
                                     value={d.komentar}
                                     onChange={(e) =>
-                                      setDraftNilai((prev) => ({
-                                        ...prev,
-                                        [r.siswaId]: { ...d, komentar: e.target.value },
-                                      }))
+                                      setDraftSiswa(r.siswaId, { komentar: e.target.value })
                                     }
-                                    aria-label={`Komentar ${r.siswaNama}`}
                                   />
                                 </td>
                                 <td className="px-3 py-2">

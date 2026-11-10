@@ -12,16 +12,38 @@ export interface TpTugas {
   mapel?: string
 }
 
-/** Pengaturan penilaian tugas (tab Input Nilai → Pengaturan). */
-export interface PengaturanPenilaianTugas {
-  /** Skala nilai maksimal (default 100). */
-  skalaMaks?: number
-  /** Bobot terhadap nilai mapel (0–100), opsional. */
+/** Satu baris rentang nilai → predikat (skala 0–100, default KKM/KKTP 70). */
+export interface RentangPredikat {
+  /** Kode predikat, mis. C-, B+, A */
+  predikat: string
+  min: number
+  max: number
+  /** Keterangan kategori, mis. "Hampir Cukup (Batas KKM/KKTP)" */
+  keterangan?: string
+}
+
+/** Kategori/aspek rubrik asesmen kinerja. */
+export interface KategoriPenilaian {
+  id: string
+  /** Nama aspek, mis. "Tebal-tipis garis" */
+  nama: string
+  deskripsi?: string
+  /**
+   * Bobot relatif dalam rubrik (opsional).
+   * Jika semua kosong/0, dihitung rata-rata.
+   */
   bobot?: number
-  /** Apakah nilai akan disinkronkan ke koleksi nilai di Penilaian. */
-  sinkronKePenilaian?: boolean
-  /** Jenis asesmen di Penilaian bila sinkron (mis. 'tugas', 'projek'). */
-  jenisAsesmen?: string
+}
+
+/**
+ * Pengaturan penilaian tugas (tab Input Nilai → Pengaturan penilaian).
+ * Skala selalu 0–100. Sinkron ke Penilaian dilakukan lewat tombol di Daftar nilai, bukan di sini.
+ */
+export interface PengaturanPenilaianTugas {
+  /** Aspek rubrik (asesmen kinerja). */
+  kategori: KategoriPenilaian[]
+  /** Tabel konversi nilai → predikat (boleh diedit guru). */
+  rentangPredikat: RentangPredikat[]
   catatan?: string
 }
 

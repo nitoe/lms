@@ -3,6 +3,14 @@
 > Append-only: entri baru ditambahkan di BAWAH, entri lama tidak diubah.
 > Versi mengacu ke `package.json` (saat ini `0.1.0`); belum ada rilis bertag.
 
+## 2026-11-10 — Pengaturan penilaian: rubrik + predikat KKM 70
+
+- Hapus skala maks, bobot mapel, dan opsi sinkron dari form pengaturan penilaian.
+- **Pengaturan penilaian:** kategori rubrik (asesmen kinerja) + tabel rentang predikat default KKM/KKTP 70 (C- = 70); guru dapat mengedit.
+- **Generate kategori (AI)** dan **generate nilai dari predikat** hanya untuk sesi Auth `arif.azwar79@gmail.com` (sama pola `bolehGenerateSoalAi`).
+- **Sinkron ke Penilaian:** tombol di Daftar nilai (CF menyusul).
+- File: `src/types/tugas.ts`, `src/lib/penilaianTugas.ts` (baru), `src/lib/nilaiTugas.ts`, `src/pages/TugasDetail.tsx`, `docs/DATA_MODEL.md`.
+
 ## 2026-11-10 — Rules lms_tugas + input nilai manual
 
 - **Rules (file lengkap):** ditambah `lms_tugas` dan `lms_nilai_tugas` di blok REPO nitoe/lms. Tidak mengubah rules Penilaian/Sarpras/Perpustakaan/materi/kuis/soal. Salin utuh ke SDM01Penilaian lalu `npm run deploy:rules`.

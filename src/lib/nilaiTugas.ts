@@ -19,6 +19,8 @@ export type NilaiTugasDok = {
   kelas: string
   mapel: string
   nilai: number
+  /** Predikat huruf, mis. B+, C- */
+  predikat?: string
   komentar?: string
   dinilaiOleh: string
   dinilaiOlehNama?: string
@@ -30,6 +32,7 @@ export type BarisNilaiTugas = {
   siswaId: string
   siswaNama: string
   nilai: number | null
+  predikat: string
   komentar: string
   sudahAda: boolean
 }
@@ -65,6 +68,7 @@ export async function daftarNilaiTugas(
       kelas: String(data.kelas || ''),
       mapel: String(data.mapel || ''),
       nilai: typeof data.nilai === 'number' ? data.nilai : 0,
+      predikat: typeof data.predikat === 'string' ? data.predikat : undefined,
       komentar: typeof data.komentar === 'string' ? data.komentar : undefined,
       dinilaiOleh: String(data.dinilaiOleh || ''),
       dinilaiOlehNama:
@@ -96,6 +100,7 @@ export async function muatBarisNilaiTugas(
       siswaId: s.id,
       siswaNama: s.nama,
       nilai: n ? n.nilai : null,
+      predikat: n?.predikat || '',
       komentar: n?.komentar || '',
       sudahAda: !!n,
     }
@@ -107,6 +112,7 @@ export async function muatBarisNilaiTugas(
       siswaId: n.siswaId,
       siswaNama: n.siswaNama + ' (tidak di roster)',
       nilai: n.nilai,
+      predikat: n.predikat || '',
       komentar: n.komentar || '',
       sudahAda: true,
     })
@@ -123,6 +129,7 @@ export async function simpanNilaiTugas(input: {
   kelas: string
   mapel: string
   nilai: number
+  predikat?: string
   komentar?: string
   namaGuru?: string
 }): Promise<void> {
@@ -132,8 +139,8 @@ export async function simpanNilaiTugas(input: {
   if (typeof input.nilai !== 'number' || Number.isNaN(input.nilai)) {
     throw new Error('Nilai harus berupa angka.')
   }
-  if (input.nilai < 0 || input.nilai > 1000) {
-    throw new Error('Nilai di luar rentang yang diizinkan (0–1000).')
+  if (input.nilai < 0 || input.nilai > 100) {
+    throw new Error('Nilai di luar rentang yang diizinkan (0–100).')
   }
 
   const id = idNilai(input.tugasId, input.siswaId)
@@ -149,10 +156,10 @@ export async function simpanNilaiTugas(input: {
     dinilaiOlehNama: input.namaGuru || '',
     updatedAt: serverTimestamp(),
   }
+  if (input.predikat?.trim()) payload.predikat = input.predikat.trim()
+  else payload.predikat = null
   if (input.komentar?.trim()) payload.komentar = input.komentar.trim()
   else payload.komentar = null
 
-  // setDoc tanpa merge agar create rules terpenuhi saat dokumen baru;
-  // untuk update, field kunci (tugasId, siswaId, kelas, mapel) tetap sama.
   await setDoc(ref, { ...payload, createdAt: serverTimestamp() }, { merge: true })
 }
