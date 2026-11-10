@@ -169,7 +169,7 @@ export default function SoalEditor() {
   const setSoal = (soal: Soal[]) => ubah({ soal })
 
   function tambahSoal(tipe: TipeSoal) {
-    if (soalList.length >= BATAS_SOAL_PER_PAKET) return
+    if (!paket || soalList.length >= BATAS_SOAL_PER_PAKET) return
     const s = soalBaru(tipe)
     if (paket.tipeMateri) {
       ;(s as { tipeMateri?: string }).tipeMateri = paket.tipeMateri
