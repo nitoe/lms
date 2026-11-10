@@ -124,10 +124,15 @@ export async function muatBarisNilaiTugas(
   kategori: KategoriPenilaian[],
 ): Promise<BarisNilaiTugas[]> {
   const kelasU = String(kelas).toUpperCase()
-  const [siswa, nilaiList] = await Promise.all([
-    muatSiswaKelas(kelasU),
-    daftarNilaiTugas(tugasId, kelasU, mapel),
-  ])
+  // Roster siswa dulu; nilai opsional agar permission error nilai tidak menutup seluruh tabel.
+  const siswa = await muatSiswaKelas(kelasU)
+  let nilaiList: NilaiTugasDok[] = []
+  try {
+    nilaiList = await daftarNilaiTugas(tugasId, kelasU, mapel)
+  } catch (e) {
+    console.warn('daftarNilaiTugas gagal (rules/jaringan):', e)
+    nilaiList = []
+  }
   const mapNilai = new Map(nilaiList.map((n) => [n.siswaId, n]))
 
   function keBaris(s: { id: string; nama: string }, n?: NilaiTugasDok): BarisNilaiTugas {
@@ -201,20 +206,23 @@ export async function simpanNilaiTugas(input: {
     dinilaiOleh: uid,
     dinilaiOlehNama: input.namaGuru || '',
     updatedAt: serverTimestamp(),
+    createdAt: serverTimestamp(),
   }
+  // Hanya kirim field opsional yang ada nilainya (hindari null di create yang ditolak rules lama)
   if (input.nilaiPerKategori && Object.keys(input.nilaiPerKategori).length) {
     payload.nilaiPerKategori = input.nilaiPerKategori
-  } else {
-    payload.nilaiPerKategori = null
   }
-  if (typeof input.nilaiRataRata === 'number') payload.nilaiRataRata = input.nilaiRataRata
-  else payload.nilaiRataRata = null
-  if (input.predikat?.trim()) payload.predikat = input.predikat.trim()
-  else payload.predikat = null
-  if (input.komentar?.trim()) payload.komentar = input.komentar.trim()
-  else payload.komentar = null
+  if (typeof input.nilaiRataRata === 'number') {
+    payload.nilaiRataRata = input.nilaiRataRata
+  }
+  if (input.predikat?.trim()) {
+    payload.predikat = input.predikat.trim()
+  }
+  if (input.komentar?.trim()) {
+    payload.komentar = input.komentar.trim()
+  }
 
-  await setDoc(ref, { ...payload, createdAt: serverTimestamp() }, { merge: true })
+  await setDoc(ref, payload, { merge: true })
 }
 
 /** Predikat dari nilai akhir (helper UI). */

@@ -3,6 +3,19 @@
 > Append-only: entri baru ditambahkan di BAWAH, entri lama tidak diubah.
 > Versi mengacu ke `package.json` (saat ini `0.1.0`); belum ada rilis bertag.
 
+## 2026-11-10 — Fix simpan nilai tugas (permission write)
+
+- Create/update `lms_nilai_tugas`: izinkan **admin** di samping `lmsTulisMapelKelas` (admin tidak lolos penugasan mapel).
+- Izinkan field opsional `null` / map (`komentar`, `predikat`, `nilaiPerKategori`, `nilaiRataRata`).
+- Client tidak mengirim field opsional kosong sebagai `null` pada create.
+- File: `firestore.rules` (lengkap), `src/lib/nilaiTugas.ts`.
+
+## 2026-11-10 — Fix permission daftar nilai tugas
+
+- Rules `lms_nilai_tugas` baca: guru/admin (`isGuru()` / `isAdmin()`) agar query list tidak ditolak; tulis tetap `lmsTulisMapelKelas`.
+- Client: roster `siswa` tetap dimuat meski query nilai gagal (`nilaiTugas.ts`).
+- File: `firestore.rules` (lengkap → SDM01Penilaian), `src/lib/nilaiTugas.ts`.
+
 ## 2026-11-10 — Fix simpan pengaturan penilaian (undefined Firestore)
 
 - `updateDoc` gagal karena `pengaturanPenilaian.catatan` (dan field opsional lain) bernilai `undefined`.
