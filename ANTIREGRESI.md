@@ -11,3 +11,11 @@
 87.4 Non-TKA tetap diagram/fungsional. Jangan menyamakan prompt TKA ke path mapel biasa.
 
 87.5 File `generateSoalLmsAi.js` selalu diganti utuh (bukan patch potongan) agar export dan helper konsisten.
+
+## §88. Rancang kuis TKA — filter bentuk soal
+
+88.1 Di wizard rancang kuis (`KuisPanel`), filter «Bentuk soal» untuk mapel TKA **hanya** menampilkan `pg`, `pgk`, `bs` (`TIPE_SOAL_TKA` dari `tkaAkses.ts`). Jangan memakai `URUTAN_TIPE` penuh di ruang TKA.
+
+88.2 Jika user tidak memilih bentuk apa pun, penyusunan otomatis TKA tetap membatasi ke `TIPE_SOAL_TKA` (bukan «semua tipe mapel»). Mapel non-TKA: kosong = semua tipe seperti sebelumnya.
+
+88.3 Perubahan filter bentuk soal di rancang kuis **hanya** boleh dikondisikan dengan `adalahMapelTka(mapel)`. Jangan mengubah perilaku default mapel biasa.

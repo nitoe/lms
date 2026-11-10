@@ -25,6 +25,7 @@ import {
   URUTAN_KOMPLEKSITAS,
   URUTAN_TIPE,
 } from '../types/soal'
+import { adalahMapelTka, TIPE_SOAL_TKA } from '../lib/tkaAkses'
 import KuisDetail, { INSTRUKSI_TIPE } from './KuisDetail'
 import HasilKuisPanel from './HasilKuisPanel'
 import OfflineKuisPanel from './OfflineKuisPanel'
@@ -36,16 +37,27 @@ type Props = {
 
 type Langkah = 'daftar' | 'wizard' | 'detail'
 
-function urutkanMenurutBentuk(list: SoalKuis[]): SoalKuis[] {
+function urutkanMenurutBentuk(
+  list: SoalKuis[],
+  urutan: readonly TipeSoal[] = URUTAN_TIPE,
+): SoalKuis[] {
   const map = new Map<string, SoalKuis[]>()
-  for (const t of URUTAN_TIPE) map.set(t, [])
+  for (const t of urutan) map.set(t, [])
   for (const s of list) {
     const arr = map.get(s.tipe)
     if (arr) arr.push(s)
+    else {
+      // tipe di luar daftar (mis. data lama) — tampilkan di akhir
+      if (!map.has(s.tipe)) map.set(s.tipe, [])
+      map.get(s.tipe)!.push(s)
+    }
   }
   const out: SoalKuis[] = []
-  for (const t of URUTAN_TIPE) {
+  for (const t of urutan) {
     out.push(...(map.get(t) ?? []))
+  }
+  for (const [t, arr] of map) {
+    if (!(urutan as readonly string[]).includes(t) && arr.length) out.push(...arr)
   }
   return out
 }
@@ -55,6 +67,9 @@ function urutkanMenurutBentuk(list: SoalKuis[]): SoalKuis[] {
 export default function KuisPanel({ kelas, mapel }: Props) {
   const { profil, user } = useAuth()
   const bolehAi = bolehGenerateSoalAi(user?.uid)
+  /** Filter bentuk soal TKA hanya PG / PGK / BS — jangan regresi mapel biasa (ANTIREGRESI §88). */
+  const isTka = adalahMapelTka(mapel)
+  const tipePilihan: readonly TipeSoal[] = isTka ? TIPE_SOAL_TKA : URUTAN_TIPE
 
   const [list, setList] = useState<KuisLms[] | null>(null)
   const [paketSiap, setPaketSiap] = useState<PaketSoal[]>([])
@@ -122,10 +137,15 @@ export default function KuisPanel({ kelas, mapel }: Props) {
   const filterSusun: FilterSusunKuis = useMemo(
     () => ({
       jumlahSoal: jumlahSoal > 0 ? jumlahSoal : undefined,
-      tipe: tipeAktif.length ? tipeAktif : undefined,
+      // TKA: kosong = hanya bentuk resmi TKA (pg/pgk/bs), bukan semua tipe mapel
+      tipe: tipeAktif.length
+        ? tipeAktif
+        : isTka
+          ? ([...TIPE_SOAL_TKA] as TipeSoal[])
+          : undefined,
       kompleksitas: kompleksitasAktif.length ? kompleksitasAktif : undefined,
     }),
-    [jumlahSoal, tipeAktif, kompleksitasAktif],
+    [jumlahSoal, tipeAktif, kompleksitasAktif, isTka],
   )
 
   const kandidat = useMemo(() => {
@@ -184,7 +204,7 @@ export default function KuisPanel({ kelas, mapel }: Props) {
         return
       }
       // Otomatis kelompokkan menurut bentuk soal
-      soal = urutkanMenurutBentuk(soal)
+      soal = urutkanMenurutBentuk(soal, tipePilihan)
       setPratinjau(soal)
 
       if (mode === 'otomatis_ai' || mode === 'otomatis') {
@@ -212,7 +232,7 @@ export default function KuisPanel({ kelas, mapel }: Props) {
     for (const d of dup) {
       buang.add(d.b)
     }
-    const sisa = urutkanMenurutBentuk(pratinjau.filter((_, i) => !buang.has(i)))
+    const sisa = urutkanMenurutBentuk(pratinjau.filter((_, i) => !buang.has(i)), tipePilihan)
     setPratinjau(sisa)
     setPeringatanDuplikat([])
   }
@@ -520,7 +540,7 @@ export default function KuisPanel({ kelas, mapel }: Props) {
             <div>
               <span className="text-xs font-semibold text-slate-600">Bentuk soal (kosong = semua)</span>
               <div className="mt-1 flex flex-wrap gap-1.5">
-                {URUTAN_TIPE.map((t) => (
+                {tipePilihan.map((t) => (
                   <button
                     key={t}
                     type="button"
@@ -653,23 +673,31 @@ export default function KuisPanel({ kelas, mapel }: Props) {
             <div className="max-h-80 overflow-auto space-y-4 text-sm">
               {(() => {
                 const kelompok = new Map<string, SoalKuis[]>()
-                for (const t of URUTAN_TIPE) kelompok.set(t, [])
+                for (const t of tipePilihan) kelompok.set(t, [])
                 for (const s of pratinjau) {
                   const arr = kelompok.get(s.tipe)
                   if (arr) arr.push(s)
+                  else {
+                    if (!kelompok.has(s.tipe)) kelompok.set(s.tipe, [])
+                    kelompok.get(s.tipe)!.push(s)
+                  }
                 }
                 let no = 0
-                return URUTAN_TIPE.map((tipe) => {
+                const urutanTampil = [
+                  ...tipePilihan,
+                  ...[...kelompok.keys()].filter((t) => !(tipePilihan as readonly string[]).includes(t)),
+                ]
+                return urutanTampil.map((tipe) => {
                   const items = kelompok.get(tipe) ?? []
                   if (items.length === 0) return null
                   return (
                     <div key={tipe}>
                       <div className="rounded bg-slate-50 px-2 py-1.5 border border-slate-100 mb-1">
                         <div className="text-xs font-bold text-slate-700">
-                          {NAMA_TIPE[tipe]} ({items.length})
+                          {NAMA_TIPE[tipe as TipeSoal] ?? tipe} ({items.length})
                         </div>
                         <div className="text-[11px] text-slate-500 leading-snug mt-0.5">
-                          {INSTRUKSI_TIPE[tipe]}
+                          {INSTRUKSI_TIPE[tipe as TipeSoal] ?? ''}
                         </div>
                       </div>
                       <ol className="space-y-1 pl-1">
