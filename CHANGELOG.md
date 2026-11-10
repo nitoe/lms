@@ -653,3 +653,11 @@
 - `daftarRuangKelas(profil ?? null)` — `undefined` tidak lolos tipe `AppUser | null`.
 - Mapping `lms_bobot_slm.sumber`: `jenis` ditegaskan sebagai `'tugas' | 'kuis'` (`SumberNilaiSlm['jenis']`).
 - File: `src/lib/rekapNilai.ts` (lengkap).
+
+## 2026-11-10 — Rekap Nilai terhubung penugasan/wali + monitor Ruang Kelas
+
+- **Rekap Nilai** memakai sumber kelas×mapel yang **sama dengan Ruang Kelas**: penugasan guru + perluasan wali × master mapel (bukan hanya `penugasan` mentah). Menghilangkan pesan kosong palsu bagi wali kelas.
+- UI Rekap **Tahap 2** (agregasi tugas/kuis + bobot SLM) dipastikan ikut terpasang.
+- **Ruang Kelas:** panel **Penugasan aktif** (daftar tugas/kuis aktif) mengganti teks intro lama; badge jumlah di kartu mapel.
+- File: `src/pages/RekapNilai.tsx`, `src/lib/rekapNilai.ts`, `src/pages/KelasList.tsx`, `src/components/RuangCard.tsx`.
+- ANTIREGRESI §83.

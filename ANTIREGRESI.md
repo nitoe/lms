@@ -539,3 +539,9 @@ Jangan memaksa satu kolom sempit di desktop.
 82.2 Rekap Nilai memfilter sumber tugas menurut `jenisPenilaian`. Jangan memasukkan tugas `latihan` ke nilai SLM/STS/SAS.
 
 82.3 Kuis sudah memakai field yang sama di `lms_kuis`; jangan menduplikasi konstanta label dengan teks berbeda — selaraskan makna dengan `NAMA_JENIS_PENILAIAN` / `NAMA_JENIS_PENILAIAN_TUGAS`.
+
+## §83. Rekap Nilai & Ruang Kelas memakai sumber kelas×mapel yang sama
+
+83.1 Jangan mengisi dropdown Rekap hanya dari `daftarRuangKelas` (penugasan murni) jika Ruang Kelas memakai `perluasDenganMapelMaster` untuk wali. Keduanya harus konsisten agar wali tidak melihat “belum ada penugasan” di Rekap padahal kartu ruang penuh.
+
+83.2 Panel **Penugasan aktif** di `KelasList` menggantikan teks intro generik. Jangan mengembalikan copy “Setiap kartu adalah satu mata pelajaran…” sebagai konten utama di atas katalog.
