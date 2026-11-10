@@ -69,6 +69,19 @@ timer berbasis tenggat (tetap berjalan saat keluar) berwarna, kirim otomatis saa
 berpindah soal, rincian hasil per kompleksitas dan materi. Jadwal buka/tutup dan token diperiksa di
 klien.
 
+## Mengelola bank soal TKA (editor soal)
+
+Di ruang TKA, editor soal menampilkan blok **Bahan bacaan & pengaturan TKA** (di bawah teks soal):
+
+- **Bahan bacaan / stimulus**: teks biasa (Enter dua kali = paragraf baru) atau HTML sederhana, termasuk
+  `<table>`. Pratinjau tampil di bawahnya. Memakai kotak teks (bukan editor kaya) supaya tabel tidak hilang.
+- **Materi**: kategori untuk analisis (mis. Bilangan; Pemahaman Tekstual / Inferensial / Evaluasi dan Apresiasi).
+- **Tampilkan rumus**: `$x^2$` sebaris, `$$…$$` blok. Aktif otomatis untuk soal baru di ruang TKA.
+- **Label kolom** (soal Benar/Salah): mis. «Fakta» / «Opini».
+
+Blok ini juga muncul pada soal di ruang lain bila soal itu sudah memuat field TKA. Mengganti tipe soal
+(mis. PG → PG Kompleks) tidak lagi menghapus bacaan, materi, dan rumus.
+
 ## Batasan yang perlu diketahui
 
 - Token dan jadwal kuis diperiksa **di klien** (token ikut terbaca dari dokumen kuis). `nilaiKuisLms`

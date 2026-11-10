@@ -546,12 +546,16 @@ Jangan memaksa satu kolom sempit di desktop.
 
 83.2 Panel **Penugasan aktif** di `KelasList` menggantikan teks intro generik. Jangan mengembalikan copy “Setiap kartu adalah satu mata pelajaran…” sebagai konten utama di atas katalog.
 
-## §84. Bobot SLM dalam persen
+## §84. Field soal TKA di editor dan pengolahan soal
 
-84.1 Field `bobot` di `lms_bobot_slm.sumber[]` disimpan sebagai **persen 0–100**. Jumlah semua sumber idealnya 100.
+84.1 **Field TKA pada `Soal`** (`stimulus`, `tipeMateri`, `rumus`, `labelBenar`, `labelSalah`) bersifat opsional dan hanya ada pada soal TKA. Kode yang membangun ulang soal (ganti tipe, impor, AI, salin) WAJIB mempertahankannya. `ubahTipe` kini membawa `stimulus`/`tipeMateri`/`rumus`; kode baru yang menyusun `Soal` bidang demi bidang harus menyalinnya. `snapshotSoal` (kuis) memakai klon JSON penuh — jangan diubah menjadi daftar putih bidang, atau bacaan dan rumus hilang di kuis siswa.
 
-84.2 Jangan menampilkan label `b=1` (bobot relatif). Tampilkan `40%`, `60%`, dll.
+84.2 **Jangan menulis `undefined` ke Firestore.** Sertakan field TKA hanya bila ada (`...(x ? { x } : {})`), seperti di `ubahTipe`.
 
-84.3 Saat memuat bobot lama yang jumlahnya ≠ 100, konversi relatif → persen (`normalisasiKePersen`). Sumber baru tanpa data tersimpan: bagi 100% merata.
+84.3 **Stimulus diedit lewat `<textarea>`, bukan `RichEditor`.** Editor kaya tidak mengenal tabel; menyuntingnya di sana membuang tabel. Jangan menggantinya dengan `RichEditor` sebelum ada dukungan tabel.
 
-84.4 Perhitungan nilai akhir tetap weighted average; persen dan bobot relatif matematis setara selama proporsi sama.
+84.4 **Urutan pembersihan stimulus:** `stimulusKeHtml` (teks biasa → paragraf) → `bersihHtmlStimulus` → `htmlDenganRumus`. Jangan membalik urutan (rumus tidak boleh dirender sebelum pembersihan).
+
+84.5 **`rumus: true` otomatis untuk soal baru di ruang TKA** (efek di `TkaFieldEditor`). Bila efek itu dihapus, rumus `$…$` tampil mentah di soal baru.
+
+84.6 **`analisisSoal`:** soal dengan `stimulus` teks dianggap sudah punya stimulus. Jangan mengembalikan pemeriksaan hanya-gambar.

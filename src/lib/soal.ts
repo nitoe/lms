@@ -69,6 +69,11 @@ export function ubahTipe(s: Soal, tipe: TipeSoal): Soal {
     waktuMenit: s.waktuMenit,
     kompleksitas: normalisasiKompleksitas((s as { kompleksitas?: unknown }).kompleksitas),
     pembahasan: s.pembahasan,
+    // Field soal TKA ikut terbawa saat tipe diganti (ANTIREGRESI §84). Hanya bila ada,
+    // agar tidak menulis `undefined` ke Firestore.
+    ...(s.stimulus ? { stimulus: s.stimulus } : {}),
+    ...(s.tipeMateri ? { tipeMateri: s.tipeMateri } : {}),
+    ...(s.rumus ? { rumus: true } : {}),
   }
   if ((s.tipe === 'pg' || s.tipe === 'pgk') && (tipe === 'pg' || tipe === 'pgk')) {
     const opsi = Array.isArray(s.opsi) && s.opsi.length >= 2 ? s.opsi : baru.tipe === 'pg' || baru.tipe === 'pgk' ? (baru as { opsi: typeof s.opsi }).opsi : s.opsi

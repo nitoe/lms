@@ -3,6 +3,7 @@ import { GambarPicker } from './GambarSoal'
 import AiSoalPanel from './AiSoalPanel'
 import JawabanEditor from './JawabanEditor'
 import RichEditor from './RichEditor'
+import TkaFieldEditor, { perluEditorTka } from './TkaFieldEditor'
 import { AngkaInput } from './kontrol'
 import { masalahSoal, ubahTipe } from '../../lib/soal'
 import type { KompleksitasSoal, Soal, TipeSoal } from '../../types/soal'
@@ -95,6 +96,8 @@ export default function SoalEditorKartu({
             />
           </div>
         </div>
+
+        {perluEditorTka(soal, mapel) && <TkaFieldEditor soal={soal} mapel={mapel} onChange={onChange} />}
 
         <JawabanEditor soal={soal} onChange={onChange} />
 

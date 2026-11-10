@@ -37,3 +37,18 @@ export function bersihHtmlStimulus(html: string | undefined): string {
     ALLOWED_ATTR: ['colspan', 'rowspan', 'scope'],
   })
 }
+
+/**
+ * Stimulus yang diketik sebagai teks biasa (tanpa tag) → paragraf HTML (Enter dua kali = paragraf
+ * baru, Enter sekali = baris baru). Stimulus yang sudah HTML dibiarkan.
+ */
+export function stimulusKeHtml(s: string | undefined): string {
+  const t = (s ?? '').replace(/\r\n?/g, '\n').trim()
+  if (!t) return ''
+  if (/<\/?[a-z][a-z0-9]*(\s[^>]*)?>/i.test(t)) return t
+  const esc = (x: string) => x.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+  return t
+    .split(/\n{2,}/)
+    .map((p) => `<p>${esc(p).replace(/\n/g, '<br>')}</p>`)
+    .join('')
+}

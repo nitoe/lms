@@ -1,4 +1,4 @@
-import { bersihHtmlStimulus } from '../../lib/html'
+import { bersihHtmlStimulus, stimulusKeHtml } from '../../lib/html'
 import { htmlDenganRumus, useKatexSiap } from '../../lib/matematika'
 import { GambarSoal } from './GambarSoal'
 import type { Soal } from '../../types/soal'
@@ -14,7 +14,7 @@ export function punyaStimulus(soal: Soal): boolean {
  */
 export default function StimulusSoal({ soal, className = '' }: { soal: Soal; className?: string }) {
   const siap = useKatexSiap(!!soal.rumus)
-  const bersih = bersihHtmlStimulus(soal.stimulus)
+  const bersih = bersihHtmlStimulus(stimulusKeHtml(soal.stimulus))
   if (!bersih && !soal.gambarId) return null
   const isi = siap ? htmlDenganRumus(bersih) : bersih
   return (

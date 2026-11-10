@@ -662,28 +662,10 @@
 - File: `src/pages/RekapNilai.tsx`, `src/lib/rekapNilai.ts`, `src/pages/KelasList.tsx`, `src/components/RuangCard.tsx`.
 - ANTIREGRESI §83.
 
-## 2026-11-10 — Bobot SLM dalam persen
+## 2026-11-10 — TKA Tahap 3: bank soal TKA dapat dikelola di editor soal
 
-- Bobot sumber SLM di Rekap Nilai memakai **persen (0–100%)**, bukan bobot relatif (b=1).
-- Satu sumber → default 100%; banyak sumber → dibagi merata (total 100%).
-- Data lama (bobot relatif) dikonversi otomatis ke persen saat dibaca.
-- UI: input %, indikator total, simpan hanya jika total ≈ 100%.
-- File: `src/types/rekapNilai.ts`, `src/lib/rekapNilai.ts`, `src/pages/RekapNilai.tsx`.
-
-## 2026-11-10 — UI/UX Rekap Nilai (polish)
-
-- Halaman **Rekap Nilai** diperhalus agar lebih profesional dan mudah dibaca (bukan tampilan generik).
-- Header dengan konteks kelas×mapel×TP×siswa; filter di kartu; badge jumlah sumber di tab SLM/STS/SAS.
-- Kartu konteks TP (badge nomor + deskripsi); panel bobot sumber dengan progress bar total % dan status OK.
-- Ringkasan statistik (rata-rata, min, max, terisi) di header sub-tab.
-- Tabel nilai: header sticky, hover baris, badge skor berwarna (hijau ≥75, amber 60–74, merah <60).
-- Empty state dan loading lebih jelas; footer tahap sinkronisasi dirapikan.
-- Logika agregasi/bobot **tidak diubah** — hanya presentasi.
-- File: `src/pages/RekapNilai.tsx`.
-
-## 2026-11-10 — Rekap Nilai: filter bar rapi
-
-- Filter kelas/mapel tidak lagi melebar penuh: layout horizontal kompak, select mapel dibatasi lebar.
-- Pill jumlah TP & siswa digabung ke bar filter (bukan chip mengambang di header).
-- Tombol Muat ulang dengan ikon; jarak vertikal halaman sedikit dirapatkan.
-- File: `src/pages/RekapNilai.tsx`.
+- **Editor soal:** blok baru «Bahan bacaan & pengaturan TKA» (`TkaFieldEditor`) di ruang TKA: bahan bacaan/stimulus (teks biasa atau HTML dengan tabel, ada pratinjau), materi, tombol rumus, dan label kolom Benar/Salah kustom. Rumus aktif otomatis untuk soal baru di ruang TKA.
+- **Perbaikan:** mengganti tipe soal (`ubahTipe`) sebelumnya membuang field TKA; kini `stimulus`, `tipeMateri`, `rumus` terbawa. Analisis «butuh stimulus» tidak lagi menandai soal yang sudah punya bahan bacaan teks.
+- **Tampilan:** stimulus berupa teks biasa dirender sebagai paragraf (`stimulusKeHtml`).
+- File: `src/components/soal/{TkaFieldEditor,SoalEditorKartu,StimulusSoal}.tsx`, `src/lib/{soal,analisisSoal,html}.ts`, `src/styles/soal.css`, `docs/TKA.md`.
+- ANTIREGRESI §84.

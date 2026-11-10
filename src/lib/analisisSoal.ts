@@ -16,6 +16,7 @@ export interface HasilAnalisisSoal {
 
 export function butuhStimulusBelumAda(soal: Soal): boolean {
   if (soal.gambarId) return false
+  if (soal.stimulus && soal.stimulus.trim()) return false // bacaan TKA sudah ada
   const teks = teksPolos(soal.teks).toLowerCase()
   return KATA_BUTUH_STIMULUS.some((k) => teks.includes(k))
 }
