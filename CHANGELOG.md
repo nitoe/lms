@@ -161,3 +161,13 @@
 - `lms_jawaban`: sudah ada (siswa baca milik sendiri; tulis hanya CF) — pastikan rules ter-deploy dari file utuh ini.
 - `mapelTka` mencakup **TKA IPA**.
 - File: `firestore.rules` (salin utuh ke LMS **dan** SDM01Penilaian). ANTIREGRESI §99.
+
+## 2026-11-11 — Fix permission TKA siswa (list query kelas «6»)
+
+- **Bukan** karena pembuat kuis = admin TKA / wali 5A. Cabang baca siswa tidak memeriksa `dibuatOleh`.
+- **Penyebab lanjutan:** cabang rules memuat `mapelTka(resource.data.mapel)` bersama `kelas == '6'`. Query klien hanya `where kelas=='6' + aktif==true` → Firestore menolak list (evaluasi konservatif).
+- **Perbaikan rules:** dua cabang siswa terpisah:
+  1. `aktif && kelas == token.kelas` (rombel 6A/6B)
+  2. `aktif && kelas == '6' && token.kelas in ['6A','6B']` (bank TKA, tanpa cek mapel di rules)
+- **Klien `SiswaTka`:** fetch rombel dan bank «6» terpisah; satu gagal tidak menggagalkan seluruh muat.
+- File: `firestore.rules` (utuh, LMS + SDM01Penilaian), `src/pages/siswa/SiswaTka.tsx`.

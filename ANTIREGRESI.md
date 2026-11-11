@@ -167,3 +167,19 @@ Tanpa ini, daftar kuis mapel dan TKA di area siswa selalu gagal permission.
 99.5 File `firestore.rules` **dibagikan** LMS ↔ SDM01Penilaian: selalu salin **versi utuh**, bukan potongan.
 
 99.6 Snapshot soal di `lms_kuis` masih memuat kunci di klien (keterbatasan saat ini). Penilaian tetap server-side. Jangan menolak read siswa dengan alasan kunci — itu memutus akses mengerjakan. Strip kunci = tugas terpisah.
+
+## §99 (lanjutan) — list query TKA kelas «6»
+
+99.7 Cabang baca siswa pada `lms_kuis` **wajib** terpisah tanpa `mapelTka()` pada query bank:
+```
+|| (isSiswaLms() && resource.data.aktif == true
+    && resource.data.kelas == request.auth.token.kelas)
+|| (isSiswaLms() && resource.data.aktif == true
+    && resource.data.kelas == '6'
+    && request.auth.token.kelas in ['6A', '6B'])
+```
+Menyisipkan `mapelTka(resource.data.mapel)` ke cabang bank membuat `getDocs(where kelas=='6')` selalu permission-denied.
+
+99.8 Identity pembuat kuis (`dibuatOleh`, role wali 5A, email admin TKA) **tidak** boleh menjadi syarat baca siswa.
+
+99.9 Klien TKA boleh memuat rombel + bank «6» secara terpisah agar satu query gagal tidak menutup seluruh menu.

@@ -191,19 +191,26 @@ function TkaIsi({ siswaId, kelas }: { siswaId: string; kelas: string }) {
   const muat = useCallback(async () => {
     setGalat('')
     try {
-      // Hanya equality (tanpa composite index). Filter mapel TKA di klien.
-      // Bank/kuis bersama kelas «6» + kuis yang menarget rombel siswa.
-      const kelasCari = Array.from(new Set([kelas, KELAS_TKA_BANK]))
-      const snaps = await Promise.all(
-        kelasCari.map((k) =>
-          getDocs(query(collection(db, 'lms_kuis'), where('kelas', '==', k), where('aktif', '==', true))),
-        ),
-      )
+      // Hanya equality. Cabang rules siswa (ANTIREGRESI §99):
+      //   rombel sendiri (6A/6B) DAN bank TKA kelas «6».
+      // Query bank «6» tidak boleh digabung gagal dengan rombel — fetch terpisah.
+      // Filter mapel TKA di klien (dan opsional where mapel in untuk bank).
       const byId = new Map<string, KuisLms>()
-      for (const snap of snaps) {
-        for (const d of snap.docs) {
-          byId.set(d.id, { id: d.id, ...d.data() } as KuisLms)
+      const ambil = async (kelasQ: string) => {
+        try {
+          const snap = await getDocs(
+            query(collection(db, 'lms_kuis'), where('kelas', '==', kelasQ), where('aktif', '==', true)),
+          )
+          for (const d of snap.docs) {
+            byId.set(d.id, { id: d.id, ...d.data() } as KuisLms)
+          }
+        } catch (err) {
+          console.warn('SiswaTka: gagal muat kuis kelas', kelasQ, err)
         }
+      }
+      await ambil(kelas)
+      if (KELAS_TKA_BANK !== kelas) {
+        await ambil(KELAS_TKA_BANK)
       }
       const kuis = [...byId.values()].filter(
         (k) => adalahMapelTka(k.mapel) && k.modePelaksanaan !== 'offline',
