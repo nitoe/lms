@@ -142,3 +142,28 @@
 ## §98.7 Lokasi deteksi domain TKA
 
 Deteksi/klasifikasi domain AI (**bukan** di tab Hasil siswa) hanya di tab **Atur kuis** (`KuisDetail`). Tab Hasil hanya menampilkan skor domain yang sudah dilabel. Jangan mengembalikan tombol deteksi ke `HasilKuisPanel`.
+
+## §99. Siswa LMS boleh baca kuis aktif (kelasnya / bank TKA)
+
+99.1 **`lms_kuis` allow read** harus mencakup siswa:
+```
+isSiswaLms()
+&& resource.data.aktif == true
+&& (
+  resource.data.kelas == request.auth.token.kelas
+  || (mapelTka(resource.data.mapel)
+      && tkaKelas6(request.auth.token.kelas)
+      && resource.data.kelas == '6')
+)
+```
+Tanpa ini, daftar kuis mapel dan TKA di area siswa selalu gagal permission.
+
+99.2 Query klien siswa **wajib** filter `aktif == true` dan `kelas` (rombel atau «6» untuk TKA). Jangan query tanpa filter kelas.
+
+99.3 **`lms_jawaban`**: siswa hanya **read** dokumen dengan `siswaId == token.siswaId`. Create/update/delete = `false` (hanya Admin SDK / CF `nilaiKuisLms`).
+
+99.4 `mapelTka` = `TKA Matematika` | `TKA Bahasa Indonesia` | `TKA IPA`. Jangan hilangkan IPA.
+
+99.5 File `firestore.rules` **dibagikan** LMS ↔ SDM01Penilaian: selalu salin **versi utuh**, bukan potongan.
+
+99.6 Snapshot soal di `lms_kuis` masih memuat kunci di klien (keterbatasan saat ini). Penilaian tetap server-side. Jangan menolak read siswa dengan alasan kunci — itu memutus akses mengerjakan. Strip kunci = tugas terpisah.

@@ -1094,7 +1094,7 @@ match /g7kaih/{id} {
     // ##  baru; bank soal = lms_paket_soal, kuis = lms_kuis, hasil = lms_jawaban.
     // ##    tkaEmailKhusus  = akun arif.azwar79@gmail.com (wali kelas 5A; pengecualian untuk uji
     // ##                      sistem; boleh di semua kelas 6)
-    // ##    tkaGuruKelas6   = wali kelas yang bersangkutan (users/{uid}.waliKelas), hanya kelasnya
+    // ##    tkaWaliKelas6Any = wali 6A atau 6B (bank bersama kelas kanonik «6»)
     // ##  Harus sama dengan src/lib/tkaAkses.ts di repo LMS (ubah keduanya bersamaan).
     // ##  lmsTulisMapelKelas / lmsLihatMapelKelas HANYA dipakai koleksi lms_*; helper bersama
     // ##  tulisMapelKelas / lihatMapelKelas (dipakai Penilaian) sengaja TIDAK diubah.
@@ -1105,26 +1105,27 @@ match /g7kaih/{id} {
         && request.auth.token.email == 'arif.azwar79@gmail.com';
     }
 
+    // Selaras src/lib/tkaAkses.ts (ANTIREGRESI §85–§91):
+    // bank/kuis TKA memakai kelas kanonik «6»; wali 6A atau 6B kelola bersama.
     function tkaKelas6(kelas) {
-      return kelas in ['6A', '6B', '6C'];
+      return kelas in ['6', '6A', '6B'];
     }
 
-    function tkaGuruKelas6(kelas) {
+    function tkaWaliKelas6Any() {
       return akunAktif()
         && myRole() in ['guru', 'guru_akademik']
         && daftarAda('waliKelas')
-        && tkaKelas6(kelas)
-        && kelas in myProfile().waliKelas;
+        && myProfile().waliKelas.hasAny(['6A', '6B']);
     }
 
     function mapelTka(mapel) {
-      return mapel in ['TKA Matematika', 'TKA Bahasa Indonesia'];
+      return mapel in ['TKA Matematika', 'TKA Bahasa Indonesia', 'TKA IPA'];
     }
 
     function ruangTka(mapel, kelas) {
       return mapelTka(mapel)
         && tkaKelas6(kelas)
-        && (tkaEmailKhusus() || tkaGuruKelas6(kelas));
+        && (tkaEmailKhusus() || tkaWaliKelas6Any());
     }
 
     function lmsTulisMapelKelas(mapel, kelas) {
@@ -1268,10 +1269,25 @@ match /g7kaih/{id} {
     // jadi BACA hanya guru kelas×mapel atau admin — sama seperti lms_paket_soal (ANTIREGRESI §38).
     // Query klien WAJIB where kelas + mapel (lms_kuis) atau where kuisId (lms_soal).
     match /lms_kuis/{id} {
-      // Baca: penugasan/wali/admin, ATAU pembuat (kuis lama tetap terlihat).
+      // Baca: penugasan/wali/admin, ATAU pembuat (kuis lama tetap terlihat),
+      // ATAU siswa LMS untuk kuis aktif di kelasnya (termasuk bank TKA kelas «6»).
+      // Klien siswa: where('kelas','==',kelasSiswa) + where('aktif','==',true)
+      //   atau TKA: where('kelas','==','6') + where('aktif','==',true) (ANTIREGRESI §99).
+      // Catatan: snapshot soal di dokumen masih memuat kunci; penilaian tetap lewat CF.
+      // Fase strip kunci (koleksi terpisah) tetap rencana terpisah — jangan blokir akses siswa.
       allow read: if isAdmin()
                   || lmsLihatMapelKelas(resource.data.mapel, resource.data.kelas)
-                  || (isLoggedIn() && resource.data.dibuatOleh == request.auth.uid);
+                  || (isLoggedIn() && resource.data.dibuatOleh == request.auth.uid)
+                  || (isSiswaLms()
+                      && resource.data.aktif == true
+                      && (
+                        resource.data.kelas == request.auth.token.kelas
+                        || (
+                          mapelTka(resource.data.mapel)
+                          && tkaKelas6(request.auth.token.kelas)
+                          && resource.data.kelas == '6'
+                        )
+                      ));
 
       allow create: if lmsTulisMapelKelas(
                         request.resource.data.mapel,
@@ -1508,6 +1524,22 @@ match /g7kaih/{id} {
     }
 
 
+
+    // ---- lms_jawaban/{id} -------------------------------------------------
+    // Hasil pengerjaan kuis (ditulis Cloud Function / Admin SDK saja).
+    // Baca: guru/admin lewat lmsLihatMapelKelas (termasuk ruang TKA kelas 6 + mapel TKA*),
+    //       atau siswa LMS milik sendiri (claim siswaId).
+    // Query guru WAJIB where kuisId + kelas + mapel (lihat daftarJawabanKuis).
+    match /lms_jawaban/{id} {
+      allow read: if isAdmin()
+                  || (resource.data.keys().hasAll(['mapel', 'kelas'])
+                      && lmsLihatMapelKelas(resource.data.mapel, resource.data.kelas))
+                  || (isSiswaLms()
+                      && 'siswaId' in resource.data
+                      && resource.data.siswaId == request.auth.token.siswaId);
+
+      allow create, update, delete: if false;
+    }
 
     // ---- lms_bobot_slm/{id} -----------------------------------------------
     // Bobot sumber SLM per TP. ID: {kelas}__{mapelSlug}__{tpId}.

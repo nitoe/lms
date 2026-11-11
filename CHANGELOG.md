@@ -150,3 +150,14 @@
 - Badge domain per soal di daftar soal Atur kuis (Pengetahuan / Keterampilan proses / Domain belum).
 - Perbaikan regresi: panel Analisis AI siswa di Hasil kembali memakai `bolehAi` (bukan `bolehDomainAi`).
 - File: `KuisDetail.tsx`, `HasilKuisPanel.tsx`. ANTIREGRESI §98.7.
+
+## 2026-11-11 — Fix permission siswa: baca lms_kuis aktif
+
+- **Penyebab error «Missing or insufficient permissions»** saat siswa buka kuis/TKA:
+  rules `lms_kuis` hanya mengizinkan guru/admin/pembuat — **siswa tidak boleh read**.
+- **Perbaikan:** `isSiswaLms()` boleh baca dokumen `lms_kuis` yang `aktif == true` dan:
+  - `kelas` = claim `kelas` siswa, **atau**
+  - mapel TKA + siswa kelas 6A/6B + `kelas` dokumen = «6» (bank TKA bersama).
+- `lms_jawaban`: sudah ada (siswa baca milik sendiri; tulis hanya CF) — pastikan rules ter-deploy dari file utuh ini.
+- `mapelTka` mencakup **TKA IPA**.
+- File: `firestore.rules` (salin utuh ke LMS **dan** SDM01Penilaian). ANTIREGRESI §99.
