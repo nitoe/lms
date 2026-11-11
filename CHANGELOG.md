@@ -1,3 +1,10 @@
+## 2026-11-11 — Halaman masuk: lebih cerah & tanpa login orang tua
+
+- Hapus tab/link **Orang Tua** di halaman masuk staf dan siswa (login orang tua tidak dipakai di LMS).
+- Overlay hero diperingan agar foto kelas tidak gelap/suram; kutipan lebih transparan + blur.
+- Teks hero staf diganti menjadi sambutan sekolah yang ramah siswa; hero siswa: «Selamat datang, teman-teman!».
+- File: `src/pages/Login.tsx`, `src/pages/siswa/SiswaMasuk.tsx`, `src/index.css`.
+
 ## 2026-11-11 — Reset TKA: attempt + draf jawaban (progress)
 
 - Reset attempt sekarang punya 3 mode:

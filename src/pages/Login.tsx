@@ -50,24 +50,24 @@ export default function Login() {
             </div>
           </div>
 
-          <p className="auth-hero-kicker">Untuk guru & staf · SD Muhammadiyah 01 Kukusan</p>
-          <h1 className="auth-hero-title">Ruang kelas digital yang sederhana, aman, dan menghemat waktu guru.</h1>
+          <p className="auth-hero-kicker">SD Muhammadiyah 01 Kukusan</p>
+          <h1 className="auth-hero-title">Selamat datang di ruang kelas digital sekolah kita.</h1>
           <p className="auth-hero-desc">
-            Materi, tugas, kuis, dan penilaian dalam satu tempat. Terintegrasi dengan data kelas dan mapel yang sudah ada.
+            Materi, tugas, dan kuis dalam satu tempat. Siswa masuk dengan kelas &amp; NISN; guru memakai akun yang sama dengan aplikasi Penilaian.
           </p>
 
           <div className="auth-hero-pills">
             <div className="auth-hero-pill">
-              <strong>Materi & tugas</strong>
+              <strong>Materi &amp; tugas</strong>
               <span>Unggah, kumpul, nilai</span>
             </div>
             <div className="auth-hero-pill">
-              <strong>Kurikulum Merdeka</strong>
-              <span>Capaian per TP</span>
+              <strong>Kuis &amp; TKA</strong>
+              <span>Latihan dan penilaian</span>
             </div>
             <div className="auth-hero-pill">
-              <strong>Akun yang sama</strong>
-              <span>Dengan aplikasi Penilaian</span>
+              <strong>Mudah untuk siswa</strong>
+              <span>Cukup kelas, nama, NISN</span>
             </div>
           </div>
 
@@ -93,7 +93,6 @@ export default function Login() {
           <div className="auth-tabs">
             <Link to="/siswa/masuk" className="auth-tab">Siswa</Link>
             <button type="button" className="auth-tab auth-tab--active">Staf</button>
-            <Link to="/orangtua/masuk" className="auth-tab">Orang Tua</Link>
           </div>
 
           <h2 className="auth-panel-title">Assalamu&apos;alaikum wr. wb.</h2>
@@ -143,7 +142,7 @@ export default function Login() {
           <p className="mt-5 text-center text-sm text-muted">
             Siswa:{' '}
             <Link to="/siswa/masuk" className="font-medium text-muh-600 hover:underline">
-              masuk dengan kelas & NISN
+              masuk dengan kelas &amp; NISN
             </Link>
           </p>
         </div>

@@ -106,9 +106,9 @@ export default function SiswaMasuk() {
           </div>
 
           <p className="auth-hero-kicker">Untuk siswa · SD Muhammadiyah 01 Kukusan</p>
-          <h1 className="auth-hero-title">Belajar dengan ikon besar, warna cerah, dan materi yang mudah dipahami.</h1>
+          <h1 className="auth-hero-title">Selamat datang, teman-teman! Mari belajar bersama.</h1>
           <p className="auth-hero-desc">
-            Pilih kelas dan nama, masukkan NISN, lalu buka ruang kelas, materi, dan tugasmu.
+            Pilih kelas dan nama, masukkan NISN, lalu buka materi, tugas, dan kuismu dengan mudah.
           </p>
 
           <div className="auth-hero-pills">
@@ -148,7 +148,6 @@ export default function SiswaMasuk() {
           <div className="auth-tabs">
             <button type="button" className="auth-tab auth-tab--active">Siswa</button>
             <Link to="/masuk" className="auth-tab">Staf</Link>
-            <Link to="/orangtua/masuk" className="auth-tab">Orang Tua</Link>
           </div>
 
           <h2 className="auth-panel-title">Assalamu&apos;alaikum wr. wb.</h2>
@@ -218,12 +217,9 @@ export default function SiswaMasuk() {
           </form>
 
           <p className="mt-5 text-center text-sm text-muted">
+            Staf:{' '}
             <Link to="/masuk" className="font-medium text-muh-600 hover:underline">
-              masuk staf
-            </Link>
-            {' · '}
-            <Link to="/orangtua/masuk" className="font-medium text-muh-600 hover:underline">
-              orang tua
+              masuk dengan email &amp; sandi
             </Link>
           </p>
         </div>
