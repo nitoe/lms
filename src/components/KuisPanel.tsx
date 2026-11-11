@@ -29,6 +29,7 @@ import { adalahMapelTka, TIPE_SOAL_TKA } from '../lib/tkaAkses'
 import KuisDetail, { INSTRUKSI_TIPE } from './KuisDetail'
 import HasilKuisPanel from './HasilKuisPanel'
 import OfflineKuisPanel from './OfflineKuisPanel'
+import PilihSoalManual from './soal/PilihSoalManual'
 
 type Props = {
   kelas: string
@@ -589,41 +590,16 @@ export default function KuisPanel({ kelas, mapel }: Props) {
             <h4 className="text-sm font-semibold text-slate-800">
               3. Pilih soal ({pilihanManual.length} dipilih)
             </h4>
-            <div className="max-h-72 space-y-4 overflow-auto">
-              {paketSiap
-                .filter((p) => paketIds.includes(p.id))
-                .map((p) => (
-                  <div key={p.id}>
-                    <div className="text-xs font-semibold text-slate-500 mb-1">{p.judul}</div>
-                    <ul className="space-y-1">
-                      {(p.soal ?? []).map((s, i) => {
-                        const checked = pilihanManual.some(
-                          (x) => x.paketId === p.id && x.soalId === s.id,
-                        )
-                        return (
-                          <li key={s.id}>
-                            <label className="flex items-start gap-2 cursor-pointer rounded px-2 py-1.5 hover:bg-slate-50 text-sm">
-                              <input
-                                type="checkbox"
-                                className="mt-0.5"
-                                checked={checked}
-                                onChange={() => togglePilihanManual(p.id, s.id)}
-                              />
-                              <span className="min-w-0">
-                                <span className="text-slate-500 mr-1">{i + 1}.</span>
-                                {teksPolos(s.teks).slice(0, 100) || '(tanpa teks)'}
-                                <span className="ml-1 text-[10px] uppercase text-slate-400">
-                                  {s.tipe} · {s.kompleksitas || 'L1'}
-                                </span>
-                              </span>
-                            </label>
-                          </li>
-                        )
-                      })}
-                    </ul>
-                  </div>
-                ))}
-            </div>
+            <p className="text-xs text-slate-500">
+              Klik baris untuk melihat soal lengkap di panel kanan (stimulus, gambar, opsi, kunci guru).
+              Centang atau tombol «Pilih soal ini» untuk memasukkan ke kuis.
+            </p>
+            <PilihSoalManual
+              paketDipilih={paketSiap.filter((p) => paketIds.includes(p.id))}
+              pilihan={pilihanManual}
+              onToggle={togglePilihanManual}
+              tipePilihan={tipePilihan}
+            />
           </section>
         )}
 

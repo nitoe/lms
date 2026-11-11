@@ -30,3 +30,13 @@
 
 89.4 Batas kompresi tetap sama (sisi ≤ 1024 px, data URL ≤ sasaran karakter Firestore). Clipboard melewati `unggahGambar` yang sama.
 
+## §90. Pemilihan soal manual (rancang kuis)
+
+90.1 Mode manual **wajib** menampilkan pratinjau soal lengkap (teks, stimulus, gambar, opsi) saat memilih — jangan kembali ke daftar cuplikan satu baris saja.
+
+90.2 Layout master–detail berada di area konten wizard kuis, **bukan** mengganti atau bercampur dengan sidebar navigasi utama aplikasi.
+
+90.3 Komponen pratinjau memakai `SoalTampil` / `StimulusSoal` / `GambarSoal` yang sama dengan tampilan siswa agar tidak ada perbedaan format.
+
+90.4 Filter bentuk di panel pilih manual mengikuti `tipePilihan` dari pemanggil (TKA: `TIPE_SOAL_TKA`; mapel: `URUTAN_TIPE`).
+

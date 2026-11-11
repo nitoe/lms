@@ -32,3 +32,13 @@
 - File: `src/lib/gambar.ts`, `src/components/soal/GambarSoal.tsx`, `src/styles/soal.css`.
 - ANTIREGRESI §89.
 
+## 2026-11-11 — Rancang kuis manual: pratinjau soal lengkap (daftar + panel)
+
+- **Masalah:** mode «Pilih manual» hanya menampilkan cuplikan ±100 karakter — stimulus, gambar, opsi, dan kunci tidak terlihat, menyulitkan pemilihan (khususnya TKA).
+- **Perbaikan UX:** layout master–detail di dalam konten wizard (bukan sidebar menu utama):
+  - Kiri: daftar soal dengan centang, badge tipe/kompleksitas/materi/media, pencarian, filter bentuk.
+  - Kanan: pratinjau penuh (stimulus, gambar, teks, opsi lewat `SoalTampil`) + ringkas kunci guru + tombol Pilih/Keluarkan.
+- Berlaku untuk TKA dan mapel biasa; filter bentuk tetap menghormati `TIPE_SOAL_TKA` di ruang TKA.
+- File: `src/components/soal/PilihSoalManual.tsx` (baru), `src/components/KuisPanel.tsx`, `src/styles/soal.css`.
+- ANTIREGRESI §90.
+
