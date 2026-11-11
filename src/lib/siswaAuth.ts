@@ -7,7 +7,7 @@ export const DAFTAR_KELAS = [
   '3A', '3B', '3C',
   '4A', '4B', '4C',
   '5A', '5B', '5C',
-  '6A', '6B', '6C',
+  '6A', '6B',
 ]
 
 export interface SiswaDasar {

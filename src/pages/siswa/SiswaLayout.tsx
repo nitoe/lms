@@ -26,6 +26,10 @@ export default function SiswaLayout() {
   if (!sesi) return <Navigate to="/siswa/masuk" replace />
 
   async function handleKeluar() {
+    const ok = window.confirm(
+      'Keluar dari akun siswa?\n\nJika sedang mengerjakan kuis/TKA, pastikan jawaban sudah dikirim. Progress draf tersimpan di perangkat ini.',
+    )
+    if (!ok) return
     await keluar()
     navigate('/siswa/masuk', { replace: true })
   }

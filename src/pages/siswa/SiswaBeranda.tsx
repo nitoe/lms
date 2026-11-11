@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import { useSiswa } from '../../context/SiswaContext'
+import { bolehTkaSiswa } from '../../lib/tkaAkses'
 import SiswaIcon, { type SiswaIconName } from './SiswaIcon'
 
 type MenuItem = {
@@ -56,9 +57,19 @@ function sapaanWaktu(): string {
   return 'Selamat malam'
 }
 
+const MENU_TKA: MenuItem = {
+  to: '/siswa/tka',
+  label: 'TKA',
+  deskripsi: 'Try out & latihan TKA',
+  icon: 'tka',
+  tone: 'bg-rose-50 text-rose-700',
+  segera: false,
+}
+
 export default function SiswaBeranda() {
   const { sesi } = useSiswa()
   const namaPanggil = sesi?.nama?.split(' ')[0] || 'Siswa'
+  const menu = bolehTkaSiswa(sesi?.kelas) ? [...MENU, MENU_TKA] : MENU
 
   return (
     <div className="space-y-6">
@@ -91,7 +102,7 @@ export default function SiswaBeranda() {
       <section>
         <h2 className="sw-section-title">Menu belajar</h2>
         <div className="sw-menu-grid">
-          {MENU.map((item) => (
+          {menu.map((item) => (
             <Link
               key={item.to}
               to={item.to}

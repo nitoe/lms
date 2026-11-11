@@ -444,6 +444,18 @@ function KerjakanKuis({
   })
   const [confirmKeluar, setConfirmKeluar] = useState(false)
 
+  // Tutup tab / refresh: minta konfirmasi browser (ANTIREGRESI §100)
+  useEffect(() => {
+    const pesan = 'Kamu masih mengerjakan kuis. Progress draf tersimpan di perangkat ini.'
+    const onBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault()
+      e.returnValue = pesan
+      return pesan
+    }
+    window.addEventListener('beforeunload', onBeforeUnload)
+    return () => window.removeEventListener('beforeunload', onBeforeUnload)
+  }, [])
+
   const stateRef = useRef({ jawaban, idx, sisaDetik })
   stateRef.current = { jawaban, idx, sisaDetik }
 
