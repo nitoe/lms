@@ -142,3 +142,11 @@
 - TS6133: impor `NAMA_DOMAIN_TKA` dan variabel `domainYangAda` tidak dipakai setelah kolom domain diganti header tetap.
 - Kolom Pengetahuan / Keterampilan Proses / Nilai Akhir tetap; logika skor tidak berubah.
 - File: `src/components/HasilKuisPanel.tsx`.
+
+## 2026-11-11 — Deteksi domain AI dipindah ke tab Atur kuis
+
+- Tombol/banner **Deteksi domain AI** dihapus dari tab **Hasil siswa** (`HasilKuisPanel`).
+- Dipindah ke tab **Atur kuis** (`KuisDetail`): ringkasan jumlah soal per domain + tombol deteksi (akun AI).
+- Badge domain per soal di daftar soal Atur kuis (Pengetahuan / Keterampilan proses / Domain belum).
+- Perbaikan regresi: panel Analisis AI siswa di Hasil kembali memakai `bolehAi` (bukan `bolehDomainAi`).
+- File: `KuisDetail.tsx`, `HasilKuisPanel.tsx`. ANTIREGRESI §98.7.

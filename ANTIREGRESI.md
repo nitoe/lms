@@ -138,3 +138,7 @@
 98.5 Klasifikasi domain AI (`klasifikasiDomainTkaLmsAi`) hanya akun AI (`bolehPemanggilAi`); hasil ditulis ke snapshot soal kuis lewat `updateKuis`. Jangan membuka write `lms_jawaban` dari klien.
 
 98.6 Perubahan §98 hanya dikondisikan `isTka` / `adalahMapelTka`. Tabel hasil mapel biasa (termasuk kolom Perc. & checkbox percobaan) tidak berubah.
+
+## §98.7 Lokasi deteksi domain TKA
+
+Deteksi/klasifikasi domain AI (**bukan** di tab Hasil siswa) hanya di tab **Atur kuis** (`KuisDetail`). Tab Hasil hanya menampilkan skor domain yang sudah dilabel. Jangan mengembalikan tombol deteksi ke `HasilKuisPanel`.

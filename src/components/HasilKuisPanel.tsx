@@ -28,7 +28,6 @@ import {
 } from '../lib/analisisKuisAi'
 import { sinkronNilaiKuisKePenilaian } from '../lib/sinkronNilaiKuis'
 import { updateKuis } from '../lib/kuis'
-import { klasifikasiDomainTkaDenganAi } from '../lib/domainTkaAi'
 import {
   adalahAdminTka,
   adalahMapelTka,
@@ -216,14 +215,12 @@ export default function HasilKuisPanel({ kuis, onUpdated }: Props) {
   const [hasilDipublish, setHasilDipublish] = useState(!!kuis.hasilDipublish)
   const [busyPublish, setBusyPublish] = useState(false)
   const [busyResetId, setBusyResetId] = useState<string | null>(null)
-  const [busyDomainAi, setBusyDomainAi] = useState(false)
   const kelasTkaIzin = useMemo(
     () => (isTka ? kelasHasilTkaBolehDilihat(user, profil) : []),
     [isTka, user, profil],
   )
   // Analisis AI isian/uraian tidak dipakai untuk TKA (soal otomatis PG/PGK/BS).
   const bolehAi = !isTka && bolehAnalisisKuisAi(user?.uid)
-  const bolehDomainAi = bolehAnalisisKuisAi(user?.uid)
   const [list, setList] = useState<JawabanKuis[] | null>(null)
   const [rosterTka, setRosterTka] = useState<SiswaDasar[] | null>(null)
   const [filterKelasTka, setFilterKelasTka] = useState<string>('semua')
@@ -310,48 +307,6 @@ export default function HasilKuisPanel({ kuis, onUpdated }: Props) {
   }
 
 
-  async function deteksiDomainAi(overwrite = false) {
-    if (!isTka) return
-    if (nSoalTanpaDomain === 0 && !overwrite) {
-      const ok = confirm(
-        'Semua soal sudah punya domain. Klasifikasi ulang dan timpa label yang ada?',
-      )
-      if (!ok) return
-      overwrite = true
-    } else if (nSoalTanpaDomain > 0) {
-      const ok = confirm(
-        `Deteksi domain AI untuk ${nSoalTanpaDomain} soal yang belum berlabel?\n\nHasil akan disimpan ke snapshot soal kuis ini (pengetahuan / keterampilan_proses).`,
-      )
-      if (!ok) return
-    }
-    setBusyDomainAi(true)
-    setError('')
-    setInfo('')
-    try {
-      const h = await klasifikasiDomainTkaDenganAi(kuis.id, { overwrite })
-      if (!h.hasil.length) {
-        setInfo('Tidak ada soal yang diklasifikasi.')
-        return
-      }
-      const peta = new Map(h.hasil.map((x) => [x.soalId, x.domainTka]))
-      const soalBaru = (kuis.soal ?? []).map((s) => {
-        const d = peta.get(s.id)
-        return d ? { ...s, domainTka: d } : s
-      })
-      await updateKuis(kuis.id, { soal: soalBaru })
-      setInfo(
-        `Domain disimpan: ${h.diklasifikasi} soal diklasifikasi` +
-          (h.dilewati ? `, ${h.dilewati} dilewati (sudah berlabel)` : '') +
-          '.',
-      )
-      onUpdated?.()
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Gagal deteksi domain AI.')
-    } finally {
-      setBusyDomainAi(false)
-    }
-  }
-
   async function resetAttemptTka(siswaId: string, siswaNama: string) {
     if (!isTka || !siswaId) return
     const ok = confirm(
@@ -417,10 +372,6 @@ export default function HasilKuisPanel({ kuis, onUpdated }: Props) {
   const soalIds = useMemo(() => (kuis.soal ?? []).map((s) => s.id), [kuis.soal])
 
   /** TKA: selalu siapkan kedua domain (kolom tetap), meski belum ada soal berlabel. */
-  const nSoalTanpaDomain = useMemo(() => {
-    if (!isTka) return 0
-    return (kuis.soal ?? []).filter((s) => !normalisasiDomainTka(s.domainTka)).length
-  }, [isTka, kuis.soal])
 
   const agregat = useMemo(() => {
     if (!list || list.length === 0) return {}
@@ -588,7 +539,7 @@ export default function HasilKuisPanel({ kuis, onUpdated }: Props) {
           </div>
 
           
-        {bolehDomainAi && (
+        {bolehAi && (
           <div className="overflow-hidden rounded-2xl border border-muh-100 bg-white shadow-sm">
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-muh-50 bg-muh-50/40 px-4 py-3">
               <div>
@@ -942,42 +893,6 @@ export default function HasilKuisPanel({ kuis, onUpdated }: Props) {
         </div>
       )}
 
-      {isTka && nSoalTanpaDomain > 0 && (
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-amber-200 bg-amber-50/90 px-4 py-3 shadow-sm">
-          <div className="min-w-0">
-            <p className="text-sm font-semibold text-amber-950">
-              {nSoalTanpaDomain} soal belum berdomain
-            </p>
-            <p className="mt-0.5 text-xs text-amber-900/80">
-              Kolom Pengetahuan / Keterampilan Proses / Nilai Akhir membutuhkan label domain per
-              soal. Deteksi otomatis memakai AI (akun khusus), atau isi manual di editor soal bank.
-            </p>
-          </div>
-          {bolehDomainAi && (
-            <button
-              type="button"
-              className="lms-btn-primary text-xs"
-              disabled={busyDomainAi}
-              onClick={() => void deteksiDomainAi(false)}
-            >
-              {busyDomainAi ? 'Mendeteksi…' : 'Deteksi domain AI'}
-            </button>
-          )}
-        </div>
-      )}
-
-      {isTka && nSoalTanpaDomain === 0 && bolehDomainAi && (
-        <div className="flex flex-wrap items-center justify-end gap-2">
-          <button
-            type="button"
-            className="lms-btn-secondary text-xs"
-            disabled={busyDomainAi}
-            onClick={() => void deteksiDomainAi(true)}
-          >
-            {busyDomainAi ? 'Mendeteksi…' : 'Klasifikasi ulang domain AI'}
-          </button>
-        </div>
-      )}
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm">

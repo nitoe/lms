@@ -5,8 +5,11 @@ import { hitungRingkasanKuis } from '../lib/susunKuis'
 import { teksPolos } from '../lib/html'
 import type { JenisPenilaianKuis, KuisLms, ModePelaksanaanKuis, SoalKuis } from '../types/kuis'
 import { NAMA_JENIS_PENILAIAN, NAMA_MODE_PELAKSANAAN } from '../types/kuis'
-import { NAMA_TIPE, URUTAN_TIPE, type TipeSoal } from '../types/soal'
+import { NAMA_TIPE, URUTAN_TIPE, type TipeSoal, normalisasiDomainTka, NAMA_DOMAIN_TKA } from '../types/soal'
 import { adalahMapelTka } from '../lib/tkaAkses'
+import { bolehAnalisisKuisAi } from '../lib/analisisKuisAi'
+import { klasifikasiDomainTkaDenganAi } from '../lib/domainTkaAi'
+import { useAuth } from '../context/AuthContext'
 
 /** Instruksi lengkap per bentuk soal (untuk siswa dan nantinya cetak). */
 export const INSTRUKSI_TIPE: Record<TipeSoal, string> = {
@@ -49,7 +52,27 @@ export default function KuisDetail({ kuis, onUpdated }: Props) {
   const [tpList, setTpList] = useState<string[]>((kuis.tpNamaList ?? kuis.tpIds ?? []).map(bersihNamaTp).filter(Boolean))
   const [nilaiPerTp, setNilaiPerTp] = useState<Record<string, number>>(kuis.nilaiPerTp ?? {})
   /** TKA: nilai tidak masuk rapor/Penilaian — sembunyikan blok Penilaian & TP (ANTIREGRESI §91). */
+  const { user } = useAuth()
   const isTka = adalahMapelTka(kuis.mapel)
+  const bolehDomainAi = bolehAnalisisKuisAi(user?.uid)
+  const [busyDomainAi, setBusyDomainAi] = useState(false)
+
+  const nSoalTanpaDomain = useMemo(() => {
+    if (!isTka) return 0
+    return soal.filter((s) => !normalisasiDomainTka(s.domainTka)).length
+  }, [isTka, soal])
+
+  const nSoalDomain = useMemo(() => {
+    if (!isTka) return { pengetahuan: 0, keterampilan_proses: 0 }
+    let p = 0
+    let k = 0
+    for (const s of soal) {
+      const d = normalisasiDomainTka(s.domainTka)
+      if (d === 'pengetahuan') p += 1
+      else if (d === 'keterampilan_proses') k += 1
+    }
+    return { pengetahuan: p, keterampilan_proses: k }
+  }, [isTka, soal])
 
   useEffect(() => {
     setSoal([...(kuis.soal ?? [])])
@@ -197,6 +220,49 @@ export default function KuisDetail({ kuis, onUpdated }: Props) {
 
 
   let nomorGlobal = 0
+
+  async function deteksiDomainAi(overwrite = false) {
+    if (!isTka) return
+    if (nSoalTanpaDomain === 0 && !overwrite) {
+      const ok = confirm(
+        'Semua soal sudah punya domain. Klasifikasi ulang dan timpa label yang ada?',
+      )
+      if (!ok) return
+      overwrite = true
+    } else if (nSoalTanpaDomain > 0) {
+      const ok = confirm(
+        `Deteksi domain AI untuk ${nSoalTanpaDomain} soal yang belum berlabel?\n\nHasil akan disimpan ke snapshot soal kuis ini (pengetahuan / keterampilan_proses).`,
+      )
+      if (!ok) return
+    }
+    setBusyDomainAi(true)
+    setError('')
+    setInfo('')
+    try {
+      const h = await klasifikasiDomainTkaDenganAi(kuis.id, { overwrite })
+      if (!h.hasil.length) {
+        setInfo('Tidak ada soal yang diklasifikasi.')
+        return
+      }
+      const peta = new Map(h.hasil.map((x) => [x.soalId, x.domainTka]))
+      const soalBaru = soal.map((s) => {
+        const d = peta.get(s.id)
+        return d ? { ...s, domainTka: d } : s
+      })
+      setSoal(soalBaru)
+      await updateKuis(kuis.id, { soal: soalBaru })
+      setInfo(
+        `Domain disimpan: ${h.diklasifikasi} soal diklasifikasi` +
+          (h.dilewati ? `, ${h.dilewati} dilewati (sudah berlabel)` : '') +
+          '.',
+      )
+      onUpdated?.()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Gagal deteksi domain AI.')
+    } finally {
+      setBusyDomainAi(false)
+    }
+  }
 
   const inputCls =
     'w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-muh-500 focus:outline-none focus:ring-2 focus:ring-muh-200'
@@ -449,6 +515,80 @@ export default function KuisDetail({ kuis, onUpdated }: Props) {
       </section>
       )}
 
+      {/* Domain TKA — deteksi di Atur kuis (bukan tab Hasil siswa) */}
+      {isTka && (
+        <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 bg-slate-50/80 px-4 py-2.5">
+            <div>
+              <h4 className="text-sm font-bold text-slate-800">Domain penilaian TKA</h4>
+              <p className="text-[11px] text-slate-500">
+                Setiap soal wajib satu domain: Pengetahuan IPA atau Keterampilan Proses Sains (tidak
+                ada campuran). Dipakai untuk kolom nilai di tab Hasil siswa.
+              </p>
+            </div>
+            {bolehDomainAi && (
+              <button
+                type="button"
+                className={nSoalTanpaDomain > 0 ? 'lms-btn-primary text-xs' : 'lms-btn-secondary text-xs'}
+                disabled={busyDomainAi || soal.length === 0}
+                onClick={() => void deteksiDomainAi(nSoalTanpaDomain === 0)}
+              >
+                {busyDomainAi
+                  ? 'Mendeteksi…'
+                  : nSoalTanpaDomain > 0
+                    ? `Deteksi domain AI (${nSoalTanpaDomain})`
+                    : 'Klasifikasi ulang domain AI'}
+              </button>
+            )}
+          </div>
+          <div className="grid gap-3 p-4 sm:grid-cols-3">
+            <div className="rounded-xl border border-slate-100 bg-slate-50/60 px-3 py-2.5">
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                Pengetahuan IPA
+              </p>
+              <p className="mt-0.5 text-lg font-bold tabular-nums text-slate-800">
+                {nSoalDomain.pengetahuan}
+                <span className="text-xs font-medium text-slate-400"> soal</span>
+              </p>
+            </div>
+            <div className="rounded-xl border border-slate-100 bg-slate-50/60 px-3 py-2.5">
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                Keterampilan Proses
+              </p>
+              <p className="mt-0.5 text-lg font-bold tabular-nums text-slate-800">
+                {nSoalDomain.keterampilan_proses}
+                <span className="text-xs font-medium text-slate-400"> soal</span>
+              </p>
+            </div>
+            <div
+              className={`rounded-xl border px-3 py-2.5 ${
+                nSoalTanpaDomain > 0
+                  ? 'border-amber-200 bg-amber-50/80'
+                  : 'border-emerald-100 bg-emerald-50/60'
+              }`}
+            >
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                Belum berlabel
+              </p>
+              <p
+                className={`mt-0.5 text-lg font-bold tabular-nums ${
+                  nSoalTanpaDomain > 0 ? 'text-amber-800' : 'text-emerald-800'
+                }`}
+              >
+                {nSoalTanpaDomain}
+                <span className="text-xs font-medium opacity-70"> soal</span>
+              </p>
+            </div>
+          </div>
+          {nSoalTanpaDomain > 0 && !bolehDomainAi && (
+            <p className="border-t border-slate-100 px-4 py-2.5 text-xs text-amber-800">
+              Ada soal tanpa domain. Minta akun AI menjalankan deteksi, atau isi domain manual di
+              editor bank soal (field domain TKA).
+            </p>
+          )}
+        </section>
+      )}
+
       {/* Daftar soal */}
       <section className="space-y-3">
         <div className="flex flex-wrap items-end justify-between gap-2">
@@ -495,6 +635,28 @@ export default function KuisDetail({ kuis, onUpdated }: Props) {
                             <span className="rounded bg-slate-100 px-1.5 py-0.5 font-medium">
                               {s.kompleksitas || 'L1'}
                             </span>
+                            {isTka && (() => {
+                              const d = normalisasiDomainTka(s.domainTka)
+                              if (!d) {
+                                return (
+                                  <span className="rounded bg-amber-100 px-1.5 py-0.5 font-medium text-amber-800">
+                                    Domain belum
+                                  </span>
+                                )
+                              }
+                              return (
+                                <span
+                                  className={`rounded px-1.5 py-0.5 font-medium ${
+                                    d === 'pengetahuan'
+                                      ? 'bg-sky-100 text-sky-800'
+                                      : 'bg-violet-100 text-violet-800'
+                                  }`}
+                                  title={NAMA_DOMAIN_TKA[d]}
+                                >
+                                  {d === 'pengetahuan' ? 'Pengetahuan' : 'Keterampilan proses'}
+                                </span>
+                              )
+                            })()}
                             {s.sumberPaketJudul && (
                               <span className="truncate" title="Sumber paket">
                                 ← {s.sumberPaketJudul}
