@@ -48,3 +48,9 @@
 - Perilaku sama: blok hanya untuk mapel non-TKA.
 - File: `src/components/KuisDetail.tsx`.
 
+## 2026-11-11 — Rules: hapus helper TKA tidak terpakai (tkaGuruKelas6)
+
+- Hilangkan peringatan compile `Unused function: tkaGuruKelas6`.
+- Akses TKA tetap lewat `tkaWaliKelas6Any` + `ruangTka` (wali 6A/6B, kelas 6/6A/6B, mapel TKA termasuk IPA) + `match /lms_jawaban`.
+- File shared: `firestore.rules` (lengkap → SDM01Penilaian / sdm01kks).
+
