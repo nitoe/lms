@@ -64,3 +64,15 @@
 92.4 Analisis AI kuis/siswa (isian–uraian) **tidak** ditampilkan untuk mapel TKA. Sinkron ke Penilaian/rapor tetap dimatikan (`jenisPenilaian: latihan`).
 
 92.5 Perubahan laporan hasil **hanya** dikondisikan `adalahMapelTka`. Perilaku hasil kuis mapel biasa tidak boleh berubah.
+
+## §93. Domain penilaian TKA (Pengetahuan vs Keterampilan Proses)
+
+93.1 Field `domainTka` bersifat **opsional**. Soal lama tanpa field tetap valid; jangan wajibkan saat simpan paket/kuis.
+
+93.2 Nilai yang diizinkan **hanya** `pengetahuan` | `keterampilan_proses`. Tidak ada opsi «campuran» — putuskan yang lebih dominan. Nilai legacy `campuran` → `undefined` lewat `normalisasiDomainTka`.
+
+93.3 UI penanda domain tampil untuk mapel **TKA IPA** (atau bila soal sudah punya `domainTka`). Jangan tampilkan di mapel biasa / TKA non-IPA kecuali field sudah terisi.
+
+93.4 Tag domain **manual dulu**; usulan AI paket dan pemecahan skor laporan adalah langkah terpisah. Jangan auto-apply label AI tanpa konfirmasi guru.
+
+93.5 Perubahan domain tidak boleh mengubah penilaian otomatis PG/PGK/BS atau sinkron rapor.

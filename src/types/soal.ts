@@ -34,6 +34,30 @@ export function normalisasiKompleksitas(v: unknown): KompleksitasSoal {
   return v === 'L1' || v === 'L2' || v === 'L3' ? v : 'L1'
 }
 
+/**
+ * Domain penilaian TKA (terutama TKA IPA).
+ * Opsional — diisi manual atau nanti dari usulan AI paket.
+ * Hanya dua nilai: putuskan kecenderungan dominan (bukan «campuran»).
+ */
+export type DomainTka = 'pengetahuan' | 'keterampilan_proses'
+
+export const URUTAN_DOMAIN_TKA: DomainTka[] = ['pengetahuan', 'keterampilan_proses']
+
+export const NAMA_DOMAIN_TKA: Record<DomainTka, string> = {
+  pengetahuan: 'Pengetahuan IPA',
+  keterampilan_proses: 'Keterampilan Proses Sains',
+}
+
+export const DESKRIPSI_DOMAIN_TKA: Record<DomainTka, string> = {
+  pengetahuan: 'Lebih menuntut penguasaan fakta, konsep, atau istilah ilmiah',
+  keterampilan_proses: 'Lebih menuntut proses sains: mengamati, mengklasifikasi, menyimpulkan, dll.',
+}
+
+/** Nilai lama «campuran» diabaikan → undefined (harus dipilih ulang). */
+export function normalisasiDomainTka(v: unknown): DomainTka | undefined {
+  return v === 'pengetahuan' || v === 'keterampilan_proses' ? v : undefined
+}
+
 /** Satu pilihan jawaban (PG / PG kompleks). `teks` = teks biasa (bukan HTML). */
 export interface OpsiSoal {
   id: string
@@ -62,6 +86,11 @@ interface SoalDasar {
   tipeMateri?: string
   /** true = tampilkan rumus `$...$` / `$$...$$` dengan KaTeX (soal TKA hasil migrasi). */
   rumus?: boolean
+  /**
+   * Domain penilaian TKA (opsional). Utamanya TKA IPA:
+   * pengetahuan | keterampilan_proses (pilih yang lebih dominan).
+   */
+  domainTka?: DomainTka
 }
 
 export interface SoalPg extends SoalDasar {

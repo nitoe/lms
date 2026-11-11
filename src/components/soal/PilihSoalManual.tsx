@@ -145,6 +145,14 @@ export default function PilihSoalManual({ paketDipilih, pilihan, onToggle, tipeP
                           {it.soal.tipeMateri}
                         </span>
                       )}
+                      {normalisasiDomainTka(it.soal.domainTka) && (
+                        <span
+                          className="pilih-soal-badge pilih-soal-badge--soft"
+                          title={NAMA_DOMAIN_TKA[normalisasiDomainTka(it.soal.domainTka)!]}
+                        >
+                          {NAMA_DOMAIN_TKA[normalisasiDomainTka(it.soal.domainTka)!]}
+                        </span>
+                      )}
                       {(it.soal.gambarId || punyaStimulus(it.soal)) && (
                         <span className="pilih-soal-badge pilih-soal-badge--media" title="Ada gambar/stimulus">
                           media
@@ -179,6 +187,11 @@ export default function PilihSoalManual({ paketDipilih, pilihan, onToggle, tipeP
                     </span>
                     {itemFokus.soal.tipeMateri && (
                       <span className="pilih-soal-badge pilih-soal-badge--soft">{itemFokus.soal.tipeMateri}</span>
+                    )}
+                    {normalisasiDomainTka(itemFokus.soal.domainTka) && (
+                      <span className="pilih-soal-badge pilih-soal-badge--soft">
+                        {NAMA_DOMAIN_TKA[normalisasiDomainTka(itemFokus.soal.domainTka)!]}
+                      </span>
                     )}
                   </div>
                 </div>

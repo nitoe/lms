@@ -66,3 +66,15 @@
 - Mapel non-TKA: perilaku hasil kuis **tidak berubah**.
 - File: `src/lib/tkaAkses.ts`, `src/lib/jawabanKuis.ts`, `src/components/HasilKuisPanel.tsx`.
 - ANTIREGRESI §92.
+
+## 2026-11-11 — Domain penilaian TKA IPA (tag manual di editor soal)
+
+- Field opsional `domainTka` pada soal: **hanya** `pengetahuan` | `keterampilan_proses` (tanpa campuran).
+- Guru memutuskan kecenderungan dominan soal; nilai lama `campuran` diabaikan saat baca.
+- UI di **Bahan bacaan & pengaturan TKA** (khusus mapel TKA IPA, atau soal yang sudah bertag).
+- Label: Pengetahuan IPA · Keterampilan Proses Sains.
+- Badge domain di panel pilih soal manual (rancang kuis).
+- Belum ada usulan AI paket dan belum memecah skor di laporan hasil — langkah berikutnya.
+- Mapel non-TKA tidak berubah.
+- File: `src/types/soal.ts`, `src/components/soal/TkaFieldEditor.tsx`, `src/components/soal/PilihSoalManual.tsx`.
+- ANTIREGRESI §93.

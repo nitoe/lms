@@ -126,6 +126,40 @@ export default function TkaFieldEditor({
         </label>
       </div>
 
+      {/* Domain penilaian: utamanya TKA IPA; tetap tampil jika soal sudah punya label. */}
+      {(mapel === 'TKA IPA' || !!soal.domainTka) && (
+        <div className="tka-editor-baris">
+          <label className="tka-editor-kolom tka-editor-kolom--lebar">
+            <span>Domain penilaian</span>
+            <select
+              className="soal-input"
+              value={normalisasiDomainTka(soal.domainTka) ?? ''}
+              onChange={(e) => {
+                const v = e.target.value
+                set({
+                  domainTka: v
+                    ? (v as DomainTka)
+                    : undefined,
+                })
+              }}
+              aria-label="Domain penilaian TKA"
+            >
+              <option value="">— belum ditandai —</option>
+              {URUTAN_DOMAIN_TKA.map((d) => (
+                <option key={d} value={d}>
+                  {NAMA_DOMAIN_TKA[d]}
+                </option>
+              ))}
+            </select>
+            <small className="tka-editor-bantu">
+              {normalisasiDomainTka(soal.domainTka)
+                ? DESKRIPSI_DOMAIN_TKA[normalisasiDomainTka(soal.domainTka)!]
+                : 'Opsional. Pilih yang lebih dominan (bukan campuran). Dipakai untuk memisahkan skor di laporan. Bisa diisi manual atau nanti dari usulan AI paket.'}
+            </small>
+          </label>
+        </div>
+      )}
+
       {soal.tipe === 'bs' && (
         <div className="tka-editor-baris">
           <label className="tka-editor-kolom">
