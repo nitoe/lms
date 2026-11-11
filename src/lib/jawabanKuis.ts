@@ -219,10 +219,6 @@ export async function daftarJawabanKuisMultiKelas(
 }
 
 /**
- * Reset semua attempt siswa pada satu kuis TKA (CF resetJawabanKuisLms).
- * Hanya mapel TKA; izin dicek di server.
- */
-/**
  * Reset attempt dan/atau draf progress TKA (CF resetJawabanKuisLms).
  * mode: 'attempt' | 'progress' | 'semua' (default).
  */
@@ -241,22 +237,16 @@ export async function resetJawabanKuisTka(input: {
     mode: input.mode ?? 'semua',
     kelasSiswa: input.kelasSiswa,
   })
-  return res.data as {
-    ok: boolean
-    dihapus: number
+  const data = res.data as {
+    ok?: boolean
+    dihapus?: number
     progressDitandai?: boolean
     mode?: string
   }
-}
-): Promise<{ ok: boolean; dihapus: number }> {
-  const fn = httpsCallable(functions, 'resetJawabanKuisLms')
-  const res = await fn({
-    kuisId: input.kuisId,
-    siswaId: input.siswaId,
-  })
-  const data = res.data as { ok?: boolean; dihapus?: number }
   return {
     ok: data.ok !== false,
     dihapus: Number(data.dihapus) || 0,
+    progressDitandai: !!data.progressDitandai,
+    mode: data.mode,
   }
 }
