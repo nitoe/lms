@@ -9,3 +9,12 @@
 - UI detail hasil TKA: tiga tombol reset. Roster: **Reset+** = mode semua.
 - Rules: siswa boleh baca marker miliknya. File rules utuh LMS + SDM01Penilaian.
 - CF: `resetJawabanKuisLms` (versi lengkap). ANTIREGRESI §101.
+
+## 2026-11-11 — Atur kuis: tambah soal dari bank
+
+- **Masalah:** di Atur kuis (KuisDetail) hanya ada hapus/urut soal; tidak bisa menambah dari bank setelah kuis dibuat (termasuk TKA).
+- **Perbaikan:** tombol «+ Tambah dari bank» membuka modal: pilih paket siap → PilihSoalManual → snapshot soal ke kuis.
+- Duplikat (sumberSoalId) dilewati; batas BATAS_SOAL_PER_KUIS; sumberPaketIds ikut diperbarui saat simpan.
+- TKA: filter bentuk tetap TIPE_SOAL_TKA (pg/pgk/bs) — tidak regresi mapel biasa (ANTIREGRESI §88, §102).
+- File: src/components/KuisDetail.tsx.
+- ANTIREGRESI §102.

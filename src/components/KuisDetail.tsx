@@ -1,15 +1,17 @@
 import { useEffect, useMemo, useState } from 'react'
-import { updateKuis } from '../lib/kuis'
+import { daftarPaketSiap, updateKuis } from '../lib/kuis'
 import { daftarPaket } from '../lib/soal'
-import { hitungRingkasanKuis } from '../lib/susunKuis'
+import { hitungRingkasanKuis, snapshotSoal } from '../lib/susunKuis'
 import { teksPolos } from '../lib/html'
 import type { JenisPenilaianKuis, KuisLms, ModePelaksanaanKuis, SoalKuis } from '../types/kuis'
-import { NAMA_JENIS_PENILAIAN, NAMA_MODE_PELAKSANAAN } from '../types/kuis'
+import { BATAS_PAKET_SUMBER, BATAS_SOAL_PER_KUIS, NAMA_JENIS_PENILAIAN, NAMA_MODE_PELAKSANAAN } from '../types/kuis'
 import { NAMA_TIPE, URUTAN_TIPE, type TipeSoal, normalisasiDomainTka, NAMA_DOMAIN_TKA } from '../types/soal'
-import { adalahMapelTka } from '../lib/tkaAkses'
+import type { PaketSoal } from '../types/soal'
+import { adalahMapelTka, TIPE_SOAL_TKA } from '../lib/tkaAkses'
 import { bolehAnalisisKuisAi } from '../lib/analisisKuisAi'
 import { klasifikasiDomainTkaDenganAi } from '../lib/domainTkaAi'
 import { useAuth } from '../context/AuthContext'
+import PilihSoalManual, { type PilihanSoalRef } from './soal/PilihSoalManual'
 
 /** Instruksi lengkap per bentuk soal (untuk siswa dan nantinya cetak). */
 export const INSTRUKSI_TIPE: Record<TipeSoal, string> = {
@@ -51,11 +53,20 @@ export default function KuisDetail({ kuis, onUpdated }: Props) {
   const [modePelaksanaan, setModePelaksanaan] = useState<ModePelaksanaanKuis>(kuis.modePelaksanaan === 'offline' ? 'offline' : 'online')
   const [tpList, setTpList] = useState<string[]>((kuis.tpNamaList ?? kuis.tpIds ?? []).map(bersihNamaTp).filter(Boolean))
   const [nilaiPerTp, setNilaiPerTp] = useState<Record<string, number>>(kuis.nilaiPerTp ?? {})
+  const [sumberPaketIds, setSumberPaketIds] = useState<string[]>(() => [...(kuis.sumberPaketIds ?? [])])
+  /** Modal tambah soal dari bank (Atur kuis). */
+  const [showTambah, setShowTambah] = useState(false)
+  const [paketSiap, setPaketSiap] = useState<PaketSoal[]>([])
+  const [paketIdsTambah, setPaketIdsTambah] = useState<string[]>([])
+  const [pilihanTambah, setPilihanTambah] = useState<PilihanSoalRef[]>([])
+  const [loadingPaket, setLoadingPaket] = useState(false)
   /** TKA: nilai tidak masuk rapor/Penilaian — sembunyikan blok Penilaian & TP (ANTIREGRESI §91). */
   const { user } = useAuth()
   const isTka = adalahMapelTka(kuis.mapel)
   const bolehDomainAi = bolehAnalisisKuisAi(user?.uid)
   const [busyDomainAi, setBusyDomainAi] = useState(false)
+  /** Filter bentuk di picker: TKA hanya PG/PGK/BS (ANTIREGRESI §88). */
+  const tipePilihan: readonly TipeSoal[] = isTka ? TIPE_SOAL_TKA : URUTAN_TIPE
 
   const nSoalTanpaDomain = useMemo(() => {
     if (!isTka) return 0
@@ -88,6 +99,7 @@ export default function KuisDetail({ kuis, onUpdated }: Props) {
     setModePelaksanaan(kuis.modePelaksanaan === 'offline' ? 'offline' : 'online')
     setTpList((kuis.tpNamaList ?? kuis.tpIds ?? []).map(bersihNamaTp).filter(Boolean))
     setNilaiPerTp(kuis.nilaiPerTp ?? {})
+    setSumberPaketIds([...(kuis.sumberPaketIds ?? [])])
   }, [kuis])
 
   const ringkas = hitungRingkasanKuis(soal)
@@ -132,6 +144,113 @@ export default function KuisDetail({ kuis, onUpdated }: Props) {
   function hapusSoal(idx: number) {
     if (!confirm('Hapus soal ini dari kuis? (Bank soal tidak berubah.)')) return
     setSoal((prev) => prev.filter((_, i) => i !== idx))
+  }
+
+  async function bukaTambahDariBank() {
+    setError('')
+    setInfo('')
+    setShowTambah(true)
+    setPilihanTambah([])
+    setLoadingPaket(true)
+    try {
+      let list = paketSiap
+      if (list.length === 0) {
+        list = await daftarPaketSiap(kuis.kelas, kuis.mapel)
+        setPaketSiap(list)
+      }
+      // Prefill paket yang sudah jadi sumber kuis (jika masih siap)
+      const pre = sumberPaketIds.filter((id) => list.some((p) => p.id === id)).slice(0, BATAS_PAKET_SUMBER)
+      setPaketIdsTambah(pre)
+      if (!list.length) {
+        setInfo('Belum ada paket berstatus «siap» di bank untuk ruang ini.')
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Gagal memuat bank soal.')
+      setShowTambah(false)
+    } finally {
+      setLoadingPaket(false)
+    }
+  }
+
+  function togglePaketTambah(id: string) {
+    setPaketIdsTambah((prev) => {
+      if (prev.includes(id)) return prev.filter((x) => x !== id)
+      if (prev.length >= BATAS_PAKET_SUMBER) {
+        setInfo(`Maksimal ${BATAS_PAKET_SUMBER} paket sumber.`)
+        return prev
+      }
+      return [...prev, id]
+    })
+  }
+
+  function onTogglePilihanTambah(paketId: string, soalId: string) {
+    setPilihanTambah((prev) => {
+      const ada = prev.some((x) => x.paketId === paketId && x.soalId === soalId)
+      if (ada) return prev.filter((x) => !(x.paketId === paketId && x.soalId === soalId))
+      return [...prev, { paketId, soalId }]
+    })
+  }
+
+  function konfirmasiTambahDariBank() {
+    if (!pilihanTambah.length) {
+      setInfo('Pilih minimal satu soal dari bank.')
+      return
+    }
+    const sudah = new Set(
+      soal.map((s) => s.sumberSoalId || s.id).filter(Boolean) as string[],
+    )
+    const tipeIzinkan = new Set<string>(tipePilihan as string[])
+    const baru: SoalKuis[] = []
+    const paketIdsBaru = new Set(sumberPaketIds)
+    let lewatiDuplikat = 0
+    let lewatiTipe = 0
+
+    for (const ref of pilihanTambah) {
+      if (soal.length + baru.length >= BATAS_SOAL_PER_KUIS) break
+      if (sudah.has(ref.soalId)) {
+        lewatiDuplikat += 1
+        continue
+      }
+      const pk = paketSiap.find((p) => p.id === ref.paketId)
+      const s = pk?.soal?.find((x) => x.id === ref.soalId)
+      if (!pk || !s) continue
+      if (!tipeIzinkan.has(s.tipe)) {
+        lewatiTipe += 1
+        continue
+      }
+      const poin =
+        typeof s.poin === 'number' && s.poin > 0 ? s.poin : 1
+      baru.push(snapshotSoal(s, { id: pk.id, judul: pk.judul || 'Paket' }, poin))
+      paketIdsBaru.add(pk.id)
+      sudah.add(ref.soalId)
+    }
+
+    if (!baru.length) {
+      const alasan = [
+        lewatiDuplikat ? `${lewatiDuplikat} sudah ada di kuis` : '',
+        lewatiTipe ? `${lewatiTipe} bentuk tidak diizinkan` : '',
+      ]
+        .filter(Boolean)
+        .join('; ')
+      setInfo(alasan ? `Tidak ada soal baru ditambahkan (${alasan}).` : 'Tidak ada soal baru ditambahkan.')
+      return
+    }
+
+    setSoal((prev) => [...prev, ...baru])
+    setSumberPaketIds([...paketIdsBaru].slice(0, BATAS_PAKET_SUMBER))
+    setShowTambah(false)
+    setPilihanTambah([])
+    const ekstra = [
+      lewatiDuplikat ? `${lewatiDuplikat} duplikat dilewati` : '',
+      lewatiTipe ? `${lewatiTipe} tipe diluar filter dilewati` : '',
+    ]
+      .filter(Boolean)
+      .join(', ')
+    setInfo(
+      `Ditambahkan ${baru.length} soal dari bank.` +
+        (ekstra ? ` (${ekstra})` : '') +
+        ' Jangan lupa Simpan perubahan.',
+    )
   }
 
   /** Susun ulang array soal menurut bentuk (PG → PGK → Jodoh → BS → Isian → Uraian). */
@@ -195,6 +314,7 @@ export default function KuisDetail({ kuis, onUpdated }: Props) {
         judul: judul.trim(),
         deskripsi: deskripsi.trim() || undefined,
         soal,
+        sumberPaketIds: sumberPaketIds.length ? sumberPaketIds : undefined,
         durasiMenit: durasi > 0 ? durasi : undefined,
         acakSoal,
         acakOpsi,
@@ -596,8 +716,22 @@ export default function KuisDetail({ kuis, onUpdated }: Props) {
             <h4 className="text-sm font-bold text-slate-900">Daftar soal</h4>
             <p className="text-xs text-slate-500">
               {ringkas.jumlahSoal} soal · total {ringkas.totalPoin} poin · urutan dapat diubah
+              {soal.length > 0 && soal.length >= BATAS_SOAL_PER_KUIS ? ` · batas ${BATAS_SOAL_PER_KUIS}` : ''}
             </p>
           </div>
+          <button
+            type="button"
+            className="lms-btn-secondary text-xs"
+            disabled={busy || loadingPaket || soal.length >= BATAS_SOAL_PER_KUIS}
+            onClick={() => void bukaTambahDariBank()}
+            title={
+              soal.length >= BATAS_SOAL_PER_KUIS
+                ? `Sudah mencapai batas ${BATAS_SOAL_PER_KUIS} soal`
+                : 'Tambah soal dari paket bank yang siap'
+            }
+          >
+            {loadingPaket ? 'Memuat bank…' : '+ Tambah dari bank'}
+          </button>
         </div>
 
         <div className="space-y-4">
@@ -712,10 +846,146 @@ export default function KuisDetail({ kuis, onUpdated }: Props) {
         {soal.length === 0 && (
           <div className="rounded-2xl border border-dashed border-slate-200 bg-white px-6 py-12 text-center shadow-sm">
             <p className="text-sm font-semibold text-slate-700">Tidak ada soal</p>
-            <p className="mt-1 text-xs text-slate-500">Susun ulang kuis dari bank soal.</p>
+            <p className="mt-1 text-xs text-slate-500">
+              Tambahkan soal dari paket bank yang berstatus siap.
+            </p>
+            <button
+              type="button"
+              className="lms-btn-primary mt-4 text-xs"
+              disabled={busy || loadingPaket}
+              onClick={() => void bukaTambahDariBank()}
+            >
+              {loadingPaket ? 'Memuat bank…' : '+ Tambah dari bank'}
+            </button>
           </div>
         )}
       </section>
+
+      {showTambah && (
+        <div
+          className="soal-modal"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Tambah soal dari bank"
+        >
+          <div className="soal-modal-kotak" style={{ width: 'min(56rem, 100%)' }}>
+            <header className="soal-modal-kepala">
+              <div className="min-w-0">
+                <p className="soal-modal-sub">Bank soal</p>
+                <h2 className="truncate text-base font-bold text-slate-900">
+                  Tambah soal ke kuis
+                </h2>
+                <p className="mt-0.5 text-xs text-slate-500">
+                  {kuis.kelas} · {kuis.mapel}
+                  {isTka ? ' · bentuk PG / PGK / BS' : ''}
+                  {' · '}
+                  sisa kuota {Math.max(0, BATAS_SOAL_PER_KUIS - soal.length)} soal
+                </p>
+              </div>
+              <button
+                type="button"
+                className="lms-btn-secondary text-xs"
+                onClick={() => {
+                  setShowTambah(false)
+                  setPilihanTambah([])
+                }}
+              >
+                Tutup
+              </button>
+            </header>
+
+            <div className="soal-modal-badan">
+              {loadingPaket && (
+                <p className="text-sm text-slate-600">Memuat paket siap…</p>
+              )}
+              {!loadingPaket && paketSiap.length === 0 && (
+                <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-8 text-center text-sm text-slate-600">
+                  Belum ada paket berstatus «siap» untuk ruang ini. Buat dan tandai siap di Bank
+                  soal terlebih dahulu.
+                </div>
+              )}
+              {!loadingPaket && paketSiap.length > 0 && (
+                <>
+                  <div>
+                    <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                      Pilih paket sumber
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {paketSiap.map((p) => {
+                        const aktif = paketIdsTambah.includes(p.id)
+                        const n = p.soal?.length ?? 0
+                        return (
+                          <button
+                            key={p.id}
+                            type="button"
+                            onClick={() => togglePaketTambah(p.id)}
+                            className={`rounded-xl border px-3 py-2 text-left text-xs transition ${
+                              aktif
+                                ? 'border-muh-500 bg-muh-50 ring-1 ring-muh-400'
+                                : 'border-slate-200 bg-white hover:border-slate-300'
+                            }`}
+                          >
+                            <span className="font-semibold text-slate-800 line-clamp-1">
+                              {p.judul || 'Tanpa judul'}
+                            </span>
+                            <span className="mt-0.5 block text-[11px] text-slate-500">
+                              {n} soal
+                              {p.tipeMateri ? ` · ${p.tipeMateri}` : ''}
+                              {p.status !== 'siap' ? ` · ${p.status}` : ''}
+                            </span>
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+
+                  {paketIdsTambah.length === 0 ? (
+                    <p className="text-sm text-slate-600">
+                      Centang minimal satu paket di atas, lalu pilih soal.
+                    </p>
+                  ) : (
+                    <PilihSoalManual
+                      paketDipilih={paketSiap.filter((p) => paketIdsTambah.includes(p.id))}
+                      pilihan={pilihanTambah}
+                      onToggle={onTogglePilihanTambah}
+                      tipePilihan={tipePilihan}
+                    />
+                  )}
+                </>
+              )}
+            </div>
+
+            <footer className="soal-modal-kaki">
+              <p className="text-xs text-slate-500">
+                {pilihanTambah.length} soal dipilih
+                {pilihanTambah.length > 0
+                  ? ` · akan ditambahkan (duplikat dilewati)`
+                  : ''}
+              </p>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  className="lms-btn-secondary text-xs"
+                  onClick={() => {
+                    setShowTambah(false)
+                    setPilihanTambah([])
+                  }}
+                >
+                  Batal
+                </button>
+                <button
+                  type="button"
+                  className="lms-btn-primary text-xs"
+                  disabled={!pilihanTambah.length || busy}
+                  onClick={konfirmasiTambahDariBank}
+                >
+                  Tambahkan ke kuis
+                </button>
+              </div>
+            </footer>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
