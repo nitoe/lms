@@ -9,6 +9,22 @@ export type ModeSusunKuis = 'manual' | 'otomatis' | 'otomatis_ai'
 
 export type JenisPenilaianKuis = 'latihan' | 'slm' | 'sts' | 'sas'
 
+/**
+ * Tahap Try Out TKA (kelas 6). Dipakai untuk Rekap Nilai TKA per mapel
+ * (Bahasa Indonesia, Matematika, IPA). Hanya relevan jika mapel adalah mapel TKA.
+ */
+export type TahapTryOutTka = 'I' | 'II' | 'III' | 'IV' | 'V'
+
+export const DAFTAR_TAHAP_TRYOUT_TKA: readonly TahapTryOutTka[] = ['I', 'II', 'III', 'IV', 'V']
+
+export const NAMA_TAHAP_TRYOUT_TKA: Record<TahapTryOutTka, string> = {
+  I: 'Try Out I',
+  II: 'Try Out II',
+  III: 'Try Out III',
+  IV: 'Try Out IV',
+  V: 'Try Out V',
+}
+
 /** Online = siswa kerjakan di LMS; offline = guru input jawaban. */
 export type ModePelaksanaanKuis = 'online' | 'offline'
 
@@ -92,6 +108,13 @@ export interface KuisLms {
    * Mapel non-TKA mengabaikan field ini (skor tetap langsung tampil).
    */
   hasilDipublish?: boolean
+
+  /**
+   * TKA saja: tahap Try Out (I–V). Dipakai Rekap Nilai TKA per mapel.
+   * Kosong = belum digolongkan ke tahap manapun (tidak masuk rekap per tahap).
+   * Mapel non-TKA mengabaikan field ini.
+   */
+  tahapTryOutTka?: TahapTryOutTka
 
   createdAt?: unknown
   updatedAt?: unknown

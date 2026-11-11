@@ -12,6 +12,7 @@ import {
   query,
   serverTimestamp,
   updateDoc,
+  deleteField,
   where,
 } from 'firebase/firestore'
 import { auth, db } from './firebase'
@@ -21,6 +22,7 @@ import type {
   KuisLms,
   ModeSusunKuis,
   SoalKuis,
+  TahapTryOutTka,
 } from '../types/kuis'
 import { BATAS_PAKET_SUMBER, BATAS_SOAL_PER_KUIS } from '../types/kuis'
 import {
@@ -120,6 +122,8 @@ export type InputBuatKuis = {
   acakOpsi?: boolean
   tpIds?: string[]
   tpNamaList?: string[]
+  /** TKA saja: tahap Try Out I–V (untuk rekap nilai TKA). */
+  tahapTryOutTka?: TahapTryOutTka
 }
 
 /**
@@ -189,6 +193,7 @@ export async function buatKuisDariPaket(input: InputBuatKuis): Promise<string> {
     dibuatOlehNama: input.namaGuru || '',
     tpIds: input.tpIds,
     tpNamaList: input.tpNamaList,
+    tahapTryOutTka: input.tahapTryOutTka,
     ...ringkas,
   })
 
@@ -225,6 +230,7 @@ export async function updateKuis(
       | 'sumberPaketIds'
       | 'modePelaksanaan'
       | 'hasilDipublish'
+      | 'tahapTryOutTka'
     >
   >,
 ): Promise<void> {
@@ -235,11 +241,19 @@ export async function updateKuis(
     }
     Object.assign(payload, hitungRingkasanKuis(data.soal))
   }
+  // Izinkan penghapusan tahap: caller kirim null → deleteField
+  const hapusTahap = (data as { tahapTryOutTka?: unknown }).tahapTryOutTka === null
+  if (hapusTahap) {
+    payload.tahapTryOutTka = deleteField()
+  }
   for (const k of Object.keys(payload)) {
     if (payload[k] === undefined) delete payload[k]
   }
+  const bersih = hapusTahap
+    ? payload // jangan JSON.stringify (deleteField hilang)
+    : bersihkan(payload)
   await updateDoc(doc(db, 'lms_kuis', id), {
-    ...bersihkan(payload),
+    ...bersih,
     updatedAt: serverTimestamp(),
   })
 }

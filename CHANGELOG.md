@@ -1,3 +1,11 @@
+## 2026-11-12 — Tahap Try Out TKA pada kuis
+
+- Field baru `tahapTryOutTka` pada `lms_kuis`: `I` | `II` | `III` | `IV` | `V` (hanya mapel TKA).
+- UI: pilihan **Tahap Try Out TKA** di wizard susun kuis dan di Atur kuis (Identitas).
+- Daftar kuis TKA menampilkan badge tahap bila sudah diisi.
+- Fondasi untuk fitur **Rekap Nilai TKA** per tahap × mapel (BI / MTK / IPA); skor bisa dari LMS atau input manual.
+- File: `src/types/kuis.ts`, `src/lib/kuis.ts`, `src/components/KuisDetail.tsx`, `src/components/KuisPanel.tsx`, `docs/TKA.md`.
+
 ## 2026-11-11 — Label jenis kuis siswa: tanpa «tidak masuk nilai»
 
 - Di katalog/card siswa (TKA & kuis biasa), jenis **Latihan** ditampilkan ringkas: «Latihan» saja.

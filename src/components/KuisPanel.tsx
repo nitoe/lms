@@ -17,7 +17,8 @@ import {
   susunOtomatis,
 } from '../lib/susunKuis'
 import { teksPolos } from '../lib/html'
-import type { FilterSusunKuis, KuisLms, ModeSusunKuis, SoalKuis } from '../types/kuis'
+import type { FilterSusunKuis, KuisLms, ModeSusunKuis, SoalKuis, TahapTryOutTka } from '../types/kuis'
+import { DAFTAR_TAHAP_TRYOUT_TKA, NAMA_TAHAP_TRYOUT_TKA } from '../types/kuis'
 import type { KompleksitasSoal, PaketSoal, TipeSoal } from '../types/soal'
 import {
   NAMA_KOMPLEKSITAS,
@@ -82,6 +83,7 @@ export default function KuisPanel({ kelas, mapel }: Props) {
 
   const [judul, setJudul] = useState('')
   const [deskripsi, setDeskripsi] = useState('')
+  const [tahapTryOutTka, setTahapTryOutTka] = useState<TahapTryOutTka | ''>('')
   const [paketIds, setPaketIds] = useState<string[]>([])
   const [mode, setMode] = useState<ModeSusunKuis>('otomatis')
   const [jumlahSoal, setJumlahSoal] = useState(10)
@@ -275,6 +277,7 @@ export default function KuisPanel({ kelas, mapel }: Props) {
         soalSiap: pratinjau,
         tpIds: tpIds.length ? tpIds : undefined,
         tpNamaList: tpNamaList.length ? tpNamaList : undefined,
+        tahapTryOutTka: isTka && tahapTryOutTka ? tahapTryOutTka : undefined,
       })
       resetWizard()
       await muat()
@@ -290,6 +293,7 @@ export default function KuisPanel({ kelas, mapel }: Props) {
   function resetWizard() {
     setJudul('')
     setDeskripsi('')
+    setTahapTryOutTka('')
     setPaketIds([])
     setMode(bolehAi ? 'otomatis_ai' : 'otomatis')
     setJumlahSoal(10)
@@ -444,6 +448,25 @@ export default function KuisPanel({ kelas, mapel }: Props) {
               placeholder="Petunjuk singkat untuk siswa"
             />
           </label>
+          {isTka && (
+            <label className="materi-field">
+              <span>Tahap Try Out TKA</span>
+              <select
+                value={tahapTryOutTka}
+                onChange={(e) => setTahapTryOutTka((e.target.value || '') as TahapTryOutTka | '')}
+              >
+                <option value="">— Belum ditentukan —</option>
+                {DAFTAR_TAHAP_TRYOUT_TKA.map((t) => (
+                  <option key={t} value={t}>
+                    {NAMA_TAHAP_TRYOUT_TKA[t]}
+                  </option>
+                ))}
+              </select>
+              <span className="text-[11px] text-slate-500">
+                Untuk Rekap Nilai TKA per mapel. Bisa diubah lagi di Atur kuis.
+              </span>
+            </label>
+          )}
         </div>
 
         <section className="rounded-xl border border-slate-200 bg-white p-4 space-y-3">
@@ -749,6 +772,11 @@ export default function KuisPanel({ kelas, mapel }: Props) {
                     {k.jumlahSoal ?? k.soal?.length ?? 0} soal
                     {typeof k.totalPoin === 'number' ? ` · ${k.totalPoin} poin` : ''}
                   </span>
+                  {isTka && k.tahapTryOutTka && (
+                    <span className="rounded-full bg-indigo-50 px-2 py-0.5 text-[11px] font-semibold text-indigo-700">
+                      {NAMA_TAHAP_TRYOUT_TKA[k.tahapTryOutTka]}
+                    </span>
+                  )}
                   <span className={k.aktif ? 'text-emerald-700' : 'text-slate-500'}>
                     {k.aktif ? 'Aktif' : 'Draf'}
                   </span>

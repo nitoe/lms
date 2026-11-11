@@ -17,6 +17,19 @@ tiga kontainer mapel — tanpa pemisahan per rombel dan tanpa 6C.
 | Kuis TKA | `lms_kuis` (kelas `6` atau rombel 6A/6B; dibuat dari paket lewat wizard Kuis) |
 | Hasil | `lms_jawaban` |
 
+### Tahap Try Out TKA
+
+Setiap kuis TKA (`lms_kuis` mapel «TKA …») dapat diberi **tahap Try Out**: I, II, III, IV, atau V
+(field `tahapTryOutTka`). Field ini dipakai untuk **Rekap Nilai TKA** di dashboard guru: nilai per
+mapel (Bahasa Indonesia, Matematika, IPA) dikelompokkan per tahap.
+
+- Nilai otomatis: dari `lms_jawaban` kuis yang `tahapTryOutTka`-nya cocok dan mapel TKA-nya sesuai.
+- Nilai manual: jika try out digelar di luar LMS, guru mengisi skor di rekap (fitur berikutnya).
+- Kosong = kuis belum digolongkan ke tahap manapun (tidak masuk rekap per tahap).
+
+Atur di wizard susun kuis atau **Atur kuis** (Identitas).
+
+
 ### Materi (pengganti TP)
 
 | Mapel | Materi tetap |

@@ -3,8 +3,15 @@ import { daftarPaketSiap, updateKuis } from '../lib/kuis'
 import { daftarPaket } from '../lib/soal'
 import { hitungRingkasanKuis, snapshotSoal } from '../lib/susunKuis'
 import { teksPolos } from '../lib/html'
-import type { JenisPenilaianKuis, KuisLms, ModePelaksanaanKuis, SoalKuis } from '../types/kuis'
-import { BATAS_PAKET_SUMBER, BATAS_SOAL_PER_KUIS, NAMA_JENIS_PENILAIAN, NAMA_MODE_PELAKSANAAN } from '../types/kuis'
+import type { JenisPenilaianKuis, KuisLms, ModePelaksanaanKuis, SoalKuis, TahapTryOutTka } from '../types/kuis'
+import {
+  BATAS_PAKET_SUMBER,
+  BATAS_SOAL_PER_KUIS,
+  DAFTAR_TAHAP_TRYOUT_TKA,
+  NAMA_JENIS_PENILAIAN,
+  NAMA_MODE_PELAKSANAAN,
+  NAMA_TAHAP_TRYOUT_TKA,
+} from '../types/kuis'
 import { NAMA_TIPE, URUTAN_TIPE, type TipeSoal, normalisasiDomainTka, NAMA_DOMAIN_TKA } from '../types/soal'
 import type { PaketSoal } from '../types/soal'
 import { adalahMapelTka, TIPE_SOAL_TKA } from '../lib/tkaAkses'
@@ -51,6 +58,7 @@ export default function KuisDetail({ kuis, onUpdated }: Props) {
   const [token, setToken] = useState(kuis.token ?? '')
   const [jenisPenilaian, setJenisPenilaian] = useState<JenisPenilaianKuis>(kuis.jenisPenilaian ?? 'latihan')
   const [modePelaksanaan, setModePelaksanaan] = useState<ModePelaksanaanKuis>(kuis.modePelaksanaan === 'offline' ? 'offline' : 'online')
+  const [tahapTryOutTka, setTahapTryOutTka] = useState<TahapTryOutTka | ''>(kuis.tahapTryOutTka ?? '')
   const [tpList, setTpList] = useState<string[]>((kuis.tpNamaList ?? kuis.tpIds ?? []).map(bersihNamaTp).filter(Boolean))
   const [nilaiPerTp, setNilaiPerTp] = useState<Record<string, number>>(kuis.nilaiPerTp ?? {})
   const [sumberPaketIds, setSumberPaketIds] = useState<string[]>(() => [...(kuis.sumberPaketIds ?? [])])
@@ -97,6 +105,7 @@ export default function KuisDetail({ kuis, onUpdated }: Props) {
     setToken(kuis.token ?? '')
     setJenisPenilaian(kuis.jenisPenilaian ?? 'latihan')
     setModePelaksanaan(kuis.modePelaksanaan === 'offline' ? 'offline' : 'online')
+    setTahapTryOutTka(kuis.tahapTryOutTka ?? '')
     setTpList((kuis.tpNamaList ?? kuis.tpIds ?? []).map(bersihNamaTp).filter(Boolean))
     setNilaiPerTp(kuis.nilaiPerTp ?? {})
     setSumberPaketIds([...(kuis.sumberPaketIds ?? [])])
@@ -328,6 +337,9 @@ export default function KuisDetail({ kuis, onUpdated }: Props) {
         tpNamaList: daftarTp.length ? daftarTp : undefined,
         nilaiPerTp: !isTka && Object.keys(nilaiPerTp).length ? nilaiPerTp : undefined,
         sumberNilai: !isTka && Object.keys(nilaiPerTp).length ? 'manual' : undefined,
+        // TKA: tahap Try Out untuk rekap nilai per tahap
+        // null = hapus field di Firestore (belum ditentukan)
+        tahapTryOutTka: (isTka ? (tahapTryOutTka || null) : undefined) as never,
       })
       setInfo('Tersimpan.')
       onUpdated?.()
@@ -458,6 +470,28 @@ export default function KuisDetail({ kuis, onUpdated }: Props) {
               Offline: siswa tidak mengerjakan di LMS; guru menginput jawaban di tab «Input offline».
             </span>
           </label>
+
+          {isTka && (
+            <label className="space-y-1 sm:col-span-2">
+              <span className="text-xs font-semibold text-slate-600">Tahap Try Out TKA</span>
+              <select
+                value={tahapTryOutTka}
+                onChange={(e) => setTahapTryOutTka((e.target.value || '') as TahapTryOutTka | '')}
+                className={inputCls}
+              >
+                <option value="">— Belum ditentukan —</option>
+                {DAFTAR_TAHAP_TRYOUT_TKA.map((t) => (
+                  <option key={t} value={t}>
+                    {NAMA_TAHAP_TRYOUT_TKA[t]}
+                  </option>
+                ))}
+              </select>
+              <span className="text-[11px] text-slate-400">
+                Dipakai untuk Rekap Nilai TKA per mapel (BI / MTK / IPA). Pilih tahap agar skor kuis ini masuk rekap tahap tersebut.
+                Jika try out digelar di luar LMS, nilai tetap bisa diinput manual di rekap nanti.
+              </span>
+            </label>
+          )}
 
           <label className="space-y-1">
             <span className="text-xs font-semibold text-slate-600">Durasi (menit)</span>
