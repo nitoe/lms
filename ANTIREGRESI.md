@@ -40,3 +40,13 @@
 
 90.4 Filter bentuk di panel pilih manual mengikuti `tipePilihan` dari pemanggil (TKA: `TIPE_SOAL_TKA`; mapel: `URUTAN_TIPE`).
 
+## §91. Pengaturan & hasil kuis TKA
+
+91.1 Blok UI «Penilaian & TP» (jenis penilaian rapor + TP KKTP) **hanya** untuk mapel non-TKA. Jangan menampilkan atau mewajibkan TP rapor pada kuis TKA.
+
+91.2 Kuis TKA disimpan dengan `jenisPenilaian: 'latihan'` (atau setara non-rapor). Skor tetap di `lms_jawaban`, tidak disinkron ke nilai akademik Penilaian/rapor lewat jalur SLM/STS/SAS.
+
+91.3 `match /lms_jawaban` wajib ada: baca guru/admin via `lmsLihatMapelKelas` (termasuk `ruangTka`) atau siswa milik sendiri; create/update/delete klien = false (hanya Admin SDK / CF).
+
+91.4 Helper TKA di rules harus selaras `tkaAkses.ts`: mapel termasuk IPA; kelas `6`/`6A`/`6B`; wali 6A atau 6B boleh kelola bank/kuis/hasil kelas kanonik `6`. Ubah keduanya bersamaan.
+

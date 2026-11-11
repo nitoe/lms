@@ -6,6 +6,7 @@ import { teksPolos } from '../lib/html'
 import type { JenisPenilaianKuis, KuisLms, ModePelaksanaanKuis, SoalKuis } from '../types/kuis'
 import { NAMA_JENIS_PENILAIAN, NAMA_MODE_PELAKSANAAN } from '../types/kuis'
 import { NAMA_TIPE, URUTAN_TIPE, type TipeSoal } from '../types/soal'
+import { adalahMapelTka } from '../lib/tkaAkses'
 
 /** Instruksi lengkap per bentuk soal (untuk siswa dan nantinya cetak). */
 export const INSTRUKSI_TIPE: Record<TipeSoal, string> = {
@@ -47,6 +48,8 @@ export default function KuisDetail({ kuis, onUpdated }: Props) {
   const [modePelaksanaan, setModePelaksanaan] = useState<ModePelaksanaanKuis>(kuis.modePelaksanaan === 'offline' ? 'offline' : 'online')
   const [tpList, setTpList] = useState<string[]>((kuis.tpNamaList ?? kuis.tpIds ?? []).map(bersihNamaTp).filter(Boolean))
   const [nilaiPerTp, setNilaiPerTp] = useState<Record<string, number>>(kuis.nilaiPerTp ?? {})
+  /** TKA: nilai tidak masuk rapor/Penilaian — sembunyikan blok Penilaian & TP (ANTIREGRESI §91). */
+  const isTka = adalahMapelTka(kuis.mapel)
 
   useEffect(() => {
     setSoal([...(kuis.soal ?? [])])
@@ -164,7 +167,7 @@ export default function KuisDetail({ kuis, onUpdated }: Props) {
     setError('')
     setInfo('')
     try {
-      const daftarTp = tpList
+      const daftarTp = isTka ? [] : tpList
       await updateKuis(kuis.id, {
         judul: judul.trim(),
         deskripsi: deskripsi.trim() || undefined,
@@ -175,12 +178,13 @@ export default function KuisDetail({ kuis, onUpdated }: Props) {
         waktuMulai: waktuMulai || undefined,
         waktuSelesai: waktuSelesai || undefined,
         token: token.trim() || undefined,
-        jenisPenilaian,
+        // TKA: selalu latihan (bukan SLM/STS/SAS rapor)
+        jenisPenilaian: isTka ? 'latihan' : jenisPenilaian,
         modePelaksanaan,
         tpIds: daftarTp.length ? daftarTp : undefined,
         tpNamaList: daftarTp.length ? daftarTp : undefined,
-        nilaiPerTp: Object.keys(nilaiPerTp).length ? nilaiPerTp : undefined,
-        sumberNilai: Object.keys(nilaiPerTp).length ? 'manual' : undefined,
+        nilaiPerTp: !isTka && Object.keys(nilaiPerTp).length ? nilaiPerTp : undefined,
+        sumberNilai: !isTka && Object.keys(nilaiPerTp).length ? 'manual' : undefined,
       })
       setInfo('Tersimpan.')
       onUpdated?.()
@@ -342,6 +346,8 @@ export default function KuisDetail({ kuis, onUpdated }: Props) {
         </div>
       </section>
 
+      {/* Penilaian & TP — hanya mapel biasa (bukan TKA) */}
+      {!isTka && (
       {/* Penilaian */}
       <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
         <div className="border-b border-slate-100 bg-slate-50/80 px-4 py-2.5">
@@ -442,6 +448,7 @@ export default function KuisDetail({ kuis, onUpdated }: Props) {
           )}
         </div>
       </section>
+      )}
 
       {/* Daftar soal */}
       <section className="space-y-3">
