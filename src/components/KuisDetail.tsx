@@ -346,9 +346,8 @@ export default function KuisDetail({ kuis, onUpdated }: Props) {
         </div>
       </section>
 
-      {/* Penilaian & TP — hanya mapel biasa (bukan TKA) */}
+      {/* Penilaian & TP — hanya mapel biasa (bukan TKA); ANTIREGRESI §91 */}
       {!isTka && (
-      {/* Penilaian */}
       <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
         <div className="border-b border-slate-100 bg-slate-50/80 px-4 py-2.5">
           <h4 className="text-sm font-bold text-slate-800">Penilaian & TP</h4>

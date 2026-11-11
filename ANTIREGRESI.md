@@ -49,4 +49,3 @@
 91.3 `match /lms_jawaban` wajib ada: baca guru/admin via `lmsLihatMapelKelas` (termasuk `ruangTka`) atau siswa milik sendiri; create/update/delete klien = false (hanya Admin SDK / CF).
 
 91.4 Helper TKA di rules harus selaras `tkaAkses.ts`: mapel termasuk IPA; kelas `6`/`6A`/`6B`; wali 6A atau 6B boleh kelola bank/kuis/hasil kelas kanonik `6`. Ubah keduanya bersamaan.
-

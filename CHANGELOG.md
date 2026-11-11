@@ -42,15 +42,9 @@
 - File: `src/components/soal/PilihSoalManual.tsx` (baru), `src/components/KuisPanel.tsx`, `src/styles/soal.css`.
 - ANTIREGRESI §90.
 
-## 2026-11-11 — TKA: sembunyikan Penilaian & TP + perbaiki baca hasil (lms_jawaban)
+## 2026-11-11 — Fix build: KuisDetail JSX `{!isTka && (…)}`
 
-- **Pengaturan kuis TKA:** blok «Penilaian & TP» (jenis SLM/STS/SAS + daftar TP rapor) disembunyikan. Nilai TKA tetap di `lms_jawaban`, terpisah dari rapor/Penilaian. Simpan TKA memaksa `jenisPenilaian: latihan` tanpa TP.
-- Mapel biasa **tidak berubah**.
-- **Hasil siswa gagal dibaca:** `match /lms_jawaban` hilang di rules (default deny) + helper TKA belum mengakui kelas kanonik `6` / mapel `TKA IPA` / wali 6A|6B untuk bank bersama.
-- **Rules (file lengkap → SDM01Penilaian):**
-  - `mapelTka` + `TKA IPA`; `tkaKelas6` = `6`/`6A`/`6B`; `tkaWaliKelas6Any` + `ruangTka` selaras `tkaAkses.ts`.
-  - `match /lms_jawaban`: baca guru `lmsLihatMapelKelas` atau siswa milik sendiri; tulis hanya Admin SDK.
-- File LMS: `src/components/KuisDetail.tsx`.
-- File shared: `firestore.rules` (lengkap).
-- ANTIREGRESI §91.
+- Perbaiki sintaks JSX di blok penutup «Penilaian & TP» (komentar di antara `(` dan `<section>` memecah parse TS).
+- Perilaku sama: blok hanya untuk mapel non-TKA.
+- File: `src/components/KuisDetail.tsx`.
 
