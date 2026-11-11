@@ -65,6 +65,24 @@ export default function TkaBeranda() {
         </div>
       </section>
 
+      <section className="tka-dash-aksi" aria-label="Rekap nilai">
+        <Link to="/tka/rekap" className="tka-dash-rekap">
+          <div className="tka-dash-rekap-icon" aria-hidden>
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M4 19V5M4 19h16M8 17V9M12 17v-5M16 17V7" strokeLinecap="round" />
+            </svg>
+          </div>
+          <div>
+            <h2 className="tka-dash-rekap-judul">Rekap Nilai Try Out</h2>
+            <p className="tka-dash-rekap-desc">
+              Nilai per tahap (I–V) untuk BI, Matematika, dan IPA. Otomatis dari kuis LMS atau input
+              manual jika try out di luar sistem.
+            </p>
+          </div>
+          <span className="tka-dash-rekap-cta">Buka rekap →</span>
+        </Link>
+      </section>
+
       <section className="tka-dash-grid" aria-label="Mata pelajaran TKA">
         {MAPEL_TKA.map((mapel) => {
           const r = ruangTka(mapel)

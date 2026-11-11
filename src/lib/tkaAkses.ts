@@ -71,11 +71,23 @@ export function materiTkaUntuk(mapel: string | null | undefined): readonly strin
   return MATERI_TKA[mapel as MapelTkaNama] ?? []
 }
 
+/**
+ * Pengecualian akun uji / admin TKA (`EMAIL_AKSES_KHUSUS_TKA`).
+ * Berlaku meski profil adalah wali 5A (bukan 6A/6B) — ANTIREGRESI akses TKA.
+ * Hanya ditolak jika profil eksplisit nonaktif.
+ */
 function emailAksesKhusus(user: User | null, profil: AppUser | null): boolean {
-  if (!user || !profil || profil.aktif === false) return false
-  return (user.email || '').toLowerCase() === EMAIL_AKSES_KHUSUS_TKA
+  if (!user) return false
+  if ((user.email || '').toLowerCase() !== EMAIL_AKSES_KHUSUS_TKA) return false
+  if (profil && profil.aktif === false) return false
+  return true
 }
 
+/**
+ * Menu & rute staf TKA (bank, kuis, hasil, rekap).
+ * - Email khusus TKA → selalu boleh (meski wali 5A).
+ * - Selain itu: role guru/guru_akademik + waliKelas memuat 6A dan/atau 6B.
+ */
 export function bolehAksesTkaStaf(user: User | null, profil: AppUser | null): boolean {
   if (emailAksesKhusus(user, profil)) return true
   if (!profil || profil.aktif === false) return false
@@ -100,19 +112,34 @@ export function ruangTka(mapel: string): { id: string; kelas: string; mapel: str
 }
 
 /**
- * Kelas rombel yang boleh dilihat di laporan hasil TKA (bukan kelas bank «6»).
- * - Email khusus (admin TKA): 6A dan 6B.
- * - Wali 6A saja → ['6A']; wali 6B saja → ['6B']; keduanya → keduanya.
- * Dipakai hanya di UI hasil; rules tetap memakai tkaWaliKelas6Any untuk baca.
+ * Kelas rombel yang boleh dilihat di laporan hasil & **rekap nilai** TKA
+ * (bukan kelas bank «6»).
+ *
+ * - Email khusus / admin TKA (`arif.azwar79@gmail.com`): **6A dan 6B**.
+ * - Wali **6A saja** → hanya `['6A']` (tidak bisa rekap siswa 6B).
+ * - Wali **6B saja** → hanya `['6B']`.
+ * - Wali keduanya → keduanya.
+ *
+ * Dipakai UI (HasilKuisPanel, TkaRekap). Rules: `tkaBolehRombelRekap` /
+ * `tkaEmailKhusus` harus selaras.
  */
 export function kelasHasilTkaBolehDilihat(
   user: User | null,
   profil: AppUser | null,
 ): string[] {
   if (!bolehAksesTkaStaf(user, profil)) return []
+  // Admin TKA (email khusus): selalu 6A+6B, independent dari waliKelas (mis. 5A).
   if (emailAksesKhusus(user, profil)) return [...KELAS_TKA]
   const wali = Array.isArray(profil?.waliKelas) ? profil!.waliKelas : []
   return KELAS_TKA.filter((k) => wali.includes(k))
+}
+
+/** Alias semantik untuk rekap — sama dengan kelasHasilTkaBolehDilihat. */
+export function kelasRekapTkaBolehDilihat(
+  user: User | null,
+  profil: AppUser | null,
+): string[] {
+  return kelasHasilTkaBolehDilihat(user, profil)
 }
 
 /** true bila user adalah admin TKA (email khusus), bukan admin LMS. */

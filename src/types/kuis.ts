@@ -111,8 +111,7 @@ export interface KuisLms {
 
   /**
    * TKA saja: tahap Try Out (I–V). Dipakai Rekap Nilai TKA per mapel.
-   * Kosong = belum digolongkan ke tahap manapun (tidak masuk rekap per tahap).
-   * Mapel non-TKA mengabaikan field ini.
+   * Kosong = belum digolongkan ke tahap manapun.
    */
   tahapTryOutTka?: TahapTryOutTka
 

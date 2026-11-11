@@ -1,10 +1,18 @@
-## 2026-11-12 — Tahap Try Out TKA pada kuis
+## 2026-11-12 — Akses rekap TKA: admin email khusus + isolasi 6A/6B
 
-- Field baru `tahapTryOutTka` pada `lms_kuis`: `I` | `II` | `III` | `IV` | `V` (hanya mapel TKA).
-- UI: pilihan **Tahap Try Out TKA** di wizard susun kuis dan di Atur kuis (Identitas).
-- Daftar kuis TKA menampilkan badge tahap bila sudah diisi.
-- Fondasi untuk fitur **Rekap Nilai TKA** per tahap × mapel (BI / MTK / IPA); skor bisa dari LMS atau input manual.
-- File: `src/types/kuis.ts`, `src/lib/kuis.ts`, `src/components/KuisDetail.tsx`, `src/components/KuisPanel.tsx`, `docs/TKA.md`.
+- **Admin TKA** (`arif.azwar79@gmail.com`): pengecualian dipertegas — boleh menu/rekap TKA meski profil wali **5A** (tidak perlu wali 6).
+- **Wali 6A** hanya rekap siswa **6A**; **wali 6B** hanya **6B** (UI `kelasRekapTkaBolehDilihat` + rules `tkaBolehRombelRekap`).
+- Banner di halaman rekap menjelaskan cakupan akses.
+- File: `src/lib/tkaAkses.ts`, `src/pages/tka/TkaRekap.tsx`, `src/styles/tka.css`, `firestore.rules`.
+
+## 2026-11-12 — Rekap Nilai Try Out TKA
+
+- Halaman `/tka/rekap` di dashboard TKA: nilai per **tahap I–V** × **BI / MTK / IPA** × siswa 6A/6B.
+- **Akses:** wali kelas 6A dan/atau 6B (hanya rombelnya); akun uji email khusus TKA (keduanya). Helper `kelasHasilTkaBolehDilihat` + rules `tkaBolehRombelRekap`.
+- Nilai **otomatis** dari `lms_jawaban` kuis dengan `tahapTryOutTka` sama (skor tertinggi, skala 100).
+- Nilai **manual** di `lms_rekap_tka` (override) untuk try out di luar LMS; klik sel → edit.
+- Kartu pintasan di beranda TKA. Field `tahapTryOutTka` pada tipe kuis (jika belum ada di branch).
+- File: `src/pages/tka/TkaRekap.tsx`, `src/lib/rekapTka.ts`, `src/types/rekapTka.ts`, `src/pages/tka/TkaBeranda.tsx`, `src/App.tsx`, `src/styles/tka.css`, `src/types/kuis.ts`, `firestore.rules`, `docs/TKA.md`.
 
 ## 2026-11-11 — Label jenis kuis siswa: tanpa «tidak masuk nilai»
 

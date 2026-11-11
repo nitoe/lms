@@ -19,6 +19,7 @@ import SiswaPlaceholder from './pages/siswa/SiswaPlaceholder'
 import SiswaKuis from './pages/siswa/SiswaKuis'
 import SiswaTka from './pages/siswa/SiswaTka'
 import TkaBeranda from './pages/tka/TkaBeranda'
+import TkaRekap from './pages/tka/TkaRekap'
 import OrangtuaBeranda from './pages/OrangtuaBeranda'
 import { isStaf } from './lib/peran'
 import { bolehAksesTkaStaf } from './lib/tkaAkses'
@@ -131,6 +132,14 @@ export default function App() {
           element={
             <WajibTkaStaf>
               <TkaBeranda />
+            </WajibTkaStaf>
+          }
+        />
+        <Route
+          path="tka/rekap"
+          element={
+            <WajibTkaStaf>
+              <TkaRekap />
             </WajibTkaStaf>
           }
         />

@@ -228,3 +228,177 @@
   text-decoration: none;
 }
 .tka-ruang-back:hover { text-decoration: underline; color: #fff; }
+
+
+/* ── Rekap Nilai TKA ─────────────────────────── */
+.tka-dash-aksi {
+  margin-top: 0.25rem;
+}
+.tka-dash-rekap {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem 1.25rem;
+  border-radius: 1rem;
+  border: 1px solid #c7d2fe;
+  background: linear-gradient(135deg, #eef2ff 0%, #f8fafc 60%);
+  text-decoration: none;
+  color: inherit;
+  transition: box-shadow 0.15s, border-color 0.15s;
+}
+.tka-dash-rekap:hover {
+  border-color: #818cf8;
+  box-shadow: 0 8px 24px rgba(79, 70, 229, 0.12);
+}
+.tka-dash-rekap-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 3rem;
+  height: 3rem;
+  border-radius: 0.75rem;
+  background: #4f46e5;
+  color: #fff;
+  flex-shrink: 0;
+}
+.tka-dash-rekap-judul {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #1e1b4b;
+}
+.tka-dash-rekap-desc {
+  margin: 0.2rem 0 0;
+  font-size: 0.8125rem;
+  color: #475569;
+  max-width: 36rem;
+}
+.tka-dash-rekap-cta {
+  margin-left: auto;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: #4f46e5;
+}
+
+.tka-rekap-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1.25rem;
+  align-items: flex-end;
+}
+.tka-rekap-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #475569;
+}
+.tka-rekap-field select {
+  min-width: 10rem;
+}
+.tka-rekap-sumber {
+  border-radius: 0.75rem;
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+  padding: 0.75rem 1rem;
+  font-size: 0.8125rem;
+  color: #334155;
+}
+.tka-rekap-sumber ul {
+  margin: 0.35rem 0 0;
+  padding-left: 1rem;
+}
+.tka-rekap-table-wrap {
+  overflow-x: auto;
+  border-radius: 0.75rem;
+  border: 1px solid #e2e8f0;
+  background: #fff;
+}
+.tka-rekap-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+.tka-rekap-table th {
+  text-align: left;
+  padding: 0.65rem 0.75rem;
+  background: #f1f5f9;
+  color: #334155;
+  font-weight: 700;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  border-bottom: 1px solid #e2e8f0;
+  white-space: nowrap;
+}
+.tka-rekap-table td {
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid #f1f5f9;
+  vertical-align: middle;
+}
+.tka-rekap-table tbody tr:hover {
+  background: #f8fafc;
+}
+.tka-rekap-th-nama { min-width: 10rem; }
+.tka-rekap-nama { font-weight: 600; color: #0f172a; }
+.tka-rekap-kelas { color: #64748b; font-size: 0.8125rem; }
+.tka-rekap-nilai { min-width: 6.5rem; }
+.tka-rekap-sel {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.15rem;
+  padding: 0.25rem 0.4rem;
+  border-radius: 0.5rem;
+  border: 1px dashed transparent;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+}
+.tka-rekap-sel:hover {
+  border-color: #c7d2fe;
+  background: #eef2ff;
+}
+.tka-rekap-angka {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: #0f172a;
+}
+.tka-rekap-badge {
+  font-size: 0.625rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 0.05rem 0.35rem;
+  border-radius: 999px;
+}
+.tka-rekap-badge--manual {
+  background: #fef3c7;
+  color: #92400e;
+}
+.tka-rekap-badge--auto {
+  background: #d1fae5;
+  color: #065f46;
+}
+.tka-rekap-edit {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+}
+.tka-rekap-edit input {
+  width: 4.5rem;
+}
+
+.tka-rekap-akses {
+  border-radius: 0.75rem;
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+  padding: 0.65rem 1rem;
+  font-size: 0.8125rem;
+  color: #475569;
+}
+.tka-rekap-akses p { margin: 0; }
+.tka-rekap-akses strong { color: #0f172a; }

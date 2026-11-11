@@ -16,19 +16,7 @@ tiga kontainer mapel — tanpa pemisahan per rombel dan tanpa 6C.
 | Gambar soal | `lms_gambar` |
 | Kuis TKA | `lms_kuis` (kelas `6` atau rombel 6A/6B; dibuat dari paket lewat wizard Kuis) |
 | Hasil | `lms_jawaban` |
-
-### Tahap Try Out TKA
-
-Setiap kuis TKA (`lms_kuis` mapel «TKA …») dapat diberi **tahap Try Out**: I, II, III, IV, atau V
-(field `tahapTryOutTka`). Field ini dipakai untuk **Rekap Nilai TKA** di dashboard guru: nilai per
-mapel (Bahasa Indonesia, Matematika, IPA) dikelompokkan per tahap.
-
-- Nilai otomatis: dari `lms_jawaban` kuis yang `tahapTryOutTka`-nya cocok dan mapel TKA-nya sesuai.
-- Nilai manual: jika try out digelar di luar LMS, guru mengisi skor di rekap (fitur berikutnya).
-- Kosong = kuis belum digolongkan ke tahap manapun (tidak masuk rekap per tahap).
-
-Atur di wizard susun kuis atau **Atur kuis** (Identitas).
-
+| Rekap TO | `lms_rekap_tka` |
 
 ### Materi (pengganti TP)
 
@@ -123,3 +111,19 @@ Blok ini juga muncul pada soal di ruang lain bila soal itu sudah memuat field TK
 - Penilaian manual (`uraian`) tidak dipakai TKA. Fitur nilai manual di Cloud Function berbasis penugasan,
   jadi tidak mencakup ruang TKA.
 - Soal `pgk-cat` dengan lebih dari 2 kolom belum didukung.
+
+
+### Rekap Nilai Try Out TKA
+
+Halaman **Dashboard TKA → Rekap Nilai Try Out** (`/tka/rekap`).
+
+| Aspek | Keterangan |
+|---|---|
+| Akses | Wali **6A** hanya siswa 6A; wali **6B** hanya 6B. Email khusus TKA (`arif.azwar79@gmail.com`, termasuk jika wali 5A) melihat **6A+6B** |
+| Dimensi | Tahap Try Out I–V × mapel TKA (BI, Matematika, IPA) × siswa |
+| Otomatis | Skor dari `lms_jawaban` pada kuis `lms_kuis` dengan `tahapTryOutTka` cocok (skala 0–100; jika beberapa kuis: skor tertinggi) |
+| Manual | Override di `lms_rekap_tka/{kelas}_{tahap}_{siswaId}` — untuk try out di luar LMS |
+| Prioritas | Nilai **manual** mengalahkan otomatis; hapus override = kembali ke LMS/kosong |
+
+Pastikan setiap kuis TKA yang dipakai try out sudah diisi **Tahap Try Out** di Atur kuis.
+
