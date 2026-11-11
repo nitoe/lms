@@ -391,7 +391,7 @@ export default function KuisPanel({ kelas, mapel }: Props) {
             ) : detailTab === 'offline' && offline ? (
               <OfflineKuisPanel kuis={kuis} onTersimpan={() => { void muat() }} />
             ) : (
-              <HasilKuisPanel kuis={kuis} />
+              <HasilKuisPanel kuis={kuis} onUpdated={async () => { await muat() }} />
             )}
           </>
         ) : (

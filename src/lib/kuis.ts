@@ -224,6 +224,7 @@ export async function updateKuis(
       | 'modeSusun'
       | 'sumberPaketIds'
       | 'modePelaksanaan'
+      | 'hasilDipublish'
     >
   >,
 ): Promise<void> {

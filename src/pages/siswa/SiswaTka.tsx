@@ -303,6 +303,7 @@ function TkaIsi({ siswaId, kelas }: { siswaId: string; kelas: string }) {
                 const terakhir = riwayat[0]
                 const sudah = riwayat.length > 0
                 const latihan = (k.jenisPenilaian ?? 'latihan') === 'latihan'
+                const dipublish = k.hasilDipublish === true
                 const jadwal = statusJadwal(k, sekarang)
                 const draf = muatProgress(siswaId, k.id)
                 const nJawab = draf ? Object.keys(draf.jawaban).length : 0
@@ -333,7 +334,11 @@ function TkaIsi({ siswaId, kelas }: { siswaId: string; kelas: string }) {
                       <div className="tka-riwayat">
                         <strong>
                           Sudah dikerjakan {riwayat.length}×
-                          {terakhir.totalPoin > 0 ? ` · skor terakhir ${teksSkor(terakhir.skor, terakhir.totalPoin)}` : ''}
+                          {dipublish && terakhir.totalPoin > 0
+                            ? ` · skor terakhir ${teksSkor(terakhir.skor, terakhir.totalPoin)}`
+                            : !dipublish
+                              ? ' · nilai belum dipublikasikan'
+                              : ''}
                         </strong>
                         <span>
                           Percobaan ke-{terakhir.percobaan} · {formatWaktu(terakhir.createdAtMs)}
@@ -811,6 +816,8 @@ function HasilTka({
   onKembali: () => void
   onUlang: () => void
 }) {
+  // TKA: skor hanya ke siswa setelah guru set hasilDipublish (ANTIREGRESI §96).
+  const dipublish = hasil.kuis.hasilDipublish === true
   const peta = useMemo(() => new Map(hasil.detail.map((d) => [d.soalId, d.benar])), [hasil.detail])
 
   const rincian = useMemo(() => {
@@ -859,16 +866,28 @@ function HasilTka({
       <div className="tka-hasil">
         <div className="text-sm font-medium text-slate-500">Jawaban terkirim</div>
         <h2 className="mt-1 text-lg font-bold text-slate-800">{hasil.kuis.judul}</h2>
-        <div className="tka-hasil-skor">
-          {teksSkor(hasil.skor, hasil.totalPoin)}
-          <span> / 100</span>
-        </div>
-        <p className="text-xs text-slate-500">
-          {hasil.skor} dari {hasil.totalPoin} poin · percobaan ke-{hasil.percobaan}
-          {hasil.status === 'sebagian_manual' ? ' · sebagian dinilai guru' : ''}
-        </p>
-        {tabel('Per tingkat kompleksitas', rincian.kompleksitas)}
-        {tabel('Per materi', rincian.materi)}
+        {dipublish ? (
+          <>
+            <div className="tka-hasil-skor">
+              {teksSkor(hasil.skor, hasil.totalPoin)}
+              <span> / 100</span>
+            </div>
+            <p className="text-xs text-slate-500">
+              {hasil.skor} dari {hasil.totalPoin} poin · percobaan ke-{hasil.percobaan}
+              {hasil.status === 'sebagian_manual' ? ' · sebagian dinilai guru' : ''}
+            </p>
+            {tabel('Per tingkat kompleksitas', rincian.kompleksitas)}
+            {tabel('Per materi', rincian.materi)}
+          </>
+        ) : (
+          <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+            <p className="font-semibold">Nilai belum dipublikasikan</p>
+            <p className="mt-1 text-xs text-amber-800/90">
+              Jawabanmu sudah tersimpan (percobaan ke-{hasil.percobaan}). Skor dan rincian akan
+              tampil setelah guru mempublikasikan hasil kuis ini.
+            </p>
+          </div>
+        )}
         <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:justify-center">
           <button type="button" className="lms-btn-secondary text-sm" onClick={onKembali}>
             Kembali ke daftar

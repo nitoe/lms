@@ -97,3 +97,15 @@
 - Mapel non-TKA: tidak ada kartu/badge/kolom domain; agregat per soal tetap memakai `soalIds`.
 - File: `src/components/HasilKuisPanel.tsx`.
 - ANTIREGRESI §94, §95. Lihat juga `RESTORE_HASIL_KUIS.md` jika file sempat terpotong di remote.
+
+## 2026-11-11 — TKA: publikasi hasil ke siswa
+
+- **Masalah:** setelah submit kuis TKA, siswa langsung melihat skor (sama seperti latihan mapel). Untuk try-out/ujian TKA, skor sebaiknya hanya tampil setelah guru mempublikasikan.
+- **Perilaku baru (hanya TKA):**
+  - Field `lms_kuis.hasilDipublish` (boolean). Default kosong/false = skor disembunyikan dari siswa.
+  - Tab **Hasil** guru: banner status + tombol «Publikasikan hasil ke siswa» / «Sembunyikan dari siswa».
+  - Siswa (`SiswaTka`): daftar menampilkan «nilai belum dipublikasikan»; layar pasca-submit tanpa angka skor/rincian sampai dipublish.
+  - Mapel non-TKA **tidak berubah** (skor tetap langsung tampil).
+- Juga: `HasilKuisPanel.tsx` dikembalikan ke versi utuh (file di `main` sempat terpotong) + kontrol publikasi.
+- File: `src/types/kuis.ts`, `src/lib/kuis.ts`, `src/components/HasilKuisPanel.tsx`, `src/components/KuisPanel.tsx`, `src/pages/siswa/SiswaTka.tsx`.
+- ANTIREGRESI §96.

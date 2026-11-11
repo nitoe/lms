@@ -77,6 +77,13 @@ export interface KuisLms {
   /** Sumber nilai: analisis atau manual. */
   sumberNilai?: 'analisis' | 'manual'
 
+  /**
+   * TKA saja: apakah skor sudah boleh ditampilkan ke siswa.
+   * Default false/undefined = siswa hanya melihat «jawaban terkirim», tanpa angka.
+   * Mapel non-TKA mengabaikan field ini (skor tetap langsung tampil).
+   */
+  hasilDipublish?: boolean
+
   createdAt?: unknown
   updatedAt?: unknown
 }

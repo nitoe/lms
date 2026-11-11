@@ -96,3 +96,17 @@
 95.2 Header detail siswa TKA menampilkan badge skor per domain; setiap kartu soal menampilkan badge domain bila `domainTka` ternormalisasi.
 
 95.3 Semua UI §95 dikondisikan `adalahMapelTka` / `isTka`. Jangan menambah kolom atau kartu domain ke jalur mapel biasa.
+
+## §96. Publikasi hasil TKA ke siswa
+
+96.1 Field `hasilDipublish` pada `lms_kuis` **hanya** mengatur tampilan skor di sisi siswa untuk mapel TKA. Mapel non-TKA mengabaikan field ini.
+
+96.2 Default `hasilDipublish` kosong/false: siswa yang sudah submit hanya melihat status «jawaban terkirim» / «nilai belum dipublikasikan», **tanpa** angka skor, rincian kompleksitas, materi, atau domain.
+
+96.3 Guru mengubah status lewat tab Hasil (`HasilKuisPanel`) dengan `updateKuis({ hasilDipublish })`. Tidak perlu Cloud Function baru; tulis mengikuti rules kuis yang sudah ada.
+
+96.4 Setelah publish, siswa melihat skor di daftar kuis dan (jika baru submit) di layar hasil. Guru boleh menyembunyikan kembali (toggle).
+
+96.5 Jangan mengaitkan `hasilDipublish` dengan sinkron rapor, portal-ortu, atau jenis penilaian SLM/STS/SAS. TKA tetap `jenisPenilaian: 'latihan'` (§91.2).
+
+96.6 Perubahan UI publish **hanya** dikondisikan `adalahMapelTka` / `isTka`. Jangan mengubah layar hasil kuis mapel biasa.
