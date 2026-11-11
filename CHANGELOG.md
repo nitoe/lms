@@ -1,8 +1,11 @@
-## 2026-11-11 — Fix: tanpa 6C, katalog TKA di beranda, konfirmasi keluar akun
+## 2026-11-11 — Reset TKA: attempt + draf jawaban (progress)
 
-- **Kelas 6C** dihapus dari `DAFTAR_KELAS` (login siswa) dan `DAFTAR_KELAS_SD` — sekolah tidak punya 6C (hanya 6A/6B).
-- **Beranda siswa:** kartu katalog **TKA** untuk siswa kelas 6 (selain nav header).
-- **Tombol Keluar (header):** konfirmasi sebelum logout, agar tidak keluar akun saat mengira itu keluar kuis.
-- **Sedang mengerjakan kuis/TKA:** `beforeunload` minta konfirmasi jika tab ditutup/refresh.
-- File: `siswaAuth.ts`, `kelasLms.ts`, `SiswaBeranda.tsx`, `SiswaLayout.tsx`, `SiswaKuis.tsx`, `SiswaTka.tsx`.
-- ANTIREGRESI §100
+- Reset attempt sekarang punya 3 mode:
+  - **Reset attempt + draf** (default): hapus `lms_jawaban` + tandai hapus draf perangkat
+  - **Reset draf saja**: hanya tandai hapus progress/localStorage (kiriman server tetap)
+  - **Reset attempt saja**: hanya hapus kiriman server (draf perangkat tetap)
+- Marker server: `lms_tka_progress_reset/{kuisId}_{siswaId}` (Admin SDK).
+- Klien siswa (`SiswaTka`): saat muat daftar / mulai kuis, jika marker lebih baru dari draf lokal → hapus localStorage.
+- UI detail hasil TKA: tiga tombol reset. Roster: **Reset+** = mode semua.
+- Rules: siswa boleh baca marker miliknya. File rules utuh LMS + SDM01Penilaian.
+- CF: `resetJawabanKuisLms` (versi lengkap). ANTIREGRESI §101.

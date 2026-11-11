@@ -307,26 +307,53 @@ export default function HasilKuisPanel({ kuis, onUpdated }: Props) {
   }
 
 
-  async function resetAttemptTka(siswaId: string, siswaNama: string) {
-    if (!isTka || !siswaId) return
+    async function resetAttemptTka(
+    siswaId: string,
+    siswaNama: string,
+    mode: 'attempt' | 'progress' | 'semua' = 'semua',
+    kelasSiswa?: string,
+  ) {
+    if (!isTka) return
+    const label =
+      mode === 'attempt'
+        ? 'Reset attempt (kiriman server)'
+        : mode === 'progress'
+          ? 'Reset draf jawaban (perangkat siswa)'
+          : 'Reset attempt + draf jawaban'
+    const detail =
+      mode === 'attempt'
+        ? 'Semua kiriman di server dihapus. Siswa boleh mengerjakan ulang. Draf di perangkat siswa TIDAK dihapus.'
+        : mode === 'progress'
+          ? 'Draf/progress di perangkat siswa akan dihapus saat siswa membuka kuis lagi. Kiriman server tetap.'
+          : 'Kiriman server dihapus DAN draf di perangkat siswa dihapus saat siswa membuka kuis lagi.'
     const ok = confirm(
-      `Reset attempt «${siswaNama || siswaId}»?\n\nSemua kiriman jawaban siswa ini pada kuis TKA ini akan dihapus. Siswa dapat mengerjakan ulang dari awal.\n\nTindakan ini tidak dapat dibatalkan.`,
+      `${label} — «${siswaNama || siswaId}»?\n\n${detail}\n\nTindakan ini tidak dapat dibatalkan.`,
     )
     if (!ok) return
     setBusyResetId(siswaId)
     setError('')
     setInfo('')
     try {
-      const h = await resetJawabanKuisTka({ kuisId: kuis.id, siswaId })
-      setInfo(
-        h.dihapus > 0
-          ? `Attempt direset (${h.dihapus} kiriman dihapus) — ${siswaNama || siswaId}.`
-          : `Tidak ada kiriman untuk dihapus — ${siswaNama || siswaId}.`,
-      )
+      const h = await resetJawabanKuisTka({
+        kuisId: kuis.id,
+        siswaId,
+        mode,
+        kelasSiswa: kelasSiswa || undefined,
+      })
+      const parts: string[] = []
+      if (mode === 'attempt' || mode === 'semua') {
+        parts.push(
+          h.dihapus > 0 ? `${h.dihapus} kiriman dihapus` : 'tidak ada kiriman server',
+        )
+      }
+      if ((mode === 'progress' || mode === 'semua') && h.progressDitandai) {
+        parts.push('draf perangkat ditandai reset')
+      }
+      setInfo(`Reset OK (${parts.join('; ')}) — ${siswaNama || siswaId}.`)
       if (pilihId) setPilihId(null)
       await muat()
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Gagal mereset attempt.')
+      setError(e instanceof Error ? e.message : 'Gagal mereset.')
     } finally {
       setBusyResetId(null)
     }
@@ -498,16 +525,53 @@ export default function HasilKuisPanel({ kuis, onUpdated }: Props) {
             <span aria-hidden>←</span> Kembali ke daftar nilai
           </button>
           {isTka && terpilih.siswaId && (
-            <button
-              type="button"
-              className="text-xs font-semibold text-red-600 hover:text-red-800 disabled:opacity-50"
-              disabled={busyResetId === terpilih.siswaId}
-              onClick={() =>
-                void resetAttemptTka(terpilih.siswaId!, terpilih.siswaNama || terpilih.siswaId || '')
-              }
-            >
-              {busyResetId === terpilih.siswaId ? 'Mereset…' : 'Reset attempt siswa ini'}
-            </button>
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                className="text-xs font-semibold text-red-600 hover:text-red-800 disabled:opacity-50"
+                disabled={busyResetId === terpilih.siswaId}
+                onClick={() =>
+                  void resetAttemptTka(
+                    terpilih.siswaId!,
+                    terpilih.siswaNama || terpilih.siswaId || '',
+                    'semua',
+                    terpilih.kelas,
+                  )
+                }
+              >
+                {busyResetId === terpilih.siswaId ? 'Mereset…' : 'Reset attempt + draf'}
+              </button>
+              <button
+                type="button"
+                className="text-xs font-semibold text-amber-700 hover:text-amber-900 disabled:opacity-50"
+                disabled={busyResetId === terpilih.siswaId}
+                onClick={() =>
+                  void resetAttemptTka(
+                    terpilih.siswaId!,
+                    terpilih.siswaNama || terpilih.siswaId || '',
+                    'progress',
+                    terpilih.kelas,
+                  )
+                }
+              >
+                Reset draf saja
+              </button>
+              <button
+                type="button"
+                className="text-xs font-semibold text-slate-600 hover:text-slate-900 disabled:opacity-50"
+                disabled={busyResetId === terpilih.siswaId}
+                onClick={() =>
+                  void resetAttemptTka(
+                    terpilih.siswaId!,
+                    terpilih.siswaNama || terpilih.siswaId || '',
+                    'attempt',
+                    terpilih.kelas,
+                  )
+                }
+              >
+                Reset attempt saja
+              </button>
+            </div>
           )}
         </div>
 
@@ -1311,9 +1375,9 @@ export default function HasilKuisPanel({ kuis, onUpdated }: Props) {
                             type="button"
                             className="text-xs font-semibold text-red-600 hover:text-red-800 disabled:opacity-50"
                             disabled={busyResetId === row.siswaId}
-                            onClick={() => void resetAttemptTka(row.siswaId, row.siswaNama)}
+                            onClick={() => void resetAttemptTka(row.siswaId, row.siswaNama, 'semua', row.kelas)}
                           >
-                            {busyResetId === row.siswaId ? 'Reset…' : 'Reset'}
+                            {busyResetId === row.siswaId ? 'Reset…' : 'Reset+'}
                           </button>
                         </div>
                       </td>

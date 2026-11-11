@@ -1,9 +1,11 @@
-## §100. Kelas 6 tanpa 6C; katalog TKA; konfirmasi keluar akun siswa
+## §101. Reset TKA: attempt vs draf progress
 
-100.1 Rombel kelas 6 hanya **6A** dan **6B**. Jangan mengembalikan **6C** ke `DAFTAR_KELAS` / `DAFTAR_KELAS_SD` kecuali sekolah benar-benar membuka rombel itu.
+101.1 `lms_jawaban` dihapus = izin mengerjakan ulang. **Tidak** menghapus draf di `localStorage` perangkat siswa.
 
-100.2 Siswa kelas 6 harus menemukan TKA dari **beranda** (kartu katalog) dan **nav**, bukan hanya nav.
+101.2 Draf dihapus lewat marker `lms_tka_progress_reset/{kuisId}_{siswaId}` (`resetAt` / `resetAtMs`). Klien siswa wajib cek marker sebelum memakai progress lokal.
 
-100.3 Tombol **Keluar** di header area siswa **wajib** `confirm` sebelum `signOut`. Jangan logout langsung.
+101.3 Mode CF: `attempt` | `progress` | `semua`. Default UI admin = `semua`.
 
-100.4 Saat komponen pengerjaan kuis/TKA aktif, pasang `beforeunload` agar tutup tab/refresh tidak tanpa peringatan. Tombol Keluar *di dalam* kuis tetap memakai dialog sendiri (bukan logout akun).
+101.4 Tulis marker hanya Admin SDK. Siswa hanya **read** dokumen dengan `siswaId == token.siswaId`.
+
+101.5 Jangan mengandalkan admin dan siswa di perangkat yang sama untuk “hapus localStorage jarak jauh” tanpa marker server.

@@ -81,9 +81,37 @@ function hapusProgress(siswaId: string, kuisId: string) {
   try {
     localStorage.removeItem(progressKey(siswaId, kuisId))
   } catch {
-    /* abaikan */
+    /* ignore */
   }
 }
+
+/**
+ * Jika guru mereset draf di server, hapus progress lokal yang lebih lama / sama.
+ * Marker: lms_tka_progress_reset/{kuisId}_{siswaId}
+ */
+async function sinkronProgressSetelahReset(siswaId: string, kuisId: string): Promise<void> {
+  if (!siswaId || !kuisId) return
+  try {
+    const id = `${kuisId}_${siswaId}`.slice(0, 150)
+    const snap = await getDoc(doc(db, 'lms_tka_progress_reset', id))
+    if (!snap.exists()) return
+    const data = snap.data() as { resetAtMs?: number; resetAt?: { toMillis?: () => number } }
+    const resetMs =
+      Number(data.resetAtMs) ||
+      (typeof data.resetAt?.toMillis === 'function' ? data.resetAt.toMillis() : 0)
+    if (!resetMs) {
+      hapusProgress(siswaId, kuisId)
+      return
+    }
+    const lokal = muatProgress(siswaId, kuisId)
+    if (!lokal || (Number(lokal.updatedAt) || 0) <= resetMs) {
+      hapusProgress(siswaId, kuisId)
+    }
+  } catch {
+    /* ignore — jangan gagalkan muat daftar */
+  }
+}
+
 
 function waktuMs(v: unknown): number {
   if (!v) return 0
@@ -216,6 +244,8 @@ function TkaIsi({ siswaId, kelas }: { siswaId: string; kelas: string }) {
         (k) => adalahMapelTka(k.mapel) && k.modePelaksanaan !== 'offline',
       )
       setList(kuis)
+      // Hapus draf lokal jika guru sudah reset progress di server
+      await Promise.all(kuis.map((k) => sinkronProgressSetelahReset(siswaId, k.id)))
       const pasang = await Promise.all(
         kuis.map(async (k) => {
           try {
@@ -240,7 +270,8 @@ function TkaIsi({ siswaId, kelas }: { siswaId: string; kelas: string }) {
     return () => clearInterval(t)
   }, [])
 
-  function mulai(kuis: KuisLms, dariAwal: boolean) {
+  async function mulai(kuis: KuisLms, dariAwal: boolean) {
+    await sinkronProgressSetelahReset(siswaId, kuis.id)
     if (dariAwal) hapusProgress(siswaId, kuis.id)
     setHasil(null)
     setTokenUntuk(null)
@@ -355,9 +386,9 @@ function TkaIsi({ siswaId, kelas }: { siswaId: string; kelas: string }) {
                           type="button"
                           className="lms-btn-primary text-sm"
                           onClick={() => {
-                            if (adaDraf) mulai(k, false)
+                            if (adaDraf) void mulai(k, false)
                             else if (k.token?.trim()) setTokenUntuk(k)
-                            else mulai(k, true)
+                            else void mulai(k, true)
                           }}
                         >
                           {adaDraf ? 'Lanjutkan' : 'Mulai Kerjakan'}
@@ -376,7 +407,7 @@ function TkaIsi({ siswaId, kelas }: { siswaId: string; kelas: string }) {
           </section>
         ))}
 
-      {tokenUntuk && <DialogToken kuis={tokenUntuk} onBatal={() => setTokenUntuk(null)} onBenar={() => mulai(tokenUntuk, true)} />}
+      {tokenUntuk && <DialogToken kuis={tokenUntuk} onBatal={() => setTokenUntuk(null)} onBenar={() => void mulai(tokenUntuk, true)} />}
     </div>
   )
 }
