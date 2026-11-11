@@ -1,0 +1,11 @@
+--- a/src/components/HasilKuisPanel.tsx
++++ b/src/components/HasilKuisPanel.tsx
+@@ -291,6 +291,8 @@ export default function HasilKuisPanel({ kuis }: Props) {
+     return Array.from(set)
+   }, [isTka, kuis.soal])
+ 
++  const soalIds = useMemo(() => (kuis.soal ?? []).map((s) => s.id), [kuis.soal])
++
+   const agregat = useMemo(() => {
+     if (!list || list.length === 0) return {}
+     const sumber = isTka
