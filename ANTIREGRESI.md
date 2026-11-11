@@ -87,3 +87,12 @@
 
 94.4 Import domain di editor (`TkaFieldEditor`, `PilihSoalManual`) wajib menyertakan `normalisasiDomainTka` + konstanta nama/urutan/deskripsi dari `types/soal.ts` — jangan memakai tanpa import (regresi build TS2304).
 
+94.5 `soalIds` untuk `agregatPerSoal` wajib didefinisikan di panel (`useMemo` dari `kuis.soal`); jangan menghapus saat menambah kolom domain.
+
+## §95. Laporan TKA — rata domain kelas & detail siswa
+
+95.1 Kartu rata-rata per domain di ringkasan hasil **hanya** bila `isTka` dan `domainYangAda.length > 0`. Dihitung dari siswa yang sudah mengerjakan (bukan roster kosong).
+
+95.2 Header detail siswa TKA menampilkan badge skor per domain; setiap kartu soal menampilkan badge domain bila `domainTka` ternormalisasi.
+
+95.3 Semua UI §95 dikondisikan `adalahMapelTka` / `isTka`. Jangan menambah kolom atau kartu domain ke jalur mapel biasa.

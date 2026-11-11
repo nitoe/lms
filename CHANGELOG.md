@@ -85,5 +85,15 @@
 - **Laporan hasil TKA:** di tab Hasil siswa, bila soal memiliki domain penilaian (`pengetahuan` / `keterampilan_proses`), kolom tambahan menampilkan persentase skor per domain (hanya TKA; mapel biasa tidak berubah).
 - Roster, filter kelas, dan mekanisme nilai total tetap sama. Tidak ada perubahan pada kuis mapel biasa atau sinkron ke Penilaian.
 - File: `src/components/soal/TkaFieldEditor.tsx`, `src/components/soal/PilihSoalManual.tsx`, `src/components/HasilKuisPanel.tsx`.
-- ANTIREGRESI §89.
+- ANTIREGRESI §94.
 
+## 2026-11-11 — Fix TS2304 soalIds + laporan TKA domain (rata kelas & detail)
+
+- **Build:** restore `const soalIds = useMemo(() => (kuis.soal ?? []).map((s) => s.id), [kuis.soal])` di `HasilKuisPanel` (terhapus saat kolom domain → TS2304).
+- **Laporan TKA (hanya `adalahMapelTka`):**
+  - Kartu rata-rata skor per domain di atas tabel (dari siswa yang sudah mengerjakan).
+  - Badge domain di header detail siswa + di setiap baris soal.
+  - Kolom domain di tabel roster tetap seperti sebelumnya.
+- Mapel non-TKA: tidak ada kartu/badge/kolom domain; agregat per soal tetap memakai `soalIds`.
+- File: `src/components/HasilKuisPanel.tsx`.
+- ANTIREGRESI §94, §95. Lihat juga `RESTORE_HASIL_KUIS.md` jika file sempat terpotong di remote.

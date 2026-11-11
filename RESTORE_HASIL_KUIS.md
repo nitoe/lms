@@ -1,59 +1,46 @@
-# Restore HasilKuisPanel (setelah commit bot terpotong)
+# Restore HasilKuisPanel + laporan domain TKA
 
-Commit bot sempat menimpa `src/components/HasilKuisPanel.tsx` dengan konten tidak lengkap.
-Isi utuh masih ada di commit:
+## Status remote
+
+Beberapa commit bot menimpa `src/components/HasilKuisPanel.tsx` dengan konten tidak lengkap.
+Isi **utuh terakhir yang valid** ada di commit:
 
 `3bed0a42852e6d06192e3cca8f068dc750829447`
 
-## Langkah di mesin lokal
+## Langkah cepat (lokal)
 
 ```bash
 cd C:\\Users\\USER\\Documents\\GitHub\\lms
 git fetch origin
 
-# Kembalikan file utuh dari commit terakhir yang valid
+# 1) Kembalikan file utuh dari commit valid
 git checkout 3bed0a42852e6d06192e3cca8f068dc750829447 -- src/components/HasilKuisPanel.tsx
 ```
 
-## Tambahkan definisi `soalIds` (perbaikan TS2304)
+## 2) Perbaikan wajib TS2304 (`soalIds`)
 
-Di `HasilKuisPanel.tsx`, **tepat setelah** blok `domainYangAda` dan **sebelum** `const agregat = useMemo`, sisipkan:
+Setelah `domainYangAda`, **sebelum** `const agregat = useMemo`, sisipkan:
 
 ```ts
   const soalIds = useMemo(() => (kuis.soal ?? []).map((s) => s.id), [kuis.soal])
 ```
 
-Blok hasilnya:
+## 3) (Opsional) Peningkatan laporan domain TKA §95
 
-```ts
-  const domainYangAda = useMemo(() => {
-    if (!isTka) return [] as DomainTka[]
-    const set = new Set<DomainTka>()
-    for (const s of kuis.soal ?? []) {
-      const d = normalisasiDomainTka(s.domainTka)
-      if (d) set.add(d)
-    }
-    return Array.from(set)
-  }, [isTka, kuis.soal])
+Unduh file lengkap dari chat (artifacts `HasilKuisPanel.tsx`) yang sudah berisi:
 
-  const soalIds = useMemo(() => (kuis.soal ?? []).map((s) => s.id), [kuis.soal])
+- `soalIds` (fix build)
+- `rataDomain` + kartu rata-rata per domain di ringkasan
+- Badge domain di header detail siswa
+- Badge domain di setiap soal pada detail
 
-  const agregat = useMemo(() => {
-    if (!list || list.length === 0) return {}
-    const sumber = isTka
-      ? barisTka.filter((b) => b.jawaban).map((b) => b.jawaban!)
-      : tampil
-    return agregatPerSoal(sumber, soalIds)
-  }, [list, tampil, soalIds, isTka, barisTka])
-```
-
-## Commit & build
+Salin ke `src/components/HasilKuisPanel.tsx`, lalu:
 
 ```bash
-git add src/components/HasilKuisPanel.tsx
-git commit -m "fix: restore soalIds useMemo in HasilKuisPanel (TS2304)"
 npm run build
+git add src/components/HasilKuisPanel.tsx CHANGELOG.md ANTIREGRESI.md
+git commit -m "fix+feat(TKA): soalIds + rata domain kelas & detail siswa (§94–§95)"
 git push origin main
 ```
 
-ANTIREGRESI §94 — hanya menambah definisi yang hilang; perilaku TKA/mapel tidak berubah.
+Mapel non-TKA tidak berubah (ANTIREGRESI §92.5, §94.3, §95.3).
