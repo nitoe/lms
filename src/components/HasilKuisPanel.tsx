@@ -13,7 +13,7 @@ import {
 import { teksPolos } from '../lib/html'
 import type { KuisLms, SoalKuis } from '../types/kuis'
 import { NAMA_JENIS_PENILAIAN, type JenisPenilaianKuis } from '../types/kuis'
-import { NAMA_TIPE, type TipeSoal } from '../types/soal'
+import { NAMA_TIPE, type TipeSoal, normalisasiDomainTka, NAMA_DOMAIN_TKA, type DomainTka } from '../types/soal'
 import { useAuth } from '../context/AuthContext'
 import {
   analisisKuisDenganAi,
@@ -38,11 +38,28 @@ type Props = {
 }
 
 /** Baris roster hasil TKA: siswa selalu tampil, jawaban opsional. */
+/** Baris roster hasil TKA: siswa selalu tampil, jawaban opsional. */
 type BarisHasilTka = {
   siswaId: string
   siswaNama: string
   kelas: string
   jawaban: JawabanKuis | null
+}
+
+/** Hitung skor per domain TKA (hanya soal yang berdomain). */
+function skorPerDomain(jawaban: JawabanKuis | null, soalList: SoalKuis[]): Record<string, { skor: number; maks: number }> {
+  const out: Record<string, { skor: number; maks: number }> = {}
+  if (!jawaban?.detail) return out
+  const byId = new Map(jawaban.detail.map((d) => [d.soalId, d]))
+  for (const s of soalList) {
+    const dom = normalisasiDomainTka(s.domainTka)
+    if (!dom) continue
+    if (!out[dom]) out[dom] = { skor: 0, maks: 0 }
+    out[dom].maks += s.poin || 0
+    const d = byId.get(s.id)
+    out[dom].skor += Number(d?.skor) || 0
+  }
+  return out
 }
 
 function teksJawaban(soal: SoalKuis, jawab: unknown): string {
@@ -265,7 +282,15 @@ export default function HasilKuisPanel({ kuis }: Props) {
     return rows
   }, [isTka, rosterTka, tampil, filterKelasTka])
 
-  const soalIds = useMemo(() => (kuis.soal ?? []).map((s) => s.id), [kuis.soal])
+  const domainYangAda = useMemo(() => {
+    if (!isTka) return [] as DomainTka[]
+    const set = new Set<DomainTka>()
+    for (const s of kuis.soal ?? []) {
+      const d = normalisasiDomainTka(s.domainTka)
+      if (d) set.add(d)
+    }
+    return Array.from(set)
+  }, [isTka, kuis.soal])
 
   const agregat = useMemo(() => {
     if (!list || list.length === 0) return {}
@@ -1040,6 +1065,11 @@ export default function HasilKuisPanel({ kuis }: Props) {
                   <th className="px-3 py-3">Kelas</th>
                   <th className="px-3 py-3">Perc.</th>
                   <th className="px-3 py-3">Nilai</th>
+                  {domainYangAda.map((d) => (
+                    <th key={d} className="px-3 py-3" title={NAMA_DOMAIN_TKA[d]}>
+                      {NAMA_DOMAIN_TKA[d].replace(' IPA', '')}
+                    </th>
+                  ))}
                   <th className="px-3 py-3">Status</th>
                   <th className="px-3 py-3">Waktu</th>
                   <th className="px-4 py-3 text-right">Aksi</th>
@@ -1067,6 +1097,9 @@ export default function HasilKuisPanel({ kuis }: Props) {
                         <td className="px-3 py-3">
                           <span className="text-sm font-semibold text-slate-300">—</span>
                         </td>
+                        {domainYangAda.map((d) => (
+                          <td key={d} className="px-3 py-3 text-slate-300">—</td>
+                        ))}
                         <td className="px-3 py-3">
                           <span className="inline-flex rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-500">
                             Belum mengerjakan
@@ -1101,6 +1134,15 @@ export default function HasilKuisPanel({ kuis }: Props) {
                         </span>
                         <span className="text-xs text-slate-400"> /100</span>
                       </td>
+                      {domainYangAda.map((d) => {
+                        const dom = skorPerDomain(j, kuis.soal ?? [])[d]
+                        const pct = dom && dom.maks > 0 ? Math.round((dom.skor / dom.maks) * 100) : null
+                        return (
+                          <td key={d} className="px-3 py-3 tabular-nums text-sm text-slate-700">
+                            {pct != null ? `${pct}` : '—'}
+                          </td>
+                        )
+                      })}
                       <td className="px-3 py-3">
                         <BadgeStatus perluManual={perlu} status={j.status} />
                       </td>

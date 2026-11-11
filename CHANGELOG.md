@@ -78,3 +78,12 @@
 - Mapel non-TKA tidak berubah.
 - File: `src/types/soal.ts`, `src/components/soal/TkaFieldEditor.tsx`, `src/components/soal/PilihSoalManual.tsx`.
 - ANTIREGRESI §93.
+
+## 2026-11-11 — TKA: perbaikan build domain + laporan hasil siswa per domain
+
+- **Perbaikan build:** import `normalisasiDomainTka`, `NAMA_DOMAIN_TKA`, `URUTAN_DOMAIN_TKA`, `DESKRIPSI_DOMAIN_TKA`, `DomainTka` ditambahkan di `TkaFieldEditor.tsx` dan `PilihSoalManual.tsx` (sebelumnya dipakai tanpa import → TS2304).
+- **Laporan hasil TKA:** di tab Hasil siswa, bila soal memiliki domain penilaian (`pengetahuan` / `keterampilan_proses`), kolom tambahan menampilkan persentase skor per domain (hanya TKA; mapel biasa tidak berubah).
+- Roster, filter kelas, dan mekanisme nilai total tetap sama. Tidak ada perubahan pada kuis mapel biasa atau sinkron ke Penilaian.
+- File: `src/components/soal/TkaFieldEditor.tsx`, `src/components/soal/PilihSoalManual.tsx`, `src/components/HasilKuisPanel.tsx`.
+- ANTIREGRESI §89.
+

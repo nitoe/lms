@@ -76,3 +76,14 @@
 93.4 Tag domain **manual dulu**; usulan AI paket dan pemecahan skor laporan adalah langkah terpisah. Jangan auto-apply label AI tanpa konfirmasi guru.
 
 93.5 Perubahan domain tidak boleh mengubah penilaian otomatis PG/PGK/BS atau sinkron rapor.
+
+## §94. Laporan hasil siswa TKA — breakdown domain
+
+94.1 Di `HasilKuisPanel`, kolom skor per domain (`pengetahuan` / `keterampilan_proses`) **hanya** muncul bila `adalahMapelTka` dan ada soal yang memiliki `domainTka` ternormalisasi. Mapel biasa tidak menampilkan kolom ini.
+
+94.2 Perhitungan memakai `detail[].skor` dan `soal.poin` yang berdomain sama; soal tanpa domain tidak masuk agregat domain. Persentase ditampilkan sebagai bilangan bulat (atau «—» bila belum ada skor/maks 0).
+
+94.3 Jangan mengubah struktur tabel hasil kuis mapel non-TKA. Roster, filter kelas, dan status «Belum mengerjakan» tetap seperti §92.
+
+94.4 Import domain di editor (`TkaFieldEditor`, `PilihSoalManual`) wajib menyertakan `normalisasiDomainTka` + konstanta nama/urutan/deskripsi dari `types/soal.ts` — jangan memakai tanpa import (regresi build TS2304).
+

@@ -1,7 +1,8 @@
 import { useEffect, useId } from 'react'
 import StimulusSoal from './StimulusSoal'
 import { adalahMapelTka, materiTkaUntuk } from '../../lib/tkaAkses'
-import type { Soal } from '../../types/soal'
+import type { Soal, DomainTka } from '../../types/soal'
+import { normalisasiDomainTka, URUTAN_DOMAIN_TKA, NAMA_DOMAIN_TKA, DESKRIPSI_DOMAIN_TKA } from '../../types/soal'
 
 /** Editor field khusus TKA hanya untuk ruang TKA atau soal yang sudah memuat field TKA. */
 export function perluEditorTka(soal: Soal, mapel?: string): boolean {

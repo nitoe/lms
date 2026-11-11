@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { teksPolos } from '../../lib/html'
 import type { PaketSoal, Soal, TipeSoal } from '../../types/soal'
-import { NAMA_KOMPLEKSITAS, NAMA_TIPE, normalisasiKompleksitas } from '../../types/soal'
+import { NAMA_KOMPLEKSITAS, NAMA_TIPE, normalisasiKompleksitas, normalisasiDomainTka, NAMA_DOMAIN_TKA } from '../../types/soal'
 import SoalTampil from './SoalTampil'
 import StimulusSoal, { punyaStimulus } from './StimulusSoal'
 
