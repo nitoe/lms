@@ -637,6 +637,53 @@
   line-height: 1.35;
 }
 
+.soal-picker {
+  outline: none;
+  border-radius: 0.65rem;
+}
+.soal-picker--tempel {
+  box-shadow: 0 0 0 2px var(--color-muh-400);
+  background: var(--color-muh-50);
+}
+.soal-picker-tempel-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem 0.65rem;
+}
+.soal-picker-tempel {
+  border: 1.5px dashed #94a3b8;
+  background: #f8fafc;
+  color: #334155;
+  border-radius: 0.6rem;
+  padding: 0.4rem 0.65rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+}
+.soal-picker-tempel:hover:not(:disabled) {
+  border-color: var(--color-muh-400);
+  color: var(--color-muh-700);
+  background: var(--color-muh-50);
+}
+.soal-picker-tempel:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.soal-picker-tempel-hint {
+  font-size: 0.68rem;
+  color: var(--color-muted);
+  line-height: 1.3;
+}
+.soal-picker-info {
+  margin: 0.35rem 0 0;
+  font-size: 0.72rem;
+  color: #047857;
+  font-weight: 600;
+}
+
+
 /* —— Level stimulus AI —— */
 .ai-stimulus-field {
   margin: 0;

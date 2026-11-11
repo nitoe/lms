@@ -17,7 +17,7 @@ export interface HasilKompres {
   tinggi: number
 }
 
-async function bacaBitmap(file: File): Promise<ImageBitmap> {
+async function bacaBitmap(file: Blob): Promise<ImageBitmap> {
   return await createImageBitmap(file)
 }
 
@@ -38,9 +38,18 @@ function gambarKeDataUrl(bmp: ImageBitmap, skala: number, mutu: number): { url: 
   return { url, w, h }
 }
 
+function pastikanFileGambar(blob: Blob, namaHint = 'gambar-tempel.png'): File {
+  const tipe = blob.type && blob.type.startsWith('image/') ? blob.type : 'image/png'
+  if (blob instanceof File && blob.type.startsWith('image/')) return blob
+  const ext = tipe.includes('jpeg') || tipe.includes('jpg') ? 'jpg' : tipe.includes('webp') ? 'webp' : 'png'
+  const nama = namaHint.includes('.') ? namaHint : `gambar-tempel.${ext}`
+  return new File([blob], nama, { type: tipe, lastModified: Date.now() })
+}
+
 /** Perkecil (sisi terpanjang ≤ 1024 px) dan kompres sampai muat batas dokumen. */
-export async function kompresGambar(file: File): Promise<HasilKompres> {
-  if (!file.type.startsWith('image/')) throw new Error('File harus berupa gambar (JPG, PNG, WebP).')
+export async function kompresGambar(file: Blob): Promise<HasilKompres> {
+  const tipe = file.type || ''
+  if (tipe && !tipe.startsWith('image/')) throw new Error('File harus berupa gambar (JPG, PNG, WebP).')
   if (file.size > BATAS_FILE_ASAL) throw new Error('Gambar terlalu besar (maks 15 MB).')
   const bmp = await bacaBitmap(file)
   try {
@@ -60,11 +69,12 @@ export async function kompresGambar(file: File): Promise<HasilKompres> {
   }
 }
 
-/** Unggah ke Firestore, kembalikan ID dokumen. */
-export async function unggahGambar(file: File): Promise<string> {
+/** Unggah ke Firestore, kembalikan ID dokumen. Menerima File atau Blob (mis. dari clipboard). */
+export async function unggahGambar(file: Blob): Promise<string> {
   const uid = auth?.currentUser?.uid
   if (!uid) throw new Error('Sesi berakhir. Silakan masuk lagi.')
-  const k = await kompresGambar(file)
+  const sumber = pastikanFileGambar(file)
+  const k = await kompresGambar(sumber)
   const ref = await addDoc(collection(db, 'lms_gambar'), {
     data: k.dataUrl,
     lebar: k.lebar,
@@ -73,6 +83,69 @@ export async function unggahGambar(file: File): Promise<string> {
     createdAt: serverTimestamp(),
   })
   return ref.id
+}
+
+/**
+ * Ambil file gambar pertama dari event paste/drop.
+ * Mengembalikan null jika clipboard tidak berisi gambar.
+ */
+export function ambilGambarDariDataTransfer(dt: DataTransfer | null | undefined): File | null {
+  if (!dt) return null
+  const items = dt.items
+  if (items) {
+    for (let i = 0; i < items.length; i++) {
+      const it = items[i]
+      if (it.kind === 'file' && it.type.startsWith('image/')) {
+        const f = it.getAsFile()
+        if (f) return f
+      }
+    }
+  }
+  const files = dt.files
+  if (files) {
+    for (let i = 0; i < files.length; i++) {
+      const f = files[i]
+      if (f.type.startsWith('image/')) return f
+    }
+  }
+  return null
+}
+
+/**
+ * Baca gambar dari Clipboard API (tombol Tempel).
+ * Peramban mungkin meminta izin clipboard-read.
+ */
+export async function ambilGambarDariClipboardApi(): Promise<File | null> {
+  if (!navigator.clipboard || typeof navigator.clipboard.read !== 'function') {
+    throw new Error('Peramban tidak mendukung baca clipboard. Fokuskan area gambar lalu tekan Ctrl+V / ⌘V.')
+  }
+  let items: ClipboardItems
+  try {
+    items = await navigator.clipboard.read()
+  } catch {
+    throw new Error('Tidak bisa membaca clipboard. Izinkan akses clipboard, atau tekan Ctrl+V di area gambar.')
+  }
+  for (const item of items) {
+    const tipe = item.types.find((t) => t.startsWith('image/'))
+    if (!tipe) continue
+    const blob = await item.getType(tipe)
+    return pastikanFileGambar(blob, `gambar-clipboard.${tipe.split('/')[1] || 'png'}`)
+  }
+  return null
+}
+
+/**
+ * Salin data URL gambar ke clipboard sistem (untuk ditempel ke soal lain).
+ */
+export async function salinDataUrlKeClipboard(dataUrl: string): Promise<void> {
+  if (!dataUrl.startsWith('data:image/')) throw new Error('Data gambar tidak valid.')
+  const res = await fetch(dataUrl)
+  const blob = await res.blob()
+  if (!navigator.clipboard || typeof ClipboardItem === 'undefined') {
+    throw new Error('Peramban tidak mendukung salin gambar ke clipboard.')
+  }
+  const tipe = blob.type || 'image/png'
+  await navigator.clipboard.write([new ClipboardItem({ [tipe]: blob })])
 }
 
 const cache = new Map<string, Promise<string | null>>()

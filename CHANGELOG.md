@@ -20,3 +20,15 @@
 - Mapel biasa **tidak berubah** (masih `URUTAN_TIPE` penuh).
 - File: `src/components/KuisPanel.tsx`.
 - ANTIREGRESI §88.
+
+## 2026-11-11 — Bank soal: tempel gambar (clipboard) + salin antar soal
+
+- **GambarPicker** mendukung:
+  - Tempel gambar lewat **Ctrl+V / ⌘V** pada area gambar (atau tombol **Tempel gambar**).
+  - Seret-lepas file gambar ke area yang sama.
+  - **Salin gambar** (ikon ⧉) pada gambar yang sudah ada → clipboard sistem, lalu tempel ke soal lain tanpa file sumber.
+- Alur unggah file dan generate AI **tidak diubah**.
+- `lib/gambar.ts`: `unggahGambar`/`kompresGambar` menerima Blob; helper clipboard (`ambilGambarDariDataTransfer`, `ambilGambarDariClipboardApi`, `salinDataUrlKeClipboard`).
+- File: `src/lib/gambar.ts`, `src/components/soal/GambarSoal.tsx`, `src/styles/soal.css`.
+- ANTIREGRESI §89.
+

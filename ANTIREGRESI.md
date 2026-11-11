@@ -19,3 +19,14 @@
 88.2 Jika user tidak memilih bentuk apa pun, penyusunan otomatis TKA tetap membatasi ke `TIPE_SOAL_TKA` (bukan «semua tipe mapel»). Mapel non-TKA: kosong = semua tipe seperti sebelumnya.
 
 88.3 Perubahan filter bentuk soal di rancang kuis **hanya** boleh dikondisikan dengan `adalahMapelTka(mapel)`. Jangan mengubah perilaku default mapel biasa.
+
+## §89. Tempel / salin gambar bank soal
+
+89.1 Penyediaan gambar soal: unggah file, generate AI, **dan** tempel dari clipboard. Jangan menghapus salah satu jalur.
+
+89.2 Paste hanya memproses item `image/*` di clipboard/dataTransfer. Jangan `preventDefault` paste global di halaman editor teks — hanya di zona `GambarPicker` saat clipboard berisi gambar.
+
+89.3 Salin gambar memakai data URL dari `lms_gambar` → `ClipboardItem` (bukan URL Storage eksternal). Tempel menghasilkan dokumen `lms_gambar` baru (bukan berbagi ID) agar soal tidak saling terikat bila salah satu dihapus.
+
+89.4 Batas kompresi tetap sama (sisi ≤ 1024 px, data URL ≤ sasaran karakter Firestore). Clipboard melewati `unggahGambar` yang sama.
+
