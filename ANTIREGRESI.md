@@ -49,3 +49,18 @@
 91.3 `match /lms_jawaban` wajib ada: baca guru/admin via `lmsLihatMapelKelas` (termasuk `ruangTka`) atau siswa milik sendiri; create/update/delete klien = false (hanya Admin SDK / CF).
 
 91.4 Helper TKA di rules harus selaras `tkaAkses.ts`: mapel termasuk IPA; kelas `6`/`6A`/`6B`; wali 6A atau 6B boleh kelola bank/kuis/hasil kelas kanonik `6`. Ubah keduanya bersamaan.
+
+## §92. Laporan hasil TKA (roster & akses kelas)
+
+92.1 Hasil TKA menampilkan **roster lengkap** siswa rombel yang diizinkan, meski belum ada yang mengerjakan. Jangan kembali ke daftar kosong hanya dari `lms_jawaban`.
+
+92.2 Akses tampilan hasil:
+- Email khusus `arif.azwar79@gmail.com` (admin TKA, **bukan** admin LMS): 6A dan 6B + filter kelas.
+- Wali 6A → hanya 6A; wali 6B → hanya 6B (`kelasHasilTkaBolehDilihat` di `tkaAkses.ts`).
+- Pembatasan per rombel di **UI**; rules tetap `tkaWaliKelas6Any` untuk baca bank/kuis/jawaban.
+
+92.3 Muat jawaban TKA lewat `daftarJawabanKuisMultiKelas` (query per kelas 6A/6B), bukan hanya `kuis.kelas` kanonik «6».
+
+92.4 Analisis AI kuis/siswa (isian–uraian) **tidak** ditampilkan untuk mapel TKA. Sinkron ke Penilaian/rapor tetap dimatikan (`jenisPenilaian: latihan`).
+
+92.5 Perubahan laporan hasil **hanya** dikondisikan `adalahMapelTka`. Perilaku hasil kuis mapel biasa tidak boleh berubah.

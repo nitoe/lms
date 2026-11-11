@@ -54,3 +54,15 @@
 - Akses TKA tetap lewat `tkaWaliKelas6Any` + `ruangTka` (wali 6A/6B, kelas 6/6A/6B, mapel TKA termasuk IPA) + `match /lms_jawaban`.
 - File shared: `firestore.rules` (lengkap → SDM01Penilaian / sdm01kks).
 
+## 2026-11-11 — Laporan hasil siswa TKA (roster + filter kelas + tanpa AI)
+
+- **Laporan hasil TKA berbeda dari kuis mapel:**
+  - Roster siswa kelas yang diizinkan **selalu tampil** (nilai kosong bila belum mengerjakan).
+  - Admin TKA (`arif.azwar79@gmail.com`) melihat 6A+6B dengan **filter kelas**.
+  - Wali 6A hanya 6A; wali 6B hanya 6B (`kelasHasilTkaBolehDilihat`).
+  - Query jawaban multi-rombel: `daftarJawabanKuisMultiKelas`.
+  - Analisis AI isian/uraian **disembunyikan** untuk TKA (soal otomatis).
+  - Tidak ada sinkron ke rapor akademik.
+- Mapel non-TKA: perilaku hasil kuis **tidak berubah**.
+- File: `src/lib/tkaAkses.ts`, `src/lib/jawabanKuis.ts`, `src/components/HasilKuisPanel.tsx`.
+- ANTIREGRESI §92.

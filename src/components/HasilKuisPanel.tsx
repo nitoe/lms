@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   agregatPerSoal,
   daftarJawabanKuis,
+  daftarJawabanKuisMultiKelas,
   formatSkor100,
   ringkasPerSiswa,
   jawabanTsMs,
@@ -25,9 +26,23 @@ import {
   type HasilAnalisisSiswaAi,
 } from '../lib/analisisKuisAi'
 import { sinkronNilaiKuisKePenilaian } from '../lib/sinkronNilaiKuis'
+import {
+  adalahAdminTka,
+  adalahMapelTka,
+  kelasHasilTkaBolehDilihat,
+} from '../lib/tkaAkses'
+import { muatSiswaKelas, type SiswaDasar } from '../lib/siswaAuth'
 
 type Props = {
   kuis: KuisLms
+}
+
+/** Baris roster hasil TKA: siswa selalu tampil, jawaban opsional. */
+type BarisHasilTka = {
+  siswaId: string
+  siswaNama: string
+  kelas: string
+  jawaban: JawabanKuis | null
 }
 
 function teksJawaban(soal: SoalKuis, jawab: unknown): string {
@@ -147,9 +162,18 @@ async function jalankanAnalisisSiswa(
 
 /** Daftar nilai + analisis + penilaian manual. ANTIREGRESI §55. */
 export default function HasilKuisPanel({ kuis }: Props) {
-  const { user } = useAuth()
-  const bolehAi = bolehAnalisisKuisAi(user?.uid)
+  const { user, profil } = useAuth()
+  const isTka = adalahMapelTka(kuis.mapel)
+  const adminTka = adalahAdminTka(user, profil)
+  const kelasTkaIzin = useMemo(
+    () => (isTka ? kelasHasilTkaBolehDilihat(user, profil) : []),
+    [isTka, user, profil],
+  )
+  // Analisis AI isian/uraian tidak dipakai untuk TKA (soal otomatis PG/PGK/BS).
+  const bolehAi = !isTka && bolehAnalisisKuisAi(user?.uid)
   const [list, setList] = useState<JawabanKuis[] | null>(null)
+  const [rosterTka, setRosterTka] = useState<SiswaDasar[] | null>(null)
+  const [filterKelasTka, setFilterKelasTka] = useState<string>('semua')
   const [error, setError] = useState('')
   const [mode, setMode] = useState<'siswa' | 'soal'>('siswa')
   const [hanyaTerbaru, setHanyaTerbaru] = useState(true)
@@ -171,10 +195,28 @@ export default function HasilKuisPanel({ kuis }: Props) {
   const muat = useCallback(async () => {
     setError('')
     try {
-      const data = await daftarJawabanKuis(kuis.id, kuis.kelas, kuis.mapel)
-      setList(data)
+      if (isTka) {
+        const izin = kelasHasilTkaBolehDilihat(user, profil)
+        if (izin.length === 0) {
+          setList([])
+          setRosterTka([])
+          setError('Anda tidak punya akses melihat hasil TKA untuk rombel mana pun.')
+          return
+        }
+        const [data, ...siswaBatches] = await Promise.all([
+          daftarJawabanKuisMultiKelas(kuis.id, izin, kuis.mapel),
+          ...izin.map((k) => muatSiswaKelas(k)),
+        ])
+        setList(data)
+        setRosterTka(siswaBatches.flat().sort((a, b) => a.nama.localeCompare(b.nama, 'id')))
+      } else {
+        const data = await daftarJawabanKuis(kuis.id, kuis.kelas, kuis.mapel)
+        setList(data)
+        setRosterTka(null)
+      }
     } catch (e) {
       setList([])
+      if (isTka) setRosterTka([])
       const msg = e instanceof Error ? e.message : String(e)
       setError(
         msg.includes('permission') || msg.includes('Permission')
@@ -182,35 +224,88 @@ export default function HasilKuisPanel({ kuis }: Props) {
           : msg || 'Gagal memuat hasil.',
       )
     }
-  }, [kuis.id, kuis.kelas, kuis.mapel])
+  }, [kuis.id, kuis.kelas, kuis.mapel, isTka, user, profil])
 
   useEffect(() => {
     void muat()
   }, [muat])
+
+  useEffect(() => {
+    if (!isTka) return
+    if (filterKelasTka !== 'semua' && !kelasTkaIzin.includes(filterKelasTka)) {
+      setFilterKelasTka('semua')
+    }
+  }, [isTka, kelasTkaIzin, filterKelasTka])
 
   const tampil = useMemo(() => {
     if (!list) return []
     return hanyaTerbaru ? ringkasPerSiswa(list) : list
   }, [list, hanyaTerbaru])
 
+  const barisTka = useMemo((): BarisHasilTka[] => {
+    if (!isTka || rosterTka === null) return []
+    const bySiswa = new Map<string, JawabanKuis>()
+    for (const j of tampil) {
+      const key = j.siswaId || j.siswaUid || ''
+      if (!key) continue
+      const prev = bySiswa.get(key)
+      if (!prev || jawabanTsMs(j.createdAt) > jawabanTsMs(prev.createdAt) || j.percobaan > prev.percobaan) {
+        bySiswa.set(key, j)
+      }
+    }
+    let rows = rosterTka.map((s) => ({
+      siswaId: s.id,
+      siswaNama: s.nama,
+      kelas: s.kelas,
+      jawaban: bySiswa.get(s.id) ?? null,
+    }))
+    if (filterKelasTka !== 'semua') {
+      rows = rows.filter((r) => r.kelas.toUpperCase() === filterKelasTka.toUpperCase())
+    }
+    return rows
+  }, [isTka, rosterTka, tampil, filterKelasTka])
+
   const soalIds = useMemo(() => (kuis.soal ?? []).map((s) => s.id), [kuis.soal])
 
   const agregat = useMemo(() => {
     if (!list || list.length === 0) return {}
-    return agregatPerSoal(tampil, soalIds)
-  }, [list, tampil, soalIds])
+    const sumber = isTka
+      ? barisTka.filter((b) => b.jawaban).map((b) => b.jawaban!)
+      : tampil
+    return agregatPerSoal(sumber, soalIds)
+  }, [list, tampil, soalIds, isTka, barisTka])
 
   const ringkas = useMemo(() => {
+    if (isTka) {
+      const nRoster = barisTka.length
+      const sudah = barisTka.filter((b) => b.jawaban)
+      const n = sudah.length
+      if (n === 0) return { n: 0, nRoster, rata: 0, perlu: 0, selesai: 0 }
+      let sum = 0
+      let perlu = 0
+      for (const b of sudah) {
+        const j = b.jawaban!
+        sum += skorKe100(j.skorOtomatis, j.totalPoin)
+        if (j.status === 'sebagian_manual' || (j.detail ?? []).some((d) => d.butuhManual)) perlu += 1
+      }
+      return {
+        n,
+        nRoster,
+        rata: Math.round((sum / n) * 10) / 10,
+        perlu,
+        selesai: n - perlu,
+      }
+    }
     const n = tampil.length
-    if (n === 0) return { n: 0, rata: 0, perlu: 0, selesai: 0 }
+    if (n === 0) return { n: 0, nRoster: 0, rata: 0, perlu: 0, selesai: 0 }
     let sum = 0
     let perlu = 0
     for (const j of tampil) {
       sum += skorKe100(j.skorOtomatis, j.totalPoin)
       if (j.status === 'sebagian_manual' || (j.detail ?? []).some((d) => d.butuhManual)) perlu += 1
     }
-    return { n, rata: Math.round((sum / n) * 10) / 10, perlu, selesai: n - perlu }
-  }, [tampil])
+    return { n, nRoster: n, rata: Math.round((sum / n) * 10) / 10, perlu, selesai: n - perlu }
+  }, [tampil, isTka, barisTka])
 
   const terpilih = list?.find((j) => j.id === pilihId) ?? null
   const jenis = (kuis.jenisPenilaian ?? 'latihan') as JenisPenilaianKuis
@@ -628,12 +723,16 @@ export default function HasilKuisPanel({ kuis }: Props) {
     <div className="space-y-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h3 className="text-base font-bold text-slate-900">Hasil pengerjaan siswa</h3>
+          <h3 className="text-base font-bold text-slate-900">
+            {isTka ? 'Laporan hasil TKA' : 'Hasil pengerjaan siswa'}
+          </h3>
           <p className="mt-0.5 text-xs text-slate-500">
-            {labelJenis}
-            {jenis === 'latihan'
-              ? ' · tidak masuk rapor, tetap dapat dianalisis dan dinilai'
-              : ' · skor LMS; bisa disinkronkan ke Penilaian'}
+            {isTka
+              ? 'Penilaian otomatis · tidak masuk rapor akademik · roster siswa selalu ditampilkan'
+              : labelJenis +
+                (jenis === 'latihan'
+                  ? ' · tidak masuk rapor, tetap dapat dianalisis dan dinilai'
+                  : ' · skor LMS; bisa disinkronkan ke Penilaian')}
           </p>
         </div>
         <button type="button" className="lms-btn-secondary text-xs" onClick={() => void muat()}>
@@ -643,8 +742,19 @@ export default function HasilKuisPanel({ kuis }: Props) {
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
-          <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Siswa</p>
-          <p className="mt-1 text-2xl font-bold tabular-nums text-slate-900">{ringkas.n}</p>
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+            {isTka ? 'Mengerjakan' : 'Siswa'}
+          </p>
+          <p className="mt-1 text-2xl font-bold tabular-nums text-slate-900">
+            {isTka ? (
+              <>
+                {ringkas.n}
+                <span className="text-sm font-semibold text-slate-400"> / {ringkas.nRoster}</span>
+              </>
+            ) : (
+              ringkas.n
+            )}
+          </p>
         </div>
         <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
           <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Rata-rata</p>
@@ -668,6 +778,42 @@ export default function HasilKuisPanel({ kuis }: Props) {
           </p>
         </div>
       </div>
+
+      {isTka && kelasTkaIzin.length > 1 && (
+        <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
+          <span className="text-xs font-semibold text-slate-600">Filter kelas</span>
+          <div className="flex flex-wrap gap-1.5">
+            <button
+              type="button"
+              className={`rounded-lg px-3 py-1 text-xs font-semibold transition ${
+                filterKelasTka === 'semua'
+                  ? 'bg-muh-600 text-white'
+                  : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+              }`}
+              onClick={() => setFilterKelasTka('semua')}
+            >
+              Semua ({kelasTkaIzin.join(' · ')})
+            </button>
+            {kelasTkaIzin.map((k) => (
+              <button
+                key={k}
+                type="button"
+                className={`rounded-lg px-3 py-1 text-xs font-semibold transition ${
+                  filterKelasTka === k
+                    ? 'bg-muh-600 text-white'
+                    : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                }`}
+                onClick={() => setFilterKelasTka(k)}
+              >
+                {k}
+              </button>
+            ))}
+          </div>
+          {adminTka && (
+            <span className="ml-auto text-[11px] text-slate-400">Admin TKA · rekap 6A &amp; 6B</span>
+          )}
+        </div>
+      )}
 
       {error && (
         <div className="rounded-xl border border-red-200 bg-red-50 px-3.5 py-2.5 text-sm text-red-800">
@@ -705,9 +851,14 @@ export default function HasilKuisPanel({ kuis }: Props) {
           </button>
         </div>
       )}
-      {!bisaSinkron && (
+      {!bisaSinkron && !isTka && (
         <p className="text-xs text-slate-500">
           Kuis ini berjenis <strong>latihan</strong> — tidak masuk rapor. Ubah jenis di Atur kuis menjadi SLM/STS/SAS bila ingin sinkron.
+        </p>
+      )}
+      {isTka && (
+        <p className="text-xs text-slate-500">
+          Kuis TKA dinilai otomatis dan <strong>tidak disinkronkan</strong> ke nilai rapor akademik (Penilaian).
         </p>
       )}
 
@@ -862,20 +1013,131 @@ export default function HasilKuisPanel({ kuis }: Props) {
           Hanya percobaan terbaru
         </label>
         <span className="text-xs text-slate-400">
-          {list.length} kiriman · {ringkasPerSiswa(list).length} siswa
+          {isTka
+            ? `${ringkas.n} mengerjakan · ${ringkas.nRoster} siswa roster`
+            : `${list.length} kiriman · ${ringkasPerSiswa(list).length} siswa`}
         </span>
       </div>
 
-      {list.length === 0 && !error && (
+      {list.length === 0 && !error && !(isTka && (rosterTka?.length ?? 0) > 0) && (
         <div className="rounded-2xl border border-dashed border-slate-200 bg-white px-6 py-14 text-center shadow-sm">
           <p className="text-sm font-semibold text-slate-700">Belum ada jawaban terkirim</p>
           <p className="mx-auto mt-1 max-w-md text-xs leading-relaxed text-slate-500">
-            Setelah siswa menekan «Selesai &amp; Kirim», nilai muncul di sini — termasuk untuk latihan.
+            {isTka
+              ? 'Roster siswa akan tampil di bawah bila data kelas tersedia. Setelah siswa mengirim, nilai muncul otomatis.'
+              : 'Setelah siswa menekan «Selesai & Kirim», nilai muncul di sini — termasuk untuk latihan.'}
           </p>
         </div>
       )}
 
-      {mode === 'siswa' && tampil.length > 0 && (
+      {mode === 'siswa' && isTka && barisTka.length > 0 && (
+        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[640px] text-left text-sm">
+              <thead>
+                <tr className="border-b border-slate-200 bg-slate-50/80 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                  <th className="px-4 py-3">Siswa</th>
+                  <th className="px-3 py-3">Kelas</th>
+                  <th className="px-3 py-3">Perc.</th>
+                  <th className="px-3 py-3">Nilai</th>
+                  <th className="px-3 py-3">Status</th>
+                  <th className="px-3 py-3">Waktu</th>
+                  <th className="px-4 py-3 text-right">Aksi</th>
+                </tr>
+              </thead>
+              <tbody>
+                {barisTka.map((row) => {
+                  const j = row.jawaban
+                  if (!j) {
+                    return (
+                      <tr key={row.siswaId} className="border-b border-slate-100 last:border-0">
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-2.5">
+                            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-100 text-xs font-bold text-slate-500">
+                              {(row.siswaNama || '?').trim().charAt(0).toUpperCase() || '?'}
+                            </div>
+                            <div className="min-w-0">
+                              <p className="truncate font-medium text-slate-800">{row.siswaNama || '—'}</p>
+                              <p className="text-[11px] text-slate-400">{row.siswaId}</p>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-3 py-3 text-xs font-medium text-slate-600">{row.kelas}</td>
+                        <td className="px-3 py-3 text-slate-400">—</td>
+                        <td className="px-3 py-3">
+                          <span className="text-sm font-semibold text-slate-300">—</span>
+                        </td>
+                        <td className="px-3 py-3">
+                          <span className="inline-flex rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-500">
+                            Belum mengerjakan
+                          </span>
+                        </td>
+                        <td className="px-3 py-3 text-xs text-slate-400">—</td>
+                        <td className="px-4 py-3 text-right text-xs text-slate-300">—</td>
+                      </tr>
+                    )
+                  }
+                  const perlu =
+                    j.status === 'sebagian_manual' || (j.detail ?? []).some((d) => d.butuhManual)
+                  const ts = jawabanTsMs(j.createdAt)
+                  return (
+                    <tr key={j.id} className="border-b border-slate-100 last:border-0 hover:bg-slate-50/60">
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-2.5">
+                          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muh-100 text-xs font-bold text-muh-700">
+                            {(row.siswaNama || '?').trim().charAt(0).toUpperCase() || '?'}
+                          </div>
+                          <div className="min-w-0">
+                            <p className="truncate font-medium text-slate-900">{row.siswaNama || j.siswaId || '—'}</p>
+                            <p className="text-[11px] text-slate-400">{row.siswaId}</p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-3 py-3 text-xs font-medium text-slate-600">{row.kelas || j.kelas}</td>
+                      <td className="px-3 py-3 tabular-nums text-slate-600">#{j.percobaan}</td>
+                      <td className="px-3 py-3">
+                        <span className="text-base font-bold tabular-nums text-muh-700">
+                          {formatSkor100(j.skorOtomatis, j.totalPoin)}
+                        </span>
+                        <span className="text-xs text-slate-400"> /100</span>
+                      </td>
+                      <td className="px-3 py-3">
+                        <BadgeStatus perluManual={perlu} status={j.status} />
+                      </td>
+                      <td className="px-3 py-3 text-xs text-slate-500">
+                        {ts
+                          ? new Date(ts).toLocaleString('id-ID', {
+                              day: '2-digit',
+                              month: 'short',
+                              hour: '2-digit',
+                              minute: '2-digit',
+                            })
+                          : '—'}
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        <button
+                          type="button"
+                          className="text-xs font-semibold text-muh-700 hover:text-muh-900"
+                          onClick={() => {
+                            setPilihId(j.id)
+                            setAnalisisSiswaAi(null)
+                            setErrorSiswaAi('')
+                            setTerapanAi('')
+                          }}
+                        >
+                          Detail
+                        </button>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {mode === 'siswa' && !isTka && tampil.length > 0 && (
         <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
           <div className="overflow-x-auto">
             <table className="w-full min-w-[640px] text-left text-sm">
@@ -889,85 +1151,56 @@ export default function HasilKuisPanel({ kuis }: Props) {
                   <th className="px-4 py-3 text-right">Aksi</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody>
                 {tampil.map((j) => {
-                  const t = jawabanTsMs(j.createdAt)
                   const perlu =
-                    j.status === 'sebagian_manual' ||
-                    (j.detail ?? []).some((d) => d.butuhManual)
-                  const nilai100 = formatSkor100(j.skorOtomatis, j.totalPoin)
+                    j.status === 'sebagian_manual' || (j.detail ?? []).some((d) => d.butuhManual)
+                  const ts = jawabanTsMs(j.createdAt)
                   return (
-                    <tr key={j.id} className="transition-colors hover:bg-muh-50/40">
+                    <tr key={j.id} className="border-b border-slate-100 last:border-0 hover:bg-slate-50/60">
                       <td className="px-4 py-3">
-                        <div className="flex items-center gap-3">
-                          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-muh-100 text-xs font-bold text-muh-800">
+                        <div className="flex items-center gap-2.5">
+                          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muh-100 text-xs font-bold text-muh-700">
                             {(j.siswaNama || '?').trim().charAt(0).toUpperCase() || '?'}
                           </div>
-                          <span className="font-semibold text-slate-900">
-                            {j.siswaNama || j.siswaId || '—'}
-                          </span>
+                          <div className="min-w-0">
+                            <p className="truncate font-medium text-slate-900">{j.siswaNama || j.siswaId || '—'}</p>
+                          </div>
                         </div>
                       </td>
                       <td className="px-3 py-3 tabular-nums text-slate-600">#{j.percobaan}</td>
                       <td className="px-3 py-3">
-                        <div className="font-bold tabular-nums text-slate-900">
-                          {nilai100}
-                          <span className="font-semibold text-slate-400"> / 100</span>
-                        </div>
-                        <div className="text-[11px] text-slate-400">
-                          {j.skorOtomatis}/{j.totalPoin} poin
-                        </div>
+                        <span className="text-base font-bold tabular-nums text-muh-700">
+                          {formatSkor100(j.skorOtomatis, j.totalPoin)}
+                        </span>
+                        <span className="text-xs text-slate-400"> /100</span>
                       </td>
                       <td className="px-3 py-3">
                         <BadgeStatus perluManual={perlu} status={j.status} />
                       </td>
                       <td className="px-3 py-3 text-xs text-slate-500">
-                        {t
-                          ? new Date(t).toLocaleString('id-ID', {
-                              dateStyle: 'short',
-                              timeStyle: 'short',
+                        {ts
+                          ? new Date(ts).toLocaleString('id-ID', {
+                              day: '2-digit',
+                              month: 'short',
+                              hour: '2-digit',
+                              minute: '2-digit',
                             })
                           : '—'}
                       </td>
                       <td className="px-4 py-3 text-right">
-                        <div className="flex flex-wrap justify-end gap-1.5">
-                          <button
-                            type="button"
-                            className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-muh-700 shadow-sm hover:border-muh-200 hover:bg-muh-50"
-                            onClick={() => {
-                              setPilihId(j.id)
-                              setError('')
-                              setInfo('')
-                              setAnalisisSiswaAi(null)
-                              setErrorSiswaAi('')
-                              setTerapanAi('')
-                            }}
-                          >
-                            Detail / nilai
-                          </button>
-                          {bolehAi && (
-                            <button
-                              type="button"
-                              className="rounded-lg border border-muh-200 bg-muh-50 px-3 py-1.5 text-xs font-semibold text-muh-800 shadow-sm hover:bg-muh-100"
-                              disabled={busySiswaAi}
-                              onClick={() => {
-                                setPilihId(j.id)
-                                setError('')
-                                setInfo('')
-                                setTerapanAi('')
-                                void jalankanAnalisisSiswa(
-                                  kuis.id,
-                                  j.id,
-                                  setBusySiswaAi,
-                                  setErrorSiswaAi,
-                                  setAnalisisSiswaAi,
-                                )
-                              }}
-                            >
-                              Analisis AI
-                            </button>
-                          )}
-                        </div>
+                        <button
+                          type="button"
+                          className="text-xs font-semibold text-muh-700 hover:text-muh-900"
+                          onClick={() => {
+                            setPilihId(j.id)
+                            setAnalisisSiswaAi(null)
+                            setErrorSiswaAi('')
+                            setTerapanAi('')
+                          }}
+                        >
+                          Detail
+                        </button>
                       </td>
                     </tr>
                   )
@@ -977,6 +1210,7 @@ export default function HasilKuisPanel({ kuis }: Props) {
           </div>
         </div>
       )}
+
 
       {mode === 'soal' && list.length > 0 && (
         <div className="space-y-2">

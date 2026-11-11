@@ -193,3 +193,27 @@ export async function simpanNilaiManual(input: {
 }
 
 export { tsMs as jawabanTsMs }
+
+/**
+ * Ambil jawaban untuk kuis TKA dari satu atau lebih rombel (6A/6B).
+ * Query terpisah per kelas agar lolos rules (where kuisId + kelas + mapel).
+ * Hasil digabung lalu diurutkan terbaru dulu.
+ */
+export async function daftarJawabanKuisMultiKelas(
+  kuisId: string,
+  kelasList: string[],
+  mapel: string,
+): Promise<JawabanKuis[]> {
+  const unik = [...new Set(kelasList.map((k) => String(k).toUpperCase()).filter(Boolean))]
+  if (unik.length === 0) return []
+  const batches = await Promise.all(
+    unik.map((kelas) => daftarJawabanKuis(kuisId, kelas, mapel)),
+  )
+  const list = batches.flat()
+  list.sort((a, b) => {
+    const tb = tsMs(b.createdAt) - tsMs(a.createdAt)
+    if (tb !== 0) return tb
+    return (b.percobaan ?? 0) - (a.percobaan ?? 0)
+  })
+  return list
+}

@@ -98,3 +98,24 @@ export function bolehTkaSiswa(kelas: string | null | undefined): boolean {
 export function ruangTka(mapel: string): { id: string; kelas: string; mapel: string } {
   return { id: buatRuangId(KELAS_TKA_BANK, mapel), kelas: KELAS_TKA_BANK, mapel }
 }
+
+/**
+ * Kelas rombel yang boleh dilihat di laporan hasil TKA (bukan kelas bank «6»).
+ * - Email khusus (admin TKA): 6A dan 6B.
+ * - Wali 6A saja → ['6A']; wali 6B saja → ['6B']; keduanya → keduanya.
+ * Dipakai hanya di UI hasil; rules tetap memakai tkaWaliKelas6Any untuk baca.
+ */
+export function kelasHasilTkaBolehDilihat(
+  user: User | null,
+  profil: AppUser | null,
+): string[] {
+  if (!bolehAksesTkaStaf(user, profil)) return []
+  if (emailAksesKhusus(user, profil)) return [...KELAS_TKA]
+  const wali = Array.isArray(profil?.waliKelas) ? profil!.waliKelas : []
+  return KELAS_TKA.filter((k) => wali.includes(k))
+}
+
+/** true bila user adalah admin TKA (email khusus), bukan admin LMS. */
+export function adalahAdminTka(user: User | null, profil: AppUser | null): boolean {
+  return emailAksesKhusus(user, profil)
+}
