@@ -109,3 +109,16 @@
 - Juga: `HasilKuisPanel.tsx` dikembalikan ke versi utuh (file di `main` sempat terpotong) + kontrol publikasi.
 - File: `src/types/kuis.ts`, `src/lib/kuis.ts`, `src/components/HasilKuisPanel.tsx`, `src/components/KuisPanel.tsx`, `src/pages/siswa/SiswaTka.tsx`.
 - ANTIREGRESI §96.
+
+## 2026-11-11 — TKA: reset attempt siswa di laporan hasil
+
+- **Masalah:** jika siswa submit terlalu cepat / sebelum selesai, tidak ada cara guru mereset attempt agar siswa bisa mengerjakan ulang.
+- **Solusi (hanya TKA):**
+  - Cloud Function `resetJawabanKuisLms` (repo SDM01Penilaian): hapus semua `lms_jawaban` untuk pasangan `kuisId` + `siswaId`.
+  - Izin: admin, email khusus TKA, atau wali 6A/6B untuk rombel siswa. Mapel non-TKA ditolak di server.
+  - UI tab Hasil TKA: tombol **Reset** per baris roster + di detail siswa (konfirmasi wajib).
+- Mapel biasa tidak punya tombol reset (ANTIREGRESI §97).
+- File LMS: `src/lib/jawabanKuis.ts`, `src/components/HasilKuisPanel.tsx`, CHANGELOG, ANTIREGRESI.
+- File SDM01Penilaian: `functions/resetJawabanKuisLms.js`, `functions/index.js` (lengkap).
+- Deploy CF: `firebase deploy --only functions:resetJawabanKuisLms` dari SDM01Penilaian.
+- ANTIREGRESI §97.

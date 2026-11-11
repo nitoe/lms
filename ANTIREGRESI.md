@@ -110,3 +110,17 @@
 96.5 Jangan mengaitkan `hasilDipublish` dengan sinkron rapor, portal-ortu, atau jenis penilaian SLM/STS/SAS. TKA tetap `jenisPenilaian: 'latihan'` (§91.2).
 
 96.6 Perubahan UI publish **hanya** dikondisikan `adalahMapelTka` / `isTka`. Jangan mengubah layar hasil kuis mapel biasa.
+
+## §97. Reset attempt TKA
+
+97.1 Reset attempt **hanya** untuk mapel TKA. Cloud Function menolak mapel non-TKA (`failed-precondition`).
+
+97.2 Tulis/hapus `lms_jawaban` tetap **hanya** Admin SDK. Klien memanggil `resetJawabanKuisLms`; jangan membuka `delete` klien di rules.
+
+97.3 Izin CF: admin LMS, email `arif.azwar79@gmail.com`, atau wali kelas 6A/6B (role guru/guru_akademik) yang sesuai **kelas di dokumen jawaban** (rombel siswa), bukan hanya kelas kanonik bank `6`.
+
+97.4 Reset menghapus **semua** kiriman siswa pada kuis tersebut (`kuisId` + `siswaId`), bukan hanya percobaan terakhir, agar nomor percobaan berikutnya dimulai bersih.
+
+97.5 UI Reset hanya di `HasilKuisPanel` saat `isTka`. Jangan menambah reset ke jalur hasil kuis mapel biasa.
+
+97.6 Setelah reset, muat ulang daftar jawaban. Progres lokal siswa (`localStorage` TKA) tidak dihapus server-side — siswa yang masih membuka tab lama perlu refresh; attempt baru tetap diizinkan karena dokumen jawaban sudah hilang.

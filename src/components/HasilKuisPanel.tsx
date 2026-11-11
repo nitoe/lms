@@ -8,6 +8,7 @@ import {
   jawabanTsMs,
   simpanNilaiManual,
   skorKe100,
+  resetJawabanKuisTka,
   type JawabanKuis,
 } from '../lib/jawabanKuis'
 import { teksPolos } from '../lib/html'
@@ -187,6 +188,7 @@ export default function HasilKuisPanel({ kuis, onUpdated }: Props) {
   const adminTka = adalahAdminTka(user, profil)
   const [hasilDipublish, setHasilDipublish] = useState(!!kuis.hasilDipublish)
   const [busyPublish, setBusyPublish] = useState(false)
+  const [busyResetId, setBusyResetId] = useState<string | null>(null)
   const kelasTkaIzin = useMemo(
     () => (isTka ? kelasHasilTkaBolehDilihat(user, profil) : []),
     [isTka, user, profil],
@@ -275,6 +277,31 @@ export default function HasilKuisPanel({ kuis, onUpdated }: Props) {
       setError(e instanceof Error ? e.message : 'Gagal mengubah status publikasi.')
     } finally {
       setBusyPublish(false)
+    }
+  }
+
+  async function resetAttemptTka(siswaId: string, siswaNama: string) {
+    if (!isTka || !siswaId) return
+    const ok = confirm(
+      `Reset attempt «${siswaNama || siswaId}»?\n\nSemua kiriman jawaban siswa ini pada kuis TKA ini akan dihapus. Siswa dapat mengerjakan ulang dari awal.\n\nTindakan ini tidak dapat dibatalkan.`,
+    )
+    if (!ok) return
+    setBusyResetId(siswaId)
+    setError('')
+    setInfo('')
+    try {
+      const h = await resetJawabanKuisTka({ kuisId: kuis.id, siswaId })
+      setInfo(
+        h.dihapus > 0
+          ? `Attempt direset (${h.dihapus} kiriman dihapus) — ${siswaNama || siswaId}.`
+          : `Tidak ada kiriman untuk dihapus — ${siswaNama || siswaId}.`,
+      )
+      if (pilihId) setPilihId(null)
+      await muat()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Gagal mereset attempt.')
+    } finally {
+      setBusyResetId(null)
     }
   }
 
@@ -432,20 +459,34 @@ export default function HasilKuisPanel({ kuis, onUpdated }: Props) {
 
     return (
       <div className="space-y-4">
-        <button
-          type="button"
-          className="inline-flex items-center gap-1 text-sm font-semibold text-muh-700 hover:text-muh-800"
-          onClick={() => {
-            setPilihId(null)
-            setInfo('')
-            setError('')
-            setAnalisisSiswaAi(null)
-            setErrorSiswaAi('')
-            setTerapanAi('')
-          }}
-        >
-          <span aria-hidden>←</span> Kembali ke daftar nilai
-        </button>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <button
+            type="button"
+            className="inline-flex items-center gap-1 text-sm font-semibold text-muh-700 hover:text-muh-800"
+            onClick={() => {
+              setPilihId(null)
+              setInfo('')
+              setError('')
+              setAnalisisSiswaAi(null)
+              setErrorSiswaAi('')
+              setTerapanAi('')
+            }}
+          >
+            <span aria-hidden>←</span> Kembali ke daftar nilai
+          </button>
+          {isTka && terpilih.siswaId && (
+            <button
+              type="button"
+              className="text-xs font-semibold text-red-600 hover:text-red-800 disabled:opacity-50"
+              disabled={busyResetId === terpilih.siswaId}
+              onClick={() =>
+                void resetAttemptTka(terpilih.siswaId!, terpilih.siswaNama || terpilih.siswaId || '')
+              }
+            >
+              {busyResetId === terpilih.siswaId ? 'Mereset…' : 'Reset attempt siswa ini'}
+            </button>
+          )}
+        </div>
 
         <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
           <div className="border-b border-slate-100 bg-gradient-to-r from-muh-50 to-white px-5 py-4">
@@ -1221,18 +1262,28 @@ export default function HasilKuisPanel({ kuis, onUpdated }: Props) {
                           : '—'}
                       </td>
                       <td className="px-4 py-3 text-right">
-                        <button
-                          type="button"
-                          className="text-xs font-semibold text-muh-700 hover:text-muh-900"
-                          onClick={() => {
-                            setPilihId(j.id)
-                            setAnalisisSiswaAi(null)
-                            setErrorSiswaAi('')
-                            setTerapanAi('')
-                          }}
-                        >
-                          Detail
-                        </button>
+                        <div className="flex flex-wrap items-center justify-end gap-2">
+                          <button
+                            type="button"
+                            className="text-xs font-semibold text-muh-700 hover:text-muh-900"
+                            onClick={() => {
+                              setPilihId(j.id)
+                              setAnalisisSiswaAi(null)
+                              setErrorSiswaAi('')
+                              setTerapanAi('')
+                            }}
+                          >
+                            Detail
+                          </button>
+                          <button
+                            type="button"
+                            className="text-xs font-semibold text-red-600 hover:text-red-800 disabled:opacity-50"
+                            disabled={busyResetId === row.siswaId}
+                            onClick={() => void resetAttemptTka(row.siswaId, row.siswaNama)}
+                          >
+                            {busyResetId === row.siswaId ? 'Reset…' : 'Reset'}
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   )
