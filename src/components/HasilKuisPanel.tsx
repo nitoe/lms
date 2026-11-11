@@ -14,7 +14,7 @@ import {
 import { teksPolos } from '../lib/html'
 import type { KuisLms, SoalKuis } from '../types/kuis'
 import { NAMA_JENIS_PENILAIAN, type JenisPenilaianKuis } from '../types/kuis'
-import { NAMA_TIPE, type TipeSoal, normalisasiDomainTka, NAMA_DOMAIN_TKA, type DomainTka } from '../types/soal'
+import { NAMA_TIPE, type TipeSoal, normalisasiDomainTka } from '../types/soal'
 import { useAuth } from '../context/AuthContext'
 import {
   analisisKuisDenganAi,
@@ -417,12 +417,6 @@ export default function HasilKuisPanel({ kuis, onUpdated }: Props) {
   const soalIds = useMemo(() => (kuis.soal ?? []).map((s) => s.id), [kuis.soal])
 
   /** TKA: selalu siapkan kedua domain (kolom tetap), meski belum ada soal berlabel. */
-  const domainYangAda = useMemo(() => {
-    if (!isTka) return [] as DomainTka[]
-    // Selalu tampilkan kedua kolom domain + nilai akhir (ANTIREGRESI §98)
-    return ['pengetahuan', 'keterampilan_proses'] as DomainTka[]
-  }, [isTka])
-
   const nSoalTanpaDomain = useMemo(() => {
     if (!isTka) return 0
     return (kuis.soal ?? []).filter((s) => !normalisasiDomainTka(s.domainTka)).length

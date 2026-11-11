@@ -136,3 +136,9 @@
 - File LMS: `HasilKuisPanel.tsx`, `domainTkaAi.ts` (baru).
 - File SDM01Penilaian: `functions/klasifikasiDomainTkaLmsAi.js`, `functions/index.js`.
 - ANTIREGRESI §98.
+
+## 2026-11-11 — Fix build HasilKuisPanel: hapus NAMA_DOMAIN_TKA & domainYangAda tak terpakai
+
+- TS6133: impor `NAMA_DOMAIN_TKA` dan variabel `domainYangAda` tidak dipakai setelah kolom domain diganti header tetap.
+- Kolom Pengetahuan / Keterampilan Proses / Nilai Akhir tetap; logika skor tidak berubah.
+- File: `src/components/HasilKuisPanel.tsx`.
