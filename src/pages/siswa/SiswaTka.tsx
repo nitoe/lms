@@ -251,12 +251,10 @@ function TkaIsi({ siswaId, kelas }: { siswaId: string; kelas: string }) {
     return (
       <HasilTka
         hasil={hasil}
-        bolehUlang={(hasil.kuis.jenisPenilaian ?? 'latihan') === 'latihan'}
         onKembali={() => {
           setHasil(null)
           void muat()
         }}
-        onUlang={() => mulai(hasil.kuis, true)}
       />
     )
   }
@@ -309,7 +307,6 @@ function TkaIsi({ siswaId, kelas }: { siswaId: string; kelas: string }) {
                 const riwayat = riwayatMap[k.id] ?? []
                 const terakhir = riwayat[0]
                 const sudah = riwayat.length > 0
-                const latihan = (k.jenisPenilaian ?? 'latihan') === 'latihan'
                 const dipublish = k.hasilDipublish === true
                 const jadwal = statusJadwal(k, sekarang)
                 const draf = muatProgress(siswaId, k.id)
@@ -340,16 +337,14 @@ function TkaIsi({ siswaId, kelas }: { siswaId: string; kelas: string }) {
                     {sudah && terakhir && (
                       <div className="tka-riwayat">
                         <strong>
-                          Sudah dikerjakan {riwayat.length}×
+                          Sudah dikerjakan
                           {dipublish && terakhir.totalPoin > 0
-                            ? ` · skor terakhir ${teksSkor(terakhir.skor, terakhir.totalPoin)}`
+                            ? ` · skor ${teksSkor(terakhir.skor, terakhir.totalPoin)}`
                             : !dipublish
                               ? ' · nilai belum dipublikasikan'
                               : ''}
                         </strong>
-                        <span>
-                          Percobaan ke-{terakhir.percobaan} · {formatWaktu(terakhir.createdAtMs)}
-                        </span>
+                        <span>{formatWaktu(terakhir.createdAtMs)}</span>
                       </div>
                     )}
                     {adaDraf && <div className="tka-draf">Draf tersimpan · {nJawab} soal terjawab</div>}
@@ -368,17 +363,10 @@ function TkaIsi({ siswaId, kelas }: { siswaId: string; kelas: string }) {
                           {adaDraf ? 'Lanjutkan' : 'Mulai Kerjakan'}
                         </button>
                       )}
-                      {jadwal === 'buka' && sudah && latihan && (
-                        <button
-                          type="button"
-                          className="lms-btn-primary text-sm"
-                          onClick={() => (k.token?.trim() ? setTokenUntuk(k) : mulai(k, true))}
-                        >
-                          Kerjakan lagi dari awal
-                        </button>
-                      )}
-                      {sudah && !latihan && (
-                        <span className="text-xs text-slate-500">Jawaban sudah dikirim. Tidak dapat diubah.</span>
+                      {sudah && (
+                        <span className="text-xs text-slate-500">
+                          TKA hanya satu kali pengerjaan. Jawaban tidak dapat diubah.
+                        </span>
                       )}
                     </div>
                   </li>
@@ -814,16 +802,13 @@ function KerjakanTka({
 
 function HasilTka({
   hasil,
-  bolehUlang,
   onKembali,
-  onUlang,
 }: {
   hasil: Hasil
-  bolehUlang: boolean
   onKembali: () => void
-  onUlang: () => void
 }) {
   // TKA: skor hanya ke siswa setelah guru set hasilDipublish (ANTIREGRESI §96).
+  // TKA hanya 1× pengerjaan — tanpa ulang (ANTIREGRESI §99.11).
   const dipublish = hasil.kuis.hasilDipublish === true
   const peta = useMemo(() => new Map(hasil.detail.map((d) => [d.soalId, d.benar])), [hasil.detail])
 
@@ -880,7 +865,7 @@ function HasilTka({
               <span> / 100</span>
             </div>
             <p className="text-xs text-slate-500">
-              {hasil.skor} dari {hasil.totalPoin} poin · percobaan ke-{hasil.percobaan}
+              {hasil.skor} dari {hasil.totalPoin} poin
               {hasil.status === 'sebagian_manual' ? ' · sebagian dinilai guru' : ''}
             </p>
             {tabel('Per tingkat kompleksitas', rincian.kompleksitas)}
@@ -890,8 +875,8 @@ function HasilTka({
           <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
             <p className="font-semibold">Nilai belum dipublikasikan</p>
             <p className="mt-1 text-xs text-amber-800/90">
-              Jawabanmu sudah tersimpan (percobaan ke-{hasil.percobaan}). Skor dan rincian akan
-              tampil setelah guru mempublikasikan hasil kuis ini.
+              Jawabanmu sudah tersimpan. Skor dan rincian akan tampil setelah guru
+              mempublikasikan hasil kuis ini.
             </p>
           </div>
         )}
@@ -899,11 +884,6 @@ function HasilTka({
           <button type="button" className="lms-btn-secondary text-sm" onClick={onKembali}>
             Kembali ke daftar
           </button>
-          {bolehUlang && (
-            <button type="button" className="lms-btn-primary text-sm" onClick={onUlang}>
-              Kerjakan lagi dari awal
-            </button>
-          )}
         </div>
       </div>
     </div>

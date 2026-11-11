@@ -1,10 +1,6 @@
-## §99.10 Submit TKA — kelas bank «6» vs rombel siswa
+## §99.11 TKA satu kali pengerjaan
 
-CF `nilaiKuisLms` **tidak** boleh menolak siswa hanya karena `kuis.kelas !== token.kelas` bila:
-- `mapel` ∈ {TKA Matematika, TKA Bahasa Indonesia, TKA IPA}, dan
-- `kuis.kelas === '6'`, dan
-- `token.kelas` ∈ {6A, 6B}.
-
-Pembuat kuis (admin TKA / wali kelas lain) tidak relevan.
-
-Saat siswa submit, field `lms_jawaban.kelas` = **rombel token siswa** (bukan kelas bank «6»), supaya filter hasil per 6A/6B di panel guru benar.
+- UI siswa TKA **tidak** menampilkan «Kerjakan lagi» / nomor percobaan, terlepas dari `jenisPenilaian`.
+- CF `nilaiKuisLms`: jika mapel TKA dan sudah ada dokumen `lms_jawaban` untuk pasangan kuisId+siswaId → `failed-precondition`.
+- Reset attempt hanya lewat staf (CF `resetJawabanKuisLms`), bukan dari klien siswa.
+- Kuis mapel non-TKA tidak berubah (latihan tetap boleh ulang di `SiswaKuis`).
