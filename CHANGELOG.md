@@ -122,3 +122,17 @@
 - File SDM01Penilaian: `functions/resetJawabanKuisLms.js`, `functions/index.js` (lengkap).
 - Deploy CF: `firebase deploy --only functions:resetJawabanKuisLms` dari SDM01Penilaian.
 - ANTIREGRESI §97.
+
+## 2026-11-11 — TKA laporan: 3 kolom nilai domain + deteksi domain AI + fix soalIds
+
+- **Build:** `soalIds` hilang di `HasilKuisPanel` → TS2304 (terjadi berulang setelah restore file terpotong). Dipulihkan + dicatat §98.
+- **Laporan hasil TKA (beda dari kuis mapel):**
+  - Checkbox «Hanya percobaan terbaru» disembunyikan; TKA selalu ringkas 1 attempt per siswa.
+  - Kolom **Perc.** dihapus dari tabel TKA.
+  - Kolom nilai diganti tiga kolom tetap: **Pengetahuan** (IPA), **Keterampilan Proses** (Sains), **Nilai Akhir** = rata-rata kedua domain (yang punya soal).
+- **Domain soal:** field `domainTka` (`pengetahuan` | `keterampilan_proses`, tanpa campuran). Soal tanpa label → kolom «—» + banner peringatan.
+- **AI klasifikasi domain:** CF `klasifikasiDomainTkaLmsAi` (akun AI) + tombol «Deteksi domain AI» di tab Hasil; menyimpan label ke snapshot `lms_kuis.soal`.
+- Mapel non-TKA tidak berubah.
+- File LMS: `HasilKuisPanel.tsx`, `domainTkaAi.ts` (baru).
+- File SDM01Penilaian: `functions/klasifikasiDomainTkaLmsAi.js`, `functions/index.js`.
+- ANTIREGRESI §98.

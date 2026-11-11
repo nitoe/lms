@@ -124,3 +124,17 @@
 97.5 UI Reset hanya di `HasilKuisPanel` saat `isTka`. Jangan menambah reset ke jalur hasil kuis mapel biasa.
 
 97.6 Setelah reset, muat ulang daftar jawaban. Progres lokal siswa (`localStorage` TKA) tidak dihapus server-side — siswa yang masih membuka tab lama perlu refresh; attempt baru tetap diizinkan karena dokumen jawaban sudah hilang.
+
+## §98. Laporan nilai TKA — domain & satu attempt
+
+98.1 **`soalIds`** di `HasilKuisPanel` wajib `useMemo` dari `kuis.soal` sebelum `agregatPerSoal`. Jangan menghapus saat menambah kolom domain/publish/reset (regresi TS2304 berulang).
+
+98.2 TKA **satu attempt**: sembunyikan checkbox «Hanya percobaan terbaru»; `tampil` selalu `ringkasPerSiswa`. Jangan tampilkan kolom Perc. di tabel roster TKA.
+
+98.3 Kolom nilai TKA tetap tiga: **Pengetahuan IPA** (`pengetahuan`), **Keterampilan Proses Sains** (`keterampilan_proses`), **Nilai Akhir** = rata-rata persentase domain yang punya soal (maks>0). Bukan skor total mentah semua soal.
+
+98.4 `domainTka` hanya `pengetahuan` | `keterampilan_proses` (normalisasi menolak nilai lain / campuran). Soal tanpa domain tidak masuk agregat domain.
+
+98.5 Klasifikasi domain AI (`klasifikasiDomainTkaLmsAi`) hanya akun AI (`bolehPemanggilAi`); hasil ditulis ke snapshot soal kuis lewat `updateKuis`. Jangan membuka write `lms_jawaban` dari klien.
+
+98.6 Perubahan §98 hanya dikondisikan `isTka` / `adalahMapelTka`. Tabel hasil mapel biasa (termasuk kolom Perc. & checkbox percobaan) tidak berubah.

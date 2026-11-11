@@ -28,6 +28,7 @@ import {
 } from '../lib/analisisKuisAi'
 import { sinkronNilaiKuisKePenilaian } from '../lib/sinkronNilaiKuis'
 import { updateKuis } from '../lib/kuis'
+import { klasifikasiDomainTkaDenganAi } from '../lib/domainTkaAi'
 import {
   adalahAdminTka,
   adalahMapelTka,
@@ -52,18 +53,44 @@ type BarisHasilTka = {
 
 /** Hitung skor per domain TKA (hanya soal yang berdomain). */
 function skorPerDomain(jawaban: JawabanKuis | null, soalList: SoalKuis[]): Record<string, { skor: number; maks: number }> {
-  const out: Record<string, { skor: number; maks: number }> = {}
+  const out: Record<string, { skor: number; maks: number }> = {
+    pengetahuan: { skor: 0, maks: 0 },
+    keterampilan_proses: { skor: 0, maks: 0 },
+  }
   if (!jawaban?.detail) return out
   const byId = new Map(jawaban.detail.map((d) => [d.soalId, d]))
   for (const s of soalList) {
     const dom = normalisasiDomainTka(s.domainTka)
     if (!dom) continue
-    if (!out[dom]) out[dom] = { skor: 0, maks: 0 }
-    out[dom].maks += s.poin || 0
+    out[dom].maks += Number(s.poin) || 0
     const d = byId.get(s.id)
     out[dom].skor += Number(d?.skor) || 0
   }
   return out
+}
+
+/** Persentase 0–100 per domain; null jika domain tidak punya soal (maks=0). */
+function pctDomain(cell: { skor: number; maks: number } | undefined): number | null {
+  if (!cell || cell.maks <= 0) return null
+  return Math.round((cell.skor / cell.maks) * 1000) / 10
+}
+
+/**
+ * Nilai akhir TKA = rata-rata persentase domain yang ada soalnya.
+ * Bila kedua domain ada → (P + KP) / 2; bila satu → domain itu saja.
+ */
+function nilaiAkhirTka(dom: Record<string, { skor: number; maks: number }>): number | null {
+  const p = pctDomain(dom.pengetahuan)
+  const k = pctDomain(dom.keterampilan_proses)
+  if (p == null && k == null) return null
+  if (p == null) return k
+  if (k == null) return p
+  return Math.round(((p + k) / 2) * 10) / 10
+}
+
+function formatPct(n: number | null): string {
+  if (n == null) return '—'
+  return Number.isInteger(n) ? String(n) : n.toLocaleString('id-ID', { maximumFractionDigits: 1 })
 }
 
 function teksJawaban(soal: SoalKuis, jawab: unknown): string {
@@ -189,12 +216,14 @@ export default function HasilKuisPanel({ kuis, onUpdated }: Props) {
   const [hasilDipublish, setHasilDipublish] = useState(!!kuis.hasilDipublish)
   const [busyPublish, setBusyPublish] = useState(false)
   const [busyResetId, setBusyResetId] = useState<string | null>(null)
+  const [busyDomainAi, setBusyDomainAi] = useState(false)
   const kelasTkaIzin = useMemo(
     () => (isTka ? kelasHasilTkaBolehDilihat(user, profil) : []),
     [isTka, user, profil],
   )
   // Analisis AI isian/uraian tidak dipakai untuk TKA (soal otomatis PG/PGK/BS).
   const bolehAi = !isTka && bolehAnalisisKuisAi(user?.uid)
+  const bolehDomainAi = bolehAnalisisKuisAi(user?.uid)
   const [list, setList] = useState<JawabanKuis[] | null>(null)
   const [rosterTka, setRosterTka] = useState<SiswaDasar[] | null>(null)
   const [filterKelasTka, setFilterKelasTka] = useState<string>('semua')
@@ -280,6 +309,49 @@ export default function HasilKuisPanel({ kuis, onUpdated }: Props) {
     }
   }
 
+
+  async function deteksiDomainAi(overwrite = false) {
+    if (!isTka) return
+    if (nSoalTanpaDomain === 0 && !overwrite) {
+      const ok = confirm(
+        'Semua soal sudah punya domain. Klasifikasi ulang dan timpa label yang ada?',
+      )
+      if (!ok) return
+      overwrite = true
+    } else if (nSoalTanpaDomain > 0) {
+      const ok = confirm(
+        `Deteksi domain AI untuk ${nSoalTanpaDomain} soal yang belum berlabel?\n\nHasil akan disimpan ke snapshot soal kuis ini (pengetahuan / keterampilan_proses).`,
+      )
+      if (!ok) return
+    }
+    setBusyDomainAi(true)
+    setError('')
+    setInfo('')
+    try {
+      const h = await klasifikasiDomainTkaDenganAi(kuis.id, { overwrite })
+      if (!h.hasil.length) {
+        setInfo('Tidak ada soal yang diklasifikasi.')
+        return
+      }
+      const peta = new Map(h.hasil.map((x) => [x.soalId, x.domainTka]))
+      const soalBaru = (kuis.soal ?? []).map((s) => {
+        const d = peta.get(s.id)
+        return d ? { ...s, domainTka: d } : s
+      })
+      await updateKuis(kuis.id, { soal: soalBaru })
+      setInfo(
+        `Domain disimpan: ${h.diklasifikasi} soal diklasifikasi` +
+          (h.dilewati ? `, ${h.dilewati} dilewati (sudah berlabel)` : '') +
+          '.',
+      )
+      onUpdated?.()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Gagal deteksi domain AI.')
+    } finally {
+      setBusyDomainAi(false)
+    }
+  }
+
   async function resetAttemptTka(siswaId: string, siswaNama: string) {
     if (!isTka || !siswaId) return
     const ok = confirm(
@@ -314,8 +386,10 @@ export default function HasilKuisPanel({ kuis, onUpdated }: Props) {
 
   const tampil = useMemo(() => {
     if (!list) return []
-    return hanyaTerbaru ? ringkasPerSiswa(list) : list
-  }, [list, hanyaTerbaru])
+    // TKA: satu attempt — selalu ringkas per siswa (ANTIREGRESI §98)
+    const ringkas = isTka || hanyaTerbaru
+    return ringkas ? ringkasPerSiswa(list) : list
+  }, [list, hanyaTerbaru, isTka])
 
   const barisTka = useMemo((): BarisHasilTka[] => {
     if (!isTka || rosterTka === null) return []
@@ -340,14 +414,18 @@ export default function HasilKuisPanel({ kuis, onUpdated }: Props) {
     return rows
   }, [isTka, rosterTka, tampil, filterKelasTka])
 
+  const soalIds = useMemo(() => (kuis.soal ?? []).map((s) => s.id), [kuis.soal])
+
+  /** TKA: selalu siapkan kedua domain (kolom tetap), meski belum ada soal berlabel. */
   const domainYangAda = useMemo(() => {
     if (!isTka) return [] as DomainTka[]
-    const set = new Set<DomainTka>()
-    for (const s of kuis.soal ?? []) {
-      const d = normalisasiDomainTka(s.domainTka)
-      if (d) set.add(d)
-    }
-    return Array.from(set)
+    // Selalu tampilkan kedua kolom domain + nilai akhir (ANTIREGRESI §98)
+    return ['pengetahuan', 'keterampilan_proses'] as DomainTka[]
+  }, [isTka])
+
+  const nSoalTanpaDomain = useMemo(() => {
+    if (!isTka) return 0
+    return (kuis.soal ?? []).filter((s) => !normalisasiDomainTka(s.domainTka)).length
   }, [isTka, kuis.soal])
 
   const agregat = useMemo(() => {
@@ -516,7 +594,7 @@ export default function HasilKuisPanel({ kuis, onUpdated }: Props) {
           </div>
 
           
-        {bolehAi && (
+        {bolehDomainAi && (
           <div className="overflow-hidden rounded-2xl border border-muh-100 bg-white shadow-sm">
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-muh-50 bg-muh-50/40 px-4 py-3">
               <div>
@@ -870,6 +948,43 @@ export default function HasilKuisPanel({ kuis, onUpdated }: Props) {
         </div>
       )}
 
+      {isTka && nSoalTanpaDomain > 0 && (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-amber-200 bg-amber-50/90 px-4 py-3 shadow-sm">
+          <div className="min-w-0">
+            <p className="text-sm font-semibold text-amber-950">
+              {nSoalTanpaDomain} soal belum berdomain
+            </p>
+            <p className="mt-0.5 text-xs text-amber-900/80">
+              Kolom Pengetahuan / Keterampilan Proses / Nilai Akhir membutuhkan label domain per
+              soal. Deteksi otomatis memakai AI (akun khusus), atau isi manual di editor soal bank.
+            </p>
+          </div>
+          {bolehDomainAi && (
+            <button
+              type="button"
+              className="lms-btn-primary text-xs"
+              disabled={busyDomainAi}
+              onClick={() => void deteksiDomainAi(false)}
+            >
+              {busyDomainAi ? 'Mendeteksi…' : 'Deteksi domain AI'}
+            </button>
+          )}
+        </div>
+      )}
+
+      {isTka && nSoalTanpaDomain === 0 && bolehDomainAi && (
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          <button
+            type="button"
+            className="lms-btn-secondary text-xs"
+            disabled={busyDomainAi}
+            onClick={() => void deteksiDomainAi(true)}
+          >
+            {busyDomainAi ? 'Mendeteksi…' : 'Klasifikasi ulang domain AI'}
+          </button>
+        </div>
+      )}
+
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
           <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
@@ -1133,15 +1248,17 @@ export default function HasilKuisPanel({ kuis, onUpdated }: Props) {
             Analisis per soal
           </TabPill>
         </div>
-        <label className="flex cursor-pointer items-center gap-2 text-xs text-slate-600">
-          <input
-            type="checkbox"
-            className="rounded border-slate-300 text-muh-600 focus:ring-muh-500"
-            checked={hanyaTerbaru}
-            onChange={(e) => setHanyaTerbaru(e.target.checked)}
-          />
-          Hanya percobaan terbaru
-        </label>
+        {!isTka && (
+          <label className="flex cursor-pointer items-center gap-2 text-xs text-slate-600">
+            <input
+              type="checkbox"
+              className="rounded border-slate-300 text-muh-600 focus:ring-muh-500"
+              checked={hanyaTerbaru}
+              onChange={(e) => setHanyaTerbaru(e.target.checked)}
+            />
+            Hanya percobaan terbaru
+          </label>
+        )}
         <span className="text-xs text-slate-400">
           {isTka
             ? `${ringkas.n} mengerjakan · ${ringkas.nRoster} siswa roster`
@@ -1168,13 +1285,15 @@ export default function HasilKuisPanel({ kuis, onUpdated }: Props) {
                 <tr className="border-b border-slate-200 bg-slate-50/80 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
                   <th className="px-4 py-3">Siswa</th>
                   <th className="px-3 py-3">Kelas</th>
-                  <th className="px-3 py-3">Perc.</th>
-                  <th className="px-3 py-3">Nilai</th>
-                  {domainYangAda.map((d) => (
-                    <th key={d} className="px-3 py-3" title={NAMA_DOMAIN_TKA[d]}>
-                      {NAMA_DOMAIN_TKA[d].replace(' IPA', '')}
-                    </th>
-                  ))}
+                  <th className="px-3 py-3" title="Pengetahuan IPA">
+                    Pengetahuan
+                  </th>
+                  <th className="px-3 py-3" title="Keterampilan Proses Sains">
+                    Keterampilan Proses
+                  </th>
+                  <th className="px-3 py-3" title="Rata-rata kedua domain">
+                    Nilai Akhir
+                  </th>
                   <th className="px-3 py-3">Status</th>
                   <th className="px-3 py-3">Waktu</th>
                   <th className="px-4 py-3 text-right">Aksi</th>
@@ -1198,13 +1317,9 @@ export default function HasilKuisPanel({ kuis, onUpdated }: Props) {
                           </div>
                         </td>
                         <td className="px-3 py-3 text-xs font-medium text-slate-600">{row.kelas}</td>
-                        <td className="px-3 py-3 text-slate-400">—</td>
-                        <td className="px-3 py-3">
-                          <span className="text-sm font-semibold text-slate-300">—</span>
-                        </td>
-                        {domainYangAda.map((d) => (
-                          <td key={d} className="px-3 py-3 text-slate-300">—</td>
-                        ))}
+                        <td className="px-3 py-3 text-sm font-semibold text-slate-300">—</td>
+                        <td className="px-3 py-3 text-sm font-semibold text-slate-300">—</td>
+                        <td className="px-3 py-3 text-sm font-semibold text-slate-300">—</td>
                         <td className="px-3 py-3">
                           <span className="inline-flex rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-500">
                             Belum mengerjakan
@@ -1232,22 +1347,30 @@ export default function HasilKuisPanel({ kuis, onUpdated }: Props) {
                         </div>
                       </td>
                       <td className="px-3 py-3 text-xs font-medium text-slate-600">{row.kelas || j.kelas}</td>
-                      <td className="px-3 py-3 tabular-nums text-slate-600">#{j.percobaan}</td>
-                      <td className="px-3 py-3">
-                        <span className="text-base font-bold tabular-nums text-muh-700">
-                          {formatSkor100(j.skorOtomatis, j.totalPoin)}
-                        </span>
-                        <span className="text-xs text-slate-400"> /100</span>
-                      </td>
-                      {domainYangAda.map((d) => {
-                        const dom = skorPerDomain(j, kuis.soal ?? [])[d]
-                        const pct = dom && dom.maks > 0 ? Math.round((dom.skor / dom.maks) * 100) : null
+                      {(() => {
+                        const dom = skorPerDomain(j, kuis.soal ?? [])
+                        const p = pctDomain(dom.pengetahuan)
+                        const k = pctDomain(dom.keterampilan_proses)
+                        const akhir = nilaiAkhirTka(dom)
                         return (
-                          <td key={d} className="px-3 py-3 tabular-nums text-sm text-slate-700">
-                            {pct != null ? `${pct}` : '—'}
-                          </td>
+                          <>
+                            <td className="px-3 py-3 tabular-nums text-sm text-slate-700">
+                              {formatPct(p)}
+                              {p != null ? <span className="text-[10px] text-slate-400"> /100</span> : null}
+                            </td>
+                            <td className="px-3 py-3 tabular-nums text-sm text-slate-700">
+                              {formatPct(k)}
+                              {k != null ? <span className="text-[10px] text-slate-400"> /100</span> : null}
+                            </td>
+                            <td className="px-3 py-3">
+                              <span className="text-base font-bold tabular-nums text-muh-700">
+                                {formatPct(akhir)}
+                              </span>
+                              {akhir != null ? <span className="text-xs text-slate-400"> /100</span> : null}
+                            </td>
+                          </>
                         )
-                      })}
+                      })()}
                       <td className="px-3 py-3">
                         <BadgeStatus perluManual={perlu} status={j.status} />
                       </td>
