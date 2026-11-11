@@ -6,7 +6,7 @@ import { db, functions } from '../../lib/firebase'
 import { useSiswa } from '../../context/SiswaContext'
 import { MAPEL_TKA, KELAS_TKA_BANK, adalahMapelTka, bolehTkaSiswa } from '../../lib/tkaAkses'
 import type { KuisLms, SoalKuis } from '../../types/kuis'
-import { NAMA_JENIS_PENILAIAN } from '../../types/kuis'
+import { NAMA_JENIS_PENILAIAN_SISWA } from '../../types/kuis'
 import type { JawabanSoal } from '../../types/soal'
 import { NAMA_KOMPLEKSITAS, normalisasiKompleksitas } from '../../types/soal'
 import SoalTampil from '../../components/soal/SoalTampil'
@@ -354,7 +354,7 @@ function TkaIsi({ siswaId, kelas }: { siswaId: string; kelas: string }) {
                       {jadwal === 'buka' && <span className="tka-pil tka-pil--buka">Dibuka</span>}
                     </div>
                     <p className="tka-kartu-meta">
-                      {NAMA_JENIS_PENILAIAN[k.jenisPenilaian ?? 'latihan']} · {k.jumlahSoal} soal
+                      {NAMA_JENIS_PENILAIAN_SISWA[k.jenisPenilaian ?? 'latihan']} · {k.jumlahSoal} soal
                       {k.durasiMenit ? ` · ${k.durasiMenit} menit` : ''}
                     </p>
                     {(mulaiMs > 0 || selesaiMs > 0) && (

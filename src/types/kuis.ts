@@ -17,11 +17,20 @@ export const NAMA_MODE_PELAKSANAAN: Record<ModePelaksanaanKuis, string> = {
   offline: 'Offline (guru input jawaban)',
 }
 
+/** Label untuk UI guru (form atur kuis / detail). Menjelaskan dampak ke nilai. */
 export const NAMA_JENIS_PENILAIAN: Record<JenisPenilaianKuis, string> = {
   latihan: 'Latihan (tidak masuk nilai)',
   slm: 'SLM (masuk nilai SLM TP)',
   sts: 'STS (masuk nilai STS)',
   sas: 'SAS (masuk nilai SAS)',
+}
+
+/** Label ringkas untuk UI siswa — tanpa frasa «tidak masuk nilai» agar tidak menurunkan keseriusan. */
+export const NAMA_JENIS_PENILAIAN_SISWA: Record<JenisPenilaianKuis, string> = {
+  latihan: 'Latihan',
+  slm: 'SLM',
+  sts: 'STS',
+  sas: 'SAS',
 }
 
 /** Filter yang dipakai saat mode otomatis / otomatis_ai. */

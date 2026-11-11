@@ -1,3 +1,11 @@
+## 2026-11-11 — Label jenis kuis siswa: tanpa «tidak masuk nilai»
+
+- Di katalog/card siswa (TKA & kuis biasa), jenis **Latihan** ditampilkan ringkas: «Latihan» saja.
+- Alasan: frasa «(tidak masuk nilai)» bisa membuat siswa kurang serius mengerjakan.
+- Label lengkap (dengan keterangan nilai) tetap di UI guru saat atur kuis.
+- Tambah `NAMA_JENIS_PENILAIAN_SISWA` di `src/types/kuis.ts`.
+- File: `src/types/kuis.ts`, `src/pages/siswa/SiswaTka.tsx`, `src/pages/siswa/SiswaKuis.tsx`.
+
 ## 2026-11-11 — Halaman masuk: lebih cerah & tanpa login orang tua
 
 - Hapus tab/link **Orang Tua** di halaman masuk staf dan siswa (login orang tua tidak dipakai di LMS).

@@ -5,7 +5,7 @@ import { db, functions } from '../../lib/firebase'
 import { useSiswa } from '../../context/SiswaContext'
 import type { KuisLms, SoalKuis } from '../../types/kuis'
 import { adalahMapelTka } from '../../lib/tkaAkses'
-import { NAMA_JENIS_PENILAIAN } from '../../types/kuis'
+import { NAMA_JENIS_PENILAIAN_SISWA } from '../../types/kuis'
 import type { JawabanSoal } from '../../types/soal'
 import SoalTampil from '../../components/soal/SoalTampil'
 import '../../styles/soal.css'
@@ -256,7 +256,7 @@ export default function SiswaKuis() {
             <li key={k.id} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
               <div className="font-semibold text-slate-800">{k.judul}</div>
               <div className="mt-1 text-xs text-slate-500">
-                {k.mapel} · {NAMA_JENIS_PENILAIAN[k.jenisPenilaian ?? 'latihan']} · {k.jumlahSoal} soal
+                {k.mapel} · {NAMA_JENIS_PENILAIAN_SISWA[k.jenisPenilaian ?? 'latihan']} · {k.jumlahSoal} soal
                 {k.durasiMenit ? ` · ${k.durasiMenit} menit` : ''}
               </div>
 
