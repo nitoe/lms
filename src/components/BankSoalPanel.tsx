@@ -23,7 +23,9 @@ import {
   validasiMetadata,
   validasiMetadataTka,
 } from '../lib/importSoal'
+import { kelasAksenMapel, LABEL_TIPE_PENDEK, materiPaket, paketMemuatMateri } from '../lib/aksenTka'
 import '../styles/soal.css'
+import '../styles/tka-bank.css'
 
 type Props = { kelas: string; mapel: string; ruangId: string }
 
@@ -146,9 +148,7 @@ export default function BankSoalPanel({ kelas, mapel, ruangId }: Props) {
       if (filterStatus && p.status !== filterStatus) return false
       if (isTka) {
         if (filterMateri) {
-          const dariPaket = (p.tipeMateri ?? '') === filterMateri
-          const dariSoal = (p.soal ?? []).some((x) => (x.tipeMateri ?? '') === filterMateri)
-          if (!dariPaket && !dariSoal) return false
+          if (!paketMemuatMateri(p, filterMateri)) return false
         }
       } else if (filterTp) {
         if (filterTp === '__tanpa__') {
@@ -170,6 +170,29 @@ export default function BankSoalPanel({ kelas, mapel, ruangId }: Props) {
   type Grup = { kunci: string; label: string; item: PaketSoal[] }
 
   const grupList: Grup[] = useMemo(() => {
+    if (isTka) {
+      // TKA: otomatis dikelompokkan per materi, kecuali sedang difilter ke satu materi.
+      if (filterMateri || tersaring.length === 0) {
+        return [{ kunci: 'semua', label: '', item: tersaring }]
+      }
+      const peta = new Map<string, Grup>()
+      for (const p of tersaring) {
+        const m = materiPaket(p)
+        const kunci = m || '__tanpa__'
+        let g = peta.get(kunci)
+        if (!g) {
+          g = { kunci, label: m || 'Materi belum ditentukan', item: [] }
+          peta.set(kunci, g)
+        }
+        g.item.push(p)
+      }
+      const urut = (k: string) => {
+        if (k === '__tanpa__') return 999
+        const i = materiTka.indexOf(k)
+        return i === -1 ? 998 : i
+      }
+      return [...peta.values()].sort((a, b) => urut(a.kunci) - urut(b.kunci))
+    }
     if (grupMode === 'tidak') {
       return [{ kunci: 'semua', label: '', item: tersaring }]
     }
@@ -231,7 +254,26 @@ export default function BankSoalPanel({ kelas, mapel, ruangId }: Props) {
       listG.sort((a, b) => a.label.localeCompare(b.label, 'id'))
     }
     return listG
-  }, [tersaring, grupMode])
+  }, [tersaring, grupMode, isTka, filterMateri, materiTka])
+
+  const ringkasan = useMemo(() => {
+    const semua = list ?? []
+    const siap = semua.filter((p) => p.status === 'siap')
+    return {
+      paket: semua.length,
+      siap: siap.length,
+      soalSiap: siap.reduce((n, p) => n + (p.jumlahSoal || 0), 0),
+    }
+  }, [list])
+
+  const hitungPerMateri = useMemo(() => {
+    const out = new Map<string, number>()
+    if (!isTka) return out
+    for (const m of materiTka) {
+      out.set(m, (list ?? []).filter((p) => paketMemuatMateri(p, m)).length)
+    }
+    return out
+  }, [list, isTka, materiTka])
 
   async function buat(e: React.FormEvent) {
     e.preventDefault()
@@ -426,64 +468,119 @@ export default function BankSoalPanel({ kelas, mapel, ruangId }: Props) {
   function renderKartu(p: PaketSoal) {
     const jt = hitungTipe(p)
     const jk = hitungKompleksitas(p)
+    const totalK = URUTAN_KOMPLEKSITAS.reduce((n, k) => n + (jk[k] ?? 0), 0)
+    const tipeAda = URUTAN_TIPE.filter((t) => (jt[t] ?? 0) > 0)
+    const urlEditor = `/kelas/${encodeURIComponent(ruangId)}/soal/${p.id}`
+    const materi = (p.tipeMateri ?? '').trim()
+    const labelTp = p.tpNama ? `TP ${p.tpNomor ? `${p.tpNomor} · ` : ''}${p.tpNama}` : ''
+    const labelAtas = materi || labelTp || (isTka ? 'Materi belum diisi' : 'Tanpa TP')
+    const atasKosong = !materi && !labelTp
     return (
-      <li key={p.id} className="paket-item">
-        <div className="paket-ikon" aria-hidden>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75"
-            strokeLinecap="round" strokeLinejoin="round">
-            <circle cx="12" cy="12" r="10" />
-            <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
-            <line x1="12" y1="17" x2="12.01" y2="17" />
-          </svg>
-        </div>
-        <div className="min-w-0 flex-1">
-          <Link to={`/kelas/${encodeURIComponent(ruangId)}/soal/${p.id}`} className="paket-judul">
+      <li key={p.id} className={`pk-kartu pk-kartu--${p.status}`}>
+        <div className="pk-utama">
+          <div className="pk-atas">
+            <span
+              className={`pk-materi${atasKosong ? ' pk-materi--kosong' : ''}`}
+              title={materi || p.tpNama || undefined}
+            >
+              {labelAtas}
+            </span>
+            <span className={`pk-status pk-status--${p.status}`}>{p.status === 'siap' ? 'Siap dipakai' : 'Draf'}</span>
+          </div>
+
+          <Link to={urlEditor} className="pk-judul" title={p.judul}>
             {p.judul}
           </Link>
-          <div className="paket-meta">
-            <span className={`paket-status paket-status--${p.status}`}>{p.status === 'siap' ? 'Siap' : 'Draf'}</span>
-            <span>{p.jumlahSoal} soal</span>
-            <span>{p.totalPoin} poin</span>
-            {p.tipeMateri && (
-              <span className="paket-tp" title={p.tipeMateri}>
-                {p.tipeMateri}
-              </span>
+
+          <div className="pk-angka">
+            <div>
+              <b>{p.jumlahSoal}</b>
+              <span>soal</span>
+            </div>
+            <div>
+              <b>{p.totalPoin}</b>
+              <span>poin</span>
+            </div>
+            {totalK > 0 ? (
+              <div className="pk-sebaran" aria-label="Sebaran tingkat kompleksitas soal">
+                <div className="pk-sebaran-bar">
+                  {URUTAN_KOMPLEKSITAS.filter((k) => (jk[k] ?? 0) > 0).map((k) => (
+                    <i
+                      key={k}
+                      className={`pk-seg--${k.toLowerCase()}`}
+                      style={{ flex: `${jk[k]} 1 0` }}
+                      title={`${NAMA_KOMPLEKSITAS[k]}: ${jk[k]} soal`}
+                    />
+                  ))}
+                </div>
+                <div className="pk-sebaran-legenda">
+                  {URUTAN_KOMPLEKSITAS.filter((k) => (jk[k] ?? 0) > 0).map((k) => (
+                    <span key={k} className={`pk-lg--${k.toLowerCase()}`}>
+                      {k} · {jk[k]}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <div className="pk-sebaran pk-sebaran--kosong">Belum ada soal</div>
             )}
-            {!p.tipeMateri && p.tpNama && (
-              <span className="paket-tp" title={p.tpNama}>
-                TP {p.tpNomor ? `${p.tpNomor}. ` : ''}{p.tpNama}
-              </span>
-            )}
-            <span>Diubah {formatTanggal(p.updatedAt)}</span>
           </div>
-          <div className="paket-chips" aria-label="Bentuk dan kompleksitas soal">
-            {URUTAN_TIPE.filter((t) => (jt[t] ?? 0) > 0).map((t) => (
-              <span key={t} className="paket-chip paket-chip--tipe" title={NAMA_TIPE[t]}>
-                {t.toUpperCase()} {jt[t]}
-              </span>
-            ))}
-            {URUTAN_KOMPLEKSITAS.filter((k) => (jk[k] ?? 0) > 0).map((k) => (
-              <span key={k} className={`paket-chip paket-chip--${k.toLowerCase()}`} title={NAMA_KOMPLEKSITAS[k]}>
-                {k} · {jk[k]}
-              </span>
-            ))}
-          </div>
+
+          {tipeAda.length > 0 && (
+            <div className="pk-chips" aria-label="Bentuk soal dalam paket">
+              {tipeAda.map((t) => (
+                <span key={t} className="pk-chip" title={NAMA_TIPE[t]}>
+                  {LABEL_TIPE_PENDEK[t]} <b>{jt[t]}</b>
+                </span>
+              ))}
+            </div>
+          )}
+
+          {p.status === 'draf' && (
+            <p className="pk-catatan">
+              {p.jumlahSoal === 0
+                ? 'Belum ada soal. Buka editor untuk mulai menulis.'
+                : 'Belum bisa dipakai di kuis. Buka editor, lalu ubah status menjadi Siap.'}
+            </p>
+          )}
         </div>
-        <div className="flex shrink-0 items-center gap-1.5">
-          <Link to={`/kelas/${encodeURIComponent(ruangId)}/soal/${p.id}`} className="lms-btn-secondary">Buka</Link>
-          <button type="button" className="lms-btn-secondary" disabled={busy} onClick={() => { setPaketTargetImport(p); setFormImport(false); setFormExport(false); setFormBuka(false) }}>
-            Import
-          </button>
-          <button type="button" className="materi-btn-danger" disabled={busy} onClick={() => void hapus(p)}>
-            Hapus
-          </button>
+
+        <div className="pk-kaki">
+          <span className="pk-waktu">Diubah {formatTanggal(p.updatedAt)}</span>
+          <div className="pk-aksi">
+            <button
+              type="button"
+              className="pk-btn pk-btn--bahaya"
+              disabled={busy}
+              onClick={() => void hapus(p)}
+              aria-label={`Hapus paket ${p.judul}`}
+            >
+              Hapus
+            </button>
+            <button
+              type="button"
+              className="pk-btn"
+              disabled={busy}
+              onClick={() => {
+                setPaketTargetImport(p)
+                setFormImport(false)
+                setFormExport(false)
+                setFormBuka(false)
+              }}
+            >
+              Import
+            </button>
+            <Link to={urlEditor} className="pk-btn pk-btn--utama">
+              Buka
+            </Link>
+          </div>
         </div>
       </li>
     )
   }
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className={`flex flex-col gap-4 ${kelasAksenMapel(mapel)}`}>
       {isTka && (
         <div
           className={
@@ -509,6 +606,22 @@ export default function BankSoalPanel({ kelas, mapel, ruangId }: Props) {
             <span>PG</span>
             <span>PGK</span>
             <span>B/S</span>
+          </div>
+        </div>
+      )}
+      {list !== null && list.length > 0 && (
+        <div className="pk-ringkas" aria-label="Ringkasan bank soal">
+          <div className="pk-ringkas-item">
+            <b>{ringkasan.paket}</b>
+            <span>Paket soal</span>
+          </div>
+          <div className="pk-ringkas-item">
+            <b>{ringkasan.siap}</b>
+            <span>Siap dipakai</span>
+          </div>
+          <div className="pk-ringkas-item">
+            <b>{ringkasan.soalSiap}</b>
+            <span>Soal siap</span>
           </div>
         </div>
       )}
@@ -539,19 +652,37 @@ export default function BankSoalPanel({ kelas, mapel, ruangId }: Props) {
         </div>
       </div>
 
+      {isTka && (
+        <div className="pk-materi-bar" role="group" aria-label="Filter materi">
+          <span className="pk-materi-label">Materi</span>
+          <button
+            type="button"
+            className={`pk-materi-chip${filterMateri === '' ? ' pk-materi-chip--on' : ''}`}
+            aria-pressed={filterMateri === ''}
+            onClick={() => setFilterMateri('')}
+          >
+            Semua <i>{list?.length ?? 0}</i>
+          </button>
+          {materiTka.map((m) => {
+            const n = hitungPerMateri.get(m) ?? 0
+            return (
+              <button
+                key={m}
+                type="button"
+                className={`pk-materi-chip${filterMateri === m ? ' pk-materi-chip--on' : ''}${n === 0 ? ' pk-materi-chip--kosong' : ''}`}
+                aria-pressed={filterMateri === m}
+                onClick={() => setFilterMateri(filterMateri === m ? '' : m)}
+              >
+                {m} <i>{n}</i>
+              </button>
+            )
+          })}
+        </div>
+      )}
+
       {/* Filter & grup — bantu merancang kuis dari bank */}
       <div className="paket-filter" role="search" aria-label="Filter dan kelompokkan bank soal">
-        {isTka ? (
-          <label className="paket-filter-field">
-            <span>Materi</span>
-            <select value={filterMateri} onChange={(e) => setFilterMateri(e.target.value)}>
-              <option value="">Semua materi</option>
-              {materiTka.map((m) => (
-                <option key={m} value={m}>{m}</option>
-              ))}
-            </select>
-          </label>
-        ) : (
+        {isTka ? null : (
           <label className="paket-filter-field">
             <span>TP / materi</span>
             <select value={filterTp} onChange={(e) => setFilterTp(e.target.value)}>
@@ -797,9 +928,21 @@ export default function BankSoalPanel({ kelas, mapel, ruangId }: Props) {
 
       {list === null && <div className="lms-empty">Memuat bank soal…</div>}
       {list !== null && list.length === 0 && !error && (
-        <div className="lms-empty">
-          <p className="font-medium text-slate-700">Belum ada paket soal</p>
-          <p className="mt-1">Buat paket pertama: ketik soal sendiri, tambahkan gambar, lalu uji dengan pratinjau.</p>
+        <div className="pk-kosong">
+          <b>Belum ada paket soal</b>
+          <p>
+            {isTka
+              ? 'Mulai dari satu materi: tulis soal langsung di editor, atau impor dari template JSON/CSV. Paket berstatus Siap bisa dipakai menyusun kuis dan try out.'
+              : 'Buat paket pertama: ketik soal sendiri, tambahkan gambar, lalu uji dengan pratinjau.'}
+          </p>
+          <div className="pk-kosong-aksi">
+            <button type="button" className="pk-btn pk-btn--utama" onClick={() => { setFormBuka(true); setFormImport(false); setFormExport(false); setError('') }}>
+              + Paket soal baru
+            </button>
+            <button type="button" className="pk-btn" onClick={() => { setFormImport(true); setFormBuka(false); setFormExport(false); setError('') }}>
+              Import soal
+            </button>
+          </div>
         </div>
       )}
       {list !== null && list.length > 0 && tersaring.length === 0 && (
@@ -810,14 +953,14 @@ export default function BankSoalPanel({ kelas, mapel, ruangId }: Props) {
       )}
 
       {grupList.map((g) => (
-        <div key={g.kunci} className="paket-grup">
+        <div key={g.kunci} className="pk-grup">
           {g.label && (
-            <h3 className="paket-grup-judul">
+            <h3 className="pk-grup-judul">
               {g.label}
-              <span className="paket-grup-jumlah">{g.item.length} paket</span>
+              <span className="pk-grup-jumlah">{g.item.length} paket</span>
             </h3>
           )}
-          <ul className="paket-list">
+          <ul className="pk-grid">
             {g.item.map((p) => renderKartu(p))}
           </ul>
         </div>
