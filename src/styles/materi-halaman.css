@@ -662,3 +662,80 @@
   color: #64748b;
   margin: 0;
 }
+
+/* Tabel di blok teks (selaras tampilan stimulus TKA / soal-rich-view) */
+.mh-blok--teks table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0.65rem 0 0.85rem;
+  font-size: 0.88rem;
+}
+.mh-blok--teks th,
+.mh-blok--teks td {
+  border: 1px solid #cbd5e1;
+  padding: 0.4rem 0.55rem;
+  text-align: left;
+  vertical-align: top;
+}
+.mh-blok--teks th {
+  background: #f1f5f9;
+  font-weight: 700;
+  color: #0f172a;
+}
+.mh-blok--teks caption {
+  caption-side: bottom;
+  margin-top: 0.35rem;
+  font-size: 0.75rem;
+  color: #64748b;
+  text-align: center;
+}
+.mh-blok--teks .katex-display {
+  margin: 0.65rem 0;
+  overflow-x: auto;
+}
+.mh-html-area {
+  width: 100%;
+  min-height: 8rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.78rem;
+  line-height: 1.45;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.55rem;
+  padding: 0.55rem 0.65rem;
+  resize: vertical;
+  color: #1e293b;
+  background: #fff;
+}
+.mh-html-area:focus {
+  outline: 2px solid #6ee7b7;
+  outline-offset: 1px;
+}
+.mh-mode-toggle {
+  display: inline-flex;
+  gap: 0.2rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.45rem;
+  padding: 0.1rem;
+  background: #f8fafc;
+}
+.mh-mode-toggle button {
+  border: 0;
+  background: transparent;
+  border-radius: 0.35rem;
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: #64748b;
+  padding: 0.2rem 0.45rem;
+  cursor: pointer;
+}
+.mh-mode-toggle button.mh-mode-on {
+  background: #fff;
+  color: #047857;
+  box-shadow: 0 0 0 1px #a7f3d0;
+}
+.mh-html-hint {
+  margin: 0.35rem 0 0;
+  font-size: 0.65rem;
+  color: #94a3b8;
+  line-height: 1.35;
+}

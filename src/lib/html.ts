@@ -54,12 +54,42 @@ export function stimulusKeHtml(s: string | undefined): string {
 }
 
 /**
- * HTML materi halaman: seperti soal + heading h2/h3 untuk struktur bacaan.
- * Tetap tanpa atribut (kelas/style/onclick) — ANTIREGRESI §9.
+ * HTML materi halaman — selaras pipeline stimulus TKA:
+ * heading (h2/h3) + tabel numerasi + format dasar.
+ * Tanpa atribut style/class/onclick (ANTIREGRESI §9, §115.2).
+ * Rumus `$...$` / `$$...$$` dibiarkan di teks; dirender KaTeX di viewer.
  */
-const TAG_MATERI = [...TAG_BOLEH, 'h2', 'h3']
+const TAG_MATERI = [
+  ...TAG_BOLEH,
+  'h2',
+  'h3',
+  'table',
+  'thead',
+  'tbody',
+  'tfoot',
+  'tr',
+  'th',
+  'td',
+  'caption',
+]
 
 export function bersihHtmlMateri(html: string | undefined): string {
   if (!html) return ''
-  return DOMPurify.sanitize(html, { ALLOWED_TAGS: TAG_MATERI, ALLOWED_ATTR: [] })
+  return DOMPurify.sanitize(html, {
+    ALLOWED_TAGS: TAG_MATERI,
+    ALLOWED_ATTR: ['colspan', 'rowspan', 'scope'],
+  })
+}
+
+/** Deteksi konten materi yang mungkin butuh KaTeX (tanda $). */
+export function materiPunyaRumus(html: string | undefined): boolean {
+  return typeof html === 'string' && html.includes('$')
+}
+
+/**
+ * Apakah string terlihat mengandung tabel HTML (untuk mode sumber di editor).
+ * Hanya heuristik UI — penyimpanan tetap lewat bersihHtmlMateri.
+ */
+export function materiPunyaTabel(html: string | undefined): boolean {
+  return typeof html === 'string' && /<\s*table[\s>]/i.test(html)
 }

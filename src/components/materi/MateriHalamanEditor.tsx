@@ -13,6 +13,7 @@ import {
   BATAS_HALAMAN_PER_MATERI,
   BATAS_UKURAN,
 } from '../../types/materi'
+import { bersihHtmlMateri, materiPunyaTabel } from '../../lib/html'
 import MateriRichEditor from './MateriRichEditor'
 import MateriHalamanViewer from './MateriHalamanViewer'
 
@@ -84,6 +85,20 @@ export default function MateriHalamanEditor({
   const [mode, setMode] = useState<'edit' | 'pratinjau'>('edit')
   const fileRef = useRef<HTMLInputElement>(null)
   const [unggahUntukBlok, setUnggahUntukBlok] = useState<string | null>(null)
+  /**
+   * Mode sumber HTML per blok teks (untuk tabel / rumus mentah).
+   * Otomatis aktif jika konten sudah berisi <table> (selaras editor stimulus TKA).
+   */
+  const [modeHtmlBlok, setModeHtmlBlok] = useState<Record<string, boolean>>(() => {
+    const awal: Record<string, boolean> = {}
+    const list = materiAwal?.halaman || []
+    for (const h of list) {
+      for (const b of h.blok || []) {
+        if (b.tipe === 'teks' && materiPunyaTabel(b.html)) awal[b.id] = true
+      }
+    }
+    return awal
+  })
 
   /** Panel daftar halaman (kiri) — default terbuka di desktop. */
   const [panelHalaman, setPanelHalaman] = useState(true)
@@ -602,12 +617,61 @@ export default function MateriHalamanEditor({
                       </div>
                     </div>
                     {b.tipe === 'teks' ? (
-                      <MateriRichEditor
-                        value={b.html}
-                        onChange={(html) => updateBlok(b.id, { html } as Partial<MateriBlok>)}
-                        placeholder="Tulis materi di sini…"
-                        minRem={5}
-                      />
+                      <div className="mh-teks-edit">
+                        <div className="mh-mode-toggle" role="group" aria-label="Mode sunting teks">
+                          <button
+                            type="button"
+                            className={!modeHtmlBlok[b.id] ? 'mh-mode-on' : ''}
+                            onClick={() =>
+                              setModeHtmlBlok((m) => ({ ...m, [b.id]: false }))
+                            }
+                          >
+                            Visual
+                          </button>
+                          <button
+                            type="button"
+                            className={modeHtmlBlok[b.id] ? 'mh-mode-on' : ''}
+                            onClick={() =>
+                              setModeHtmlBlok((m) => ({ ...m, [b.id]: true }))
+                            }
+                          >
+                            HTML / tabel
+                          </button>
+                        </div>
+                        {modeHtmlBlok[b.id] ? (
+                          <>
+                            <textarea
+                              className="mh-html-area"
+                              value={b.html}
+                              onChange={(e) =>
+                                updateBlok(b.id, {
+                                  html: e.target.value,
+                                } as Partial<MateriBlok>)
+                              }
+                              onBlur={(e) =>
+                                updateBlok(b.id, {
+                                  html: bersihHtmlMateri(e.target.value),
+                                } as Partial<MateriBlok>)
+                              }
+                              spellCheck={false}
+                              aria-label="Sumber HTML blok teks"
+                            />
+                            <p className="mh-html-hint">
+                              Tag aman: p, h2, h3, daftar, tebal/miring, tabel (th/td + colspan),
+                              rumus <code>$…$</code> / <code>$$…$$</code>. Tanpa style/class.
+                            </p>
+                          </>
+                        ) : (
+                          <MateriRichEditor
+                            value={b.html}
+                            onChange={(html) =>
+                              updateBlok(b.id, { html } as Partial<MateriBlok>)
+                            }
+                            placeholder="Tulis materi di sini… Rumus: $x^2$ atau $$\\frac{a}{b}$$"
+                            minRem={5}
+                          />
+                        )}
+                      </div>
                     ) : (
                       <div className="mh-img-edit">
                         {b.url ? (

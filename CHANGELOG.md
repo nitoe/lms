@@ -1,3 +1,11 @@
+## 2026-11-12 — Materi halaman: pipeline HTML selaras stimulus TKA (Tahap A)
+
+- **`bersihHtmlMateri`:** mendukung tabel (`table/thead/tbody/tr/th/td/caption` + colspan/rowspan/scope) selain h2/h3 — sama aman dengan `bersihHtmlStimulus` (ANTIREGRESI §9).
+- **Viewer:** merender rumus `$…$` / `$$…$$` dengan KaTeX (lazy, hanya jika halaman aktif memuat `$`), kelas `soal-rich-view` + gaya tabel.
+- **Editor:** mode per blok teks **Visual** (TipTap) atau **HTML / tabel** (textarea, seperti stimulus TKA agar tabel tidak hilang). Sanitasi HTML saat blur + saat simpan.
+- Tidak menambah Cloud Function / generate AI (itu Tahap B). Tidak mengubah `firestore.rules`.
+- File: `src/lib/html.ts`, `src/components/materi/MateriHalamanViewer.tsx`, `src/components/materi/MateriHalamanEditor.tsx`, `src/styles/materi-halaman.css`, `CHANGELOG.md`, `ANTIREGRESI.md`.
+
 ## 2026-11-12 — Materi multi-halaman (V1: teks + gambar)
 
 - **Jenis baru** `halaman` di `lms_materi`: konten disusun per halaman berisi **blok berurutan** (teks kaya TipTap + gambar).

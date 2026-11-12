@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
-import { bersihHtmlMateri } from '../../lib/html'
+import { bersihHtmlMateri, materiPunyaRumus } from '../../lib/html'
+import { htmlDenganRumus, useKatexSiap } from '../../lib/matematika'
 import type { MateriHalaman, MateriLms } from '../../types/materi'
 
 type Props = {
@@ -13,7 +14,7 @@ type Props = {
 
 /**
  * Pembaca materi multi-halaman.
- * Navigasi prev/next + indikator; fokus bacaan full-width, mobile-first.
+ * HTML lewat bersihHtmlMateri (+ tabel); rumus `$…$` dirender KaTeX bila ada (selaras stimulus TKA).
  */
 export default function MateriHalamanViewer({ materi, awal = 0, onTutup, mode = 'siswa' }: Props) {
   const pages = useMemo(() => {
@@ -30,6 +31,14 @@ export default function MateriHalamanViewer({ materi, awal = 0, onTutup, mode = 
 
   const page: MateriHalaman | undefined = pages[idx]
   const total = pages.length
+
+  /** Muat KaTeX hanya jika halaman aktif (atau materi) memuat tanda rumus. */
+  const butuhKatex = useMemo(() => {
+    if (!page) return false
+    return page.blok.some((b) => b.tipe === 'teks' && materiPunyaRumus(b.html))
+  }, [page])
+
+  const katexSiap = useKatexSiap(butuhKatex)
 
   function prev() {
     setIdx((i) => Math.max(0, i - 1))
@@ -73,13 +82,15 @@ export default function MateriHalamanViewer({ materi, awal = 0, onTutup, mode = 
       <article className="mh-page" key={page?.id || idx}>
         {page?.blok.map((b) => {
           if (b.tipe === 'teks') {
-            const html = bersihHtmlMateri(b.html)
-            if (!html) return null
+            const bersih = bersihHtmlMateri(b.html)
+            if (!bersih) return null
+            const isi =
+              katexSiap && materiPunyaRumus(bersih) ? htmlDenganRumus(bersih) : bersih
             return (
               <div
                 key={b.id}
-                className="mh-blok mh-blok--teks"
-                dangerouslySetInnerHTML={{ __html: html }}
+                className="mh-blok mh-blok--teks soal-rich-view"
+                dangerouslySetInnerHTML={{ __html: isi }}
               />
             )
           }
