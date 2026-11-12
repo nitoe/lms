@@ -21,6 +21,7 @@ import { LABEL_MAPEL_TKA, type MapelTkaNama } from '../../lib/tkaAkses'
 import type { KuisLms, TahapTryOutTka } from '../../types/kuis'
 import { NAMA_TAHAP_TRYOUT_TKA } from '../../types/kuis'
 import type { BarisRekapTka, BarisSebaranTka, SebaranMapelTka } from '../../types/rekapTka'
+import TkaSebaranManual from './TkaSebaranManual'
 
 type Props = {
   mapel: MapelTkaNama
@@ -89,6 +90,7 @@ export default function TkaRekapMapel({
   const label = LABEL_MAPEL_TKA[mapel]
   const [edit, setEdit] = useState<{ siswaId: string; draft: string } | null>(null)
   const [busy, setBusy] = useState(false)
+  const [inputSebaran, setInputSebaran] = useState(false)
 
   const kelasScope = useMemo(
     () => (kelasFilter === 'semua' ? kelasIzin : kelasIzin.filter((k) => k === kelasFilter)),
@@ -330,6 +332,30 @@ export default function TkaRekapMapel({
             tabel di bawah.
           </p>
         </div>
+      )}
+
+      {rowsTabel.length > 0 && !inputSebaran && (
+        <div className="flex flex-wrap items-center gap-2">
+          <button type="button" className="lms-btn-secondary text-sm" onClick={() => setInputSebaran(true)}>
+            + Input sebaran kompetensi manual
+          </button>
+          <span className="text-xs text-slate-500">
+            Untuk try out di luar LMS: isi poin per kompetensi, nilai akhir ikut terhitung.
+          </span>
+        </div>
+      )}
+
+      {inputSebaran && (
+        <TkaSebaranManual
+          mapel={mapel}
+          tahap={tahap}
+          rows={rowsTabel}
+          namaGuru={namaGuru}
+          onSelesai={onReload}
+          onTutup={() => setInputSebaran(false)}
+          onError={onError}
+          onInfo={onInfo}
+        />
       )}
 
       {rowsTabel.length > 0 && (

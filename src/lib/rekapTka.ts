@@ -269,6 +269,11 @@ export async function simpanNilaiManualTka(input: {
   mapel: MapelTkaNama
   /** null = hapus override manual (kembali ke otomatis / kosong). */
   nilai: number | null
+  /**
+   * Sebaran capaian input manual (try out di luar LMS). Bila diberikan bersama nilai, ditulis
+   * ke `sebaran[mapel]`. undefined = perilaku lama (sebaran lama dibuang jika nilai berubah).
+   */
+  sebaran?: SebaranMapelTka | null
   namaGuru?: string
 }): Promise<void> {
   const uid = auth.currentUser?.uid
@@ -314,6 +319,9 @@ export async function simpanNilaiManualTka(input: {
     sumber[input.mapel] = 'manual'
     buangSebaran = nilaiLama == null || Number(nilaiLama) !== n
   }
+  // Sebaran baru dari input manual menggantikan sebaran lama (tidak dibuang).
+  const tulisSebaran = input.sebaran != null && nilai[input.mapel] != null
+  if (tulisSebaran) buangSebaran = false
 
   await setDoc(
     ref,
@@ -324,7 +332,11 @@ export async function simpanNilaiManualTka(input: {
       siswaNama: input.siswaNama,
       nilai,
       sumber,
-      ...(buangSebaran && sudahAda ? { sebaran: { [input.mapel]: deleteField() } } : {}),
+      ...(tulisSebaran
+        ? { sebaran: { [input.mapel]: input.sebaran } }
+        : buangSebaran && sudahAda
+          ? { sebaran: { [input.mapel]: deleteField() } }
+          : {}),
       diubahOleh: uid,
       diubahOlehNama: input.namaGuru || '',
       updatedAt: serverTimestamp(),

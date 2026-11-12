@@ -362,3 +362,125 @@ export function bangunSebaranBi(sb: NonNullable<BarisTryOutImport['sbBi']>): Seb
   return out
 }
 
+
+/* ---------------------------------------------------------------- input sebaran manual */
+
+/** Satu kelompok kompetensi yang diisi pada input manual (try out di luar LMS). */
+export type KelompokInputSebaran = {
+  /** `${dim}:${key}` — dipakai sebagai kunci form. */
+  id: string
+  dim: DimensiSebaran
+  key: string
+  nama: string
+  /** Judul kelompok di header grid. */
+  grup: string
+}
+
+/**
+ * Kelompok yang diisi manual per mapel:
+ * - Matematika: L1, L2 (kompetensi dasar) + 3 tipe materi.
+ * - Bahasa Indonesia: L1–L3 saja (tipe materi diturunkan, pembagian soalnya sama).
+ * - IPA: L1–L3 + 2 domain (Pengetahuan IPA, Keterampilan Proses Sains).
+ */
+export function kelompokInputSebaran(mapel: MapelTkaNama): KelompokInputSebaran[] {
+  const dasar = (ks: KompleksitasSoal[]): KelompokInputSebaran[] =>
+    ks.map((k) => ({
+      id: `kompleksitas:${k}`,
+      dim: 'kompleksitas',
+      key: k,
+      nama: NAMA_KOMPLEKSITAS_TKA[k],
+      grup: 'Kompetensi dasar',
+    }))
+  if (mapel === 'TKA Matematika') {
+    return [
+      ...dasar(['L1', 'L2']),
+      ...MATERI_TKA[mapel].map(
+        (m): KelompokInputSebaran => ({
+          id: `materi:${m}`,
+          dim: 'materi',
+          key: m,
+          nama: m,
+          grup: 'Kompetensi materi',
+        }),
+      ),
+    ]
+  }
+  if (mapel === 'TKA Bahasa Indonesia') return dasar(['L1', 'L2', 'L3'])
+  return [
+    ...dasar(['L1', 'L2', 'L3']),
+    ...URUTAN_DOMAIN_TKA.map(
+      (d): KelompokInputSebaran => ({
+        id: `domain:${d}`,
+        dim: 'domain',
+        key: d,
+        nama: NAMA_DOMAIN_TKA[d],
+        grup: 'Kompetensi materi',
+      }),
+    ),
+  ]
+}
+
+export type NilaiInputSebaran = { poin: number; maks: number }
+
+/** Nilai akhir (0–100, dibulatkan) dari sebaran: poin ÷ maks. */
+export function nilaiDariSebaran(s: SebaranMapelTka): number {
+  if (!s.maks) return 0
+  return Math.min(100, Math.max(0, Math.round((s.skor / s.maks) * 100)))
+}
+
+/**
+ * Bangun SebaranMapelTka dari input manual (poin & maks per kelompok).
+ * Semua kelompok mapel wajib terisi. Jumlah poin & maks kompetensi dasar harus sama dengan
+ * kompetensi materi (keduanya membagi soal yang sama).
+ */
+export function bangunSebaranManual(
+  mapel: MapelTkaNama,
+  input: Record<string, NilaiInputSebaran>,
+): { sebaran: SebaranMapelTka } | { error: string } {
+  const kelompok = kelompokInputSebaran(mapel)
+  const rows: Record<DimensiSebaran, BarisSebaranTka[]> = { kompleksitas: [], materi: [], domain: [] }
+  for (const g of kelompok) {
+    const v = input[g.id]
+    if (!v || !Number.isFinite(v.poin) || !Number.isFinite(v.maks)) {
+      return { error: `Poin ${g.nama} belum diisi.` }
+    }
+    if (v.maks <= 0) return { error: `Poin maksimum ${g.nama} harus lebih dari 0.` }
+    if (v.poin < 0 || v.poin > v.maks) {
+      return { error: `Poin ${g.nama} harus antara 0 dan ${v.maks}.` }
+    }
+    rows[g.dim].push({
+      key: g.key,
+      nama: g.nama,
+      poin: bulat2(v.poin),
+      maks: bulat2(v.maks),
+      persen: persenPoin(v.poin, v.maks),
+    })
+  }
+  const jumlah = (r: BarisSebaranTka[]) => ({
+    poin: r.reduce((a, b) => a + b.poin, 0),
+    maks: r.reduce((a, b) => a + b.maks, 0),
+  })
+  const dasar = jumlah(rows.kompleksitas)
+  const materiUtama = rows.materi.length ? rows.materi : rows.domain
+  if (materiUtama.length) {
+    const m = jumlah(materiUtama)
+    if (Math.abs(m.poin - dasar.poin) > 0.01 || Math.abs(m.maks - dasar.maks) > 0.01) {
+      return {
+        error:
+          `Jumlah poin kompetensi dasar (${bulat2(dasar.poin)}/${bulat2(dasar.maks)}) harus sama ` +
+          `dengan kompetensi materi (${bulat2(m.poin)}/${bulat2(m.maks)}).`,
+      }
+    }
+  }
+  const out: SebaranMapelTka = { skor: bulat2(dasar.poin), maks: bulat2(dasar.maks) }
+  out.kompleksitas = rows.kompleksitas
+  if (mapel === 'TKA Bahasa Indonesia') {
+    // L1/L2/L3 = tipe materi (pembagian soal sama) — sama seperti data import Try Out I.
+    const nama = MATERI_TKA[mapel]
+    out.materi = rows.kompleksitas.map((r, i) => ({ ...r, key: nama[i], nama: nama[i] }))
+  } else if (rows.materi.length) {
+    out.materi = rows.materi
+  }
+  if (rows.domain.length) out.domain = rows.domain
+  return { sebaran: out }
+}

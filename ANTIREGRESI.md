@@ -1,3 +1,14 @@
+## §112. Input sebaran manual
+
+112.1 Sebaran manual disimpan sebagai **poin & maks** per kompetensi (bukan persen), lewat `bangunSebaranManual`. Jumlah poin & maks kompetensi dasar WAJIB sama dengan kompetensi materi (membagi soal yang sama); jika tidak, tolak.
+
+112.2 Grid hanya memuat siswa dengan `sumber !== 'otomatis'`. Jangan menimpa nilai otomatis LMS lewat input manual — sebarannya sudah dari jawaban.
+
+112.3 Menyimpan sebaran manual HARUS lewat `simpanNilaiManualTka({ sebaran })` agar nilai & sebaran tertulis bersamaan. Mengubah nilai manual tanpa `sebaran` membuang sebaran lama mapel itu (§109.3).
+
+112.4 Validasi seluruh baris dulu; jika ada satu salah, jangan menyimpan apa pun (hindari data setengah jadi). Setelah menyimpan, publikasi portal harus diperbarui manual («Perbarui publikasi»).
+
+
 ## §111. UI katalog Tugas (`tg-*`)
 
 111.1 Aksen kartu = variabel `--tg-a` yang diset **inline per kartu** dari `aksenMapel(mapel).bar`; soft/garis diturunkan dengan `color-mix`. Warna teks berwarna boleh memakai `--tg-a` langsung karena palet `aksenMapel` seluruhnya gelap (kontras ≥ 4,5:1). Jangan mengganti palet itu dengan warna terang tanpa mengecek kontras (ANTIREGRESI §108.2).

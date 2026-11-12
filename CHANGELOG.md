@@ -1,3 +1,14 @@
+## 2026-11-12 — Input sebaran kompetensi manual (try out di luar LMS)
+
+- Tab mapel (Matematika / Bahasa Indonesia / IPA) punya tombol **+ Input sebaran kompetensi manual** untuk Try Out tahap mana pun yang dikerjakan di luar LMS.
+- Grid input: **poin maksimum** tiap kompetensi diisi sekali (baris pertama), lalu **poin diperoleh** tiap siswa. Nilai akhir dihitung otomatis (poin ÷ maks × 100, dibulatkan) dan boleh ditimpa; tersimpan sebagai nilai manual beserta `sebaran[mapel]`.
+- Kelompok yang diisi: MTK = L1, L2 + Bilangan, Geometri dan Pengukuran, Data; BI = L1–L3 (tipe materi diturunkan); IPA = L1–L3 + Pengetahuan IPA, Keterampilan Proses Sains.
+- Validasi: semua kompetensi wajib terisi, poin ≤ maks, dan jumlah poin kompetensi dasar harus sama dengan kompetensi materi. Bila ada baris salah, tidak ada yang disimpan.
+- Siswa yang nilainya otomatis dari kuis LMS tidak ditampilkan (sebarannya sudah dari jawaban). Data yang sudah ada (mis. import Try Out I) ter-prefill dan bisa dikoreksi.
+- `simpanNilaiManualTka` menerima `sebaran`; tanpa `sebaran` perilaku lama (sebaran dibuang jika nilai berubah) tetap.
+- File: `src/pages/tka/TkaSebaranManual.tsx` (baru), `src/pages/tka/TkaRekapMapel.tsx`, `src/lib/sebaranTka.ts`, `src/lib/rekapTka.ts`, `src/styles/tka.css`. Tanpa perubahan `firestore.rules`.
+
+
 ## 2026-11-12 — Halaman Tugas (katalog guru): UI v2
 
 - **Kepala & ringkasan:** judul + tombol «Tugas baru» yang jelas, strip ringkasan (total, aktif, segera berakhir, pengumpulan).

@@ -1473,3 +1473,15 @@ b.tka-sb-tuntas { color: #047857; }
   color: #475569;
   border-bottom: 1px solid #e2e8f0;
 }
+
+/* ---- Input sebaran manual (ANTIREGRESI §112) ---- */
+.tka-sbm {
+  border: 1px solid #c7d2fe;
+  background: #f8faff;
+  border-radius: 0.9rem;
+  padding: 0.9rem 1rem;
+}
+.tka-sbm-input { width: 4.4rem; padding: 0.25rem 0.4rem; text-align: center; font-size: 0.8125rem; }
+.tka-sbm-maks td { background: #eef2ff; }
+.tka-sbm-ok { font-size: 0.72rem; font-weight: 600; color: #047857; }
+.tka-sbm-salah { font-size: 0.72rem; font-weight: 600; color: #b91c1c; max-width: 16rem; white-space: normal; }
