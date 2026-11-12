@@ -1306,3 +1306,81 @@
   color: #fff;
   border: 1px solid rgba(255, 255, 255, 0.35);
 }
+
+
+/* ── Intro strip tab Bank Soal / Kuis di ruang TKA ── */
+.tka-panel-intro {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem 1.25rem;
+  padding: 0.95rem 1.1rem;
+  border-radius: 1rem;
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(23, 23, 57, 0.04);
+  position: relative;
+  overflow: hidden;
+}
+.tka-panel-intro::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: #94a3b8;
+}
+.tka-panel-intro--ipa::before { background: #e11d48; }
+.tka-panel-intro--mtk::before { background: #14b8a6; }
+.tka-panel-intro--bi::before { background: #3b82f6; }
+.tka-panel-intro--ipa {
+  border-color: #fecdd3;
+  background: linear-gradient(135deg, #fff1f2 0%, #fff 55%);
+}
+.tka-panel-intro--mtk {
+  border-color: #99f6e4;
+  background: linear-gradient(135deg, #f0fdfa 0%, #fff 55%);
+}
+.tka-panel-intro--bi {
+  border-color: #bfdbfe;
+  background: linear-gradient(135deg, #eff6ff 0%, #fff 55%);
+}
+.tka-panel-intro-eyebrow {
+  margin: 0;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #64748b;
+}
+.tka-panel-intro--ipa .tka-panel-intro-eyebrow { color: #be123c; }
+.tka-panel-intro--mtk .tka-panel-intro-eyebrow { color: #0f766e; }
+.tka-panel-intro--bi .tka-panel-intro-eyebrow { color: #1d4ed8; }
+.tka-panel-intro-lead {
+  margin: 0.35rem 0 0;
+  font-size: 0.84rem;
+  line-height: 1.5;
+  color: #334155;
+  max-width: 44rem;
+}
+.tka-panel-intro-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  align-items: center;
+}
+.tka-panel-intro-pills span {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  padding: 0.25rem 0.55rem;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.06);
+  color: #334155;
+}
+.tka-panel-intro--ipa .tka-panel-intro-pills span {
+  background: #ffe4e6;
+  color: #9f1239;
+}

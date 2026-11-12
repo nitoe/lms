@@ -1,3 +1,10 @@
+## 2026-11-12 — Tab Bank Soal & Kuis ruang TKA: intro kontekstual
+
+- Strip intro di atas toolbar tab **Bank Soal** dan **Kuis** saat ruang mapel TKA (aksen IPA / MTK / BI).
+- Copy IPA menekankan materi Fase B & C dan bentuk soal TKA (PG, PGK, B/S); kuis mengingatkan tahap Try Out untuk rekap.
+- Empty state kuis TKA lebih jelas (Siap + tahap).
+- File: `src/components/BankSoalPanel.tsx`, `src/components/KuisPanel.tsx`, `src/styles/tka.css`.
+
 ## 2026-11-12 — Ruang TKA per mapel: hero IPA (dan aksen tetap)
 
 - Aksen cover TKA **tidak lagi hash nama**: IPA rose, Matematika teal, Bahasa Indonesia biru — selaras kartu dashboard.

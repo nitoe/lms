@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { buatPaket, daftarPaket, hapusPaket, simpanPaket } from '../lib/soal'
 import { getTpMapelKelas } from '../lib/tpData'
-import { adalahMapelTka, materiTkaUntuk, TIPE_SOAL_TKA, KELAS_TKA_BANK } from '../lib/tkaAkses'
+import { adalahMapelTka, materiTkaUntuk, TIPE_SOAL_TKA, KELAS_TKA_BANK, LABEL_MAPEL_TKA } from '../lib/tkaAkses'
 import type { TpRingkas } from '../types/materi'
 import type { KompleksitasSoal, PaketSoal, TipeSoal } from '../types/soal'
 import {
@@ -484,6 +484,34 @@ export default function BankSoalPanel({ kelas, mapel, ruangId }: Props) {
 
   return (
     <div className="flex flex-col gap-4">
+      {isTka && (
+        <div
+          className={
+            'tka-panel-intro' +
+            (mapel === 'TKA IPA'
+              ? ' tka-panel-intro--ipa'
+              : mapel === 'TKA Matematika'
+                ? ' tka-panel-intro--mtk'
+                : ' tka-panel-intro--bi')
+          }
+        >
+          <div className="tka-panel-intro-text">
+            <p className="tka-panel-intro-eyebrow">Bank soal TKA · {LABEL_MAPEL_TKA[mapel as keyof typeof LABEL_MAPEL_TKA] ?? mapel}</p>
+            <p className="tka-panel-intro-lead">
+              {mapel === 'TKA IPA'
+                ? 'Kelompokkan paket per materi IPA (Fase B & C). Hanya bentuk PG, PG kompleks, dan benar–salah. Status Siap dipakai untuk menyusun kuis / try out.'
+                : mapel === 'TKA Matematika'
+                  ? 'Kelompokkan paket per materi Matematika. Hanya bentuk PG, PG kompleks, dan benar–salah. Status Siap dipakai untuk menyusun kuis / try out.'
+                  : 'Kelompokkan paket per materi Bahasa Indonesia. Hanya bentuk PG, PG kompleks, dan benar–salah. Status Siap dipakai untuk menyusun kuis / try out.'}
+            </p>
+          </div>
+          <div className="tka-panel-intro-pills" aria-hidden>
+            <span>PG</span>
+            <span>PGK</span>
+            <span>B/S</span>
+          </div>
+        </div>
+      )}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="lms-search min-w-0 flex-1" style={{ maxWidth: '18rem' }}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"

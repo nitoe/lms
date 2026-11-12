@@ -26,7 +26,7 @@ import {
   URUTAN_KOMPLEKSITAS,
   URUTAN_TIPE,
 } from '../types/soal'
-import { adalahMapelTka, TIPE_SOAL_TKA } from '../lib/tkaAkses'
+import { adalahMapelTka, LABEL_MAPEL_TKA, TIPE_SOAL_TKA } from '../lib/tkaAkses'
 import KuisDetail, { INSTRUKSI_TIPE } from './KuisDetail'
 import HasilKuisPanel from './HasilKuisPanel'
 import OfflineKuisPanel from './OfflineKuisPanel'
@@ -727,6 +727,27 @@ export default function KuisPanel({ kelas, mapel }: Props) {
 
   return (
     <div className="space-y-4">
+      {isTka && (
+        <div
+          className={
+            'tka-panel-intro' +
+            (mapel === 'TKA IPA'
+              ? ' tka-panel-intro--ipa'
+              : mapel === 'TKA Matematika'
+                ? ' tka-panel-intro--mtk'
+                : ' tka-panel-intro--bi')
+          }
+        >
+          <div className="tka-panel-intro-text">
+            <p className="tka-panel-intro-eyebrow">Kuis & try out · {LABEL_MAPEL_TKA[mapel as keyof typeof LABEL_MAPEL_TKA] ?? mapel}</p>
+            <p className="tka-panel-intro-lead">
+              {mapel === 'TKA IPA'
+                ? 'Susun latihan atau try out dari paket bank yang Siap. Tautkan tahap Try Out (I–V) bila nilai masuk rekap TKA.'
+                : 'Susun latihan atau try out dari paket bank yang Siap. Tautkan tahap Try Out (I–V) bila nilai masuk rekap TKA.'}
+            </p>
+          </div>
+        </div>
+      )}
       <div className="lms-toolbar">
         <div className="flex min-w-0 flex-1 items-center gap-2">
           <span className="lms-count-pill">{list === null ? '…' : `${list.length} kuis`}</span>
@@ -756,7 +777,9 @@ export default function KuisPanel({ kelas, mapel }: Props) {
         <div className="lms-empty">
           <p className="font-medium text-slate-700">Belum ada kuis</p>
           <p className="mt-1">
-            Buat kuis dari paket bank soal yang sudah berstatus <strong>Siap</strong>.
+            {isTka
+              ? 'Buat kuis / try out dari paket bank soal yang sudah berstatus Siap. Untuk rekap portal, isi tahap Try Out saat menyimpan.'
+              : 'Buat kuis dari paket bank soal yang sudah berstatus Siap.'}
           </p>
         </div>
       )}
