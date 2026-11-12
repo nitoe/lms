@@ -2,9 +2,12 @@
  * Muat & simpan Rekap Nilai Try Out TKA.
  * Otomatis: skor dari lms_jawaban pada kuis dengan tahapTryOutTka cocok.
  * Manual: override di lms_rekap_tka (menang atas otomatis).
+ * Sebaran capaian (kompleksitas / tipe materi / domain): dari jawaban LMS (otomatis) atau
+ * field `sebaran` pada dokumen rekap (hasil import try out di luar LMS). ANTIREGRESI §109.
  */
 import {
   collection,
+  deleteField,
   doc,
   getDoc,
   getDocs,
@@ -21,13 +24,20 @@ import {
   skorKe100,
 } from './jawabanKuis'
 import { muatSiswaKelas, type SiswaDasar } from './siswaAuth'
+import { hitungSebaranDariJawaban } from './sebaranTka'
 import {
   KELAS_TKA_BANK,
   MAPEL_TKA,
   type MapelTkaNama,
 } from './tkaAkses'
 import type { KuisLms, TahapTryOutTka } from '../types/kuis'
-import type { BarisRekapTka, RekapTkaDok, SelNilaiTka, SumberNilaiTka } from '../types/rekapTka'
+import type {
+  BarisRekapTka,
+  RekapTkaDok,
+  SebaranMapelTka,
+  SelNilaiTka,
+  SumberNilaiTka,
+} from '../types/rekapTka'
 import { idRekapTka } from '../types/rekapTka'
 
 function koleksi() {
@@ -52,12 +62,19 @@ export async function muatKuisTkaPerTahap(
  * Nilai otomatis 0–100 untuk satu siswa pada satu mapel dari daftar kuis tahap.
  * Jika beberapa kuis: ambil skor tertinggi (skala 100).
  */
+type NilaiOtomatis = {
+  nilai: number
+  kuisId: string
+  judul: string
+  sebaran: SebaranMapelTka | null
+}
+
 async function nilaiOtomatisMapel(
   mapel: MapelTkaNama,
   kuisList: KuisLms[],
   kelasList: string[],
-): Promise<Map<string, { nilai: number; kuisId: string; judul: string }>> {
-  const hasil = new Map<string, { nilai: number; kuisId: string; judul: string }>()
+): Promise<Map<string, NilaiOtomatis>> {
+  const hasil = new Map<string, NilaiOtomatis>()
   for (const k of kuisList) {
     if (!k.id) continue
     const jawaban = await daftarJawabanKuisMultiKelas(k.id, kelasList, mapel)
@@ -68,7 +85,13 @@ async function nilaiOtomatisMapel(
       const n = skorKe100(j.skorOtomatis, j.totalPoin || k.totalPoin || 0)
       const prev = hasil.get(sid)
       if (!prev || n > prev.nilai) {
-        hasil.set(sid, { nilai: n, kuisId: k.id, judul: k.judul })
+        // Sebaran dihitung dari kuis & jawaban yang SAMA dengan nilai (konsisten).
+        hasil.set(sid, {
+          nilai: n,
+          kuisId: k.id,
+          judul: k.judul,
+          sebaran: hitungSebaranDariJawaban(k.soal, j.detail, mapel),
+        })
       }
     }
   }
@@ -107,6 +130,7 @@ export async function muatRekapTkaManual(
             siswaNama: String(data.siswaNama ?? ''),
             nilai: (data.nilai as RekapTkaDok['nilai']) ?? {},
             sumber: (data.sumber as RekapTkaDok['sumber']) ?? {},
+            sebaran: (data.sebaran as RekapTkaDok['sebaran']) ?? undefined,
             kuisIdRef: (data.kuisIdRef as RekapTkaDok['kuisIdRef']) ?? {},
             diubahOleh: typeof data.diubahOleh === 'string' ? data.diubahOleh : undefined,
             diubahOlehNama: typeof data.diubahOlehNama === 'string' ? data.diubahOlehNama : undefined,
@@ -126,6 +150,29 @@ export async function muatRekapTkaManual(
 }
 
 /** Gabungkan roster siswa + otomatis + manual menjadi baris UI. */
+/** Peringatan label soal (tipe materi / domain) yang membuat sebaran tidak lengkap. */
+export function peringatanLabelSebaran(
+  kuisPerMapel: Record<MapelTkaNama, KuisLms[]>,
+): string[] {
+  const out: string[] = []
+  for (const mapel of MAPEL_TKA) {
+    for (const k of kuisPerMapel[mapel] ?? []) {
+      const soal = k.soal ?? []
+      const tanpaMateri = soal.filter((s) => !(s.tipeMateri || '').trim()).length
+      if (tanpaMateri > 0) {
+        out.push(`${k.judul}: ${tanpaMateri} soal belum berlabel tipe materi (sebaran materi tidak lengkap).`)
+      }
+      if (mapel === 'TKA IPA') {
+        const tanpaDomain = soal.filter((s) => !s.domainTka).length
+        if (tanpaDomain > 0) {
+          out.push(`${k.judul}: ${tanpaDomain} soal IPA belum berlabel domain (pengetahuan / keterampilan proses).`)
+        }
+      }
+    }
+  }
+  return out
+}
+
 export async function bangunRekapTka(input: {
   tahap: TahapTryOutTka
   kelasList: string[]
@@ -134,6 +181,7 @@ export async function bangunRekapTka(input: {
   kuisPerMapel: Record<MapelTkaNama, KuisLms[]>
   siswa: SiswaDasar[]
   peringatanManual: string[]
+  peringatanSebaran: string[]
 }> {
   const { tahap, kelasList } = input
   const [kuisPerMapel, siswaBatches, manualHasil] = await Promise.all([
@@ -147,10 +195,7 @@ export async function bangunRekapTka(input: {
     .flat()
     .sort((a, b) => a.nama.localeCompare(b.nama, 'id') || a.kelas.localeCompare(b.kelas))
 
-  const autoPerMapel = {} as Record<
-    MapelTkaNama,
-    Map<string, { nilai: number; kuisId: string; judul: string }>
-  >
+  const autoPerMapel = {} as Record<MapelTkaNama, Map<string, NilaiOtomatis>>
   await Promise.all(
     MAPEL_TKA.map(async (mapel) => {
       autoPerMapel[mapel] = await nilaiOtomatisMapel(mapel, kuisPerMapel[mapel], kelasList)
@@ -176,7 +221,11 @@ export async function bangunRekapTka(input: {
         !Number.isNaN(Number(mVal)) &&
         (mSrc === 'manual' || mSrc == null || mSrc === undefined)
       ) {
-        perMapel[mapel] = { nilai: Number(mVal), sumber: 'manual' }
+        perMapel[mapel] = {
+          nilai: Number(mVal),
+          sumber: 'manual',
+          sebaran: manual?.sebaran?.[mapel] ?? null,
+        }
         continue
       }
       const auto = autoPerMapel[mapel].get(s.id)
@@ -186,9 +235,10 @@ export async function bangunRekapTka(input: {
           sumber: 'otomatis',
           dariKuis: auto.judul,
           kuisId: auto.kuisId,
+          sebaran: auto.sebaran,
         }
       } else {
-        perMapel[mapel] = { nilai: null, sumber: null }
+        perMapel[mapel] = { nilai: null, sumber: null, sebaran: null }
       }
     }
     return {
@@ -199,7 +249,13 @@ export async function bangunRekapTka(input: {
     }
   })
 
-  return { baris, kuisPerMapel, siswa, peringatanManual }
+  return {
+    baris,
+    kuisPerMapel,
+    siswa,
+    peringatanManual,
+    peringatanSebaran: peringatanLabelSebaran(kuisPerMapel),
+  }
 }
 
 /** Simpan / perbarui nilai manual satu mapel untuk satu siswa. */
@@ -240,14 +296,21 @@ export async function simpanNilaiManualTka(input: {
     ...((prev.sumber as Record<string, SumberNilaiTka>) || {}),
   }
 
+  // Sebaran hasil import hanya valid untuk nilai yang diimpor. Bila nilai diubah / dihapus,
+  // sebaran mapel itu dibuang agar tidak menampilkan capaian yang tidak cocok (ANTIREGRESI §109).
+  const nilaiLama = (prev.nilai as Record<string, number | null> | undefined)?.[input.mapel]
+  let buangSebaran = false
+
   if (input.nilai == null || Number.isNaN(Number(input.nilai))) {
     delete nilai[input.mapel]
     delete sumber[input.mapel]
+    buangSebaran = true
   } else {
     const n = Math.round(Number(input.nilai) * 10) / 10
     if (n < 0 || n > 100) throw new Error('Nilai harus antara 0 dan 100.')
     nilai[input.mapel] = n
     sumber[input.mapel] = 'manual'
+    buangSebaran = nilaiLama == null || Number(nilaiLama) !== n
   }
 
   await setDoc(
@@ -259,6 +322,7 @@ export async function simpanNilaiManualTka(input: {
       siswaNama: input.siswaNama,
       nilai,
       sumber,
+      ...(buangSebaran && sudahAda ? { sebaran: { [input.mapel]: deleteField() } } : {}),
       diubahOleh: uid,
       diubahOlehNama: input.namaGuru || '',
       updatedAt: serverTimestamp(),

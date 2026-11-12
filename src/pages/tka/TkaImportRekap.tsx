@@ -35,7 +35,23 @@ function parseJsonBaris(teks: string): BarisTryOutImport[] {
     if (!nama) throw new Error(`Baris ${i + 1}: nama kosong.`)
     if (kelas !== '6A' && kelas !== '6B') throw new Error(`Baris ${i + 1}: kelas harus 6A/6B.`)
     if (Number.isNaN(mtk) || Number.isNaN(bi)) throw new Error(`Baris ${i + 1}: mtk/bi bukan angka.`)
-    return { nama, kelas, mtk, bi }
+    const out: BarisTryOutImport = { nama, kelas, mtk, bi }
+    // Opsional: sebaran poin per kompetensi (lihat data/tryoutTahap1.ts untuk format).
+    const sbMtk = r.sbMtk as BarisTryOutImport['sbMtk'] | undefined
+    const sbBi = r.sbBi as BarisTryOutImport['sbBi'] | undefined
+    if (sbMtk) {
+      if (!Array.isArray(sbMtk.k) || sbMtk.k.length !== 2 || !Array.isArray(sbMtk.m) || sbMtk.m.length !== 3) {
+        throw new Error(`Baris ${i + 1}: sbMtk harus {k:[2 angka], m:[3 angka]}.`)
+      }
+      out.sbMtk = sbMtk
+    }
+    if (sbBi) {
+      if (!Array.isArray(sbBi.k) || sbBi.k.length !== 3) {
+        throw new Error(`Baris ${i + 1}: sbBi harus {k:[3 angka]}.`)
+      }
+      out.sbBi = sbBi
+    }
+    return out
   })
 }
 
@@ -100,7 +116,7 @@ export default function TkaImportRekap() {
     }
     if (
       !window.confirm(
-        `Simpan ${nCocok} nilai manual tahap ${tahap} (MTK + BI) ke lms_rekap_tka?\nBaris yang tidak cocok akan dilewati.`,
+        `Simpan ${nCocok} nilai manual tahap ${tahap} (MTK + BI) beserta sebaran capaian ke lms_rekap_tka?\nBaris yang tidak cocok akan dilewati.`,
       )
     ) {
       return
@@ -115,7 +131,7 @@ export default function TkaImportRekap() {
         namaGuru: profil?.nama,
       })
       setInfo(
-        `Selesai: ${hasil.ditulis} dokumen ditulis, ${hasil.dilewati} dilewati.` +
+        `Selesai: ${hasil.ditulis} dokumen ditulis (${hasil.denganSebaran} dengan sebaran capaian), ${hasil.dilewati} dilewati.` +
           (hasil.error.length ? ` Error: ${hasil.error.join('; ')}` : ''),
       )
       if (hasil.error.length) setError(hasil.error.join('\n'))
@@ -160,8 +176,8 @@ export default function TkaImportRekap() {
           <h1 className="mt-1 text-lg font-bold text-slate-900">Import Rekap Try Out TKA</h1>
           <p className="text-sm text-slate-600 max-w-2xl">
             Untuk <strong>admin LMS</strong> dan <strong>admin TKA</strong>. Mencocokkan nama + kelas ke
-            roster siswa, lalu menulis nilai manual (MTK &amp; BI) ke koleksi{' '}
-            <code className="text-xs">lms_rekap_tka</code>.
+            roster siswa, lalu menulis nilai manual (MTK &amp; BI) beserta sebaran capaian per
+            kompetensi ke koleksi <code className="text-xs">lms_rekap_tka</code>.
           </p>
         </div>
         <Link to="/tka/rekap" className="lms-btn-secondary text-sm">
@@ -173,8 +189,8 @@ export default function TkaImportRekap() {
         <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Sumber bawaan</p>
         <p className="mt-1 text-sm text-slate-700">{SUMBER_TRYOUT_TAHAP_1}</p>
         <p className="mt-1 text-xs text-slate-500">
-          {DATA_TRYOUT_TAHAP_1.length} siswa · hanya mapel Matematika &amp; Bahasa Indonesia (IPA
-          kosong).
+          {DATA_TRYOUT_TAHAP_1.length} siswa · mapel Matematika &amp; Bahasa Indonesia (IPA belum
+          diujikan) · memuat sebaran kompleksitas &amp; tipe materi per siswa.
         </p>
         <button
           type="button"
@@ -208,7 +224,8 @@ export default function TkaImportRekap() {
           Atau tempel JSON kustom
         </summary>
         <p className="mt-2 text-xs text-slate-500">
-          Format: array <code>{`[{ "nama", "kelas": "6A"|"6B", "mtk", "bi" }]`}</code>
+          Format: array <code>{`[{ "nama", "kelas": "6A"|"6B", "mtk", "bi" }]`}</code> (opsional:{' '}
+          <code>sbMtk</code>, <code>sbBi</code> berisi poin per kompetensi)
         </p>
         <textarea
           className="lms-input mt-2 w-full font-mono text-xs"
@@ -272,6 +289,7 @@ export default function TkaImportRekap() {
                   <th>Kelas</th>
                   <th>MTK</th>
                   <th>BI</th>
+                  <th>Sebaran</th>
                   <th>Siswa LMS</th>
                   <th>Catatan</th>
                 </tr>
@@ -305,6 +323,10 @@ export default function TkaImportRekap() {
                     <td>{b.sumber.kelas}</td>
                     <td>{b.sumber.mtk}</td>
                     <td>{b.sumber.bi}</td>
+                    <td className="text-xs text-slate-500">
+                      {[b.sumber.sbMtk ? 'MTK' : '', b.sumber.sbBi ? 'BI' : ''].filter(Boolean).join(' + ') || '—'}
+                      {b.sumber.sbBi?.waktuHabis ? ' · waktu habis' : ''}
+                    </td>
                     <td className="text-sm">
                       {b.siswa ? (
                         <>

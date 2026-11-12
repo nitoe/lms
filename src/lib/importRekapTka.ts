@@ -1,6 +1,8 @@
 /**
- * Bulk import nilai Try Out TKA ke lms_rekap_tka (khusus admin LMS).
+ * Bulk import nilai Try Out TKA ke lms_rekap_tka (admin LMS / admin TKA).
  * Mencocokkan nama + kelas ke roster siswa, lalu setDoc merge dengan sumber manual.
+ * Bila baris memuat sebaran capaian (sbMtk / sbBi), ikut ditulis ke field `sebaran`
+ * per mapel agar rekap menampilkan sebaran kompleksitas & tipe materi (ANTIREGRESI §109).
  */
 import {
   doc,
@@ -11,8 +13,9 @@ import { auth, db } from './firebase'
 import { muatSiswaKelas, type SiswaDasar } from './siswaAuth'
 import type { MapelTkaNama } from './tkaAkses'
 import type { TahapTryOutTka } from '../types/kuis'
-import { idRekapTka } from '../types/rekapTka'
+import { idRekapTka, type SebaranMapelTka } from '../types/rekapTka'
 import type { BarisTryOutImport } from '../data/tryoutTahap1'
+import { bangunSebaranBi, bangunSebaranMtk } from './sebaranTka'
 
 const MAPEL_MTK: MapelTkaNama = 'TKA Matematika'
 const MAPEL_BI: MapelTkaNama = 'TKA Bahasa Indonesia'
@@ -98,6 +101,8 @@ export async function muatRosterTka6(): Promise<SiswaDasar[]> {
 export type HasilImportRekapTka = {
   ditulis: number
   dilewati: number
+  /** Jumlah dokumen yang ikut menulis sebaran capaian. */
+  denganSebaran: number
   error: string[]
 }
 
@@ -124,6 +129,7 @@ export async function imporRekapTkaManual(input: {
 
   const error: string[] = []
   let ditulis = 0
+  let denganSebaran = 0
   const CHUNK = 400
 
   for (let i = 0; i < siap.length; i += CHUNK) {
@@ -140,6 +146,10 @@ export async function imporRekapTkaManual(input: {
         error.push(`${b.sumber.nama}: nilai di luar 0–100`)
         continue
       }
+      const sebaran: Record<string, SebaranMapelTka> = {}
+      if (b.sumber.sbMtk) sebaran[MAPEL_MTK] = bangunSebaranMtk(b.sumber.sbMtk)
+      if (b.sumber.sbBi) sebaran[MAPEL_BI] = bangunSebaranBi(b.sumber.sbBi)
+      const adaSebaran = Object.keys(sebaran).length > 0
       batch.set(
         ref,
         {
@@ -155,6 +165,7 @@ export async function imporRekapTkaManual(input: {
             [MAPEL_MTK]: 'manual',
             [MAPEL_BI]: 'manual',
           },
+          ...(adaSebaran ? { sebaran } : {}),
           diubahOleh: uid,
           diubahOlehNama: input.namaGuru || '',
           updatedAt: serverTimestamp(),
@@ -163,6 +174,7 @@ export async function imporRekapTkaManual(input: {
         { merge: true },
       )
       ditulis += 1
+      if (adaSebaran) denganSebaran += 1
     }
     try {
       await batch.commit()
@@ -171,5 +183,5 @@ export async function imporRekapTkaManual(input: {
     }
   }
 
-  return { ditulis, dilewati, error }
+  return { ditulis, dilewati, denganSebaran, error }
 }

@@ -3,7 +3,8 @@
  * - Publish per kelas × tahap (6A_I, 6B_I, …)
  * - Ranking 10 besar dari gabungan 6A+6B
  * - Rata tahap I: BI+MTK; tahap II–V: BI+MTK+IPA
- * - Sebaran capaian (kompleksitas / materi / domain IPA) dari jawaban LMS bila ada
+ * - Sebaran capaian (kompleksitas / materi / domain IPA) diambil dari rekap (`SelNilaiTka.sebaran`):
+ *   hasil hitung jawaban LMS, atau data import try out di luar LMS (ANTIREGRESI §109).
  */
 import {
   collection,
@@ -17,9 +18,8 @@ import {
   writeBatch,
 } from 'firebase/firestore'
 import { auth, db } from './firebase'
-import { daftarJawabanKuis } from './jawabanKuis'
-import { ambilKuis } from './kuis'
 import { bangunRekapTka } from './rekapTka'
+import { keSebaranOrtu } from './sebaranTka'
 import { KELAS_TKA, type MapelTkaNama } from './tkaAkses'
 import type { TahapTryOutTka } from '../types/kuis'
 import type { Soal } from '../types/soal'
@@ -82,8 +82,8 @@ export function hitungRataRata(
 }
 
 /**
- * Hitung sebaran capaian dari snapshot soal kuis + detail jawaban siswa.
- * Pola sama dengan HasilTka di SiswaTka.tsx.
+ * @deprecated Berbasis jumlah soal benar (skor parsial dihitung 0). Publikasi kini memakai
+ * `hitungSebaranDariJawaban` (lib/sebaranTka.ts, berbobot poin). Dipertahankan agar impor lama tidak putus.
  */
 export function hitungSebaranDariDetail(
   soalList: Soal[] | undefined,
@@ -206,7 +206,7 @@ export async function muatStatusPublikasi(
 
 /**
  * Publikasikan snapshot satu kelas × tahap + hitung ulang ranking 6A+6B.
- * Menyertakan sebaran capaian bila kuis sumber + jawaban tersedia di LMS.
+ * Menyertakan sebaran capaian bila tersedia di rekap (jawaban LMS atau data import).
  */
 export async function publikasikanTkaOrtu(input: {
   kelas: string
@@ -247,25 +247,6 @@ export async function publikasikanTkaOrtu(input: {
   const siswaKelas = semuaSiswa.filter((s) => String(s.kelas).toUpperCase() === kelas)
   const catatan = (input.catatanOrtu || '').trim().slice(0, 500)
 
-  // Cache kuis agar tidak di-download berulang
-  const kuisCache = new Map<string, Awaited<ReturnType<typeof ambilKuis>>>()
-  async function getKuis(id: string) {
-    if (kuisCache.has(id)) return kuisCache.get(id) ?? null
-    const k = await ambilKuis(id)
-    kuisCache.set(id, k)
-    return k
-  }
-
-  // Jawaban per kuis×kelas×mapel (cache) — daftarJawabanKuis wajib 3 arg (rules)
-  const jawCache = new Map<string, Awaited<ReturnType<typeof daftarJawabanKuis>>>()
-  async function getJaw(kuisId: string, kelasJaw: string, mapel: string) {
-    const key = `${kuisId}|${kelasJaw}|${mapel}`
-    if (jawCache.has(key)) return jawCache.get(key) ?? []
-    const j = await daftarJawabanKuis(kuisId, kelasJaw, mapel)
-    jawCache.set(key, j)
-    return j
-  }
-
   const ops: { ref: ReturnType<typeof doc>; data: Record<string, unknown> }[] = []
 
   for (const s of siswaKelas) {
@@ -273,28 +254,12 @@ export async function publikasikanTkaOrtu(input: {
     const nilai = baris?.nilai || { BI: null, MTK: null, IPA: null }
     const rank = rankBySiswa.get(s.id)
 
-    // Sebaran per mapel (best-effort)
+    // Sebaran per mapel: sudah dihitung di rekap (jawaban LMS atau hasil import).
     const sebaran: SebaranOrtuTka = {}
     if (baris) {
       for (const mapelTka of ['TKA Bahasa Indonesia', 'TKA Matematika', 'TKA IPA'] as MapelTkaNama[]) {
-        const sel = baris.perMapel[mapelTka]
-        const ortuKey = MAPEL_KE_ORTU[mapelTka]
-        const kid = sel?.kuisId
-        if (!kid) continue
-        try {
-          const kuis = await getKuis(kid)
-          if (!kuis?.soal?.length) continue
-          const list = await getJaw(kid, kelas, mapelTka)
-          const milik = list
-            .filter((j) => j.siswaId === s.id || j.siswaUid === s.id)
-            .sort((a, b) => (b.skorOtomatis || 0) - (a.skorOtomatis || 0))
-          const terbaik = milik[0]
-          if (!terbaik?.detail?.length) continue
-          const seb = hitungSebaranDariDetail(kuis.soal, terbaik.detail)
-          if (seb) sebaran[ortuKey] = seb
-        } catch (e) {
-          console.warn('sebaran publish', s.id, mapelTka, e)
-        }
+        const seb = keSebaranOrtu(baris.perMapel[mapelTka]?.sebaran)
+        if (seb) sebaran[MAPEL_KE_ORTU[mapelTka]] = seb
       }
     }
 

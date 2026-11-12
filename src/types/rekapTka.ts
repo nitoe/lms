@@ -8,6 +8,34 @@ import type { TahapTryOutTka } from './kuis'
 
 export type SumberNilaiTka = 'otomatis' | 'manual'
 
+/**
+ * Satu baris sebaran capaian (kompleksitas / tipe materi / domain).
+ * Berbobot POIN (bukan jumlah soal): persen = poin / maks × 100.
+ */
+export type BarisSebaranTka = {
+  /** Kunci stabil: L1, Bilangan, pengetahuan, … */
+  key: string
+  nama: string
+  /** Poin diperoleh (boleh pecahan bila skor parsial). */
+  poin: number
+  /** Poin maksimum kelompok ini. */
+  maks: number
+  /** 0–100, satu desimal. */
+  persen: number
+}
+
+/** Sebaran capaian satu siswa pada satu mapel TKA (satu tahap). */
+export type SebaranMapelTka = {
+  skor: number
+  maks: number
+  kompleksitas?: BarisSebaranTka[]
+  materi?: BarisSebaranTka[]
+  /** Khusus IPA: pengetahuan vs keterampilan proses. */
+  domain?: BarisSebaranTka[]
+  /** true = waktu habis; soal yang tidak sempat tampil tidak dihitung (data sumber lama). */
+  waktuHabis?: boolean
+}
+
 /** Dokumen `lms_rekap_tka/{kelas}_{tahap}_{siswaId}`. */
 export type RekapTkaDok = {
   id: string
@@ -21,6 +49,11 @@ export type RekapTkaDok = {
   sumber: Partial<Record<MapelTkaNama, SumberNilaiTka>>
   /** Opsional: kuis sumber nilai otomatis terakhir. */
   kuisIdRef?: Partial<Record<MapelTkaNama, string>>
+  /**
+   * Sebaran capaian per mapel untuk nilai yang diimpor / manual (mis. Try Out I dari portal lama).
+   * Nilai otomatis dari LMS tidak disimpan di sini — dihitung dari lms_jawaban.
+   */
+  sebaran?: Partial<Record<MapelTkaNama, SebaranMapelTka>>
   diubahOleh?: string
   diubahOlehNama?: string
   updatedAt?: unknown
@@ -34,6 +67,8 @@ export type SelNilaiTka = {
   /** Judul kuis sumber otomatis, jika ada. */
   dariKuis?: string
   kuisId?: string
+  /** Sebaran capaian (otomatis dari jawaban LMS, atau hasil import). null = tidak ada data butir. */
+  sebaran?: SebaranMapelTka | null
 }
 
 export type BarisRekapTka = {
