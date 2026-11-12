@@ -3,6 +3,17 @@ import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import RuangCard from '../components/RuangCard'
 import {
+  IkonCari,
+  IkonJam,
+  IkonKuis,
+  IkonPanah,
+  IkonPlus,
+  IkonRekap,
+  IkonRuang,
+  IkonTka,
+  IkonTugas,
+} from '../components/ikonRuang'
+import {
   daftarRuangKelas,
   kelasWaliTanpaMapel,
   perluasDenganMapelMaster,
@@ -10,9 +21,24 @@ import {
 } from '../lib/kelasLms'
 import { getDaftarMapel } from '../lib/mapelData'
 import { NAMA_PERAN } from '../lib/peran'
+import { kunciRuang, urutkanAgenda, useRingkasanRuang } from '../lib/ringkasanRuang'
+import { bolehAksesTkaStaf } from '../lib/tkaAkses'
+import { infoTenggat } from '../lib/tugasUi'
+import '../styles/ruang.css'
+
+const JUMLAH_RUANG_PREVIEW = 8
+const JUMLAH_AGENDA = 5
+
+function salamWaktu(d: Date): string {
+  const j = d.getHours()
+  if (j < 11) return 'Selamat pagi'
+  if (j < 15) return 'Selamat siang'
+  if (j < 18) return 'Selamat sore'
+  return 'Selamat malam'
+}
 
 export default function Beranda() {
-  const { profil, peran } = useAuth()
+  const { user, profil, peran } = useAuth()
   const [ruang, setRuang] = useState<RuangKelas[]>(() => daftarRuangKelas(profil))
   const [q, setQ] = useState('')
 
@@ -34,150 +60,263 @@ export default function Beranda() {
     }
   }, [profil])
 
+  const sebagaiAdmin = profil?.role === 'admin' || profil?.peranLms === 'admin'
+  const { ringkas, aktif, memuat, error } = useRingkasanRuang(ruang, sebagaiAdmin)
+
+  const sekarang = useMemo(() => new Date(), [aktif])
+  const agenda = useMemo(() => (aktif ? urutkanAgenda(aktif, sekarang) : null), [aktif, sekarang])
+  const nTugas = aktif ? aktif.filter((i) => i.jenis === 'tugas').length : null
+  const nKuis = aktif ? aktif.filter((i) => i.jenis === 'kuis').length : null
+
   const filtered = useMemo(() => {
     const s = q.trim().toLowerCase()
     if (!s) return ruang
     return ruang.filter(
-      (r) =>
-        r.mapel.toLowerCase().includes(s) ||
-        r.kelas.toLowerCase().includes(s),
+      (r) => r.mapel.toLowerCase().includes(s) || r.kelas.toLowerCase().includes(s),
     )
   }, [ruang, q])
 
-  const preview = filtered.slice(0, 8)
+  const preview = filtered.slice(0, JUMLAH_RUANG_PREVIEW)
   const namaPanggil = profil?.nama?.split(' ')[0] || 'Bapak/Ibu'
   const jumlahKelasUnik = new Set(ruang.map((r) => r.kelas)).size
+  const tanggal = sekarang.toLocaleDateString('id-ID', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  })
+  const bolehTka = bolehAksesTkaStaf(user, profil)
 
   return (
-    <div className="space-y-6">
-      {/* Hero ringkas */}
-      <section className="lms-hero">
-        <div className="min-w-0 flex-1">
-          <p className="text-xs font-semibold uppercase tracking-wider text-muh-200/90">
-            Assalamu&apos;alaikum
+    <div className="rg-halaman">
+      {/* Hero */}
+      <section className="rg-hero" aria-label="Selamat datang">
+        <div className="rg-hero-teks">
+          <p className="rg-hero-salam">
+            {salamWaktu(sekarang)} · Assalamu&apos;alaikum
           </p>
-          <h2 className="mt-0.5 text-xl font-semibold tracking-tight text-white sm:text-2xl">
-            {namaPanggil}
-          </h2>
-          <p className="mt-1 max-w-lg text-sm text-white/80">
-            Masuk sebagai <strong className="text-white">{peran ? NAMA_PERAN[peran] : '—'}</strong>.
-            Kelola materi dan tugas dari ruang kelas Anda.
+          <h2 className="rg-hero-nama">{namaPanggil}</h2>
+          <p className="rg-hero-info">
+            <span className="rg-hero-chip">{peran ? NAMA_PERAN[peran] : 'Pengguna'}</span>
+            <span className="rg-hero-chip">{tanggal}</span>
           </p>
         </div>
-        <div className="lms-hero-stats">
-          <div className="lms-hero-stat">
-            <div className="text-2xl font-bold tabular text-white">{ruang.length}</div>
-            <div className="text-[11px] font-medium uppercase tracking-wide text-white/70">
-              Ruang
-            </div>
+        <div className="rg-hero-stats">
+          <Link to="/kelas" className="rg-hero-stat">
+            <b>{ruang.length}</b>
+            <span>Ruang</span>
+          </Link>
+          <div className="rg-hero-stat">
+            <b>{jumlahKelasUnik}</b>
+            <span>Kelas</span>
           </div>
-          <div className="lms-hero-stat">
-            <div className="text-2xl font-bold tabular text-white">{jumlahKelasUnik}</div>
-            <div className="text-[11px] font-medium uppercase tracking-wide text-white/70">
-              Kelas
-            </div>
-          </div>
+          <Link to="/tugas" className="rg-hero-stat">
+            <b>{nTugas ?? '…'}</b>
+            <span>Tugas aktif</span>
+          </Link>
+          <Link to="/kelas" className="rg-hero-stat">
+            <b>{nKuis ?? '…'}</b>
+            <span>Kuis aktif</span>
+          </Link>
         </div>
       </section>
 
-      {/* Toolbar daftar */}
-      <section className="space-y-3">
-        <div className="lms-toolbar">
-          <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
-            <h3 className="text-sm font-semibold text-slate-900">Ruang kelas Anda</h3>
-            <span className="lms-count-pill">{filtered.length} konten</span>
-          </div>
-          <div className="lms-search">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
-              <circle cx="11" cy="11" r="7" />
-              <path d="m20 20-3-3" />
-            </svg>
-            <input
-              type="search"
-              placeholder="Cari mapel atau kelas…"
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-              aria-label="Cari ruang kelas"
-            />
-          </div>
-          {ruang.length > 8 && (
-            <Link to="/kelas" className="text-xs font-semibold text-muh-600 hover:underline">
-              Lihat semua →
-            </Link>
-          )}
-        </div>
-
-        {preview.length === 0 ? (
-          <div className="lms-empty">
-            {q ? (
-              <p>Tidak ada ruang yang cocok dengan &ldquo;{q}&rdquo;.</p>
-            ) : (
-              <>
-                <p>
-                  Belum ada kelas/mapel yang terhubung. Pastikan penugasan mapel sudah diisi di
-                  aplikasi Penilaian.
-                </p>
-                <Link to="/kelas" className="lms-btn-primary mt-3 inline-flex">
-                  Buka daftar kelas
-                </Link>
-              </>
+      <div className="rg-bgrid">
+        {/* Ruang kelas */}
+        <section className="rg-utama" aria-label="Ruang kelas Anda">
+          <div className="rg-seksi-kepala">
+            <h3 className="rg-seksi-judul">Ruang kelas Anda</h3>
+            <span className="rg-jumlah">{filtered.length} ruang</span>
+            <span className="rg-spasi" />
+            {ruang.length > 0 && (
+              <div className="rg-cari">
+                <IkonCari />
+                <input
+                  type="search"
+                  placeholder="Cari mapel atau kelas…"
+                  value={q}
+                  onChange={(e) => setQ(e.target.value)}
+                  aria-label="Cari ruang kelas"
+                />
+              </div>
             )}
           </div>
-        ) : (
-          <div className="lms-card-grid">
-            {preview.map((r) => (
-              <RuangCard key={r.id} ruang={r} />
-            ))}
-          </div>
-        )}
-      </section>
 
-      {/* Modul berikutnya — kartu status, bukan placeholder mati */}
-      <section className="space-y-3">
-        <h3 className="text-sm font-semibold text-slate-900">Modul pembelajaran</h3>
-        <div className="grid gap-3 sm:grid-cols-3">
-          <Link to="/kelas" className="lms-module-tile">
-            <span className="lms-module-icon bg-sky-50 text-sky-700" aria-hidden>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
-                <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
-              </svg>
-            </span>
-            <div>
-              <div className="text-sm font-semibold text-slate-900">Materi</div>
-              <p className="mt-0.5 text-xs text-muted">PDF, video, tautan · terhubung TP</p>
+          {preview.length === 0 ? (
+            <div className="rg-kosong">
+              <span className="rg-kosong-ikon">
+                <IkonRuang size={22} />
+              </span>
+              {q ? (
+                <>
+                  <b>Tidak ada ruang yang cocok</b>
+                  <p>Tidak ada ruang untuk &ldquo;{q}&rdquo;. Coba kata kunci lain.</p>
+                </>
+              ) : (
+                <>
+                  <b>Belum ada ruang kelas</b>
+                  <p>
+                    Belum ada kelas/mapel yang terhubung. Pastikan penugasan mapel sudah diisi di
+                    aplikasi Penilaian.
+                  </p>
+                  <Link to="/kelas" className="rg-btn rg-btn--utama">
+                    Buka daftar kelas
+                  </Link>
+                </>
+              )}
             </div>
-            <span className="lms-module-status lms-module-status--on">Aktif</span>
-          </Link>
-          <div className="lms-module-tile lms-module-tile--muted">
-            <span className="lms-module-icon bg-amber-50 text-amber-700" aria-hidden>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M12 20h9" />
-                <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
-              </svg>
-            </span>
-            <div>
-              <div className="text-sm font-semibold text-slate-900">Tugas</div>
-              <p className="mt-0.5 text-xs text-muted">Buat, kumpul, nilai, komentar</p>
+          ) : (
+            <ul className="rg-grid">
+              {preview.map((r) => (
+                <li key={r.id}>
+                  <RuangCard
+                    ruang={r}
+                    ringkas={
+                      aktif
+                        ? (ringkas[kunciRuang(r.kelas, r.mapel)] ?? { tugasAktif: 0, kuisAktif: 0 })
+                        : undefined
+                    }
+                  />
+                </li>
+              ))}
+            </ul>
+          )}
+
+          {filtered.length > JUMLAH_RUANG_PREVIEW && (
+            <Link to="/kelas" className="rg-link">
+              Lihat semua {filtered.length} ruang
+              <IkonPanah size={13} />
+            </Link>
+          )}
+        </section>
+
+        {/* Aside: agenda + pintasan */}
+        <aside className="rg-aside" aria-label="Agenda dan pintasan">
+          <section className="rg-panel">
+            <div className="rg-panel-kepala">
+              <div>
+                <h3 className="rg-panel-judul">Agenda penugasan</h3>
+                <p className="rg-panel-sub">Tugas &amp; kuis yang sedang aktif</p>
+              </div>
+              {agenda && agenda.length > 0 && (
+                <span className="rg-pill rg-pill--netral">{agenda.length}</span>
+              )}
             </div>
-            <span className="lms-module-status">Segera</span>
-          </div>
-          <div className="lms-module-tile lms-module-tile--muted">
-            <span className="lms-module-icon bg-violet-50 text-violet-700" aria-hidden>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="12" cy="12" r="10" />
-                <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
-                <line x1="12" y1="17" x2="12.01" y2="17" />
-              </svg>
-            </span>
-            <div>
-              <div className="text-sm font-semibold text-slate-900">Kuis</div>
-              <p className="mt-0.5 text-xs text-muted">Pilihan ganda, timer, capaian TP</p>
+
+            {error && (
+              <p className="rg-galat" role="alert">
+                {error}
+              </p>
+            )}
+
+            {agenda === null && memuat && (
+              <div aria-busy="true" aria-label="Memuat agenda">
+                <div className="rg-baris-skel" />
+                <div className="rg-baris-skel" />
+                <div className="rg-baris-skel" />
+              </div>
+            )}
+
+            {agenda && agenda.length === 0 && (
+              <p className="rg-kosong-baris">
+                Belum ada tugas atau kuis aktif.{' '}
+                <Link to="/tugas/baru">Buat tugas baru</Link>
+              </p>
+            )}
+
+            {agenda && agenda.length > 0 && (
+              <ul className="rg-agenda">
+                {agenda.slice(0, JUMLAH_AGENDA).map((item) => {
+                  const info = item.jenis === 'tugas' ? infoTenggat(item.tenggat, sekarang) : null
+                  return (
+                    <li key={item.id}>
+                      <Link to={item.href} className="rg-agenda-item">
+                        <span className={`rg-jenis rg-jenis--${item.jenis}`} aria-hidden="true">
+                          {item.jenis === 'tugas' ? <IkonTugas size={17} /> : <IkonKuis size={17} />}
+                        </span>
+                        <span className="min-w-0">
+                          <span className="rg-agenda-judul">{item.judul}</span>
+                          <span className="rg-agenda-meta">
+                            {item.jenis === 'tugas' ? 'Tugas' : 'Kuis'} · {item.mapel} · {item.kelas}
+                          </span>
+                        </span>
+                        {info ? (
+                          <span
+                            className={`rg-nada rg-nada--${info.nada}`}
+                            title={info.tanggal || undefined}
+                          >
+                            {info.nada !== 'tanpa' && <IkonJam />}
+                            {info.label}
+                          </span>
+                        ) : (
+                          <span className="rg-nada rg-nada--kuis">{item.mode}</span>
+                        )}
+                      </Link>
+                    </li>
+                  )
+                })}
+              </ul>
+            )}
+
+            {agenda && agenda.length > 0 && (
+              <div className="rg-panel-kaki">
+                <Link to="/tugas" className="rg-link">
+                  {agenda.length > JUMLAH_AGENDA
+                    ? `Lihat semua (${agenda.length}) di Tugas`
+                    : 'Buka katalog Tugas'}
+                  <IkonPanah size={13} />
+                </Link>
+              </div>
+            )}
+          </section>
+
+          <section className="rg-panel">
+            <div className="rg-panel-kepala">
+              <h3 className="rg-panel-judul">Pintasan</h3>
             </div>
-            <span className="lms-module-status">Fase 2</span>
-          </div>
-        </div>
-      </section>
+            <div className="rg-pintas">
+              <Link to="/tugas/baru" className="rg-pintas-item">
+                <span className="rg-pintas-ikon rg-pintas-ikon--kuning">
+                  <IkonPlus size={16} />
+                </span>
+                <span>
+                  <b>Tugas baru</b>
+                  <span className="rg-pintas-ket">Buat penugasan</span>
+                </span>
+              </Link>
+              <Link to="/kelas" className="rg-pintas-item">
+                <span className="rg-pintas-ikon rg-pintas-ikon--ungu">
+                  <IkonRuang size={17} />
+                </span>
+                <span>
+                  <b>Ruang kelas</b>
+                  <span className="rg-pintas-ket">Materi, kuis, bank soal</span>
+                </span>
+              </Link>
+              <Link to="/rekap-nilai" className="rg-pintas-item">
+                <span className="rg-pintas-ikon rg-pintas-ikon--teal">
+                  <IkonRekap size={17} />
+                </span>
+                <span>
+                  <b>Rekap nilai</b>
+                  <span className="rg-pintas-ket">Nilai per siswa</span>
+                </span>
+              </Link>
+              {bolehTka && (
+                <Link to="/tka" className="rg-pintas-item">
+                  <span className="rg-pintas-ikon rg-pintas-ikon--biru">
+                    <IkonTka size={17} />
+                  </span>
+                  <span>
+                    <b>TKA</b>
+                    <span className="rg-pintas-ket">Try out kelas 6</span>
+                  </span>
+                </Link>
+              )}
+            </div>
+          </section>
+        </aside>
+      </div>
     </div>
   )
 }

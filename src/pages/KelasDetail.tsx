@@ -1,21 +1,24 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, type CSSProperties, type KeyboardEvent, type ReactNode } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { daftarRuangKelas, parseRuangId } from '../lib/kelasLms'
+import { kunciRuang, useRingkasanRuang } from '../lib/ringkasanRuang'
 import { adalahMapelTka, materiTkaUntuk } from '../lib/tkaAkses'
 import { aksenMapel, inisialMapel } from '../lib/uiAksen'
 import MateriPanel from '../components/MateriPanel'
 import KuisPanel from '../components/KuisPanel'
 import BankSoalPanel from '../components/BankSoalPanel'
+import { IkonBankSoal, IkonKuis, IkonMateri, IkonPengumuman, IkonTugas } from '../components/ikonRuang'
 import '../styles/tka.css'
+import '../styles/ruang.css'
 
 type TabId = 'pengumuman' | 'materi' | 'kuis' | 'soal'
 
-const TABS: { id: TabId; label: string }[] = [
-  { id: 'pengumuman', label: 'Pengumuman' },
-  { id: 'materi', label: 'Materi' },
-  { id: 'kuis', label: 'Kuis' },
-  { id: 'soal', label: 'Bank Soal' },
+const TABS: { id: TabId; label: string; ikon: ReactNode }[] = [
+  { id: 'pengumuman', label: 'Pengumuman', ikon: <IkonPengumuman size={16} /> },
+  { id: 'materi', label: 'Materi', ikon: <IkonMateri size={16} /> },
+  { id: 'kuis', label: 'Kuis', ikon: <IkonKuis size={16} /> },
+  { id: 'soal', label: 'Bank Soal', ikon: <IkonBankSoal size={16} /> },
 ]
 
 /** Ringkas deskripsi hero per mapel TKA. */
@@ -54,13 +57,26 @@ export default function KelasDetail() {
   const ruangList = useMemo(() => daftarRuangKelas(profil), [profil])
   const ruang = ruangList.find((r) => r.id === decoded)
 
+  // Ringkasan tugas/kuis aktif ruang ini. Semua hook wajib berada di atas early return `!parsed`.
+  const kelasRuang = ruang?.kelas ?? parsed?.kelas ?? ''
+  const mapelRuang = ruang?.mapel ?? parsed?.mapel ?? ''
+  const ruangSatu = useMemo(
+    () => (kelasRuang && mapelRuang && !ruangTka ? [{ kelas: kelasRuang, mapel: mapelRuang }] : []),
+    [kelasRuang, mapelRuang, ruangTka],
+  )
+  const sebagaiAdmin = profil?.role === 'admin' || profil?.peranLms === 'admin'
+  const { ringkas, aktif } = useRingkasanRuang(ruangSatu, sebagaiAdmin)
+
   if (!parsed) {
     return (
-      <div className="space-y-3">
-        <Link to="/kelas" className="text-sm font-semibold text-muh-600 hover:underline">
+      <div className="rg-halaman">
+        <Link to="/kelas" className="rg-link">
           ← Kembali ke daftar kelas
         </Link>
-        <div className="lms-empty">Tautan ruang kelas tidak valid.</div>
+        <div className="rg-kosong">
+          <b>Tautan tidak valid</b>
+          <p>Tautan ruang kelas tidak valid. Kembali ke daftar kelas dan pilih ruang yang tersedia.</p>
+        </div>
       </div>
     )
   }
@@ -74,8 +90,24 @@ export default function KelasDetail() {
     judulMapel === 'TKA IPA' ? materiList.slice(0, 8) : materiList.slice(0, 4)
   const sisaMateri = materiList.length - materiTampil.length
 
+  const hitungRuang = aktif ? ringkas[kunciRuang(judulKelas, judulMapel)] : undefined
+  const nTugas = aktif ? (hitungRuang?.tugasAktif ?? 0) : null
+  const nKuis = aktif ? (hitungRuang?.kuisAktif ?? 0) : null
+
+  function onKeyTab(e: KeyboardEvent<HTMLButtonElement>, i: number) {
+    let ke = -1
+    if (e.key === 'ArrowRight') ke = (i + 1) % tabsTampil.length
+    else if (e.key === 'ArrowLeft') ke = (i - 1 + tabsTampil.length) % tabsTampil.length
+    else if (e.key === 'Home') ke = 0
+    else if (e.key === 'End') ke = tabsTampil.length - 1
+    if (ke < 0) return
+    e.preventDefault()
+    setTab(tabsTampil[ke].id)
+    document.getElementById(`tab-${tabsTampil[ke].id}`)?.focus()
+  }
+
   return (
-    <div className="space-y-5">
+    <div className="rg-halaman">
       {/* Header cover ruang kelas */}
       <section
         className={`kelas-hero${ruangTka ? ' tka-ruang-hero' : ''}${
@@ -128,33 +160,60 @@ export default function KelasDetail() {
               {inisialMapel(judulMapel)}
             </div>
           </div>
+          {!ruangTka && (
+            <div className="rg-hero-pills">
+              <Link to="/tugas" className="rg-hero-pill">
+                <IkonTugas size={14} />
+                <b>{nTugas ?? '…'}</b> tugas aktif
+              </Link>
+              <button type="button" className="rg-hero-pill" onClick={() => setTab('kuis')}>
+                <IkonKuis size={14} />
+                <b>{nKuis ?? '…'}</b> kuis aktif
+              </button>
+            </div>
+          )}
         </div>
       </section>
 
-      <div className="lms-tabs" role="tablist" aria-label="Bag ruang kelas">
-        {tabsTampil.map((t) => (
+      <div
+        className="rg-tabs"
+        role="tablist"
+        aria-label="Bagian ruang kelas"
+        style={{ '--rg-a': a.bar } as CSSProperties}
+      >
+        {tabsTampil.map((t, i) => (
           <button
             key={t.id}
+            id={`tab-${t.id}`}
             type="button"
             role="tab"
             aria-selected={tab === t.id}
+            aria-controls={`panel-${t.id}`}
+            tabIndex={tab === t.id ? 0 : -1}
             onClick={() => setTab(t.id)}
-            className={`lms-tab ${tab === t.id ? 'lms-tab--active' : ''}`}
+            onKeyDown={(e) => onKeyTab(e, i)}
+            className={`rg-tab${tab === t.id ? ' rg-tab--on' : ''}`}
           >
+            {t.ikon}
             {t.label}
           </button>
         ))}
       </div>
 
-      {tab === 'pengumuman' && (
-        <div className="lms-empty">
-          <p className="font-medium text-slate-700">Belum ada pengumuman</p>
-          <p className="mt-1">Fitur pengumuman kelas akan ditambahkan kemudian.</p>
-        </div>
-      )}
-      {tab === 'materi' && <MateriPanel kelas={judulKelas} mapel={judulMapel} />}
-      {tab === 'kuis' && <KuisPanel kelas={judulKelas} mapel={judulMapel} />}
-      {tab === 'soal' && <BankSoalPanel kelas={judulKelas} mapel={judulMapel} ruangId={decoded} />}
+      <div role="tabpanel" id={`panel-${tab}`} aria-labelledby={`tab-${tab}`} className="min-w-0">
+        {tab === 'pengumuman' && (
+          <div className="rg-kosong">
+            <span className="rg-kosong-ikon">
+              <IkonPengumuman size={22} />
+            </span>
+            <b>Belum ada pengumuman</b>
+            <p>Fitur pengumuman kelas akan ditambahkan kemudian.</p>
+          </div>
+        )}
+        {tab === 'materi' && <MateriPanel kelas={judulKelas} mapel={judulMapel} />}
+        {tab === 'kuis' && <KuisPanel kelas={judulKelas} mapel={judulMapel} />}
+        {tab === 'soal' && <BankSoalPanel kelas={judulKelas} mapel={judulMapel} ruangId={decoded} />}
+      </div>
     </div>
   )
 }

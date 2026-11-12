@@ -1,78 +1,14 @@
-## 2026-11-12 — Materi halaman: generate gambar AI terpisah (Tahap C) + UI per halaman
+## 2026-11-12 — Beranda, Ruang Kelas (daftar & detail), kartu ruang: UI v2
 
-- **Tombol AI teks** hanya di kanvas **halaman aktif** (bukan global). Label jelas: «AI untuk halaman N saja».
-- **Generate gambar** callable baru `generateIlustrasiMateriLmsAi` — terpisah dari teks; petunjuk per blok gambar.
-- Blok gambar: field petunjuk + «Generate gambar AI» / unggah file; placeholder url kosong sampai digenerate.
-- Frontend LMS **wajib di-deploy** agar tombol muncul (deploy CF saja tidak menambah UI).
-- AI teks menghasilkan **HTML aman** (h2/h3, tabel, list, `$rumus$`) — mode Visual / HTML di editor.
-- File LMS: `generateMateriAi.ts`, `MateriHalamanEditor.tsx`, `materi.ts`, `types/materi.ts`, css, changelog, antiregresi.
-- File CF: `generateMateriLmsAi.js` + `index.js` (penuh) di SDM01Penilaian.
-
-## 2026-11-12 — Materi halaman: generate teks AI per halaman (Tahap B)
-
-- Cloud Function **`generateMateriLmsAi`** (SDM01Penilaian): satu halaman per panggilan; prompt menyertakan ringkasan halaman sebelumnya agar **kelanjutan**, bukan pengulangan.
-- Klien `src/lib/generateMateriAi.ts`: gate UID+email sama soal AI (`arif.azwar79@gmail.com`); `ringkasHalamanSebelumnya` + merge draf ke editor.
-- UI editor (hanya akun AI): petunjuk opsional + tombol **AI: isi halaman ini / lanjutan**.
-- Output HTML aman (heading, tabel, rumus `$…$`); petunjuk gambar disimpan untuk Tahap C (belum generate file gambar).
-- File LMS: `src/lib/generateMateriAi.ts`, `src/components/materi/MateriHalamanEditor.tsx`, `src/styles/materi-halaman.css`.
-- File CF (repo SDM01Penilaian): `functions/generateMateriLmsAi.js` + wire `generateMateriLmsAi` di `functions/index.js` (lihat komentar di file CF).
-- ANTIREGRESI §115.9 diperjelas.
-
-## 2026-11-12 — Materi halaman: pipeline HTML selaras stimulus TKA (Tahap A)
-
-- **`bersihHtmlMateri`:** mendukung tabel (`table/thead/tbody/tr/th/td/caption` + colspan/rowspan/scope) selain h2/h3 — sama aman dengan `bersihHtmlStimulus` (ANTIREGRESI §9).
-- **Viewer:** merender rumus `$…$` / `$$…$$` dengan KaTeX (lazy, hanya jika halaman aktif memuat `$`), kelas `soal-rich-view` + gaya tabel.
-- **Editor:** mode per blok teks **Visual** (TipTap) atau **HTML / tabel** (textarea, seperti stimulus TKA agar tabel tidak hilang). Sanitasi HTML saat blur + saat simpan.
-- Tidak menambah Cloud Function / generate AI (itu Tahap B). Tidak mengubah `firestore.rules`.
-- File: `src/lib/html.ts`, `src/components/materi/MateriHalamanViewer.tsx`, `src/components/materi/MateriHalamanEditor.tsx`, `src/styles/materi-halaman.css`, `CHANGELOG.md`, `ANTIREGRESI.md`.
-
-## 2026-11-12 — Materi multi-halaman (V1: teks + gambar)
-
-- **Jenis baru** `halaman` di `lms_materi`: konten disusun per halaman berisi **blok berurutan** (teks kaya TipTap + gambar).
-- **Guru:** tombol **+ Halaman** di panel materi → editor (metadata, daftar halaman, blok teks/gambar, pratinjau, simpan). Edit & baca dari daftar yang sama dengan PDF/YouTube.
-- **Layout editor (fokus menulis):**
-  - Bilah atas tetap: Batal, toggle daftar halaman, toggle pengaturan, judul ringkas, chip TP, halaman aktif, Pratinjau, Simpan.
-  - **Panel pengaturan** (judul/bab/deskripsi/TP) bisa dilipat; otomatis terbuka jika metadata belum lengkap; tombol «Selesai — lanjut tulis isi».
-  - **Sidepanel daftar halaman** bisa disembunyikan/ditampilkan kapan saja; tombol «» Halaman» untuk membuka kembali.
-  - Area kanvas blok memakan sisa ruang.
-- **Siswa:** tombol **Baca** membuka viewer dengan navigasi prev/next + indikator halaman; mobile-first.
-- Batas: 20 halaman/materi, 30 blok/halaman, gambar blok ≤ 8 MB. Storage path `lms/materi/{kelas}/halaman_*`.
-- Mode unggah file/YouTube/tautan **tidak berubah**. Tidak perlu ubah `firestore.rules`.
-- File: `src/types/materi.ts`, `src/lib/materi.ts`, `src/lib/materiUi.ts`, `src/lib/html.ts` (`bersihHtmlMateri`), `src/components/MateriPanel.tsx`, `src/components/JenisIcon.tsx`, `src/components/materi/*` (baru), `src/pages/siswa/SiswaMateri.tsx`, `src/styles/materi-halaman.css`, `src/main.tsx`.
-- ANTIREGRESI §115.
-
-## 2026-11-12 — Dashboard ruang kelas: UI v2
-
-- **Kepala & ringkasan:** judul halaman, strip angka (ruang, kelas, tugas aktif, kuis aktif).
-- **Monitor penugasan aktif:** panel rapi dengan badge Tugas/Kuis, meta mapel·kelas, tautan langsung, catatan wali.
-- **Cari & saring:** pencarian mapel/kelas, segmen filter kelas, hitungan ruang.
-- **Kartu ruang (`.rk-kartu`):** cover gradien per mapel, badge kelas/wali, monogram, pill tugas/kuis aktif, CTA.
-- Empty state dengan aksi reset saringan. Lebar penuh shell.
-- Tidak mengubah logika data (`kelasLms`, monitor tugas/kuis), route, maupun `firestore.rules`.
-- File: `src/pages/KelasList.tsx`, `src/components/RuangCard.tsx`, `src/styles/kelas.css` (baru).
-
-## 2026-11-12 — Detail tugas (guru): UI v2
-
-- **Hero:** aksen mapel (`--tg-a`), monogram, chip jenis/kelas/status/penilaian, tenggat relatif (selaras katalog `tg-*`).
-- **Tab utama:** tiga tab berhint (Pengaturan · Isi tugas · Input nilai) dengan state aktif beraksen.
-- **Form kartu (`.td-*`):** identitas, mapel & TP, instruksi, kategori rubrik, rentang predikat — hierarki jelas; tombol memakai `.tg-btn`.
-- **Daftar nilai:** toolbar, tabel kompak, input skor, tombol AI per baris, empty/skeleton.
-- Build: hapus import/fungsi tak terpakai (`formatTenggat`, helper kategori lama); kolom siswa hanya `siswaNama` (tipe `BarisNilaiTugas` tanpa `nisn`).
-- **Lebar & sub-tab:** `.td-form` tanpa `max-width` (hilangkan ruang kosong kanan); sub-tab nilai (Pengaturan penilaian / Daftar nilai) diperbesar selebar konten dengan hint, setinggi tab utama.
-- **Daftar nilai responsif:** header kategori boleh patah baris tanpa mengubah `display` sel tabel; kolom siswa sticky; scroll horizontal bila perlu. (Perbaikan regresi: jangan `-webkit-line-clamp` pada `<th>`.)
-- Tidak mengubah logika data (`lib/tugas.ts`, `nilaiTugas`, `penilaianTugas`), route, data model, maupun `firestore.rules`.
-- File: `src/pages/TugasDetail.tsx`, `src/styles/tugas.css` (lanjutan katalog).
-
-## 2026-11-12 — Input sebaran kompetensi manual (try out di luar LMS)
-
-- Tab mapel (Matematika / Bahasa Indonesia / IPA) punya tombol **+ Input sebaran kompetensi manual** untuk Try Out tahap mana pun yang dikerjakan di luar LMS.
-- Grid input: **poin maksimum** tiap kompetensi diisi sekali (baris pertama), lalu **poin diperoleh** tiap siswa. Nilai akhir dihitung otomatis (poin ÷ maks × 100, dibulatkan) dan boleh ditimpa; tersimpan sebagai nilai manual beserta `sebaran[mapel]`.
-- Kelompok yang diisi: MTK = L1, L2 + Bilangan, Geometri dan Pengukuran, Data; BI = L1–L3 (tipe materi diturunkan); IPA = L1–L3 + Pengetahuan IPA, Keterampilan Proses Sains.
-- Validasi: semua kompetensi wajib terisi, poin ≤ maks, dan jumlah poin kompetensi dasar harus sama dengan kompetensi materi. Bila ada baris salah, tidak ada yang disimpan.
-- Siswa yang nilainya otomatis dari kuis LMS tidak ditampilkan (sebarannya sudah dari jawaban). Data yang sudah ada (mis. import Try Out I) ter-prefill dan bisa dikoreksi.
-- `simpanNilaiManualTka` menerima `sebaran`; tanpa `sebaran` perilaku lama (sebaran dibuang jika nilai berubah) tetap.
-- File: `src/pages/tka/TkaSebaranManual.tsx` (baru), `src/pages/tka/TkaRekapMapel.tsx`, `src/lib/sebaranTka.ts`, `src/lib/rekapTka.ts`, `src/styles/tka.css`. Tanpa perubahan `firestore.rules`.
-
+- **Beranda:** hero baru (salam sesuai waktu, tanggal, peran, 4 angka: ruang, kelas, tugas aktif, kuis aktif yang bisa diklik). Tata letak dua kolom di layar lebar: ruang kelas di kiri; **Agenda penugasan** (5 tugas/kuis aktif, urut tenggat terdekat, tenggat relatif berwarna) dan **Pintasan** (Tugas baru, Ruang kelas, Rekap nilai, TKA bila berhak) di kanan; di ponsel agenda tampil lebih dulu.
+- **Beranda:** tile «Tugas — Segera» yang sudah usang (Tugas sudah aktif) dan seksi «Modul pembelajaran» diganti Pintasan yang benar-benar berfungsi.
+- **Kartu ruang:** cover lebih ringkas, badge Kelas/Wali, hitungan **tugas aktif** dan **kuis aktif** per ruang (juga di Beranda), skeleton/placeholder saat belum dimuat.
+- **Daftar Kelas:** kepala halaman, panel «Penugasan aktif» (urut tenggat, chip tenggat berwarna, skeleton, «Tampilkan N lainnya», muat ulang), saringan kelas, **kartu dikelompokkan per kelas** bila guru memegang lebih dari satu kelas, empty state + «Reset saringan».
+- **Detail Kelas:** pil «N tugas aktif» dan «N kuis aktif» di hero (pil kuis membuka tab Kuis), tab berikon dengan aksen warna mapel + navigasi keyboard (panah/Home/End) dan atribut ARIA lengkap, empty state Pengumuman. Hero & tab ruang TKA tidak berubah (tetap Kuis + Bank Soal).
+- **Refaktor:** logika ringkasan tugas/kuis aktif dipindah dari `KelasList` ke `lib/ringkasanRuang.ts` (`useRingkasanRuang`) dan dipakai Beranda, Daftar Kelas, Detail Kelas — satu sumber kebenaran.
+- Tidak mengubah route, data model, `firestore.rules`, maupun panel Materi/Kuis/Bank Soal.
+- Catatan: Beranda kini ikut membaca tugas & kuis aktif (sama seperti Daftar Kelas), sehingga ada tambahan baca Firestore per kunjungan Beranda.
+- File: `pages/Beranda.tsx`, `pages/KelasList.tsx`, `pages/KelasDetail.tsx`, `components/RuangCard.tsx`, `components/ikonRuang.tsx` (baru), `lib/ringkasanRuang.ts` (baru), `styles/ruang.css` (baru).
 
 ## 2026-11-12 — Halaman Tugas (katalog guru): UI v2
 

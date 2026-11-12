@@ -1,61 +1,20 @@
-## §115. Materi multi-halaman (`jenis: 'halaman'`)
+## §112. UI Beranda / Ruang Kelas (`rg-*`)
 
-115.1 Field `halaman: MateriHalaman[]` hanya dipakai jika `jenis === 'halaman'`. Jangan mengisi `url`/`storagePath` tingkat dokumen untuk jenis ini (gambar ada di blok).
+112.1 Ringkasan tugas & kuis aktif **hanya** lewat `lib/ringkasanRuang.ts` (`useRingkasanRuang` / `muatRingkasanRuang`). Jangan menyalin query `daftarTugasGuru`/`daftarKuis` ke halaman lain. Hook aman balapan (hanya hasil permintaan terbaru yang dipakai).
 
-115.2 HTML blok teks **wajib** lewat `bersihHtmlMateri()` sebelum simpan dan sebelum `dangerouslySetInnerHTML` (tag: p/br/strong/em/u/sub/sup/ul/ol/li/h2/h3 + tabel th/td/caption; atribut hanya colspan/rowspan/scope). Selaras §9 / stimulus TKA. Rumus `$…$` dibiarkan di HTML lalu dirender KaTeX di viewer (`htmlDenganRumus`), bukan di sanitizer.
+112.2 `useRingkasanRuang(ruang, …)` memuat ulang setiap **identitas array `ruang`** berubah. Di Beranda/KelasList `ruang` hanya di-set dari efek `[profil]`; di KelasDetail dibungkus `useMemo`. Jangan meneruskan array yang dibuat baru tiap render (akibatnya «Maximum update depth exceeded»).
 
-115.3 Batas: `BATAS_HALAMAN_PER_MATERI` (20), `BATAS_BLOK_PER_HALAMAN` (30), gambar blok `BATAS_UKURAN.gambarHalaman` (8 MB). Validasi di `normalisasiHalaman` + UI.
+112.3 `KelasDetail`: semua hook baru wajib di atas early return `!parsed` (sama dengan aturan KuisPanel §108.4). Ruang TKA **tidak** memuat ringkasan (`ruangSatu` kosong) dan **tidak** menampilkan pil tugas/kuis; tab TKA tetap hanya Kuis + Bank Soal (§77).
 
-115.4 Hapus materi halaman harus membersihkan **semua** `storagePath` di blok gambar (`hapusMateri` + `bersihkanGambarYatim` saat edit).
+112.4 `.kelas-hero*` dan `.tka-ruang-*` dipakai bersama hero TKA — jangan diubah untuk mempercantik hero non-TKA (tambahan non-TKA lewat `.rg-hero-pills`). `.lms-hero`, `.lms-card*`, `.lms-tab*` masih dipakai halaman siswa dan panel; **jangan dihapus** walau Beranda/KelasList tidak lagi memakainya.
 
-115.5 Viewer siswa dan guru memakai komponen yang sama (`MateriHalamanViewer`); navigasi sticky bottom untuk jempol HP.
+112.5 Tab ruang memakai pola ARIA: `role=tablist/tab/tabpanel`, id `tab-<id>` / `panel-<id>`, roving `tabIndex`, panah kiri/kanan/Home/End. Jangan kembali ke tab tanpa atribut ini.
 
-115.6 Materi halaman tampil di daftar yang sama dengan jenis lain (satu list per mapel); filter/chip `labelJenis` / `toneJenis` mendukung `'halaman'`.
+112.6 Label hitungan di kartu ruang («tugas aktif», «kuis aktif») huruf biasa, **bukan** uppercase ber-letter-spacing — versi uppercase terpotong («TUGAS AK…») pada kartu ±215 px. Hitungan nol berwarna `#64748b` (bukan `#94a3b8`, kontras kurang).
 
-115.7 Layout editor: panel **pengaturan** (meta+TP) dan **daftar halaman** wajib bisa dilipat/ditampilkan ulang tanpa kehilangan state. Jangan mengembalikan meta+TP sebagai blok permanen di atas kanvas (membuat layar padat). Titik masuk: ikon di bilah atas + chip peringatan jika judul/TP belum lengkap.
+112.7 Item grid ruang adalah `<li>` `display: flex` berisi kartu (`<a class="rg-ruang">`); jangan `display: contents` pada `<li>`. Lebar halaman penuh — tanpa `max-width` pada `.rg-halaman` / `.rg-grid` (§111.2).
 
-115.8 Mode sunting blok teks: **Visual** (TipTap) untuk narasi biasa; **HTML / tabel** (textarea) bila ada `<table>` atau rumus kompleks — pola sama dengan stimulus TKA (`TkaFieldEditor` memakai textarea agar tabel tidak hilang). Jangan memaksa tabel lewat TipTap tanpa ekstensi tabel.
-
-115.10 Generate **gambar** materi (`generateIlustrasiMateriLmsAi`) **wajib terpisah** dari generate teks. UI generate teks dan generate gambar hanya berlaku untuk **halaman / blok aktif**, bukan seluruh materi sekaligus. Jangan menyembunyikan tombol AI di bilah global yang tidak terikat halaman.
-
-115.9 Generate teks materi AI **per halaman** (`generateMateriLmsAi`): prompt WAJIB menyertakan `halamanSebelumnya` (ringkasan teks polos) agar kelanjutan, bukan pengulangan. Gate sama soal AI (`bolehPemanggilAi` / `bolehGenerateMateriAi`: UID + `arif.azwar79@gmail.com`). Generate **gambar** tetap terpisah (Tahap C) — jangan digabung ke callable teks. KaTeX untuk mapel Matematika: AI boleh menulis `$…$` / `$$…$$`; render di viewer (Tahap A).
-
-## §114. UI dashboard ruang kelas (`rk-*`)
-
-114.1 Kelas `.rk-*` untuk katalog `/kelas` (`KelasList` + `RuangCard`). Jangan mencampur dengan `.tg-*` (tugas) atau `.td-*` (detail tugas) kecuali pola visual yang disengaja sama.
-
-114.2 Aksen kartu: set `--rk-a`, `--rk-cover`, `--rk-fg` **inline per kartu** dari `aksenMapel` — sama deterministik dengan cover hero detail ruang. Jangan hash warna terpisah.
-
-114.3 Monitor penugasan aktif memuat tugas (`daftarTugasGuru`) + kuis per pasangan kelas×mapel; gagal parsial **tidak** boleh menggagalkan seluruh halaman (tetap `catch` per sumber).
-
-114.4 Grid `.rk-grid` memakai `<ul>/<li>`; jangan `display: contents` pada `<li>` (selaras §111.5).
-
-114.5 Jangan menambah `max-width` pada `.rk-halaman` / `.rk-grid` — lebar penuh shell.
-
-## §113. UI detail tugas (`td-*`)
-
-113.1 Kelas `.td-*` hanya untuk halaman detail (`TugasDetail`); katalog tetap `.tg-*`. Keduanya berbagi `--tg-a` (diset di root detail dari `aksenMapel`) dan tombol `.tg-btn`.
-
-113.2 Jangan menambah `max-width` pada `.tg-halaman` maupun `.td-form` — konten detail mengikuti lebar shell penuh (sama katalog). Sub-tab nilai (`.td-subtabs`) harus selebar konten dan setinggi tab utama, bukan pill kecil di pojok.
-
-113.3 Tenggat di hero memakai `infoTenggat` yang sama dengan katalog (`lib/tugasUi.ts`). Nada alarm hanya bermakna bila tugas aktif; draf tidak dipaksa warna «lewat».
-
-113.4 Tab utama & sub-tab nilai harus tetap tiga / dua seperti sekarang. Jangan menggabungkan «Pengaturan penilaian» ke tab Pengaturan tanpa menyamakan alur simpan (`simpanPengaturanNilai` vs `simpanPengaturan`).
-
-113.5 Logika skor, predikat, AI kategori/isi, dan simpan nilai per siswa **tidak** boleh diubah hanya demi gaya CSS. UI v2 adalah presentasi saja (selaras §111 katalog).
-
-113.6 Tabel daftar nilai (`.td-tabel--nilai`): header kategori (`.td-th-kat`) boleh patah baris (`white-space: normal`). **Jangan** memakai `display: -webkit-box` / `-webkit-line-clamp` pada `<th>` atau `<td>` — itu merusak model kolom tabel (header menumpuk, skor kategori hilang dari kolomnya). Kolom siswa boleh sticky. Scroll horizontal pada `.td-tabel-wrap` bila kolom tidak muat.
-
-## §112. Input sebaran manual
-
-112.1 Sebaran manual disimpan sebagai **poin & maks** per kompetensi (bukan persen), lewat `bangunSebaranManual`. Jumlah poin & maks kompetensi dasar WAJIB sama dengan kompetensi materi (membagi soal yang sama); jika tidak, tolak.
-
-112.2 Grid hanya memuat siswa dengan `sumber !== 'otomatis'`. Jangan menimpa nilai otomatis LMS lewat input manual — sebarannya sudah dari jawaban.
-
-112.3 Menyimpan sebaran manual HARUS lewat `simpanNilaiManualTka({ sebaran })` agar nilai & sebaran tertulis bersamaan. Mengubah nilai manual tanpa `sebaran` membuang sebaran lama mapel itu (§109.3).
-
-112.4 Validasi seluruh baris dulu; jika ada satu salah, jangan menyimpan apa pun (hindari data setengah jadi). Setelah menyimpan, publikasi portal harus diperbarui manual («Perbarui publikasi»).
-
+112.8 Urutan agenda (`urutkanAgenda`): tugas bertenggat mendatang (terdekat dulu) → tugas lewat tenggat (terbaru dulu) → tugas tanpa tenggat → kuis; selaras «Tenggat terdekat» di katalog Tugas. Nada tenggat memakai `infoTenggat` (§111.3).
 
 ## §111. UI katalog Tugas (`tg-*`)
 
