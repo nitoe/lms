@@ -1256,3 +1256,53 @@
   text-align: left;
 }
 
+
+/* ── Header ruang TKA (KelasDetail, per mapel) ───────── */
+.tka-ruang-hero {
+  padding: 1.25rem 1.35rem 1.45rem;
+  box-shadow: 0 10px 28px rgba(23, 23, 57, 0.16);
+}
+.tka-ruang-hero--ipa {
+  /* aksen deco ekstra untuk IPA (rose) */
+}
+.tka-ruang-hero--ipa .kelas-hero-deco {
+  background:
+    radial-gradient(circle at 92% 8%, rgba(255, 255, 255, 0.28) 0%, transparent 42%),
+    radial-gradient(circle at 8% 95%, rgba(127, 29, 29, 0.25) 0%, transparent 48%);
+}
+.tka-ruang-mark {
+  font-size: clamp(2.5rem, 5vw, 3.25rem);
+  opacity: 0.5;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  line-height: 1;
+  user-select: none;
+}
+.tka-ruang-materi {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  list-style: none;
+  margin: 0.85rem 0 0;
+  padding: 0;
+  max-width: 42rem;
+}
+.tka-ruang-materi li {
+  font-size: 0.7rem;
+  font-weight: 650;
+  color: #1f2937;
+  background: rgba(255, 255, 255, 0.92);
+  border-radius: 999px;
+  padding: 0.22rem 0.6rem;
+  line-height: 1.3;
+}
+.tka-ruang-materi-more {
+  background: rgba(255, 255, 255, 0.55) !important;
+  color: rgba(31, 41, 55, 0.85) !important;
+}
+
+.kelas-hero-badge--tka-bank {
+  background: rgba(255, 255, 255, 0.22);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+}

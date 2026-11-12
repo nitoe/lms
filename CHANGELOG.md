@@ -1,3 +1,11 @@
+## 2026-11-12 — Ruang TKA per mapel: hero IPA (dan aksen tetap)
+
+- Aksen cover TKA **tidak lagi hash nama**: IPA rose, Matematika teal, Bahasa Indonesia biru — selaras kartu dashboard.
+- Inisial hero: `IPA` / `MTK` / `BI` (bukan huruf acak).
+- Hero ruang TKA menampilkan **chip materi** (IPA hingga 8 materi + sisa); deskripsi spesifik Fase B & C / keterampilan proses untuk IPA.
+- Badge «Bank bersama 6A & 6B»; back link ke dashboard TKA.
+- File: `src/lib/uiAksen.ts`, `src/pages/KelasDetail.tsx`, `src/styles/tka.css`.
+
 ## 2026-11-12 — Rekap TKA: filter tahap/kelas tidak lagi kotak kosong
 
 - Panel filter (Tahap Try Out / Kelas) tidak dipaksa setinggi panel portal ortu — hilangkan ruang putih besar di tengah kartu.

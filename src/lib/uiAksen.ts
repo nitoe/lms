@@ -68,13 +68,42 @@ const AKSEEN: AksenMapel[] = [
   },
 ]
 
+/** Aksen tetap untuk mapel TKA — selaras kartu di dashboard TKA (bukan hash nama). */
+const AKSEN_TKA: Record<string, AksenMapel> = {
+  'TKA Matematika': {
+    bar: '#0f766e',
+    chip: 'bg-teal-50 text-teal-800',
+    soft: 'bg-teal-50',
+    cover: 'linear-gradient(145deg, #0f766e 0%, #14b8a6 55%, #5eead4 100%)',
+    coverFg: '#ccfbf1',
+  },
+  'TKA Bahasa Indonesia': {
+    bar: '#1e3a8a',
+    chip: 'bg-blue-50 text-blue-800',
+    soft: 'bg-blue-50',
+    cover: 'linear-gradient(145deg, #1e3a8a 0%, #3b82f6 55%, #93c5fd 100%)',
+    coverFg: '#dbeafe',
+  },
+  'TKA IPA': {
+    bar: '#9f1239',
+    chip: 'bg-rose-50 text-rose-800',
+    soft: 'bg-rose-50',
+    cover: 'linear-gradient(145deg, #9f1239 0%, #e11d48 55%, #fb7185 100%)',
+    coverFg: '#ffe4e6',
+  },
+}
+
 export function aksenMapel(nama: string): AksenMapel {
+  if (nama && AKSEN_TKA[nama]) return AKSEN_TKA[nama]
   let h = 0
   for (let i = 0; i < nama.length; i++) h = (h * 31 + nama.charCodeAt(i)) >>> 0
   return AKSEEN[h % AKSEEN.length]
 }
 
 export function inisialMapel(nama: string): string {
+  if (nama === 'TKA Matematika') return 'MTK'
+  if (nama === 'TKA Bahasa Indonesia') return 'BI'
+  if (nama === 'TKA IPA') return 'IPA'
   const parts = nama.trim().split(/\s+/).filter(Boolean)
   if (parts.length === 0) return '?'
   if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase()
