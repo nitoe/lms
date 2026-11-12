@@ -1339,20 +1339,22 @@ export default function TugasDetail() {
                                     />
                                   </td>
                                 ))}
-                                <td>
+                                <td className="td-td-akhir">
                                   <input
                                     type="text"
                                     inputMode="decimal"
                                     className="td-input-sm td-input--tebal"
                                     value={d.nilaiAkhir}
                                     onChange={(e) => onNilaiAkhirChange(r.siswaId, e.target.value)}
+                                    aria-label={`Nilai akhir — ${r.siswaNama}`}
                                   />
                                 </td>
-                                <td>
+                                <td className="td-td-pred">
                                   <select
                                     className="td-select-sm"
                                     value={d.predikat}
                                     onChange={(e) => patchDraft(r.siswaId, { predikat: e.target.value })}
+                                    aria-label={`Predikat — ${r.siswaNama}`}
                                   >
                                     <option value="">—</option>
                                     {daftarPredikat.map((p) => (

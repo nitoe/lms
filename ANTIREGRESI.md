@@ -10,7 +10,7 @@
 
 113.5 Logika skor, predikat, AI kategori/isi, dan simpan nilai per siswa **tidak** boleh diubah hanya demi gaya CSS. UI v2 adalah presentasi saja (selaras §111 katalog).
 
-113.6 Tabel daftar nilai (`.td-tabel--nilai`): `table-layout: fixed`, header kategori (`.td-th-kat`) boleh patah 2–3 baris — **jangan** `white-space: nowrap` pada header kategori. Kolom siswa boleh sticky; input skor `width: 100%` di dalam sel.
+113.6 Tabel daftar nilai (`.td-tabel--nilai`): header kategori (`.td-th-kat`) boleh patah baris (`white-space: normal`). **Jangan** memakai `display: -webkit-box` / `-webkit-line-clamp` pada `<th>` atau `<td>` — itu merusak model kolom tabel (header menumpuk, skor kategori hilang dari kolomnya). Kolom siswa boleh sticky. Scroll horizontal pada `.td-tabel-wrap` bila kolom tidak muat.
 
 ## §112. Input sebaran manual
 
