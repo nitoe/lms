@@ -2,9 +2,14 @@
 
 - **Jenis baru** `halaman` di `lms_materi`: konten disusun per halaman berisi **blok berurutan** (teks kaya TipTap + gambar).
 - **Guru:** tombol **+ Halaman** di panel materi → editor (metadata, daftar halaman, blok teks/gambar, pratinjau, simpan). Edit & baca dari daftar yang sama dengan PDF/YouTube.
+- **Layout editor (fokus menulis):**
+  - Bilah atas tetap: Batal, toggle daftar halaman, toggle pengaturan, judul ringkas, chip TP, halaman aktif, Pratinjau, Simpan.
+  - **Panel pengaturan** (judul/bab/deskripsi/TP) bisa dilipat; otomatis terbuka jika metadata belum lengkap; tombol «Selesai — lanjut tulis isi».
+  - **Sidepanel daftar halaman** bisa disembunyikan/ditampilkan kapan saja; tombol «» Halaman» untuk membuka kembali.
+  - Area kanvas blok memakan sisa ruang.
 - **Siswa:** tombol **Baca** membuka viewer dengan navigasi prev/next + indikator halaman; mobile-first.
 - Batas: 20 halaman/materi, 30 blok/halaman, gambar blok ≤ 8 MB. Storage path `lms/materi/{kelas}/halaman_*`.
-- Mode unggah file/YouTube/tautan **tidak berubah**. Tidak perlu ubah `firestore.rules` (field tambahan di dokumen materi yang sudah diizinkan).
+- Mode unggah file/YouTube/tautan **tidak berubah**. Tidak perlu ubah `firestore.rules`.
 - File: `src/types/materi.ts`, `src/lib/materi.ts`, `src/lib/materiUi.ts`, `src/lib/html.ts` (`bersihHtmlMateri`), `src/components/MateriPanel.tsx`, `src/components/JenisIcon.tsx`, `src/components/materi/*` (baru), `src/pages/siswa/SiswaMateri.tsx`, `src/styles/materi-halaman.css`, `src/main.tsx`.
 - ANTIREGRESI §115.
 

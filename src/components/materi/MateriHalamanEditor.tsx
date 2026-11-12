@@ -57,7 +57,7 @@ function salinHalaman(list: MateriHalaman[]): MateriHalaman[] {
 
 /**
  * Editor materi multi-halaman (V1: blok teks + gambar).
- * Sidebar halaman + editor blok berurutan + pratinjau.
+ * Layout: bilah atas tetap + panel meta bisa dilipat + sidepanel halaman bisa disembunyikan.
  */
 export default function MateriHalamanEditor({
   kelas,
@@ -85,7 +85,18 @@ export default function MateriHalamanEditor({
   const fileRef = useRef<HTMLInputElement>(null)
   const [unggahUntukBlok, setUnggahUntukBlok] = useState<string | null>(null)
 
+  /** Panel daftar halaman (kiri) — default terbuka di desktop. */
+  const [panelHalaman, setPanelHalaman] = useState(true)
+  /**
+   * Panel pengaturan (judul, TP, …).
+   * Buka otomatis jika materi baru atau metadata belum lengkap.
+   */
+  const metaAwalLengkap = Boolean(materiAwal?.judul && materiAwal?.tpId)
+  const [panelMeta, setPanelMeta] = useState(!metaAwalLengkap)
+
   const aktif = halaman[aktifIdx] ?? halaman[0]
+  const tpTerpilih = tpList.find((t) => t.id === meta.tpId)
+  const metaLengkap = Boolean(meta.judul.trim() && meta.tpId)
 
   const updateAktif = useCallback(
     (fn: (h: MateriHalaman) => MateriHalaman) => {
@@ -106,6 +117,7 @@ export default function MateriHalamanEditor({
     const baru = halamanKosong(halaman.length)
     setHalaman((prev) => [...prev, baru])
     setAktifIdx(halaman.length)
+    setPanelHalaman(true)
   }
 
   function hapusHalaman(idx: number) {
@@ -244,9 +256,13 @@ export default function MateriHalamanEditor({
       }
       const tp = tpList.find((t) => t.id === meta.tpId)
       if (!tp) {
+        setPanelMeta(true)
         throw new Error('Tujuan Pembelajaran wajib dipilih.')
       }
-      if (!meta.judul.trim()) throw new Error('Judul wajib diisi.')
+      if (!meta.judul.trim()) {
+        setPanelMeta(true)
+        throw new Error('Judul wajib diisi.')
+      }
 
       const payload = {
         kelas,
@@ -295,12 +311,12 @@ export default function MateriHalamanEditor({
 
   if (mode === 'pratinjau') {
     return (
-      <div className="mh-editor">
-        <div className="mh-editor-toolbar">
+      <div className="mh-shell">
+        <div className="mh-topbar">
           <button type="button" className="lms-btn-ghost" onClick={() => setMode('edit')}>
             ← Kembali edit
           </button>
-          <span className="text-xs font-medium text-slate-600">Pratinjau siswa</span>
+          <span className="mh-topbar-label">Pratinjau siswa</span>
         </div>
         <MateriHalamanViewer materi={pratinjauMateri} mode="guru" />
       </div>
@@ -308,17 +324,62 @@ export default function MateriHalamanEditor({
   }
 
   return (
-    <div className="mh-editor">
-      <div className="mh-editor-toolbar">
-        <div className="flex flex-wrap items-center gap-2">
+    <div className={`mh-shell ${panelHalaman ? 'mh-shell--side-on' : 'mh-shell--side-off'}`}>
+      {/* ── Bilah atas tetap ── */}
+      <header className="mh-topbar">
+        <div className="mh-topbar-left">
           <button type="button" className="lms-btn-ghost" onClick={onBatal} disabled={busy}>
             Batal
           </button>
-          <h2 className="text-sm font-semibold text-slate-900">
-            {materiAwal ? 'Edit materi halaman' : 'Buat materi halaman'}
-          </h2>
+          <button
+            type="button"
+            className={`mh-icon-btn ${panelHalaman ? 'mh-icon-btn--on' : ''}`}
+            aria-pressed={panelHalaman}
+            aria-label={panelHalaman ? 'Sembunyikan daftar halaman' : 'Tampilkan daftar halaman'}
+            title={panelHalaman ? 'Sembunyikan daftar halaman' : 'Daftar halaman'}
+            onClick={() => setPanelHalaman((v) => !v)}
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+              <rect x="3" y="4" width="7" height="16" rx="1.5" />
+              <path d="M14 7h7M14 12h7M14 17h5" />
+            </svg>
+          </button>
+          <button
+            type="button"
+            className={`mh-icon-btn ${panelMeta ? 'mh-icon-btn--on' : ''} ${!metaLengkap ? 'mh-icon-btn--warn' : ''}`}
+            aria-pressed={panelMeta}
+            aria-label={panelMeta ? 'Sembunyikan pengaturan materi' : 'Pengaturan materi'}
+            title={
+              !metaLengkap
+                ? 'Pengaturan materi (judul & TP belum lengkap)'
+                : panelMeta
+                  ? 'Sembunyikan pengaturan'
+                  : 'Pengaturan materi'
+            }
+            onClick={() => setPanelMeta((v) => !v)}
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+              <circle cx="12" cy="12" r="3" />
+              <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" />
+            </svg>
+            {!metaLengkap && <span className="mh-dot-warn" aria-hidden />}
+          </button>
+          <div className="mh-topbar-title-wrap">
+            <span className="mh-topbar-kicker">{materiAwal ? 'Edit materi' : 'Materi baru'}</span>
+            <span className="mh-topbar-title" title={meta.judul || undefined}>
+              {meta.judul.trim() || 'Tanpa judul'}
+            </span>
+          </div>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="mh-topbar-right">
+          <span className="mh-page-pill" title="Halaman aktif">
+            {aktifIdx + 1}/{halaman.length}
+          </span>
+          {tpTerpilih && (
+            <span className="mh-tp-chip" title={tpTerpilih.namaTp}>
+              TP {tpTerpilih.nomorTp}
+            </span>
+          )}
           <button
             type="button"
             className="lms-btn-secondary"
@@ -327,11 +388,16 @@ export default function MateriHalamanEditor({
           >
             Pratinjau
           </button>
-          <button type="button" className="lms-btn-primary" onClick={() => void simpan()} disabled={busy}>
+          <button
+            type="button"
+            className="lms-btn-primary"
+            onClick={() => void simpan()}
+            disabled={busy}
+          >
             {busy ? 'Menyimpan…' : 'Simpan'}
           </button>
         </div>
-      </div>
+      </header>
 
       {error && (
         <div className="mh-error" role="alert">
@@ -339,123 +405,177 @@ export default function MateriHalamanEditor({
         </div>
       )}
 
-      {/* Metadata */}
-      <section className="mh-meta">
-        <label className="materi-field">
-          <span>Judul materi</span>
-          <input
-            required
-            value={meta.judul}
-            onChange={(e) => setMeta((m) => ({ ...m, judul: e.target.value }))}
-            placeholder="Contoh: Perkalian 2 angka"
-          />
-        </label>
-        <label className="materi-field">
-          <span>Bab / unit (opsional)</span>
-          <input
-            value={meta.bab}
-            onChange={(e) => setMeta((m) => ({ ...m, bab: e.target.value }))}
-            placeholder="Otomatis dari TP bila kosong"
-          />
-        </label>
-        <label className="materi-field materi-field--full">
-          <span>Deskripsi singkat (opsional)</span>
-          <textarea
-            rows={2}
-            value={meta.deskripsi}
-            onChange={(e) => setMeta((m) => ({ ...m, deskripsi: e.target.value }))}
-            placeholder="Petunjuk untuk siswa"
-          />
-        </label>
-        <div className="materi-tp-block materi-field--full">
-          <div className="flex items-center justify-between gap-2">
-            <span className="text-xs font-semibold text-slate-800">
-              Tujuan Pembelajaran <span className="text-red-600">*</span>
-            </span>
-          </div>
-          {tpList.length === 0 ? (
-            <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[12px] text-amber-900">
-              Belum ada TP di Penilaian untuk <strong>{mapel}</strong> · {kelas}.
-            </div>
-          ) : (
-            <div role="listbox" aria-label="Pilih Tujuan Pembelajaran" className="materi-tp-list">
-              {tpList.map((t) => {
-                const on = meta.tpId === t.id
-                return (
-                  <button
-                    key={t.id}
-                    type="button"
-                    role="option"
-                    aria-selected={on}
-                    className={`materi-tp-item ${on ? 'materi-tp-item--on' : ''}`}
-                    onClick={() => setMeta((m) => ({ ...m, tpId: t.id }))}
-                  >
-                    <span className={`materi-tp-num ${on ? 'materi-tp-num--on' : ''}`}>{t.nomorTp}</span>
-                    <span className="text-left text-[12px] leading-snug">{t.namaTp}</span>
-                  </button>
-                )
-              })}
-            </div>
-          )}
-        </div>
-      </section>
-
-      <div className="mh-body">
-        {/* Daftar halaman */}
-        <aside className="mh-sidebar">
-          <div className="mh-sidebar-head">
-            <span className="text-xs font-semibold text-slate-800">Halaman</span>
-            <button type="button" className="mh-side-add" onClick={tambahHalaman} disabled={busy}>
-              + Tambah
+      {/* ── Panel meta (bisa dilipat) ── */}
+      {panelMeta && (
+        <section className="mh-meta-panel" aria-label="Pengaturan materi">
+          <div className="mh-meta-panel-head">
+            <h3 className="mh-meta-panel-title">Pengaturan materi</h3>
+            <button
+              type="button"
+              className="mh-link-btn"
+              onClick={() => setPanelMeta(false)}
+            >
+              Sembunyikan
             </button>
           </div>
-          <ul className="mh-page-list">
-            {halaman.map((h, i) => (
-              <li key={h.id}>
+          <div className="mh-meta">
+            <label className="materi-field">
+              <span>
+                Judul materi <span className="text-red-600">*</span>
+              </span>
+              <input
+                required
+                value={meta.judul}
+                onChange={(e) => setMeta((m) => ({ ...m, judul: e.target.value }))}
+                placeholder="Contoh: Perkalian 2 angka"
+              />
+            </label>
+            <label className="materi-field">
+              <span>Bab / unit (opsional)</span>
+              <input
+                value={meta.bab}
+                onChange={(e) => setMeta((m) => ({ ...m, bab: e.target.value }))}
+                placeholder="Otomatis dari TP bila kosong"
+              />
+            </label>
+            <label className="materi-field materi-field--full">
+              <span>Deskripsi singkat (opsional)</span>
+              <textarea
+                rows={2}
+                value={meta.deskripsi}
+                onChange={(e) => setMeta((m) => ({ ...m, deskripsi: e.target.value }))}
+                placeholder="Petunjuk untuk siswa"
+              />
+            </label>
+            <div className="materi-tp-block materi-field--full">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-xs font-semibold text-slate-800">
+                  Tujuan Pembelajaran <span className="text-red-600">*</span>
+                </span>
+                {tpTerpilih && (
+                  <span className="text-[11px] font-medium text-emerald-700">
+                    Terpilih: TP {tpTerpilih.nomorTp}
+                  </span>
+                )}
+              </div>
+              {tpList.length === 0 ? (
+                <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[12px] text-amber-900">
+                  Belum ada TP di Penilaian untuk <strong>{mapel}</strong> · {kelas}.
+                </div>
+              ) : (
+                <div role="listbox" aria-label="Pilih Tujuan Pembelajaran" className="materi-tp-list">
+                  {tpList.map((t) => {
+                    const on = meta.tpId === t.id
+                    return (
+                      <button
+                        key={t.id}
+                        type="button"
+                        role="option"
+                        aria-selected={on}
+                        className={`materi-tp-item ${on ? 'materi-tp-item--on' : ''}`}
+                        onClick={() => setMeta((m) => ({ ...m, tpId: t.id }))}
+                      >
+                        <span className={`materi-tp-num ${on ? 'materi-tp-num--on' : ''}`}>
+                          {t.nomorTp}
+                        </span>
+                        <span className="text-left text-[12px] leading-snug">{t.namaTp}</span>
+                      </button>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+          {metaLengkap && (
+            <div className="mh-meta-panel-foot">
+              <button type="button" className="lms-btn-secondary" onClick={() => setPanelMeta(false)}>
+                Selesai — lanjut tulis isi
+              </button>
+            </div>
+          )}
+        </section>
+      )}
+
+      {/* ── Badan: sidepanel + kanvas ── */}
+      <div className="mh-body">
+        {panelHalaman && (
+          <aside className="mh-sidebar" aria-label="Daftar halaman">
+            <div className="mh-sidebar-head">
+              <span className="text-xs font-semibold text-slate-800">Halaman</span>
+              <div className="flex items-center gap-1">
+                <button type="button" className="mh-side-add" onClick={tambahHalaman} disabled={busy}>
+                  + Tambah
+                </button>
                 <button
                   type="button"
-                  className={`mh-page-item ${i === aktifIdx ? 'mh-page-item--on' : ''}`}
-                  onClick={() => setAktifIdx(i)}
+                  className="mh-side-hide"
+                  title="Sembunyikan panel"
+                  aria-label="Sembunyikan daftar halaman"
+                  onClick={() => setPanelHalaman(false)}
                 >
-                  <span className="mh-page-num">{i + 1}</span>
-                  <span className="mh-page-label">{h.judul?.trim() || `Halaman ${i + 1}`}</span>
+                  «
                 </button>
-                <div className="mh-page-actions">
-                  <button type="button" title="Naik" disabled={i === 0} onClick={() => pindahHalaman(i, -1)}>
-                    ↑
-                  </button>
+              </div>
+            </div>
+            <ul className="mh-page-list">
+              {halaman.map((h, i) => (
+                <li key={h.id}>
                   <button
                     type="button"
-                    title="Turun"
-                    disabled={i >= halaman.length - 1}
-                    onClick={() => pindahHalaman(i, 1)}
+                    className={`mh-page-item ${i === aktifIdx ? 'mh-page-item--on' : ''}`}
+                    onClick={() => setAktifIdx(i)}
                   >
-                    ↓
+                    <span className="mh-page-num">{i + 1}</span>
+                    <span className="mh-page-label">{h.judul?.trim() || `Halaman ${i + 1}`}</span>
                   </button>
-                  <button type="button" title="Hapus" onClick={() => hapusHalaman(i)}>
-                    ×
-                  </button>
-                </div>
-              </li>
-            ))}
-          </ul>
-          <p className="mh-hint">
-            {halaman.length}/{BATAS_HALAMAN_PER_MATERI} halaman
-          </p>
-        </aside>
+                  <div className="mh-page-actions">
+                    <button type="button" title="Naik" disabled={i === 0} onClick={() => pindahHalaman(i, -1)}>
+                      ↑
+                    </button>
+                    <button
+                      type="button"
+                      title="Turun"
+                      disabled={i >= halaman.length - 1}
+                      onClick={() => pindahHalaman(i, 1)}
+                    >
+                      ↓
+                    </button>
+                    <button type="button" title="Hapus" onClick={() => hapusHalaman(i)}>
+                      ×
+                    </button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+            <p className="mh-hint">
+              {halaman.length}/{BATAS_HALAMAN_PER_MATERI} halaman
+            </p>
+          </aside>
+        )}
 
-        {/* Editor halaman aktif */}
         <section className="mh-canvas">
+          {!panelHalaman && (
+            <button
+              type="button"
+              className="mh-reopen-side"
+              onClick={() => setPanelHalaman(true)}
+            >
+              » Halaman ({aktifIdx + 1}/{halaman.length})
+            </button>
+          )}
+
           {aktif && (
             <>
-              <label className="materi-field">
-                <span>Judul halaman (opsional)</span>
-                <input
-                  value={aktif.judul || ''}
-                  onChange={(e) => setJudulHalaman(e.target.value)}
-                  placeholder={`Halaman ${aktifIdx + 1}`}
-                />
-              </label>
+              <div className="mh-canvas-head">
+                <label className="materi-field mh-judul-halaman">
+                  <span>Judul halaman (opsional)</span>
+                  <input
+                    value={aktif.judul || ''}
+                    onChange={(e) => setJudulHalaman(e.target.value)}
+                    placeholder={`Halaman ${aktifIdx + 1}`}
+                  />
+                </label>
+              </div>
 
               <div className="mh-blok-list">
                 {aktif.blok.map((b, bi) => (
@@ -486,7 +606,7 @@ export default function MateriHalamanEditor({
                         value={b.html}
                         onChange={(html) => updateBlok(b.id, { html } as Partial<MateriBlok>)}
                         placeholder="Tulis materi di sini…"
-                        minRem={4}
+                        minRem={5}
                       />
                     ) : (
                       <div className="mh-img-edit">

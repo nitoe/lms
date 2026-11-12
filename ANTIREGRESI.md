@@ -12,6 +12,8 @@
 
 115.6 Materi halaman tampil di daftar yang sama dengan jenis lain (satu list per mapel); filter/chip `labelJenis` / `toneJenis` mendukung `'halaman'`.
 
+115.7 Layout editor: panel **pengaturan** (meta+TP) dan **daftar halaman** wajib bisa dilipat/ditampilkan ulang tanpa kehilangan state. Jangan mengembalikan meta+TP sebagai blok permanen di atas kanvas (membuat layar padat). Titik masuk: ikon di bilah atas + chip peringatan jika judul/TP belum lengkap.
+
 ## §114. UI dashboard ruang kelas (`rk-*`)
 
 114.1 Kelas `.rk-*` untuk katalog `/kelas` (`KelasList` + `RuangCard`). Jangan mencampur dengan `.tg-*` (tugas) atau `.td-*` (detail tugas) kecuali pola visual yang disengaja sama.
