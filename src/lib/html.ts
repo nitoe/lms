@@ -52,3 +52,14 @@ export function stimulusKeHtml(s: string | undefined): string {
     .map((p) => `<p>${esc(p).replace(/\n/g, '<br>')}</p>`)
     .join('')
 }
+
+/**
+ * HTML materi halaman: seperti soal + heading h2/h3 untuk struktur bacaan.
+ * Tetap tanpa atribut (kelas/style/onclick) — ANTIREGRESI §9.
+ */
+const TAG_MATERI = [...TAG_BOLEH, 'h2', 'h3']
+
+export function bersihHtmlMateri(html: string | undefined): string {
+  if (!html) return ''
+  return DOMPurify.sanitize(html, { ALLOWED_TAGS: TAG_MATERI, ALLOWED_ATTR: [] })
+}

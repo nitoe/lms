@@ -1,3 +1,13 @@
+## 2026-11-12 — Materi multi-halaman (V1: teks + gambar)
+
+- **Jenis baru** `halaman` di `lms_materi`: konten disusun per halaman berisi **blok berurutan** (teks kaya TipTap + gambar).
+- **Guru:** tombol **+ Halaman** di panel materi → editor (metadata, daftar halaman, blok teks/gambar, pratinjau, simpan). Edit & baca dari daftar yang sama dengan PDF/YouTube.
+- **Siswa:** tombol **Baca** membuka viewer dengan navigasi prev/next + indikator halaman; mobile-first.
+- Batas: 20 halaman/materi, 30 blok/halaman, gambar blok ≤ 8 MB. Storage path `lms/materi/{kelas}/halaman_*`.
+- Mode unggah file/YouTube/tautan **tidak berubah**. Tidak perlu ubah `firestore.rules` (field tambahan di dokumen materi yang sudah diizinkan).
+- File: `src/types/materi.ts`, `src/lib/materi.ts`, `src/lib/materiUi.ts`, `src/lib/html.ts` (`bersihHtmlMateri`), `src/components/MateriPanel.tsx`, `src/components/JenisIcon.tsx`, `src/components/materi/*` (baru), `src/pages/siswa/SiswaMateri.tsx`, `src/styles/materi-halaman.css`, `src/main.tsx`.
+- ANTIREGRESI §115.
+
 ## 2026-11-12 — Dashboard ruang kelas: UI v2
 
 - **Kepala & ringkasan:** judul halaman, strip angka (ruang, kelas, tugas aktif, kuis aktif).

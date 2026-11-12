@@ -11,6 +11,8 @@ export function labelJenis(jenis: string): string {
       return 'Video'
     case 'youtube':
       return 'YouTube'
+    case 'halaman':
+      return 'Halaman'
     default:
       return 'Tautan'
   }
@@ -27,6 +29,8 @@ export function toneJenis(jenis: string): string {
       return 'materi-tone--vid'
     case 'youtube':
       return 'materi-tone--yt'
+    case 'halaman':
+      return 'materi-tone--hal'
     default:
       return 'materi-tone--url'
   }
@@ -68,4 +72,10 @@ export function kelompokkanMateri(list: MateriLms[]): KelompokMateri[] {
   return [...map.values()].sort((a, b) =>
     a.urut !== b.urut ? a.urut - b.urut : a.label.localeCompare(b.label, 'id', { numeric: true }),
   )
+}
+
+/** Jumlah halaman (untuk chip di daftar). */
+export function jumlahHalaman(m: MateriLms): number {
+  if (m.jenis !== 'halaman' || !Array.isArray(m.halaman)) return 0
+  return m.halaman.length
 }

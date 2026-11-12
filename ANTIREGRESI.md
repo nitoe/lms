@@ -1,3 +1,17 @@
+## §115. Materi multi-halaman (`jenis: 'halaman'`)
+
+115.1 Field `halaman: MateriHalaman[]` hanya dipakai jika `jenis === 'halaman'`. Jangan mengisi `url`/`storagePath` tingkat dokumen untuk jenis ini (gambar ada di blok).
+
+115.2 HTML blok teks **wajib** lewat `bersihHtmlMateri()` sebelum simpan dan sebelum `dangerouslySetInnerHTML` (tag: p/br/strong/em/u/sub/sup/ul/ol/li/h2/h3 — tanpa atribut). Selaras §9.
+
+115.3 Batas: `BATAS_HALAMAN_PER_MATERI` (20), `BATAS_BLOK_PER_HALAMAN` (30), gambar blok `BATAS_UKURAN.gambarHalaman` (8 MB). Validasi di `normalisasiHalaman` + UI.
+
+115.4 Hapus materi halaman harus membersihkan **semua** `storagePath` di blok gambar (`hapusMateri` + `bersihkanGambarYatim` saat edit).
+
+115.5 Viewer siswa dan guru memakai komponen yang sama (`MateriHalamanViewer`); navigasi sticky bottom untuk jempol HP.
+
+115.6 Materi halaman tampil di daftar yang sama dengan jenis lain (satu list per mapel); filter/chip `labelJenis` / `toneJenis` mendukung `'halaman'`.
+
 ## §114. UI dashboard ruang kelas (`rk-*`)
 
 114.1 Kelas `.rk-*` untuk katalog `/kelas` (`KelasList` + `RuangCard`). Jangan mencampur dengan `.tg-*` (tugas) atau `.td-*` (detail tugas) kecuali pola visual yang disengaja sama.

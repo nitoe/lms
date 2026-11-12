@@ -6,6 +6,7 @@ import { SiswaProvider } from './context/SiswaContext'
 import App from './App'
 import './index.css'
 import './styles/siswa.css'
+import './styles/materi-halaman.css'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

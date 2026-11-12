@@ -1,0 +1,465 @@
+/* ── Materi multi-halaman (editor + viewer) ── */
+
+.materi-tone--hal {
+  background: #ecfdf5;
+  color: #047857;
+}
+
+/* Toolbar editor */
+.mh-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+.mh-editor-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding-bottom: 0.35rem;
+  border-bottom: 1px solid #e5e7eb;
+}
+.mh-error {
+  border-radius: 0.75rem;
+  border: 1px solid #fecaca;
+  background: #fef2f2;
+  color: #991b1b;
+  font-size: 0.8125rem;
+  padding: 0.6rem 0.85rem;
+}
+.mh-meta {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.65rem 0.85rem;
+}
+@media (max-width: 640px) {
+  .mh-meta {
+    grid-template-columns: 1fr;
+  }
+}
+.mh-body {
+  display: grid;
+  grid-template-columns: 11.5rem 1fr;
+  gap: 0.85rem;
+  align-items: start;
+}
+@media (max-width: 768px) {
+  .mh-body {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Sidebar halaman */
+.mh-sidebar {
+  border: 1px solid #e5e7eb;
+  border-radius: 0.85rem;
+  background: #fafafa;
+  padding: 0.55rem;
+}
+.mh-sidebar-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.4rem;
+}
+.mh-side-add {
+  border: 0;
+  background: transparent;
+  color: #047857;
+  font-size: 0.72rem;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 0.2rem 0.35rem;
+}
+.mh-page-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+.mh-page-list > li {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+.mh-page-item {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  width: 100%;
+  text-align: left;
+  border: 1px solid transparent;
+  border-radius: 0.55rem;
+  background: #fff;
+  padding: 0.4rem 0.45rem;
+  cursor: pointer;
+  min-height: 2.4rem;
+}
+.mh-page-item:hover {
+  border-color: #d1d5db;
+}
+.mh-page-item--on {
+  border-color: #6ee7b7;
+  background: #ecfdf5;
+}
+.mh-page-num {
+  flex-shrink: 0;
+  width: 1.35rem;
+  height: 1.35rem;
+  border-radius: 999px;
+  background: #e5e7eb;
+  color: #374151;
+  font-size: 0.65rem;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.mh-page-item--on .mh-page-num {
+  background: #059669;
+  color: #fff;
+}
+.mh-page-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #1f2937;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.mh-page-actions {
+  display: flex;
+  gap: 0.15rem;
+  padding-left: 0.2rem;
+}
+.mh-page-actions button {
+  border: 0;
+  background: transparent;
+  color: #6b7280;
+  font-size: 0.7rem;
+  cursor: pointer;
+  padding: 0.1rem 0.35rem;
+  border-radius: 0.3rem;
+}
+.mh-page-actions button:hover:not(:disabled) {
+  background: #e5e7eb;
+  color: #111;
+}
+.mh-page-actions button:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+.mh-hint {
+  margin: 0.45rem 0 0;
+  font-size: 0.65rem;
+  color: #9ca3af;
+}
+
+/* Canvas blok */
+.mh-canvas {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  min-width: 0;
+}
+.mh-blok-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+.mh-blok-card {
+  border: 1px solid #e5e7eb;
+  border-radius: 0.85rem;
+  background: #fff;
+  padding: 0.55rem 0.65rem 0.75rem;
+}
+.mh-blok-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.4rem;
+}
+.mh-blok-card-actions {
+  display: flex;
+  gap: 0.2rem;
+}
+.mh-blok-card-actions button {
+  border: 1px solid #e5e7eb;
+  background: #f9fafb;
+  border-radius: 0.4rem;
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: #4b5563;
+  padding: 0.2rem 0.45rem;
+  cursor: pointer;
+}
+.mh-blok-card-actions button:hover:not(:disabled) {
+  background: #f3f4f6;
+}
+.mh-blok-card-actions button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.mh-add-blok {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem;
+}
+.mh-img-edit {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.mh-img-preview {
+  max-width: 100%;
+  max-height: 16rem;
+  object-fit: contain;
+  border-radius: 0.55rem;
+  background: #f3f4f6;
+}
+.mh-img-empty {
+  border: 1px dashed #d1d5db;
+  border-radius: 0.55rem;
+  padding: 1.5rem;
+  text-align: center;
+  color: #9ca3af;
+  font-size: 0.8rem;
+}
+
+/* Rich editor materi */
+.mh-rich {
+  border: 1px solid #e5e7eb;
+  border-radius: 0.55rem;
+  overflow: hidden;
+  background: #fff;
+}
+.mh-rich-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.2rem;
+  padding: 0.3rem 0.35rem;
+  border-bottom: 1px solid #f3f4f6;
+  background: #fafafa;
+}
+.mh-tb {
+  border: 0;
+  background: transparent;
+  border-radius: 0.35rem;
+  min-height: 1.7rem;
+  padding: 0.15rem 0.4rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #374151;
+  cursor: pointer;
+}
+.mh-tb:hover {
+  background: #e5e7eb;
+}
+.mh-tb--on {
+  background: #d1fae5;
+  color: #065f46;
+}
+.mh-tb--sym {
+  font-weight: 500;
+  min-width: 1.5rem;
+}
+.mh-tb-sep {
+  width: 1px;
+  align-self: stretch;
+  background: #e5e7eb;
+  margin: 0.15rem 0.2rem;
+}
+.mh-simbol {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.1rem;
+}
+.mh-rich-area {
+  padding: 0.55rem 0.7rem;
+  outline: none;
+  font-size: 0.9rem;
+  line-height: 1.55;
+  color: #1f2937;
+}
+.mh-rich-area p {
+  margin: 0 0 0.45em;
+}
+.mh-rich-area h2 {
+  font-size: 1.15rem;
+  font-weight: 700;
+  margin: 0.4em 0 0.35em;
+}
+.mh-rich-area h3 {
+  font-size: 1.02rem;
+  font-weight: 700;
+  margin: 0.35em 0 0.3em;
+}
+.mh-rich-area ul,
+.mh-rich-area ol {
+  margin: 0.3em 0 0.5em 1.2em;
+  padding: 0;
+}
+
+/* Viewer siswa / pratinjau */
+.mh-viewer {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  max-width: 42rem;
+  margin: 0 auto;
+  padding-bottom: 1.25rem;
+}
+.mh-viewer-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+.mh-viewer-back {
+  border: 0;
+  background: transparent;
+  color: #047857;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0;
+  margin-bottom: 0.25rem;
+}
+.mh-viewer-title {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #0f172a;
+  line-height: 1.3;
+  margin: 0;
+}
+.mh-viewer-subtitle {
+  margin: 0.2rem 0 0;
+  font-size: 0.85rem;
+  color: #64748b;
+  font-weight: 500;
+}
+.mh-page-pill {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  background: #ecfdf5;
+  color: #047857;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 0.25rem 0.65rem;
+  white-space: nowrap;
+}
+.mh-page {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 1rem;
+  padding: 1rem 1.1rem 1.25rem;
+  min-height: 12rem;
+}
+@media (min-width: 640px) {
+  .mh-page {
+    padding: 1.25rem 1.5rem 1.5rem;
+  }
+}
+.mh-blok--teks {
+  font-size: 0.95rem;
+  line-height: 1.6;
+  color: #1e293b;
+}
+.mh-blok--teks p {
+  margin: 0 0 0.65em;
+}
+.mh-blok--teks h2 {
+  font-size: 1.2rem;
+  font-weight: 700;
+  margin: 0.5em 0 0.4em;
+  color: #0f172a;
+}
+.mh-blok--teks h3 {
+  font-size: 1.05rem;
+  font-weight: 700;
+  margin: 0.45em 0 0.35em;
+}
+.mh-blok--teks ul,
+.mh-blok--teks ol {
+  margin: 0.35em 0 0.65em 1.25em;
+}
+.mh-blok--gambar {
+  margin: 0.75rem 0;
+}
+.mh-blok--gambar img {
+  display: block;
+  width: 100%;
+  max-height: 70vh;
+  object-fit: contain;
+  border-radius: 0.65rem;
+  background: #f8fafc;
+}
+.mh-blok--gambar figcaption {
+  margin-top: 0.4rem;
+  font-size: 0.78rem;
+  color: #64748b;
+  text-align: center;
+}
+.mh-viewer-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  position: sticky;
+  bottom: 0.5rem;
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(6px);
+  border: 1px solid #e5e7eb;
+  border-radius: 999px;
+  padding: 0.35rem 0.45rem;
+  box-shadow: 0 4px 16px rgba(15, 23, 42, 0.06);
+}
+.mh-nav-btn {
+  border: 0;
+  background: transparent;
+  color: #047857;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 0.45rem 0.7rem;
+  border-radius: 999px;
+  min-height: 2.4rem;
+}
+.mh-nav-btn:hover:not(:disabled) {
+  background: #ecfdf5;
+}
+.mh-nav-btn:disabled {
+  color: #94a3b8;
+  cursor: not-allowed;
+}
+.mh-dots {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  justify-content: center;
+  max-width: 40%;
+}
+.mh-dot {
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 999px;
+  border: 0;
+  background: #cbd5e1;
+  cursor: pointer;
+  padding: 0;
+}
+.mh-dot--on {
+  background: #059669;
+  width: 0.85rem;
+  border-radius: 999px;
+}
+.mh-viewer-deskripsi {
+  font-size: 0.8rem;
+  color: #64748b;
+  margin: 0;
+}

@@ -4,13 +4,16 @@ import { daftarMateri, hapusMateri, tambahMateri } from '../lib/materi'
 import { getTpMapelKelas } from '../lib/tpData'
 import type { MateriLms } from '../types/materi'
 import type { TpRingkas } from '../types/materi'
+import MateriHalamanEditor from './materi/MateriHalamanEditor'
+import MateriHalamanViewer from './materi/MateriHalamanViewer'
+import { jumlahHalaman } from '../lib/materiUi'
 
 type Props = {
   kelas: string
   mapel: string
 }
 
-type ModeForm = 'tutup' | 'file' | 'youtube' | 'tautan'
+type ModeForm = 'tutup' | 'file' | 'youtube' | 'tautan' | 'halaman'
 
 function labelJenis(jenis: string): string {
   switch (jenis) {
@@ -22,6 +25,8 @@ function labelJenis(jenis: string): string {
       return 'Video'
     case 'youtube':
       return 'YouTube'
+    case 'halaman':
+      return 'Halaman'
     default:
       return 'Tautan'
   }
@@ -69,6 +74,15 @@ function JenisIcon({ jenis }: { jenis: string }) {
           <polygon points="5 3 19 12 5 21 5 3" />
         </svg>
       )
+    case 'halaman':
+      return (
+        <svg {...common}>
+          <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+          <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+          <line x1="8" y1="7" x2="16" y2="7" />
+          <line x1="8" y1="11" x2="14" y2="11" />
+        </svg>
+      )
     default:
       return (
         <svg {...common}>
@@ -89,6 +103,8 @@ function toneJenis(jenis: string): string {
       return 'materi-tone--vid'
     case 'youtube':
       return 'materi-tone--yt'
+    case 'halaman':
+      return 'materi-tone--hal'
     default:
       return 'materi-tone--url'
   }
@@ -109,6 +125,10 @@ export default function MateriPanel({ kelas, mapel }: Props) {
   const [tpId, setTpId] = useState('')
   const [url, setUrl] = useState('')
   const [file, setFile] = useState<File | null>(null)
+  /** Materi halaman yang sedang diedit (null = buat baru). */
+  const [editHalaman, setEditHalaman] = useState<MateriLms | null | undefined>(undefined)
+  /** Materi halaman yang dibuka pratinjau/baca di panel guru. */
+  const [bacaHalaman, setBacaHalaman] = useState<MateriLms | null>(null)
 
   const muat = useCallback(async () => {
     setError('')
@@ -240,6 +260,33 @@ export default function MateriPanel({ kelas, mapel }: Props) {
 
   const jumlah = list?.length ?? 0
 
+  if (editHalaman !== undefined) {
+    return (
+      <MateriHalamanEditor
+        kelas={kelas}
+        mapel={mapel}
+        tpList={tpList}
+        namaGuru={profil?.nama}
+        materiAwal={editHalaman}
+        onBatal={() => setEditHalaman(undefined)}
+        onSelesai={() => {
+          setEditHalaman(undefined)
+          void muat()
+        }}
+      />
+    )
+  }
+
+  if (bacaHalaman) {
+    return (
+      <MateriHalamanViewer
+        materi={bacaHalaman}
+        mode="guru"
+        onTutup={() => setBacaHalaman(null)}
+      />
+    )
+  }
+
   return (
     <div className="materi-panel space-y-4">
       {/* Toolbar ala referensi LMS */}
@@ -287,6 +334,18 @@ export default function MateriPanel({ kelas, mapel }: Props) {
             onClick={() => setMode(mode === 'tautan' ? 'tutup' : 'tautan')}
           >
             Tautan
+          </button>
+          <button
+            type="button"
+            disabled={tpList.length === 0}
+            title={tpList.length === 0 ? 'Buat TP di Penilaian terlebih dahulu' : 'Buat materi multi-halaman (teks + gambar)'}
+            className="lms-btn-primary"
+            onClick={() => {
+              setMode('tutup')
+              setEditHalaman(null)
+            }}
+          >
+            + Halaman
           </button>
         </div>
       </div>
@@ -436,7 +495,7 @@ export default function MateriPanel({ kelas, mapel }: Props) {
         <div className="lms-empty">
           <p className="font-medium text-slate-700">Belum ada materi</p>
           <p className="mt-1">
-            Unggah file, tautkan YouTube, atau tambah tautan — lalu hubungkan ke Tujuan Pembelajaran.
+            Buat materi halaman (teks + gambar), unggah file, YouTube, atau tautan — lalu hubungkan ke Tujuan Pembelajaran.
           </p>
         </div>
       )}
@@ -461,13 +520,33 @@ export default function MateriPanel({ kelas, mapel }: Props) {
                   )}
                   <div className="materi-item-meta">
                     <span className="materi-jenis-chip">{labelJenis(m.jenis)}</span>
+                    {m.jenis === 'halaman' && (
+                      <span>{jumlahHalaman(m)} halaman</span>
+                    )}
                     {m.fileName && <span>{m.fileName}</span>}
                     {m.ukuran ? <span>{formatUkuran(m.ukuran)}</span> : null}
                     {m.dibuatOlehNama && <span>{m.dibuatOlehNama}</span>}
                   </div>
                 </div>
                 <div className="materi-item-actions">
-                  {m.url && (
+                  {m.jenis === 'halaman' ? (
+                    <>
+                      <button
+                        type="button"
+                        className="lms-btn-secondary"
+                        onClick={() => setBacaHalaman(m)}
+                      >
+                        Baca
+                      </button>
+                      <button
+                        type="button"
+                        className="lms-btn-secondary"
+                        onClick={() => setEditHalaman(m)}
+                      >
+                        Edit
+                      </button>
+                    </>
+                  ) : m.url ? (
                     <a
                       href={m.url}
                       target="_blank"
@@ -476,7 +555,7 @@ export default function MateriPanel({ kelas, mapel }: Props) {
                     >
                       Buka
                     </a>
-                  )}
+                  ) : null}
                   <button
                     type="button"
                     disabled={busy}
