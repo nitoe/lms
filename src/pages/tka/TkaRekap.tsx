@@ -58,12 +58,15 @@ export default function TkaRekap() {
     setError('')
     setInfo('')
     try {
-      const { baris: b, kuisPerMapel: k } = await bangunRekapTka({
+      const { baris: b, kuisPerMapel: k, peringatanManual } = await bangunRekapTka({
         tahap,
         kelasList: kelasIzin,
       })
       setBaris(b)
       setKuisPerMapel(k)
+      if (peringatanManual.length) {
+        setError(peringatanManual.join(' · '))
+      }
     } catch (e) {
       setBaris(null)
       setError(e instanceof Error ? e.message : 'Gagal memuat rekap.')

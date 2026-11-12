@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
-import { peranDari } from '../../lib/peran'
+import { bolehImportRekapTka } from '../../lib/tkaAkses'
 import {
   DATA_TRYOUT_TAHAP_1,
   SUMBER_TRYOUT_TAHAP_1,
@@ -41,8 +41,7 @@ function parseJsonBaris(teks: string): BarisTryOutImport[] {
 
 export default function TkaImportRekap() {
   const { user, profil } = useAuth()
-  const peran = peranDari(profil)
-  const isAdmin = peran === 'admin'
+  const bolehImport = bolehImportRekapTka(user, profil)
 
   const [tahap, setTahap] = useState<TahapTryOutTka>('I')
   const [pratinjau, setPratinjau] = useState<BarisPratinjauImport[] | null>(null)
@@ -87,10 +86,10 @@ export default function TkaImportRekap() {
   )
 
   useEffect(() => {
-    if (!isAdmin) return
+    if (!bolehImport) return
     // default: muat data Try Out I bawaan
     void jalankanCocok(DATA_TRYOUT_TAHAP_1)
-  }, [isAdmin, jalankanCocok])
+  }, [bolehImport, jalankanCocok])
 
   async function simpan() {
     if (!pratinjau) return
@@ -136,12 +135,13 @@ export default function TkaImportRekap() {
     }
   }
 
-  if (!isAdmin) {
+  if (!bolehImport) {
     return (
       <div className="lms-empty">
-        <p className="font-medium text-slate-700">Hanya Administrator LMS</p>
+        <p className="font-medium text-slate-700">Akses terbatas</p>
         <p className="mt-1 text-sm text-slate-600">
-          Tool import rekap TKA hanya untuk akun dengan role <strong>admin</strong>.
+          Tool import rekap TKA hanya untuk <strong>Administrator LMS</strong> atau{' '}
+          <strong>admin TKA</strong> (akun khusus).
         </p>
         <Link to="/tka" className="mt-3 inline-block text-sm font-semibold text-muh-600 hover:underline">
           ← Kembali ke TKA
@@ -159,8 +159,9 @@ export default function TkaImportRekap() {
           </Link>
           <h1 className="mt-1 text-lg font-bold text-slate-900">Import Rekap Try Out TKA</h1>
           <p className="text-sm text-slate-600 max-w-2xl">
-            Khusus <strong>admin LMS</strong>. Mencocokkan nama + kelas ke roster siswa, lalu menulis
-            nilai manual (MTK &amp; BI) ke koleksi <code className="text-xs">lms_rekap_tka</code>.
+            Untuk <strong>admin LMS</strong> dan <strong>admin TKA</strong>. Mencocokkan nama + kelas ke
+            roster siswa, lalu menulis nilai manual (MTK &amp; BI) ke koleksi{' '}
+            <code className="text-xs">lms_rekap_tka</code>.
           </p>
         </div>
         <Link to="/tka/rekap" className="lms-btn-secondary text-sm">

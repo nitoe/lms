@@ -146,3 +146,15 @@ export function kelasRekapTkaBolehDilihat(
 export function adalahAdminTka(user: User | null, profil: AppUser | null): boolean {
   return emailAksesKhusus(user, profil)
 }
+
+/**
+ * Tool import rekap try out (`/tka/import-rekap`).
+ * - Admin LMS (`role === 'admin'`)
+ * - Admin TKA (email khusus `EMAIL_AKSES_KHUSUS_TKA`)
+ * Wali 6 biasa **tidak** boleh (hanya input manual per sel di halaman rekap).
+ */
+export function bolehImportRekapTka(user: User | null, profil: AppUser | null): boolean {
+  if (!profil || profil.aktif === false) return false
+  if (profil.role === 'admin') return true
+  return emailAksesKhusus(user, profil)
+}

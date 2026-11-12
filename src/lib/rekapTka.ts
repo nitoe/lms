@@ -75,26 +75,33 @@ async function nilaiOtomatisMapel(
   return hasil
 }
 
-/** Muat override manual untuk tahap + daftar kelas. */
+/**
+ * Muat override manual untuk tahap + daftar kelas.
+ *
+ * PENTING: query hanya `where('kelas'==…)` (indeks otomatis), filter `tahap` di klien.
+ * Query compound `tahap`+`kelas` membutuhkan composite index — jika belum ada di
+ * Firebase Console, getDocs gagal «failed-precondition» dan nilai import tampak kosong
+ * (ANTIREGRESI §104).
+ */
 export async function muatRekapTkaManual(
   tahap: TahapTryOutTka,
   kelasList: string[],
-): Promise<Map<string, RekapTkaDok>> {
+): Promise<{ map: Map<string, RekapTkaDok>; peringatan: string[] }> {
   const map = new Map<string, RekapTkaDok>()
+  const peringatan: string[] = []
   await Promise.all(
     kelasList.map(async (kelas) => {
+      const kelasNorm = String(kelas).toUpperCase()
       try {
-        const q = query(
-          koleksi(),
-          where('tahap', '==', tahap),
-          where('kelas', '==', String(kelas).toUpperCase()),
-        )
+        // Satu field saja — tidak butuh composite index.
+        const q = query(koleksi(), where('kelas', '==', kelasNorm))
         const snap = await getDocs(q)
         for (const d of snap.docs) {
           const data = d.data()
+          if (String(data.tahap ?? '') !== tahap) continue
           map.set(d.id, {
             id: d.id,
-            kelas: String(data.kelas ?? kelas),
+            kelas: String(data.kelas ?? kelasNorm),
             tahap: data.tahap as TahapTryOutTka,
             siswaId: String(data.siswaId ?? ''),
             siswaNama: String(data.siswaNama ?? ''),
@@ -108,12 +115,14 @@ export async function muatRekapTkaManual(
           })
         }
       } catch (e) {
-        // Tanpa rules lms_rekap_tka, query gagal permission — jangan gagalkan seluruh rekap.
-        console.warn('muatRekapTkaManual', kelas, e)
+        // Permission / rules belum deploy — jangan gagalkan seluruh rekap, tapi catat.
+        const msg = e instanceof Error ? e.message : String(e)
+        console.warn('muatRekapTkaManual', kelasNorm, e)
+        peringatan.push(`Kelas ${kelasNorm}: gagal memuat nilai manual (${msg})`)
       }
     }),
   )
-  return map
+  return { map, peringatan }
 }
 
 /** Gabungkan roster siswa + otomatis + manual menjadi baris UI. */
@@ -124,13 +133,16 @@ export async function bangunRekapTka(input: {
   baris: BarisRekapTka[]
   kuisPerMapel: Record<MapelTkaNama, KuisLms[]>
   siswa: SiswaDasar[]
+  peringatanManual: string[]
 }> {
   const { tahap, kelasList } = input
-  const [kuisPerMapel, siswaBatches, manualMap] = await Promise.all([
+  const [kuisPerMapel, siswaBatches, manualHasil] = await Promise.all([
     muatKuisTkaPerTahap(tahap),
     Promise.all(kelasList.map((k) => muatSiswaKelas(k))),
     muatRekapTkaManual(tahap, kelasList),
   ])
+  const manualMap = manualHasil.map
+  const peringatanManual = manualHasil.peringatan
   const siswa = siswaBatches
     .flat()
     .sort((a, b) => a.nama.localeCompare(b.nama, 'id') || a.kelas.localeCompare(b.kelas))
@@ -146,13 +158,24 @@ export async function bangunRekapTka(input: {
   )
 
   const baris: BarisRekapTka[] = siswa.map((s) => {
-    const dokId = idRekapTka(s.kelas, tahap, s.id)
-    const manual = manualMap.get(dokId)
+    const dokId = idRekapTka(String(s.kelas).toUpperCase(), tahap, s.id)
+    // Cadangan: cocokkan by siswaId jika id dokumen beda format historis
+    const manual =
+      manualMap.get(dokId) ||
+      [...manualMap.values()].find(
+        (d) => d.siswaId === s.id && String(d.kelas).toUpperCase() === String(s.kelas).toUpperCase(),
+      )
     const perMapel = {} as Record<MapelTkaNama, SelNilaiTka>
     for (const mapel of MAPEL_TKA) {
       const mVal = manual?.nilai?.[mapel]
       const mSrc = manual?.sumber?.[mapel]
-      if (mSrc === 'manual' && mVal != null && !Number.isNaN(Number(mVal))) {
+      // Nilai di dokumen lms_rekap_tka selalu override (import / isi manual).
+      // Terima juga bila sumber kosong (dokumen lama / batch import parsial).
+      if (
+        mVal != null &&
+        !Number.isNaN(Number(mVal)) &&
+        (mSrc === 'manual' || mSrc == null || mSrc === undefined)
+      ) {
         perMapel[mapel] = { nilai: Number(mVal), sumber: 'manual' }
         continue
       }
@@ -176,7 +199,7 @@ export async function bangunRekapTka(input: {
     }
   })
 
-  return { baris, kuisPerMapel, siswa }
+  return { baris, kuisPerMapel, siswa, peringatanManual }
 }
 
 /** Simpan / perbarui nilai manual satu mapel untuk satu siswa. */

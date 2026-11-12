@@ -1614,8 +1614,10 @@ match /g7kaih/{id} {
                       && resource.data.keys().hasAll(['kelas', 'tahap', 'siswaId'])
                       && tkaBolehRombelRekap(resource.data.kelas));
 
-      allow create: if isGuru()
-                    && tkaBolehRombelRekap(request.resource.data.kelas)
+      // Bulk import: admin LMS + admin TKA (email khusus). Input manual rekap: guru/wali via tkaBolehRombelRekap.
+      allow create: if (isAdmin()
+                        || tkaEmailKhusus()
+                        || (isGuru() && tkaBolehRombelRekap(request.resource.data.kelas)))
                     && request.resource.data.keys().hasAll(
                          ['kelas', 'tahap', 'siswaId', 'siswaNama', 'nilai', 'sumber', 'diubahOleh'])
                     && request.resource.data.kelas is string
@@ -1629,8 +1631,9 @@ match /g7kaih/{id} {
                     && request.resource.data.sumber is map
                     && request.resource.data.diubahOleh == request.auth.uid;
 
-      allow update: if isGuru()
-                    && tkaBolehRombelRekap(resource.data.kelas)
+      allow update: if (isAdmin()
+                        || tkaEmailKhusus()
+                        || (isGuru() && tkaBolehRombelRekap(resource.data.kelas)))
                     && request.resource.data.kelas == resource.data.kelas
                     && request.resource.data.tahap == resource.data.tahap
                     && request.resource.data.siswaId == resource.data.siswaId

@@ -23,7 +23,7 @@ import TkaRekap from './pages/tka/TkaRekap'
 import TkaImportRekap from './pages/tka/TkaImportRekap'
 import OrangtuaBeranda from './pages/OrangtuaBeranda'
 import { isStaf } from './lib/peran'
-import { bolehAksesTkaStaf } from './lib/tkaAkses'
+import { bolehAksesTkaStaf, bolehImportRekapTka } from './lib/tkaAkses'
 
 // Dimuat malas: editor teks kaya (TipTap) cukup besar dan hanya dipakai guru (ANTIREGRESI §13).
 const SoalEditor = lazy(() => import('./pages/SoalEditor'))
@@ -43,10 +43,11 @@ function WajibTkaStaf({ children }: { children: ReactNode }) {
   return children
 }
 
-function WajibAdminLms({ children }: { children: ReactNode }) {
-  const { profil, loading } = useAuth()
+/** Import rekap TKA: admin LMS atau admin TKA (email khusus). */
+function WajibImportRekapTka({ children }: { children: ReactNode }) {
+  const { user, profil, loading } = useAuth()
   if (loading) return <div className="p-8 text-sm text-muted">Memuat…</div>
-  if (profil?.role !== 'admin') return <Navigate to="/tka" replace />
+  if (!bolehImportRekapTka(user, profil)) return <Navigate to="/tka" replace />
   return children
 }
 
@@ -156,9 +157,9 @@ export default function App() {
           path="tka/import-rekap"
           element={
             <WajibTkaStaf>
-              <WajibAdminLms>
+              <WajibImportRekapTka>
                 <TkaImportRekap />
-              </WajibAdminLms>
+              </WajibImportRekapTka>
             </WajibTkaStaf>
           }
         />
