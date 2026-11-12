@@ -1,3 +1,12 @@
+## 2026-11-12 — Detail tugas (guru): UI v2
+
+- **Hero:** aksen mapel (`--tg-a`), monogram, chip jenis/kelas/status/penilaian, tenggat relatif (selaras katalog `tg-*`).
+- **Tab utama:** tiga tab berhint (Pengaturan · Isi tugas · Input nilai) dengan state aktif beraksen.
+- **Form kartu (`.td-*`):** identitas, mapel & TP, instruksi, kategori rubrik, rentang predikat — hierarki jelas; tombol memakai `.tg-btn`.
+- **Daftar nilai:** toolbar, tabel kompak, input skor, tombol AI per baris, empty/skeleton.
+- Tidak mengubah logika data (`lib/tugas.ts`, `nilaiTugas`, `penilaianTugas`), route, data model, maupun `firestore.rules`.
+- File: `src/pages/TugasDetail.tsx`, `src/styles/tugas.css` (lanjutan katalog).
+
 ## 2026-11-12 — Input sebaran kompetensi manual (try out di luar LMS)
 
 - Tab mapel (Matematika / Bahasa Indonesia / IPA) punya tombol **+ Input sebaran kompetensi manual** untuk Try Out tahap mana pun yang dikerjakan di luar LMS.

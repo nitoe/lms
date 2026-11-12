@@ -3,6 +3,12 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { daftarRuangKelas, DAFTAR_KELAS_SD } from '../lib/kelasLms'
 import { ambilTugas, buatTugas, formatTenggat, updateTugas } from '../lib/tugas'
+import { aksenMapel, inisialMapel } from '../lib/uiAksen'
+import {
+  infoTenggat,
+  LABEL_PENILAIAN_SINGKAT,
+  penilaianTugas,
+} from '../lib/tugasUi'
 import {
   hitungRataRata,
   muatBarisNilaiTugas,
@@ -10,6 +16,7 @@ import {
   simpanNilaiTugas,
   type BarisNilaiTugas,
 } from '../lib/nilaiTugas'
+import '../styles/tugas.css'
 import {
   bolehAiTugas,
   generateSkorPerKategoriDariPredikat,
@@ -31,7 +38,7 @@ import type {
   TpTugas,
   TugasLms,
 } from '../types/tugas'
-import { labelJenisTugas, NAMA_JENIS_PENILAIAN_TUGAS } from '../types/tugas'
+import { labelJenisTugas, NAMA_JENIS_PENILAIAN_TUGAS, semuaMapelTugas } from '../types/tugas'
 import type { TpRingkas } from '../types/materi'
 
 type TabId = 'pengaturan' | 'isi' | 'nilai'
@@ -718,15 +725,26 @@ export default function TugasDetail() {
     )
   }
 
-  if (loading) return <div className="lms-empty">Memuat tugas…</div>
+  if (loading) {
+    return (
+      <div className="tg-halaman">
+        <div className="td-skel-hero" aria-busy="true" aria-label="Memuat tugas" />
+        <div className="td-skel-tabs" />
+        <div className="td-skel-card" />
+        <div className="td-skel-card td-skel-card--pendek" />
+      </div>
+    )
+  }
 
   if (!isBaru && !tugas && error) {
     return (
-      <div className="space-y-3">
-        <Link to="/tugas" className="text-sm font-semibold text-muh-600 hover:underline">
-          ← Kembali ke daftar tugas
+      <div className="tg-halaman">
+        <Link to="/tugas" className="td-back">
+          ← Daftar tugas
         </Link>
-        <div className="lms-empty text-red-700">{error}</div>
+        <div className="tg-galat" role="alert">
+          {error}
+        </div>
       </div>
     )
   }
@@ -734,31 +752,60 @@ export default function TugasDetail() {
   const judulHalaman = isBaru ? 'Tugas baru' : tugas?.judul || 'Detail tugas'
   const daftarPredikat = pengaturan.rentangPredikat.map((r) => r.predikat)
   const terkunci = pengaturan.rentangTerkunci === true
+  const mapelAksen = (isBaru ? mapel : tugas?.mapel) || mapel || ''
+  const aksen = aksenMapel(mapelAksen || 'Umum')
+  const infoTg = infoTenggat(isBaru ? null : tugas?.tenggat)
+  const jp = isBaru ? jenisPenilaian : penilaianTugas(tugas || { jenisPenilaian })
+  const statusAktif = isBaru ? aktif : !!tugas?.aktif
+  const mapelsLabel = !isBaru && tugas ? semuaMapelTugas(tugas).join(', ') : mapelAksen
 
   return (
-    <div className="space-y-5">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <Link to="/tugas" className="text-sm font-semibold text-muh-600 hover:underline">
+    <div className="tg-halaman td-halaman" style={{ ['--tg-a' as string]: aksen.bar }}>
+      <header className="td-hero">
+        <div className="td-hero-bar" aria-hidden />
+        <div className="td-hero-isi">
+          <Link to="/tugas" className="td-back">
             ← Daftar tugas
           </Link>
-          <h2 className="mt-1 text-lg font-semibold text-slate-900">{judulHalaman}</h2>
-          {!isBaru && tugas && (
-            <p className="mt-0.5 text-xs text-muted">
-              {labelJenisTugas(tugas.jenis)} · Kelas {tugas.kelas} · {tugas.mapel}
-              {tugas.aktif ? ' · Aktif' : ' · Draf'}
-              {tugas.tenggat ? ` · Tenggat ${formatTenggat(tugas.tenggat)}` : ''}
-            </p>
-          )}
+          <div className="td-hero-atas">
+            <span className="td-mono" aria-hidden>
+              {inisialMapel(mapelAksen || 'TG')}
+            </span>
+            <div className="td-hero-judul">
+              <h1 className="td-judul">{judulHalaman}</h1>
+              <div className="td-meta">
+                {!isBaru && tugas ? (
+                  <>
+                    <span className="td-chip">{labelJenisTugas(tugas.jenis)}</span>
+                    <span className="td-chip">Kelas {tugas.kelas}</span>
+                    {mapelsLabel && <span className="td-chip td-chip--mapel">{mapelsLabel}</span>}
+                    <span className={`td-chip td-chip--status ${statusAktif ? 'td-chip--aktif' : 'td-chip--draf'}`}>
+                      {statusAktif ? 'Aktif' : 'Draf'}
+                    </span>
+                    <span className={`td-chip td-chip--jp td-chip--${jp}`} title={NAMA_JENIS_PENILAIAN_TUGAS[jp]}>
+                      {LABEL_PENILAIAN_SINGKAT[jp]}
+                    </span>
+                    {infoTg.nada !== 'tanpa' && (
+                      <span className={`td-chip td-chip--tenggat td-chip--tg-${infoTg.nada}`}>
+                        {infoTg.label}
+                      </span>
+                    )}
+                  </>
+                ) : (
+                  <span className="td-chip td-chip--muted">Lengkapi pengaturan, isi, lalu atur penilaian</span>
+                )}
+              </div>
+            </div>
+          </div>
         </div>
-      </div>
+      </header>
 
-      <div className="lms-tabs" role="tablist" aria-label="Bag tugas">
+      <nav className="td-tabs" role="tablist" aria-label="Bag tugas">
         {(
           [
-            { id: 'pengaturan' as const, label: 'Pengaturan' },
-            { id: 'isi' as const, label: 'Isi Tugas' },
-            { id: 'nilai' as const, label: 'Input Nilai' },
+            { id: 'pengaturan' as const, label: 'Pengaturan', hint: 'Identitas & TP' },
+            { id: 'isi' as const, label: 'Isi tugas', hint: 'Instruksi siswa' },
+            { id: 'nilai' as const, label: 'Input nilai', hint: 'Rubrik & daftar' },
           ] as const
         ).map((t) => (
           <button
@@ -766,216 +813,173 @@ export default function TugasDetail() {
             type="button"
             role="tab"
             aria-selected={tab === t.id}
+            className={`td-tab${tab === t.id ? ' td-tab--on' : ''}`}
             onClick={() => setTab(t.id)}
-            className={`lms-tab ${tab === t.id ? 'lms-tab--active' : ''}`}
           >
-            {t.label}
+            <span className="td-tab-label">{t.label}</span>
+            <span className="td-tab-hint">{t.hint}</span>
           </button>
         ))}
-      </div>
+      </nav>
 
       {error && (
-        <div className="rounded-xl border border-red-200 bg-red-50 px-3.5 py-2.5 text-sm text-red-800">
+        <div className="tg-galat" role="alert">
           {error}
         </div>
       )}
       {sukses && (
-        <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3.5 py-2.5 text-sm text-emerald-800">
+        <div className="td-sukses" role="status">
           {sukses}
         </div>
       )}
 
-      {/* —— Pengaturan tugas —— */}
       {tab === 'pengaturan' && (
-        <form onSubmit={(e) => void simpanPengaturan(e)} className="materi-form max-w-3xl space-y-4">
-          <label className="materi-field">
-            <span>Judul tugas</span>
-            <input required value={judul} onChange={(e) => setJudul(e.target.value)} placeholder="Contoh: Menggambar tekstur daun" />
-          </label>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <label className="materi-field">
-              <span>Jenis tugas</span>
-              <select value={jenis} onChange={(e) => onGantiJenis(e.target.value as JenisTugas)}>
-                <option value="mapel">Mapel (satu mata pelajaran)</option>
-                <option value="proyek">Proyek (lintas mata pelajaran)</option>
-              </select>
-            </label>
-            <label className="materi-field">
-              <span>Kelas</span>
-              <select
-                required
-                value={kelas}
-                onChange={(e) => {
-                  setKelas(e.target.value)
-                  setBlokMapel((prev) => prev.map((b) => ({ ...b, mapel: '' })))
-                  setTpDipilih([])
-                  setTpByMapel({})
-                }}
-              >
-                <option value="">— Pilih kelas —</option>
-                {opsiKelas.map((k) => (
-                  <option key={k} value={k}>{k}</option>
-                ))}
-              </select>
-            </label>
-          </div>
-          {/* Blok mapel + TP (utama, lalu tambahan untuk proyek) */}
-          <div className="space-y-4">
-            {blokMapel.map((blok, idx) => {
-              const dipakaiLain = blokMapel
-                .filter((b) => b.key !== blok.key)
-                .map((b) => b.mapel)
-                .filter(Boolean)
-              const opsiBlok = opsiMapel.filter(
-                (m) => m === blok.mapel || !dipakaiLain.includes(m),
-              )
-              const daftarTp = blok.mapel ? tpByMapel[blok.mapel] || [] : []
-              const nTpPilih = tpDipilih.filter(
-                (p) => p.mapel === blok.mapel || (!p.mapel && idx === 0),
-              ).length
-              return (
-                <section
-                  key={blok.key}
-                  className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden"
+        <form onSubmit={(e) => void simpanPengaturan(e)} className="td-form">
+          <section className="td-kartu">
+            <div className="td-kartu-kepala">
+              <h2>Identitas tugas</h2>
+              <p>Judul, jenis, kelas, dan tenggat yang dilihat siswa.</p>
+            </div>
+            <div className="td-kartu-badan td-grid-2">
+              <label className="td-field td-field--full">
+                <span>Judul tugas</span>
+                <input required value={judul} onChange={(e) => setJudul(e.target.value)} placeholder="Contoh: Menggambar tekstur daun" />
+              </label>
+              <label className="td-field">
+                <span>Jenis tugas</span>
+                <select value={jenis} onChange={(e) => onGantiJenis(e.target.value as JenisTugas)}>
+                  <option value="mapel">Mapel (satu mata pelajaran)</option>
+                  <option value="proyek">Proyek (lintas mata pelajaran)</option>
+                </select>
+              </label>
+              <label className="td-field">
+                <span>Kelas</span>
+                <select
+                  required
+                  value={kelas}
+                  onChange={(e) => {
+                    setKelas(e.target.value)
+                    setBlokMapel((prev) => prev.map((b) => ({ ...b, mapel: '' })))
+                    setTpDipilih([])
+                    setTpByMapel({})
+                  }}
                 >
-                  <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 bg-slate-50/90 px-4 py-2.5">
-                    <h3 className="text-sm font-semibold text-slate-900">
-                      {idx === 0
-                        ? jenis === 'proyek'
-                          ? 'Mapel utama'
-                          : 'Mata pelajaran'
-                        : `Mapel tambahan ${idx}`}
-                    </h3>
-                    {idx > 0 && (
-                      <button
-                        type="button"
-                        className="text-xs font-medium text-red-600 hover:underline"
-                        onClick={() => hapusBlokMapel(blok.key)}
-                      >
-                        Hapus mapel
-                      </button>
-                    )}
-                  </div>
-                  <div className="space-y-3 p-4">
-                    <label className="materi-field">
+                  <option value="">Pilih kelas…</option>
+                  {opsiKelas.map((k) => (
+                    <option key={k} value={k}>{k}</option>
+                  ))}
+                </select>
+              </label>
+              <label className="td-field">
+                <span>Jenis penilaian</span>
+                <select value={jenisPenilaian} onChange={(e) => setJenisPenilaian(e.target.value as JenisPenilaianTugas)}>
+                  {(Object.keys(NAMA_JENIS_PENILAIAN_TUGAS) as JenisPenilaianTugas[]).map((j) => (
+                    <option key={j} value={j}>{NAMA_JENIS_PENILAIAN_TUGAS[j]}</option>
+                  ))}
+                </select>
+              </label>
+              <label className="td-field">
+                <span>Tenggat</span>
+                <input type="datetime-local" value={tenggatStr} onChange={(e) => setTenggatStr(e.target.value)} />
+              </label>
+              <label className="td-field td-field--full">
+                <span>Deskripsi singkat</span>
+                <textarea value={deskripsi} onChange={(e) => setDeskripsi(e.target.value)} rows={2} placeholder="Ringkasan singkat untuk kartu katalog…" />
+              </label>
+              <label className="td-cek">
+                <input type="checkbox" checked={aktif} onChange={(e) => setAktif(e.target.checked)} />
+                <span>Aktifkan tugas (tampil untuk siswa)</span>
+              </label>
+            </div>
+          </section>
+
+          <section className="td-kartu">
+            <div className="td-kartu-kepala">
+              <h2>Mata pelajaran & Tujuan Pembelajaran</h2>
+              <p>
+                {jenis === 'proyek'
+                  ? 'Proyek dapat melibatkan lebih dari satu mapel. Centang TP yang relevan per mapel.'
+                  : 'Pilih mapel utama dan TP yang dilatih tugas ini.'}
+              </p>
+            </div>
+            <div className="td-kartu-badan space-y-4">
+              {blokMapel.map((blok, idx) => {
+                const daftarTp = blok.mapel ? tpByMapel[blok.mapel] || [] : []
+                return (
+                  <div key={blok.key} className="td-blok-mapel">
+                    <div className="td-blok-mapel-kepala">
+                      <h3>{idx === 0 ? 'Mapel utama' : `Mapel tambahan ${idx}`}</h3>
+                      {idx > 0 && (
+                        <button type="button" className="tg-btn tg-btn--bahaya" onClick={() => hapusBlokMapel(blok.key)}>
+                          Hapus
+                        </button>
+                      )}
+                    </div>
+                    <label className="td-field">
                       <span className="sr-only">Pilih mapel</span>
                       <select
                         required={idx === 0}
                         value={blok.mapel}
+                        disabled={!kelas || mapelLoading}
                         onChange={(e) => setMapelBlok(blok.key, e.target.value)}
                       >
-                        <option value="">
-                          {mapelLoading ? 'Memuat mapel…' : '— Pilih mapel —'}
-                        </option>
-                        {opsiBlok.map((m) => (
-                          <option key={m} value={m}>
-                            {m}
-                          </option>
+                        <option value="">{mapelLoading ? 'Memuat mapel…' : 'Pilih mapel…'}</option>
+                        {opsiMapel.map((m) => (
+                          <option key={m} value={m}>{m}</option>
                         ))}
                       </select>
                     </label>
-
-                    <div className="rounded-xl border border-slate-100 bg-slate-50/50 p-3">
-                      <div className="mb-2 flex items-center justify-between gap-2">
-                        <p className="text-xs font-semibold uppercase tracking-wide text-slate-600">
-                          Tujuan Pembelajaran
-                        </p>
-                        {nTpPilih > 0 && (
-                          <span className="text-[11px] font-medium text-muh-700">
-                            {nTpPilih} dipilih
-                          </span>
+                    {blok.mapel && kelas && (
+                      <div className="td-tp-box">
+                        <div className="td-tp-label">
+                          Tujuan Pembelajaran · {blok.mapel}
+                          {tpDipilih.filter((p) => p.mapel === blok.mapel).length > 0 && (
+                            <i>{tpDipilih.filter((p) => p.mapel === blok.mapel).length} dipilih</i>
+                          )}
+                        </div>
+                        {daftarTp.length === 0 ? (
+                          <p className="td-hint">Belum ada TP di tp_kktp untuk {blok.mapel} · kelas {kelas}.</p>
+                        ) : (
+                          <ul className="td-tp-list">
+                            {daftarTp.map((tp) => (
+                              <li key={tp.id}>
+                                <label className="td-tp-item">
+                                  <input
+                                    type="checkbox"
+                                    checked={tpDipilih.some((p) => p.id === tp.id)}
+                                    onChange={() => toggleTp(tp)}
+                                  />
+                                  <span>
+                                    <b>TP {tp.nomorTp}</b> {tp.namaTp}
+                                  </span>
+                                </label>
+                              </li>
+                            ))}
+                          </ul>
                         )}
                       </div>
-                      {!kelas ? (
-                        <p className="text-xs text-muted">Pilih kelas dulu.</p>
-                      ) : !blok.mapel ? (
-                        <p className="text-xs text-muted">Pilih mapel di atas untuk memuat TP.</p>
-                      ) : daftarTp.length === 0 ? (
-                        <p className="text-xs text-muted">
-                          Belum ada TP di tp_kktp untuk {blok.mapel} · kelas {kelas}.
-                        </p>
-                      ) : (
-                        <ul className="max-h-44 space-y-1.5 overflow-y-auto">
-                          {daftarTp.map((tp) => (
-                            <li key={tp.id}>
-                              <label className="flex cursor-pointer items-start gap-2 text-sm">
-                                <input
-                                  type="checkbox"
-                                  className="mt-1"
-                                  checked={tpDipilih.some((p) => p.id === tp.id)}
-                                  onChange={() => toggleTp(tp)}
-                                />
-                                <span>
-                                  <span className="font-medium">TP {tp.nomorTp}</span>{' '}
-                                  <span className="text-slate-700">{tp.namaTp}</span>
-                                </span>
-                              </label>
-                            </li>
-                          ))}
-                        </ul>
-                      )}
-                      <p className="mt-2 text-[11px] text-muted">
-                        Boleh memilih lebih dari satu TP untuk mapel ini.
-                      </p>
-                    </div>
+                    )}
                   </div>
-                </section>
-              )
-            })}
+                )
+              })}
 
-            {!mapelLoading && opsiMapel.length === 0 && (
-              <p className="text-xs text-amber-700">
-                Daftar mapel kosong. Pastikan koleksi mapel di Penilaian terisi, atau isi penugasan guru.
-              </p>
-            )}
+              {!mapelLoading && opsiMapel.length === 0 && (
+                <p className="td-hint td-hint--warn">
+                  Daftar mapel kosong. Pastikan koleksi mapel di Penilaian terisi, atau isi penugasan guru.
+                </p>
+              )}
 
-            {jenis === 'proyek' && (
-              <button
-                type="button"
-                className="w-full rounded-xl border border-dashed border-muh-300 bg-muh-50/50 px-4 py-3 text-sm font-semibold text-muh-800 hover:bg-muh-50"
-                onClick={tambahBlokMapel}
-              >
-                + Tambah mata pelajaran
-              </button>
-            )}
-          </div>
+              {jenis === 'proyek' && (
+                <button type="button" className="td-btn-dashed" onClick={tambahBlokMapel}>
+                  + Tambah mata pelajaran
+                </button>
+              )}
+            </div>
+          </section>
 
-          <label className="materi-field">
-            <span>Deskripsi singkat</span>
-            <textarea value={deskripsi} onChange={(e) => setDeskripsi(e.target.value)} rows={2} />
-          </label>
-          <label className="materi-field">
-            <span>Tenggat</span>
-            <input type="datetime-local" value={tenggatStr} onChange={(e) => setTenggatStr(e.target.value)} />
-          </label>
-          
-
-          <label className="materi-field">
-            <span>Jenis penilaian</span>
-            <select
-              value={jenisPenilaian}
-              onChange={(e) => setJenisPenilaian(e.target.value as JenisPenilaianTugas)}
-            >
-              {(Object.keys(NAMA_JENIS_PENILAIAN_TUGAS) as JenisPenilaianTugas[]).map((k) => (
-                <option key={k} value={k}>
-                  {NAMA_JENIS_PENILAIAN_TUGAS[k]}
-                </option>
-              ))}
-            </select>
-            <span className="mt-1 block text-[11px] text-muted">
-              Menentukan apakah nilai tugas ini masuk rekap SLM, STS, atau SAS (atau hanya latihan).
-              Pilih TP di atas agar terhubung ke Tujuan Pembelajaran yang sama.
-            </span>
-          </label>
-
-          <label className="inline-flex items-center gap-2 text-sm">
-            <input type="checkbox" checked={aktif} onChange={(e) => setAktif(e.target.checked)} />
-            Aktifkan tugas (tampil untuk siswa)
-          </label>
-
-          <div className="flex justify-end gap-2 pt-2">
-            <Link to="/tugas" className="lms-btn-secondary">Batal</Link>
-            <button type="submit" className="lms-btn-primary" disabled={busy}>
+          <div className="td-aksi">
+            <Link to="/tugas" className="tg-btn">Batal</Link>
+            <button type="submit" className="tg-btn tg-btn--utama tg-btn--besar" disabled={busy}>
               {busy ? 'Menyimpan…' : isBaru ? 'Buat tugas' : 'Simpan pengaturan'}
             </button>
           </div>
@@ -983,53 +987,66 @@ export default function TugasDetail() {
       )}
 
       {tab === 'isi' && (
-        <div className="materi-form max-w-3xl space-y-4">
-          <div className="flex flex-wrap items-start justify-between gap-3 rounded-2xl border border-slate-200 bg-slate-50/80 px-4 py-3">
-            <div>
-              <h3 className="text-sm font-semibold text-slate-900">Instruksi untuk siswa</h3>
-              <p className="mt-0.5 text-xs text-muted">
-                {isBaru
-                  ? 'Simpan pengaturan (judul, kelas, mapel) dulu sebelum generate AI atau menyimpan isi.'
-                  : 'Tulis manual atau generate AI dari pengaturan yang sudah disimpan.'}
-              </p>
+        <div className="td-form">
+          <section className="td-kartu">
+            <div className="td-kartu-kepala td-kartu-kepala--row">
+              <div>
+                <h2>Instruksi untuk siswa</h2>
+                <p>
+                  {isBaru
+                    ? 'Simpan pengaturan (judul, kelas, mapel) dulu sebelum generate AI atau menyimpan isi.'
+                    : 'Tulis manual atau generate AI dari pengaturan yang sudah disimpan.'}
+                </p>
+              </div>
+              {bisaAi && (
+                <button
+                  type="button"
+                  className="td-btn-ai"
+                  disabled={genAiBusy || isBaru || !tugas?.judul}
+                  onClick={() => void generateIsiDenganAi()}
+                >
+                  <IconSparkle />
+                  {genAiBusy ? 'AI menulis…' : 'Generate isi (AI)'}
+                </button>
+              )}
             </div>
-            {bisaAi && (
-              <button
-                type="button"
-                className="inline-flex items-center gap-1.5 rounded-lg border border-violet-200 bg-violet-50 px-3 py-1.5 text-xs font-semibold text-violet-800 hover:bg-violet-100 disabled:opacity-50"
-                disabled={genAiBusy || isBaru || !tugas?.judul}
-                onClick={() => void generateIsiDenganAi()}
-              >
-                <IconSparkle />
-                {genAiBusy ? 'AI menulis…' : 'Generate isi (AI)'}
-              </button>
-            )}
-          </div>
-          <label className="materi-field">
-            <span>Deskripsi singkat</span>
-            <textarea value={deskripsi} onChange={(e) => setDeskripsi(e.target.value)} rows={2} />
-          </label>
-          <label className="materi-field">
-            <span>Instruksi lengkap</span>
-            <textarea value={instruksi} onChange={(e) => setInstruksi(e.target.value)} rows={12} placeholder="Langkah, kriteria, format pengumpulan…" />
-          </label>
-          <div className="flex justify-end">
-            <button type="button" className="lms-btn-primary" disabled={busy || isBaru} onClick={() => void simpanIsi()}>
+            <div className="td-kartu-badan space-y-4">
+              <label className="td-field">
+                <span>Deskripsi singkat</span>
+                <textarea value={deskripsi} onChange={(e) => setDeskripsi(e.target.value)} rows={2} />
+              </label>
+              <label className="td-field">
+                <span>Instruksi lengkap</span>
+                <textarea
+                  value={instruksi}
+                  onChange={(e) => setInstruksi(e.target.value)}
+                  rows={12}
+                  placeholder="Langkah, kriteria, format pengumpulan…"
+                />
+              </label>
+            </div>
+          </section>
+          <div className="td-aksi">
+            <button
+              type="button"
+              className="tg-btn tg-btn--utama tg-btn--besar"
+              disabled={busy || isBaru}
+              onClick={() => void simpanIsi()}
+            >
               {busy ? 'Menyimpan…' : 'Simpan isi tugas'}
             </button>
           </div>
         </div>
       )}
 
-      {/* —— Input nilai —— */}
       {tab === 'nilai' && (
-        <div className="space-y-4">
-          <div className="lms-tabs" role="tablist">
+        <div className="td-form">
+          <nav className="td-subtabs" role="tablist" aria-label="Sub tab nilai">
             <button
               type="button"
               role="tab"
               aria-selected={subNilai === 'pengaturan-nilai'}
-              className={`lms-tab ${subNilai === 'pengaturan-nilai' ? 'lms-tab--active' : ''}`}
+              className={`td-subtab${subNilai === 'pengaturan-nilai' ? ' td-subtab--on' : ''}`}
               onClick={() => setSubNilai('pengaturan-nilai')}
             >
               Pengaturan penilaian
@@ -1038,179 +1055,199 @@ export default function TugasDetail() {
               type="button"
               role="tab"
               aria-selected={subNilai === 'daftar-nilai'}
-              className={`lms-tab ${subNilai === 'daftar-nilai' ? 'lms-tab--active' : ''}`}
+              className={`td-subtab${subNilai === 'daftar-nilai' ? ' td-subtab--on' : ''}`}
               onClick={() => setSubNilai('daftar-nilai')}
             >
               Daftar nilai
             </button>
-          </div>
+          </nav>
 
           {subNilai === 'pengaturan-nilai' && (
-            <div className="space-y-6">
-              {/* Intro card */}
-              <div className="rounded-2xl border border-amber-200/80 bg-gradient-to-br from-amber-50 to-orange-50/60 p-4 sm:p-5">
-                <h3 className="text-sm font-bold text-amber-950">Asesmen kinerja (rubrik)</h3>
-                <p className="mt-1.5 text-sm leading-relaxed text-amber-900/80">
-                  Setiap <strong>kategori</strong> yang Anda buat di sini menjadi kolom skor di
-                  Daftar nilai. Nilai rata-rata dihitung otomatis; nilai akhir mengikuti rata-rata
-                  (bisa disesuaikan). Predikat mengikuti tabel rentang di bawah.
+            <div className="space-y-4">
+              <div className="td-intro">
+                <h3>Asesmen kinerja (rubrik)</h3>
+                <p>
+                  Setiap <strong>kategori</strong> menjadi kolom skor di Daftar nilai. Rata-rata dihitung
+                  otomatis; nilai akhir mengikuti rata-rata (bisa disesuaikan). Predikat mengikuti tabel
+                  rentang di bawah.
                 </p>
               </div>
 
-              {/* Kategori */}
-              <section className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
-                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 bg-slate-50/80 px-4 py-3">
+              <section className="td-kartu">
+                <div className="td-kartu-kepala td-kartu-kepala--row">
                   <div>
-                    <h3 className="text-sm font-semibold text-slate-900">Kategori penilaian</h3>
-                    <p className="text-xs text-muted">Aspek rubrik · contoh: tebal-tipis garis, tekstur, komposisi</p>
+                    <h2>Kategori penilaian</h2>
+                    <p>Aspek rubrik · contoh: tebal-tipis garis, tekstur, komposisi</p>
                   </div>
-                  <div className="flex flex-wrap gap-2">
+                  <div className="td-kepala-aksi">
                     {bisaAi && (
                       <button
                         type="button"
-                        className="inline-flex items-center gap-1.5 rounded-lg border border-violet-200 bg-violet-50 px-3 py-1.5 text-xs font-semibold text-violet-800 hover:bg-violet-100"
-                        disabled={genAiBusy}
+                        className="td-btn-ai"
+                        disabled={genAiBusy || isBaru}
                         onClick={() => void generateKategoriAi()}
                       >
                         <IconSparkle />
-                        {genAiBusy ? 'Menghasilkan…' : 'Generate AI'}
+                        {genAiBusy ? 'AI…' : 'Usulkan kategori (AI)'}
                       </button>
                     )}
                     <button
                       type="button"
-                      className="rounded-lg bg-muh-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-muh-700"
-                      onClick={tambahKategori}
+                      className="tg-btn tg-btn--utama"
+                      onClick={() =>
+                        setPengaturan((p) => ({
+                          ...p,
+                          kategori: [
+                            ...p.kategori,
+                            { id: idBaru(), nama: '', bobot: 1, deskripsi: '' },
+                          ],
+                        }))
+                      }
                     >
-                      + Tambah kategori
+                      + Kategori
                     </button>
                   </div>
                 </div>
-                <div className="p-4 space-y-3">
-                  {pengaturan.kategori.length === 0 && (
-                    <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50/50 px-4 py-8 text-center">
-                      <p className="text-sm font-medium text-slate-700">Belum ada kategori</p>
-                      <p className="mt-1 text-xs text-muted max-w-sm mx-auto">
-                        Tambah minimal satu aspek agar Daftar nilai menampilkan kolom skor per siswa.
-                      </p>
+                <div className="td-kartu-badan space-y-3">
+                  {pengaturan.kategori.length === 0 ? (
+                    <div className="td-kosong-kecil">
+                      <b>Belum ada kategori</b>
+                      <p>Tambah kategori manual atau usulkan lewat AI setelah isi tugas tersimpan.</p>
                     </div>
-                  )}
-                  {pengaturan.kategori.map((k, idx) => (
-                    <div
-                      key={k.id}
-                      className="group relative rounded-xl border border-slate-200 bg-slate-50/40 p-3.5 transition hover:border-muh-200 hover:bg-white hover:shadow-sm"
-                    >
-                      <div className="mb-2 flex items-center gap-2">
-                        <span className="flex h-6 w-6 items-center justify-center rounded-full bg-muh-100 text-[11px] font-bold text-muh-800">
-                          {idx + 1}
-                        </span>
-                        <span className="text-[11px] font-medium uppercase tracking-wide text-muted">Aspek rubrik</span>
-                        <button
-                          type="button"
-                          className="ml-auto text-xs font-medium text-red-600 opacity-70 hover:opacity-100"
-                          onClick={() => hapusKategori(k.id)}
-                        >
-                          Hapus
-                        </button>
+                  ) : (
+                    pengaturan.kategori.map((k, i) => (
+                      <div key={k.id} className="td-kat-item">
+                        <div className="td-kat-baris">
+                          <label className="td-field td-field--grow">
+                            <span>Nama kategori</span>
+                            <input
+                              value={k.nama}
+                              onChange={(e) => {
+                                const v = e.target.value
+                                setPengaturan((p) => ({
+                                  ...p,
+                                  kategori: p.kategori.map((x, j) => (j === i ? { ...x, nama: v } : x)),
+                                }))
+                              }}
+                              placeholder="Contoh: Komposisi"
+                            />
+                          </label>
+                          <label className="td-field td-field--sempit">
+                            <span>Bobot</span>
+                            <input
+                              type="number"
+                              min={0}
+                              step={0.1}
+                              value={k.bobot}
+                              onChange={(e) => {
+                                const v = Number(e.target.value)
+                                setPengaturan((p) => ({
+                                  ...p,
+                                  kategori: p.kategori.map((x, j) =>
+                                    j === i ? { ...x, bobot: Number.isNaN(v) ? 0 : v } : x,
+                                  ),
+                                }))
+                              }}
+                            />
+                          </label>
+                          <button
+                            type="button"
+                            className="tg-btn tg-btn--bahaya"
+                            title="Hapus kategori"
+                            onClick={() =>
+                              setPengaturan((p) => ({
+                                ...p,
+                                kategori: p.kategori.filter((_, j) => j !== i),
+                              }))
+                            }
+                          >
+                            Hapus
+                          </button>
+                        </div>
+                        <label className="td-field">
+                          <span>Deskripsi (opsional)</span>
+                          <input
+                            value={k.deskripsi || ''}
+                            onChange={(e) => {
+                              const v = e.target.value
+                              setPengaturan((p) => ({
+                                ...p,
+                                kategori: p.kategori.map((x, j) =>
+                                  j === i ? { ...x, deskripsi: v } : x,
+                                ),
+                              }))
+                            }}
+                            placeholder="Petunjuk singkat untuk penilai"
+                          />
+                        </label>
                       </div>
-                      <input
-                        className="lms-input w-full font-medium"
-                        placeholder="Nama aspek (wajib)"
-                        value={k.nama}
-                        onChange={(e) => updateKategori(k.id, { nama: e.target.value })}
-                      />
-                      <input
-                        className="lms-input mt-2 w-full text-sm"
-                        placeholder="Indikator / deskripsi singkat (opsional)"
-                        value={k.deskripsi || ''}
-                        onChange={(e) => updateKategori(k.id, { deskripsi: e.target.value })}
-                      />
-                    </div>
-                  ))}
+                    ))
+                  )}
                 </div>
               </section>
 
-              {/* Rentang predikat */}
-              <section className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
-                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 bg-slate-50/80 px-4 py-3">
+              <section className="td-kartu">
+                <div className="td-kartu-kepala td-kartu-kepala--row">
                   <div>
-                    <h3 className="text-sm font-semibold text-slate-900">Rentang nilai & predikat</h3>
-                    <p className="text-xs text-muted">
-                      Default KKM/KKTP 70 (C- = 70). {terkunci ? 'Terkunci — tidak bisa diubah.' : 'Buka kunci untuk mengedit.'}
-                    </p>
+                    <h2>Rentang predikat</h2>
+                    <p>Digunakan saat nilai akhir diisi atau dihitung otomatis.</p>
                   </div>
-                  <div className="flex flex-wrap gap-2">
-                    <button
-                      type="button"
-                      className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold ${
-                        terkunci
-                          ? 'border-amber-300 bg-amber-50 text-amber-900'
-                          : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
-                      }`}
-                      onClick={toggleKunciRentang}
-                      title={terkunci ? 'Buka kunci agar bisa diedit' : 'Kunci agar tidak berubah'}
-                    >
+                  <div className="td-kepala-aksi">
+                    <button type="button" className="tg-btn" onClick={toggleKunciRentang} title={terkunci ? 'Buka kunci' : 'Kunci rentang'}>
                       <IconLock locked={terkunci} />
-                      {terkunci ? 'Terkunci' : 'Kunci rentang'}
+                      {terkunci ? 'Terkunci' : 'Buka kunci'}
                     </button>
-                    <button
-                      type="button"
-                      className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-40"
-                      disabled={terkunci}
-                      onClick={resetRentangDefault}
-                    >
+                    <button type="button" className="tg-btn" disabled={terkunci} onClick={resetRentangDefault}>
                       Reset default
                     </button>
                   </div>
                 </div>
-                <div className="overflow-x-auto">
-                  <table className="w-full min-w-[520px] text-left text-sm">
+                <div className="td-kartu-badan td-scroll">
+                  <table className="td-tabel">
                     <thead>
-                      <tr className="border-b border-slate-100 text-[11px] uppercase tracking-wide text-slate-500">
-                        <th className="px-4 py-2.5 font-semibold">Predikat</th>
-                        <th className="px-3 py-2.5 font-semibold">Min</th>
-                        <th className="px-3 py-2.5 font-semibold">Max</th>
-                        <th className="px-3 py-2.5 font-semibold">Keterangan</th>
+                      <tr>
+                        <th>Predikat</th>
+                        <th>Min</th>
+                        <th>Max</th>
+                        <th>Keterangan</th>
                       </tr>
                     </thead>
                     <tbody>
                       {pengaturan.rentangPredikat.map((r, i) => (
-                        <tr
-                          key={`${r.predikat}-${i}`}
-                          className={`border-b border-slate-50 ${r.predikat === 'C-' ? 'bg-amber-50/50' : ''}`}
-                        >
-                          <td className="px-4 py-1.5">
+                        <tr key={`${r.predikat}-${i}`} className={r.predikat === 'C-' ? 'td-baris-warn' : ''}>
+                          <td>
                             <input
-                              className="lms-input w-16 font-semibold disabled:bg-slate-50 disabled:text-slate-500"
+                              className="td-input-sm"
                               value={r.predikat}
                               disabled={terkunci}
                               onChange={(e) => updateRentang(i, { predikat: e.target.value })}
                             />
                           </td>
-                          <td className="px-3 py-1.5">
+                          <td>
                             <input
                               type="number"
                               min={0}
                               max={100}
-                              className="lms-input w-[4.5rem] disabled:bg-slate-50"
+                              className="td-input-sm"
                               value={r.min}
                               disabled={terkunci}
                               onChange={(e) => updateRentang(i, { min: Number(e.target.value) })}
                             />
                           </td>
-                          <td className="px-3 py-1.5">
+                          <td>
                             <input
                               type="number"
                               min={0}
                               max={100}
-                              className="lms-input w-[4.5rem] disabled:bg-slate-50"
+                              className="td-input-sm"
                               value={r.max}
                               disabled={terkunci}
                               onChange={(e) => updateRentang(i, { max: Number(e.target.value) })}
                             />
                           </td>
-                          <td className="px-3 py-1.5">
+                          <td>
                             <input
-                              className="lms-input w-full min-w-[160px] text-xs disabled:bg-slate-50"
+                              className="td-input-md"
                               value={r.keterangan || ''}
                               disabled={terkunci}
                               onChange={(e) => updateRentang(i, { keterangan: e.target.value })}
@@ -1223,21 +1260,10 @@ export default function TugasDetail() {
                 </div>
               </section>
 
-              <label className="materi-field max-w-xl">
-                <span>Catatan untuk guru (opsional)</span>
-                <textarea
-                  rows={2}
-                  className="lms-input"
-                  value={pengaturan.catatan || ''}
-                  onChange={(e) => setPengaturan((p) => ({ ...p, catatan: e.target.value }))}
-                  placeholder="Mis. fokus pada ketebalan garis dan tekstur…"
-                />
-              </label>
-
-              <div className="flex justify-end sticky bottom-3">
+              <div className="td-aksi">
                 <button
                   type="button"
-                  className="lms-btn-primary shadow-md"
+                  className="tg-btn tg-btn--utama tg-btn--besar"
                   disabled={busy || isBaru}
                   onClick={() => void simpanPengaturanNilai()}
                 >
@@ -1249,166 +1275,108 @@ export default function TugasDetail() {
 
           {subNilai === 'daftar-nilai' && (
             <div className="space-y-4">
-              {isBaru && (
-                <div className="lms-empty">
-                  <p className="font-medium text-slate-700">Simpan pengaturan tugas dulu</p>
+              {isBaru ? (
+                <div className="td-kosong-kecil">
+                  <b>Simpan tugas dulu</b>
+                  <p>Buat dan simpan pengaturan tugas sebelum mengisi nilai siswa.</p>
                 </div>
-              )}
-              {!isBaru && (
+              ) : (
                 <>
-                  <div className="flex flex-wrap items-end justify-between gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                  <div className="td-nilai-toolbar">
                     <div>
-                      <h3 className="text-sm font-semibold text-slate-900">
-                        Lembar nilai · Kelas {tugas?.kelas}
-                      </h3>
-                      <p className="mt-0.5 text-xs text-muted">
-                        {kategoriAktif.length
-                          ? `${kategoriAktif.length} kategori rubrik · rata-rata otomatis · nilai akhir 0–100`
-                          : 'Belum ada kategori — isi nilai akhir saja, atau buat kategori di Pengaturan penilaian'}
+                      <h2 className="td-subjudul">Daftar nilai siswa</h2>
+                      <p className="td-hint">
+                        Isi skor per kategori; nilai akhir & predikat menyesuaikan. Simpan per baris.
                       </p>
                     </div>
-                    <div className="flex flex-wrap gap-2">
-                      <button
-                        type="button"
-                        className="lms-btn-secondary text-xs"
-                        disabled={loadingNilai}
-                        onClick={() => void muatNilai()}
-                      >
+                    <div className="td-kepala-aksi">
+                      <button type="button" className="tg-btn" disabled={loadingNilai} onClick={() => void muatNilai()}>
                         {loadingNilai ? 'Memuat…' : 'Muat ulang'}
                       </button>
-                      <button
-                        type="button"
-                        className="lms-btn-primary text-xs"
-                        onClick={() => void sinkronKePenilaian()}
-                      >
-                        Sinkronkan ke Penilaian
+                      <button type="button" className="tg-btn" onClick={() => void sinkronKePenilaian()}>
+                        Sinkron ke Penilaian
                       </button>
                     </div>
                   </div>
 
-                  {kategoriAktif.length === 0 && (
-                    <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-                      Belum ada kategori penilaian tersimpan. Anda tetap bisa mengisi nilai akhir.
-                      Untuk kolom per aspek, buat kategori di tab <strong>Pengaturan penilaian</strong> lalu simpan.
+                  {loadingNilai && <div className="td-skel-card" aria-busy="true" />}
+
+                  {!loadingNilai && barisNilai && barisNilai.length === 0 && (
+                    <div className="td-kosong-kecil">
+                      <b>Belum ada siswa</b>
+                      <p>Roster kelas kosong atau belum tersinkron dari Penilaian.</p>
                     </div>
                   )}
 
-                  {loadingNilai && barisNilai === null && (
-                    <div className="lms-empty">Memuat roster siswa…</div>
-                  )}
-
-                  {barisNilai && barisNilai.length === 0 && (
-                    <div className="lms-empty">
-                      <p className="font-medium text-slate-700">Tidak ada siswa aktif di kelas ini</p>
-                    </div>
-                  )}
-
-                  {barisNilai && barisNilai.length > 0 && (
-                    <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm">
-                      <table className="w-full text-left text-sm">
+                  {!loadingNilai && barisNilai && barisNilai.length > 0 && (
+                    <div className="td-scroll td-tabel-wrap">
+                      <table className="td-tabel td-tabel--nilai">
                         <thead>
-                          <tr className="border-b border-slate-200 bg-slate-50 text-[11px] uppercase tracking-wide text-slate-500">
-                            <th className="sticky left-0 z-10 bg-slate-50 px-3 py-3 font-semibold">No</th>
-                            <th className="sticky left-8 z-10 min-w-[140px] bg-slate-50 px-3 py-3 font-semibold">Nama siswa</th>
+                          <tr>
+                            <th className="td-th-nama">Siswa</th>
                             {kategoriAktif.map((k) => (
-                              <th
-                                key={k.id}
-                                className="min-w-[88px] px-2 py-3 font-semibold text-muh-800"
-                                title={k.deskripsi || k.nama}
-                              >
-                                <span className="line-clamp-2 normal-case tracking-normal">{k.nama}</span>
+                              <th key={k.id} title={k.deskripsi || k.nama}>
+                                {k.nama || '—'}
                               </th>
                             ))}
-                            <th className="min-w-[72px] px-2 py-3 font-semibold">Rata-rata</th>
-                            <th className="min-w-[72px] px-2 py-3 font-semibold">Nilai akhir</th>
-                            <th className="min-w-[88px] px-2 py-3 font-semibold">Predikat</th>
-                            {bisaAi && <th className="px-2 py-3 font-semibold">AI</th>}
-                            <th className="min-w-[120px] px-2 py-3 font-semibold">Komentar</th>
-                            <th className="px-3 py-3" />
+                            <th>Nilai akhir</th>
+                            <th>Predikat</th>
+                            {bisaAi && <th title="Generate dari predikat">AI</th>}
+                            <th>Komentar</th>
+                            <th></th>
                           </tr>
                         </thead>
                         <tbody>
-                          {barisNilai.map((r, i) => {
+                          {barisNilai.map((r) => {
                             const d = draft[r.siswaId] || {
                               perKategori: {},
                               nilaiAkhir: '',
                               predikat: '',
                               komentar: '',
                             }
-                            const angka: Record<string, number | null> = {}
-                            for (const k of kategoriAktif) {
-                              const s = d.perKategori[k.id] || ''
-                              const n = Number(s.replace(',', '.'))
-                              angka[k.id] = s.trim() === '' || Number.isNaN(n) ? null : n
-                            }
-                            const rataLive = hitungRataRata(angka, kategoriAktif)
                             return (
-                              <tr
-                                key={r.siswaId}
-                                className="border-b border-slate-100 hover:bg-slate-50/80"
-                              >
-                                <td className="sticky left-0 bg-white px-3 py-2 text-muted tabular-nums">
-                                  {i + 1}
-                                </td>
-                                <td className="sticky left-8 bg-white px-3 py-2 font-medium text-slate-800">
-                                  {r.siswaNama}
-                                  {r.sudahAda && (
-                                    <span className="ml-1 inline-block h-1.5 w-1.5 rounded-full bg-emerald-500 align-middle" title="Tersimpan" />
-                                  )}
+                              <tr key={r.siswaId}>
+                                <td className="td-td-nama">
+                                  <b>{r.siswaNama}</b>
+                                  {r.nisn && <small>{r.nisn}</small>}
                                 </td>
                                 {kategoriAktif.map((k) => (
-                                  <td key={k.id} className="px-2 py-1.5">
+                                  <td key={k.id}>
                                     <input
-                                      type="number"
-                                      min={0}
-                                      max={100}
-                                      className="lms-input w-[4.25rem] tabular-nums"
-                                      value={d.perKategori[k.id] || ''}
+                                      type="text"
+                                      inputMode="decimal"
+                                      className="td-input-sm"
+                                      value={d.perKategori[k.id] ?? ''}
                                       onChange={(e) => onSkorKategori(r.siswaId, k.id, e.target.value)}
-                                      aria-label={`${k.nama} · ${r.siswaNama}`}
                                     />
                                   </td>
                                 ))}
-                                <td className="px-2 py-2 tabular-nums text-slate-600">
-                                  {rataLive !== null ? rataLive : '—'}
-                                </td>
-                                <td className="px-2 py-1.5">
+                                <td>
                                   <input
-                                    type="number"
-                                    min={0}
-                                    max={100}
-                                    className="lms-input w-[4.25rem] font-semibold tabular-nums"
+                                    type="text"
+                                    inputMode="decimal"
+                                    className="td-input-sm td-input--tebal"
                                     value={d.nilaiAkhir}
                                     onChange={(e) => onNilaiAkhirChange(r.siswaId, e.target.value)}
-                                    aria-label={`Nilai akhir ${r.siswaNama}`}
                                   />
                                 </td>
-                                <td className="px-2 py-1.5">
-                                  {bisaAi ? (
-                                    <select
-                                      className="lms-input w-[4.5rem] font-semibold"
-                                      value={d.predikat}
-                                      onChange={(e) =>
-                                        patchDraft(r.siswaId, { predikat: e.target.value })
-                                      }
-                                      aria-label={`Predikat ${r.siswaNama}`}
-                                    >
-                                      <option value="">—</option>
-                                      {daftarPredikat.map((p) => (
-                                        <option key={p} value={p}>{p}</option>
-                                      ))}
-                                    </select>
-                                  ) : (
-                                    <span className="inline-flex min-w-[2.5rem] justify-center rounded-md bg-slate-100 px-2 py-1 text-xs font-bold text-slate-700">
-                                      {d.predikat || '—'}
-                                    </span>
-                                  )}
+                                <td>
+                                  <select
+                                    className="td-select-sm"
+                                    value={d.predikat}
+                                    onChange={(e) => patchDraft(r.siswaId, { predikat: e.target.value })}
+                                  >
+                                    <option value="">—</option>
+                                    {daftarPredikat.map((p) => (
+                                      <option key={p} value={p}>{p}</option>
+                                    ))}
+                                  </select>
                                 </td>
                                 {bisaAi && (
-                                  <td className="px-2 py-1.5">
+                                  <td>
                                     <button
                                       type="button"
-                                      className="inline-flex items-center justify-center rounded-lg border border-violet-200 bg-violet-50 p-1.5 text-violet-700 hover:bg-violet-100 disabled:opacity-40"
+                                      className="td-btn-ai td-btn-ai--ikon"
                                       title="Generate skor kategori dari predikat"
                                       disabled={!d.predikat}
                                       onClick={() => generateDariPredikat(r.siswaId)}
@@ -1417,21 +1385,19 @@ export default function TugasDetail() {
                                     </button>
                                   </td>
                                 )}
-                                <td className="px-2 py-1.5">
+                                <td>
                                   <input
                                     type="text"
-                                    className="lms-input w-full min-w-[100px] text-xs"
+                                    className="td-input-md"
                                     placeholder="…"
                                     value={d.komentar}
-                                    onChange={(e) =>
-                                      patchDraft(r.siswaId, { komentar: e.target.value })
-                                    }
+                                    onChange={(e) => patchDraft(r.siswaId, { komentar: e.target.value })}
                                   />
                                 </td>
-                                <td className="px-3 py-1.5">
+                                <td>
                                   <button
                                     type="button"
-                                    className="rounded-lg bg-muh-600 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-muh-700 disabled:opacity-50"
+                                    className="tg-btn tg-btn--utama"
                                     disabled={menyimpanSiswaId === r.siswaId}
                                     onClick={() => void simpanSatuNilai(r.siswaId, r.siswaNama)}
                                   >

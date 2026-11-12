@@ -1,3 +1,15 @@
+## §113. UI detail tugas (`td-*`)
+
+113.1 Kelas `.td-*` hanya untuk halaman detail (`TugasDetail`); katalog tetap `.tg-*`. Keduanya berbagi `--tg-a` (diset di root detail dari `aksenMapel`) dan tombol `.tg-btn`.
+
+113.2 Jangan menambah `max-width` pada `.tg-halaman` di detail; form detail boleh `max-width: 52rem` pada `.td-form` saja agar kolom input nyaman dibaca.
+
+113.3 Tenggat di hero memakai `infoTenggat` yang sama dengan katalog (`lib/tugasUi.ts`). Nada alarm hanya bermakna bila tugas aktif; draf tidak dipaksa warna «lewat».
+
+113.4 Tab utama & sub-tab nilai harus tetap tiga / dua seperti sekarang. Jangan menggabungkan «Pengaturan penilaian» ke tab Pengaturan tanpa menyamakan alur simpan (`simpanPengaturanNilai` vs `simpanPengaturan`).
+
+113.5 Logika skor, predikat, AI kategori/isi, dan simpan nilai per siswa **tidak** boleh diubah hanya demi gaya CSS. UI v2 adalah presentasi saja (selaras §111 katalog).
+
 ## §112. Input sebaran manual
 
 112.1 Sebaran manual disimpan sebagai **poin & maks** per kompetensi (bukan persen), lewat `bangunSebaranManual`. Jumlah poin & maks kompetensi dasar WAJIB sama dengan kompetensi materi (membagi soal yang sama); jika tidak, tolak.
