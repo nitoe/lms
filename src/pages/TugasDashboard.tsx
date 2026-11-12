@@ -1,18 +1,100 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { daftarRuangKelas } from '../lib/kelasLms'
-import { daftarTugasGuru, formatTenggat, hapusTugas, updateTugas } from '../lib/tugas'
+import { aksenMapel, inisialMapel } from '../lib/uiAksen'
+import { daftarTugasGuru, hapusTugas, updateTugas } from '../lib/tugas'
+import {
+  BATAS_HARI_SEGERA,
+  infoTenggat,
+  LABEL_PENILAIAN_SINGKAT,
+  penilaianTugas,
+  tenggatKeDate,
+} from '../lib/tugasUi'
 import type { TugasLms } from '../types/tugas'
-import { labelJenisTugas, NAMA_JENIS_PENILAIAN_TUGAS, semuaMapelTugas } from '../types/tugas'
+import { NAMA_JENIS_PENILAIAN_TUGAS, semuaMapelTugas } from '../types/tugas'
+import '../styles/tugas.css'
+
+type FilterJenis = 'semua' | 'mapel' | 'proyek'
+type FilterStatus = 'semua' | 'aktif' | 'draf'
+type Urut = 'terbaru' | 'tenggat' | 'judul' | 'kumpul'
+
+function IkonCari() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+      <circle cx="11" cy="11" r="7" />
+      <path d="m20 20-3.5-3.5" />
+    </svg>
+  )
+}
+
+function IkonPlus() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" aria-hidden="true">
+      <path d="M12 5v14M5 12h14" />
+    </svg>
+  )
+}
+
+function IkonJam() {
+  return (
+    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" aria-hidden="true">
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 7v5l3 2" />
+    </svg>
+  )
+}
+
+function IkonTugas() {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M9 4h6a1 1 0 0 1 1 1v1H8V5a1 1 0 0 1 1-1Z" />
+      <path d="M8 6H6.5A1.5 1.5 0 0 0 5 7.5v12A1.5 1.5 0 0 0 6.5 21h11a1.5 1.5 0 0 0 1.5-1.5v-12A1.5 1.5 0 0 0 17.5 6H16" />
+      <path d="m9 14 2 2 4-4" />
+    </svg>
+  )
+}
+
+/** Kelompok tombol pilihan (filter) dengan hitungan. */
+function Segmen<T extends string>({
+  label,
+  nilai,
+  opsi,
+  onPilih,
+}: {
+  label: string
+  nilai: T
+  opsi: { v: T; teks: string; n?: number }[]
+  onPilih: (v: T) => void
+}) {
+  return (
+    <div className="tg-grup" role="group" aria-label={label}>
+      <span className="tg-grup-label">{label}</span>
+      {opsi.map((o) => (
+        <button
+          key={o.v}
+          type="button"
+          className={`tg-seg${nilai === o.v ? ' tg-seg--on' : ''}${o.n === undefined ? ' tg-seg--sepi' : ''}`}
+          aria-pressed={nilai === o.v}
+          onClick={() => onPilih(o.v)}
+        >
+          {o.teks}
+          {o.n !== undefined && <i>{o.n}</i>}
+        </button>
+      ))}
+    </div>
+  )
+}
 
 export default function TugasDashboard() {
   const { profil } = useAuth()
   const [list, setList] = useState<TugasLms[] | null>(null)
   const [error, setError] = useState('')
-  const [busy, setBusy] = useState(false)
-  const [filterJenis, setFilterJenis] = useState<'semua' | 'mapel' | 'proyek'>('semua')
-  const [filterStatus, setFilterStatus] = useState<'semua' | 'aktif' | 'draf'>('semua')
+  const [busyId, setBusyId] = useState<string | null>(null)
+  const [filterJenis, setFilterJenis] = useState<FilterJenis>('semua')
+  const [filterStatus, setFilterStatus] = useState<FilterStatus>('semua')
+  const [filterKelas, setFilterKelas] = useState('semua')
+  const [urut, setUrut] = useState<Urut>('terbaru')
   const [q, setQ] = useState('')
 
   const ruang = useMemo(() => daftarRuangKelas(profil), [profil])
@@ -39,12 +121,47 @@ export default function TugasDashboard() {
     void muat()
   }, [muat])
 
+  /** Acuan «sekarang» dihitung ulang tiap daftar dimuat (cukup untuk label relatif). */
+  const sekarang = useMemo(() => new Date(), [list])
+
+  const kelasTersedia = useMemo(() => {
+    if (!list) return []
+    return [...new Set(list.map((t) => t.kelas).filter(Boolean))].sort((a, b) =>
+      a.localeCompare(b, 'id', { numeric: true }),
+    )
+  }, [list])
+
+  const hitung = useMemo(() => {
+    const l = list ?? []
+    return {
+      semua: l.length,
+      mapel: l.filter((t) => t.jenis === 'mapel').length,
+      proyek: l.filter((t) => t.jenis === 'proyek').length,
+      aktif: l.filter((t) => t.aktif).length,
+      draf: l.filter((t) => !t.aktif).length,
+    }
+  }, [list])
+
+  const ringkas = useMemo(() => {
+    const l = list ?? []
+    let segera = 0
+    let kumpul = 0
+    for (const t of l) {
+      kumpul += t.jumlahPengumpulan ?? 0
+      if (!t.aktif) continue
+      const info = infoTenggat(t.tenggat, sekarang)
+      if (info.nada === 'hariini' || info.nada === 'segera') segera += 1
+    }
+    return { total: l.length, aktif: hitung.aktif, segera, kumpul }
+  }, [list, sekarang, hitung.aktif])
+
   const filtered = useMemo(() => {
     if (!list) return []
     let rows = list
     if (filterJenis !== 'semua') rows = rows.filter((t) => t.jenis === filterJenis)
     if (filterStatus === 'aktif') rows = rows.filter((t) => t.aktif)
     if (filterStatus === 'draf') rows = rows.filter((t) => !t.aktif)
+    if (filterKelas !== 'semua') rows = rows.filter((t) => t.kelas === filterKelas)
     const s = q.trim().toLowerCase()
     if (s) {
       rows = rows.filter(
@@ -55,11 +172,41 @@ export default function TugasDashboard() {
           (t.deskripsi && t.deskripsi.toLowerCase().includes(s)),
       )
     }
-    return rows
-  }, [list, filterJenis, filterStatus, q])
+    if (urut === 'terbaru') return rows // urutan asal = terbaru diperbarui (daftarTugasGuru)
+    const sorted = [...rows]
+    if (urut === 'judul') sorted.sort((a, b) => a.judul.localeCompare(b.judul, 'id'))
+    else if (urut === 'kumpul') {
+      sorted.sort((a, b) => (b.jumlahPengumpulan ?? 0) - (a.jumlahPengumpulan ?? 0))
+    } else {
+      // Tenggat: yang akan datang (terdekat dulu) → tanpa tenggat → yang sudah lewat (terbaru dulu)
+      const now = sekarang.getTime()
+      const ms = (t: TugasLms) => tenggatKeDate(t.tenggat)?.getTime() ?? null
+      const grup = (v: number | null) => (v === null ? 1 : v >= now ? 0 : 2)
+      sorted.sort((a, b) => {
+        const ma = ms(a)
+        const mb = ms(b)
+        const ga = grup(ma)
+        const gb = grup(mb)
+        if (ga !== gb) return ga - gb
+        if (ma === null || mb === null) return 0
+        return ga === 2 ? mb - ma : ma - mb
+      })
+    }
+    return sorted
+  }, [list, filterJenis, filterStatus, filterKelas, q, urut, sekarang])
+
+  const adaFilter =
+    filterJenis !== 'semua' || filterStatus !== 'semua' || filterKelas !== 'semua' || q.trim() !== ''
+
+  function resetFilter() {
+    setFilterJenis('semua')
+    setFilterStatus('semua')
+    setFilterKelas('semua')
+    setQ('')
+  }
 
   async function onToggleAktif(t: TugasLms) {
-    setBusy(true)
+    setBusyId(t.id)
     setError('')
     try {
       await updateTugas(t.id, { aktif: !t.aktif })
@@ -67,13 +214,13 @@ export default function TugasDashboard() {
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Gagal mengubah status.')
     } finally {
-      setBusy(false)
+      setBusyId(null)
     }
   }
 
   async function onHapus(t: TugasLms) {
     if (!confirm(`Hapus tugas «${t.judul}»? Tindakan ini tidak dapat dibatalkan.`)) return
-    setBusy(true)
+    setBusyId(t.id)
     setError('')
     try {
       await hapusTugas(t.id)
@@ -81,185 +228,266 @@ export default function TugasDashboard() {
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Gagal menghapus.')
     } finally {
-      setBusy(false)
+      setBusyId(null)
     }
   }
 
   return (
-    <div className="space-y-5">
-      <div className="lms-page-intro flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h2 className="text-lg font-semibold">Tugas</h2>
-          <p className="mt-1 max-w-2xl text-sm text-muted">
-            Katalog semua tugas (mapel & proyek). Buat tugas baru, atur tenggat, lampirkan Tujuan
-            Pembelajaran, lalu input nilai manual.
+    <div className="tg-halaman">
+      <header className="tg-kepala">
+        <div className="tg-kepala-teks">
+          <h2 className="tg-judul-halaman">Tugas</h2>
+          <p className="tg-sub">
+            Katalog tugas mapel dan proyek. Atur tenggat, lampirkan Tujuan Pembelajaran, lalu input
+            nilai dari halaman tiap tugas.
           </p>
         </div>
-        <Link to="/tugas/baru" className="lms-btn-primary shrink-0">
-          + Tugas baru
+        <Link to="/tugas/baru" className="tg-btn tg-btn--utama tg-btn--besar">
+          <IkonPlus />
+          Tugas baru
         </Link>
-      </div>
+      </header>
 
-      <div className="lms-toolbar flex-wrap gap-2">
-        <input
-          type="search"
-          className="lms-input min-w-[180px] flex-1"
-          placeholder="Cari judul, mapel, kelas…"
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          aria-label="Cari tugas"
-        />
-        <select
-          className="lms-input w-auto"
-          value={filterJenis}
-          onChange={(e) => setFilterJenis(e.target.value as typeof filterJenis)}
-          aria-label="Filter jenis"
-        >
-          <option value="semua">Semua jenis</option>
-          <option value="mapel">Mapel</option>
-          <option value="proyek">Proyek</option>
-        </select>
-        <select
-          className="lms-input w-auto"
-          value={filterStatus}
-          onChange={(e) => setFilterStatus(e.target.value as typeof filterStatus)}
-          aria-label="Filter status"
-        >
-          <option value="semua">Semua status</option>
-          <option value="aktif">Aktif</option>
-          <option value="draf">Draf</option>
-        </select>
-        <span className="lms-count-pill">
-          {list === null ? '…' : `${filtered.length} tugas`}
-        </span>
-      </div>
+      {list !== null && list.length > 0 && (
+        <section className="tg-ringkas" aria-label="Ringkasan tugas">
+          <div className="tg-ringkas-item">
+            <b>{ringkas.total}</b>
+            <span>Total tugas</span>
+          </div>
+          <div className="tg-ringkas-item tg-ringkas-item--hijau">
+            <b>{ringkas.aktif}</b>
+            <span>Aktif</span>
+          </div>
+          <div
+            className="tg-ringkas-item tg-ringkas-item--kuning"
+            title={`Tugas aktif dengan tenggat hari ini sampai ${BATAS_HARI_SEGERA} hari lagi`}
+          >
+            <b>{ringkas.segera}</b>
+            <span>Segera berakhir</span>
+          </div>
+          <div className="tg-ringkas-item tg-ringkas-item--teal">
+            <b>{ringkas.kumpul}</b>
+            <span>Pengumpulan</span>
+          </div>
+        </section>
+      )}
+
+      {list !== null && list.length > 0 && (
+        <section className="tg-alat" aria-label="Cari dan saring tugas">
+          <div className="tg-alat-baris">
+            <div className="tg-cari">
+              <IkonCari />
+              <input
+                type="search"
+                placeholder="Cari judul, mapel, kelas, atau deskripsi…"
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+                aria-label="Cari tugas"
+              />
+            </div>
+            <label className="tg-sr" htmlFor="tg-urut">
+              Urutkan
+            </label>
+            <select
+              id="tg-urut"
+              className="tg-urut"
+              value={urut}
+              onChange={(e) => setUrut(e.target.value as Urut)}
+            >
+              <option value="terbaru">Terbaru diperbarui</option>
+              <option value="tenggat">Tenggat terdekat</option>
+              <option value="kumpul">Pengumpulan terbanyak</option>
+              <option value="judul">Judul A–Z</option>
+            </select>
+            <span className="tg-jumlah" aria-live="polite">
+              {filtered.length} tugas
+            </span>
+          </div>
+          <div className="tg-filter">
+            <Segmen<FilterStatus>
+              label="Status"
+              nilai={filterStatus}
+              onPilih={setFilterStatus}
+              opsi={[
+                { v: 'semua', teks: 'Semua', n: hitung.semua },
+                { v: 'aktif', teks: 'Aktif', n: hitung.aktif },
+                { v: 'draf', teks: 'Draf', n: hitung.draf },
+              ]}
+            />
+            <Segmen<FilterJenis>
+              label="Jenis"
+              nilai={filterJenis}
+              onPilih={setFilterJenis}
+              opsi={[
+                { v: 'semua', teks: 'Semua', n: hitung.semua },
+                { v: 'mapel', teks: 'Mapel', n: hitung.mapel },
+                { v: 'proyek', teks: 'Proyek', n: hitung.proyek },
+              ]}
+            />
+            {kelasTersedia.length > 1 && (
+              <Segmen<string>
+                label="Kelas"
+                nilai={filterKelas}
+                onPilih={setFilterKelas}
+                opsi={[
+                  { v: 'semua', teks: 'Semua' },
+                  ...kelasTersedia.map((k) => ({ v: k, teks: k })),
+                ]}
+              />
+            )}
+          </div>
+        </section>
+      )}
 
       {error && (
-        <div className="rounded-xl border border-red-200 bg-red-50 px-3.5 py-2.5 text-sm text-red-800">
+        <div className="tg-galat" role="alert">
           {error}
         </div>
       )}
 
-      {list === null && <div className="lms-empty">Memuat katalog tugas…</div>}
+      {list === null && (
+        <div className="tg-grid" aria-busy="true" aria-label="Memuat katalog tugas">
+          {Array.from({ length: 6 }, (_, i) => (
+            <div key={i} className="tg-skel" />
+          ))}
+        </div>
+      )}
 
       {list && list.length === 0 && (
-        <div className="lms-empty">
-          <p className="font-medium text-slate-700">Belum ada tugas</p>
-          <p className="mt-1">Buat tugas pertama untuk mulai memberikan pekerjaan kepada siswa.</p>
-          <Link to="/tugas/baru" className="lms-btn-primary mt-4 inline-flex">
-            + Tugas baru
+        <div className="tg-kosong">
+          <span className="tg-kosong-ikon">
+            <IkonTugas />
+          </span>
+          <b>Belum ada tugas</b>
+          <p>Buat tugas pertama untuk mulai memberikan pekerjaan kepada siswa.</p>
+          <Link to="/tugas/baru" className="tg-btn tg-btn--utama tg-btn--besar">
+            <IkonPlus />
+            Tugas baru
           </Link>
         </div>
       )}
 
       {list && list.length > 0 && filtered.length === 0 && (
-        <div className="lms-empty">
-          <p className="font-medium text-slate-700">Tidak ada yang cocok</p>
-          <p className="mt-1">Ubah filter atau kata kunci pencarian.</p>
+        <div className="tg-kosong">
+          <b>Tidak ada tugas yang cocok</b>
+          <p>Ubah kata kunci atau saringan yang sedang dipakai.</p>
+          {adaFilter && (
+            <button type="button" className="tg-btn" onClick={resetFilter}>
+              Reset saringan
+            </button>
+          )}
         </div>
       )}
 
       {filtered.length > 0 && (
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+        <ul className="tg-grid">
           {filtered.map((t) => {
             const mapels = semuaMapelTugas(t)
+            const aksen = aksenMapel(t.mapel)
+            const info = infoTenggat(t.tenggat, sekarang)
+            // Tugas draf tidak diberi nada alarm — belum terlihat siswa.
+            const nada = t.aktif ? info.nada : info.nada === 'tanpa' ? 'tanpa' : 'netral'
+            const jp = penilaianTugas(t)
+            const tp = t.tpList ?? []
+            const kumpul = t.jumlahPengumpulan ?? 0
+            const sibuk = busyId === t.id
+            const gaya = { '--tg-a': aksen.bar } as CSSProperties
             return (
-              <article
-                key={t.id}
-                className="card-soft flex flex-col gap-3 p-4 transition hover:shadow-md"
-              >
-                <div className="flex items-start justify-between gap-2">
-                  <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-1.5">
-                      <span
-                        className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${
-                          t.jenis === 'proyek'
-                            ? 'bg-violet-100 text-violet-800'
-                            : 'bg-sky-100 text-sky-800'
-                        }`}
-                      >
-                        {labelJenisTugas(t.jenis)}
+              <li key={t.id}>
+                <article
+                  className={`tg-kartu${t.aktif ? '' : ' tg-kartu--draf'}${sibuk ? ' tg-kartu--sibuk' : ''}`}
+                  style={gaya}
+                  aria-busy={sibuk}
+                >
+                  <div className="tg-utama">
+                    <div className="tg-atas">
+                      <span className="tg-mono" aria-hidden="true">
+                        {inisialMapel(t.mapel)}
                       </span>
+                      <div className="tg-tag">
+                        <span className="tg-mapel" title={mapels.join(', ')}>
+                          {mapels[0] ?? t.mapel}
+                          {mapels.length > 1 ? ` +${mapels.length - 1}` : ''}
+                        </span>
+                        <span className="tg-kelas">Kelas {t.kelas}</span>
+                      </div>
                       <span
-                        className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${
-                          t.aktif
-                            ? 'bg-emerald-100 text-emerald-800'
-                            : 'bg-slate-100 text-slate-600'
-                        }`}
+                        className={`tg-status ${t.aktif ? 'tg-status--aktif' : 'tg-status--draf'}`}
+                        title={t.aktif ? 'Terlihat oleh siswa' : 'Belum terlihat oleh siswa'}
                       >
                         {t.aktif ? 'Aktif' : 'Draf'}
                       </span>
                     </div>
-                    <h3 className="mt-2 text-sm font-semibold text-slate-900 line-clamp-2">
-                      <Link to={`/tugas/${t.id}`} className="hover:text-muh-700 hover:underline">
-                        {t.judul}
-                      </Link>
+
+                    <h3 className="tg-judul">
+                      <Link to={`/tugas/${t.id}`}>{t.judul}</Link>
                     </h3>
-                  </div>
-                </div>
+                    {t.deskripsi && <p className="tg-desk">{t.deskripsi}</p>}
 
-                <div className="space-y-1 text-xs text-muted">
-                  <div>
-                    <span className="font-medium text-slate-600">Kelas</span> {t.kelas}
-                  </div>
-                  <div>
-                    <span className="font-medium text-slate-600">Mapel</span>{' '}
-                    {mapels.join(', ')}
-                  </div>
-                  <div>
-                    <span className="font-medium text-slate-600">Penilaian</span>{' '}
-                    {NAMA_JENIS_PENILAIAN_TUGAS[
-                      t.jenisPenilaian === 'latihan' ||
-                      t.jenisPenilaian === 'sts' ||
-                      t.jenisPenilaian === 'sas' ||
-                      t.jenisPenilaian === 'slm'
-                        ? t.jenisPenilaian
-                        : 'slm'
-                    ].split(' ')[0]}
-                  </div>
-                  <div>
-                    <span className="font-medium text-slate-600">Tenggat</span>{' '}
-                    {formatTenggat(t.tenggat)}
-                  </div>
-                  {t.tpList && t.tpList.length > 0 && (
-                    <div>
-                      <span className="font-medium text-slate-600">TP</span>{' '}
-                      {t.tpList.length === 1
-                        ? `TP ${t.tpList[0].nomor}`
-                        : `${t.tpList.length} tujuan`}
+                    <div className="tg-chips">
+                      {t.jenis === 'proyek' && <span className="tg-chip tg-chip--proyek">Proyek</span>}
+                      <span
+                        className={`tg-chip tg-chip--${jp}`}
+                        title={NAMA_JENIS_PENILAIAN_TUGAS[jp]}
+                      >
+                        {LABEL_PENILAIAN_SINGKAT[jp]}
+                      </span>
+                      {tp.length > 0 && (
+                        <span
+                          className="tg-chip tg-chip--tp"
+                          title={tp.map((x) => `TP ${x.nomor}: ${x.nama}`).join('\n')}
+                        >
+                          {tp.length === 1 ? `TP ${tp[0].nomor}` : `${tp.length} TP`}
+                        </span>
+                      )}
                     </div>
-                  )}
-                  <div>
-                    <span className="font-medium text-slate-600">Pengumpulan</span>{' '}
-                    {t.jumlahPengumpulan ?? 0}
-                  </div>
-                </div>
 
-                <div className="mt-auto flex flex-wrap gap-2 border-t border-slate-100 pt-3">
-                  <Link to={`/tugas/${t.id}`} className="lms-btn-secondary text-xs">
-                    Buka
-                  </Link>
-                  <button
-                    type="button"
-                    className="lms-btn-ghost text-xs"
-                    disabled={busy}
-                    onClick={() => void onToggleAktif(t)}
-                  >
-                    {t.aktif ? 'Nonaktifkan' : 'Aktifkan'}
-                  </button>
-                  <button
-                    type="button"
-                    className="materi-btn-danger text-xs"
-                    disabled={busy}
-                    onClick={() => void onHapus(t)}
-                  >
-                    Hapus
-                  </button>
-                </div>
-              </article>
+                    <div className="tg-panel">
+                      <div className={`tg-tenggat tg-tenggat--${nada}`}>
+                        <span className="tg-tenggat-label">
+                          <IkonJam />
+                          Tenggat
+                        </span>
+                        <b>{info.label}</b>
+                        {info.tanggal && <small>{info.tanggal}</small>}
+                      </div>
+                      <div
+                        className={`tg-kumpul${kumpul === 0 ? ' tg-kumpul--nol' : ''}`}
+                        title="Jumlah pengumpulan siswa"
+                      >
+                        <b>{kumpul}</b>
+                        <span>Terkumpul</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="tg-kaki">
+                    <Link to={`/tugas/${t.id}`} className="tg-btn tg-btn--utama">
+                      Buka
+                    </Link>
+                    <button
+                      type="button"
+                      className="tg-btn"
+                      disabled={busyId !== null}
+                      onClick={() => void onToggleAktif(t)}
+                    >
+                      {t.aktif ? 'Nonaktifkan' : 'Aktifkan'}
+                    </button>
+                    <span className="tg-kaki-spasi" />
+                    <button
+                      type="button"
+                      className="tg-btn tg-btn--bahaya"
+                      disabled={busyId !== null}
+                      onClick={() => void onHapus(t)}
+                    >
+                      Hapus
+                    </button>
+                  </div>
+                </article>
+              </li>
             )
           })}
-        </div>
+        </ul>
       )}
     </div>
   )
