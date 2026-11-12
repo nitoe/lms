@@ -171,27 +171,16 @@ export default function BankSoalPanel({ kelas, mapel, ruangId }: Props) {
 
   const grupList: Grup[] = useMemo(() => {
     if (isTka) {
-      // TKA: otomatis dikelompokkan per materi, kecuali sedang difilter ke satu materi.
-      if (filterMateri || tersaring.length === 0) {
-        return [{ kunci: 'semua', label: '', item: tersaring }]
-      }
-      const peta = new Map<string, Grup>()
-      for (const p of tersaring) {
+      // TKA: grid datar satu blok (mengisi seluruh lebar), diurutkan menurut materi.
+      // Label materi sudah tampil di tiap kartu; filter materi lewat chip di atas.
+      const urut = (p: PaketSoal) => {
         const m = materiPaket(p)
-        const kunci = m || '__tanpa__'
-        let g = peta.get(kunci)
-        if (!g) {
-          g = { kunci, label: m || 'Materi belum ditentukan', item: [] }
-          peta.set(kunci, g)
-        }
-        g.item.push(p)
+        if (!m) return 999
+        const idx = materiTka.indexOf(m)
+        return idx === -1 ? 998 : idx
       }
-      const urut = (k: string) => {
-        if (k === '__tanpa__') return 999
-        const i = materiTka.indexOf(k)
-        return i === -1 ? 998 : i
-      }
-      return [...peta.values()].sort((a, b) => urut(a.kunci) - urut(b.kunci))
+      const terurut = [...tersaring].sort((a, b) => urut(a) - urut(b))
+      return [{ kunci: 'semua', label: '', item: terurut }]
     }
     if (grupMode === 'tidak') {
       return [{ kunci: 'semua', label: '', item: tersaring }]
@@ -254,7 +243,7 @@ export default function BankSoalPanel({ kelas, mapel, ruangId }: Props) {
       listG.sort((a, b) => a.label.localeCompare(b.label, 'id'))
     }
     return listG
-  }, [tersaring, grupMode, isTka, filterMateri, materiTka])
+  }, [tersaring, grupMode, isTka, materiTka])
 
   const ringkasan = useMemo(() => {
     const semua = list ?? []
