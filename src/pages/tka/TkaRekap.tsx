@@ -7,10 +7,17 @@ import {
   MAPEL_TKA,
   adalahAdminTka,
   bolehAksesTkaStaf,
+  bolehPublishTkaOrtu,
   kelasRekapTkaBolehDilihat,
   type MapelTkaNama,
 } from '../../lib/tkaAkses'
 import { bangunRekapTka, simpanNilaiManualTka } from '../../lib/rekapTka'
+import {
+  muatStatusPublikasi,
+  publikasikanTkaOrtu,
+  tarikPublikasiTkaOrtu,
+} from '../../lib/tkaPublikasi'
+import type { TkaPublikasiDok } from '../../types/tkaPublikasi'
 import {
   DAFTAR_TAHAP_TRYOUT_TKA,
   NAMA_TAHAP_TRYOUT_TKA,
@@ -51,6 +58,10 @@ export default function TkaRekap() {
     draft: string
   } | null>(null)
   const [busySimpan, setBusySimpan] = useState(false)
+  const [statusPub, setStatusPub] = useState<Record<string, TkaPublikasiDok | null>>({})
+  const [busyPub, setBusyPub] = useState(false)
+  const [catatanOrtu, setCatatanOrtu] = useState('')
+  const [kelasPublish, setKelasPublish] = useState<string>('')
 
   const muat = useCallback(async () => {
     if (!boleh || kelasIzin.length === 0) return
@@ -58,14 +69,26 @@ export default function TkaRekap() {
     setError('')
     setInfo('')
     try {
-      const { baris: b, kuisPerMapel: k, peringatanManual } = await bangunRekapTka({
+      const hasilRekap = await bangunRekapTka({
         tahap,
         kelasList: kelasIzin,
       })
-      setBaris(b)
-      setKuisPerMapel(k)
+      setBaris(hasilRekap.baris)
+      setKuisPerMapel(hasilRekap.kuisPerMapel)
+      const peringatanManual = hasilRekap.peringatanManual || []
       if (peringatanManual.length) {
         setError(peringatanManual.join(' · '))
+      }
+      // Status publikasi portal per kelas izin
+      const st: Record<string, TkaPublikasiDok | null> = {}
+      await Promise.all(
+        kelasIzin.map(async (k) => {
+          st[k] = await muatStatusPublikasi(k, tahap)
+        }),
+      )
+      setStatusPub(st)
+      if (!kelasPublish || !kelasIzin.includes(kelasPublish)) {
+        setKelasPublish(kelasIzin[0] || '')
       }
     } catch (e) {
       setBaris(null)
@@ -118,6 +141,64 @@ export default function TkaRekap() {
       setError(e instanceof Error ? e.message : 'Gagal menyimpan.')
     } finally {
       setBusySimpan(false)
+    }
+  }
+
+
+  async function handlePublish() {
+    const k = kelasPublish || kelasIzin[0]
+    if (!k || !bolehPublishTkaOrtu(user, profil, k)) {
+      setError('Anda tidak berwenang mempublikasikan kelas ini.')
+      return
+    }
+    if (
+      !window.confirm(
+        `Publikasikan Try Out tahap ${tahap} kelas ${k} ke portal orang tua?\n` +
+          `Nilai disalin (snapshot). Ranking 10 besar dihitung dari gabungan 6A+6B.`,
+      )
+    ) {
+      return
+    }
+    setBusyPub(true)
+    setError('')
+    setInfo('')
+    try {
+      const hasil = await publikasikanTkaOrtu({
+        kelas: k,
+        tahap,
+        catatanOrtu,
+        namaGuru: profil?.nama,
+      })
+      setInfo(
+        `Dipublikasikan: ${hasil.jumlahSiswa} siswa kelas ${k}. ` +
+          `Peserta ranking gabungan 6A+6B: ${hasil.jumlahRanking}.`,
+      )
+      await muat()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Gagal mempublikasikan.')
+    } finally {
+      setBusyPub(false)
+    }
+  }
+
+  async function handleTarik() {
+    const k = kelasPublish || kelasIzin[0]
+    if (!k || !bolehPublishTkaOrtu(user, profil, k)) {
+      setError('Anda tidak berwenang menarik publikasi kelas ini.')
+      return
+    }
+    if (!window.confirm(`Tarik publikasi tahap ${tahap} kelas ${k} dari portal orang tua?`)) return
+    setBusyPub(true)
+    setError('')
+    setInfo('')
+    try {
+      await tarikPublikasiTkaOrtu({ kelas: k, tahap, namaGuru: profil?.nama })
+      setInfo(`Publikasi kelas ${k} tahap ${tahap} ditarik.`)
+      await muat()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Gagal menarik publikasi.')
+    } finally {
+      setBusyPub(false)
     }
   }
 
@@ -207,6 +288,84 @@ export default function TkaRekap() {
             ))}
           </select>
         </label>
+      </div>
+
+
+      <div className="tka-rekap-publikasi" style={{
+        border: '1px solid #c7d2fe',
+        background: '#eef2ff',
+        borderRadius: 12,
+        padding: '12px 14px',
+      }}>
+        <p style={{ margin: '0 0 8px', fontSize: 13, fontWeight: 700, color: '#312e81' }}>
+          Portal orang tua (kelas 6)
+        </p>
+        <p style={{ margin: '0 0 10px', fontSize: 12, color: '#4338ca', lineHeight: 1.45 }}>
+          Snapshot nilai + ranking 10 besar gabungan 6A/6B. Tahap I: rata-rata BI+MTK.
+          Tahap II–V: rata-rata BI+MTK+IPA. Hanya tahap yang dipublikasikan yang terlihat orang tua.
+        </p>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'flex-end' }}>
+          <label className="tka-rekap-field">
+            <span>Kelas publish</span>
+            <select
+              className="lms-input"
+              value={kelasPublish || kelasIzin[0] || ''}
+              onChange={(e) => setKelasPublish(e.target.value)}
+            >
+              {kelasIzin.map((k) => (
+                <option key={k} value={k} disabled={!bolehPublishTkaOrtu(user, profil, k)}>
+                  {k}
+                  {statusPub[k]?.published ? ' · sudah publish' : ''}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="tka-rekap-field" style={{ flex: '1 1 200px' }}>
+            <span>Catatan untuk orang tua (opsional)</span>
+            <input
+              className="lms-input"
+              value={catatanOrtu}
+              onChange={(e) => setCatatanOrtu(e.target.value)}
+              maxLength={500}
+              placeholder="Mis. Try Out I fokus BI & Matematika"
+            />
+          </label>
+          <button
+            type="button"
+            className="lms-btn-primary text-sm"
+            disabled={busyPub || loading || !kelasPublish || !bolehPublishTkaOrtu(user, profil, kelasPublish)}
+            onClick={() => void handlePublish()}
+          >
+            {busyPub ? 'Memproses…' : statusPub[kelasPublish || '']?.published ? 'Perbarui publikasi' : 'Publikasikan ke portal'}
+          </button>
+          {statusPub[kelasPublish || '']?.published ? (
+            <button
+              type="button"
+              className="lms-btn-secondary text-sm"
+              disabled={busyPub || loading}
+              onClick={() => void handleTarik()}
+            >
+              Tarik publikasi
+            </button>
+          ) : null}
+        </div>
+        {kelasIzin.map((k) => {
+          const st = statusPub[k]
+          if (!st?.published) {
+            return (
+              <p key={k} style={{ margin: '8px 0 0', fontSize: 12, color: '#64748b' }}>
+                {k}: belum dipublikasikan
+              </p>
+            )
+          }
+          return (
+            <p key={k} style={{ margin: '8px 0 0', fontSize: 12, color: '#065f46' }}>
+              {k}: <strong>sudah dipublikasikan</strong>
+              {st.publishedByNama ? ` oleh ${st.publishedByNama}` : ''}
+              {st.jumlahSiswa != null ? ` · ${st.jumlahSiswa} siswa` : ''}
+            </p>
+          )
+        })}
       </div>
 
       {kuisPerMapel && (

@@ -1,3 +1,12 @@
+## 2026-11-12 — Publikasi Try Out TKA ke portal orang tua
+
+- Snapshot hasil per **kelas × tahap** (`lms_tka_publikasi`, `lms_tka_hasil_ortu`) setelah wali/admin publish dari `/tka/rekap`.
+- Ranking **10 besar gabungan 6A+6B** (`lms_tka_peringkat/{tahap}`).
+- Rata-rata ranking: tahap **I** = BI+MTK; tahap **II–V** = BI+MTK+IPA (mapel wajib lengkap).
+- Tombol Publikasikan / Perbarui / Tarik di rekap; catatan opsional untuk orang tua.
+- Siapa boleh publish: admin LMS, admin TKA (email khusus), wali kelas rombel tersebut.
+- File: `src/lib/tkaPublikasi.ts`, `src/types/tkaPublikasi.ts`, `src/pages/tka/TkaRekap.tsx`, `src/lib/tkaAkses.ts`, `firestore.rules`.
+
 ## 2026-11-12 — Rules rekap TKA: baca untuk admin TKA
 
 - **Gejala:** admin TKA (`arif.azwar79@gmail.com`) dapat error «Missing or insufficient permissions» saat muat nilai manual 6A/6B.

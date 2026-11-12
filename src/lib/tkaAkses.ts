@@ -148,6 +148,24 @@ export function adalahAdminTka(user: User | null, profil: AppUser | null): boole
 }
 
 /**
+ * Publikasikan hasil Try Out ke portal orang tua (per kelas × tahap).
+ * Admin LMS, admin TKA (email khusus), atau wali kelas rombel tersebut.
+ */
+export function bolehPublishTkaOrtu(
+  user: User | null,
+  profil: AppUser | null,
+  kelas: string,
+): boolean {
+  if (!profil || profil.aktif === false) return false
+  const k = String(kelas).toUpperCase()
+  if (!(KELAS_TKA as readonly string[]).includes(k)) return false
+  if (profil.role === 'admin') return true
+  if (emailAksesKhusus(user, profil)) return true
+  const wali = Array.isArray(profil.waliKelas) ? profil.waliKelas : []
+  return wali.includes(k)
+}
+
+/**
  * Tool import rekap try out (`/tka/import-rekap`).
  * - Admin LMS (`role === 'admin'`)
  * - Admin TKA (email khusus `EMAIL_AKSES_KHUSUS_TKA`)
