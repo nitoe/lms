@@ -108,6 +108,23 @@ export default function TkaRekap() {
     return baris.filter((r) => r.kelas === kelasFilter)
   }, [baris, kelasFilter])
 
+  const ringkas = useMemo(() => {
+    const n = tampil.length
+    const avg = (mapel: MapelTkaNama) => {
+      const vals = tampil
+        .map((r) => r.perMapel[mapel]?.nilai)
+        .filter((v): v is number => typeof v === 'number' && !Number.isNaN(v))
+      if (!vals.length) return null
+      return Math.round((vals.reduce((a, b) => a + b, 0) / vals.length) * 10) / 10
+    }
+    return {
+      jumlah: n,
+      bi: avg('TKA Bahasa Indonesia'),
+      mtk: avg('TKA Matematika'),
+      ipa: avg('TKA IPA'),
+    }
+  }, [tampil])
+
   async function simpanEdit() {
     if (!edit) return
     const row = baris?.find((r) => r.siswaId === edit.siswaId)
@@ -218,15 +235,15 @@ export default function TkaRekap() {
 
   return (
     <div className="tka-rekap space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="tka-rekap-header">
         <div>
-          <Link to="/tka" className="text-sm font-semibold text-muh-600 hover:underline">
+          <Link to="/tka" className="tka-rekap-breadcrumb">
             ← Dashboard TKA
           </Link>
-          <h1 className="mt-1 text-lg font-bold text-slate-900">Rekap Nilai Try Out TKA</h1>
-          <p className="text-sm text-slate-600">
-            Nilai per tahap × mapel. Otomatis dari kuis LMS dengan tahap yang sama; bisa diisi manual
-            jika try out di luar LMS.
+          <h1 className="tka-rekap-title">Rekap Nilai Try Out TKA</h1>
+          <p className="tka-rekap-sub">
+            Nilai per tahap × mapel. Otomatis dari kuis LMS dengan tahap yang sama; bisa diisi
+            manual jika try out di luar LMS.
           </p>
         </div>
         <button
@@ -254,8 +271,8 @@ export default function TkaRekap() {
       </div>
 
       <div className="tka-rekap-hint-manual" role="note">
-        Try out tidak lewat LMS? Isi nilai lewat tombol <strong>+ Isi manual</strong> di kolom
-        BI / MTK / IPA pada tabel di bawah.
+        Try out tidak lewat LMS? Isi nilai lewat tombol <strong>+ Isi manual</strong> di kolom BI /
+        MTK / IPA pada tabel di bawah.
       </div>
 
       <div className="tka-rekap-toolbar">
@@ -290,21 +307,13 @@ export default function TkaRekap() {
         </label>
       </div>
 
-
-      <div className="tka-rekap-publikasi" style={{
-        border: '1px solid #c7d2fe',
-        background: '#eef2ff',
-        borderRadius: 12,
-        padding: '12px 14px',
-      }}>
-        <p style={{ margin: '0 0 8px', fontSize: 13, fontWeight: 700, color: '#312e81' }}>
-          Portal orang tua (kelas 6)
+      <div className="tka-rekap-publikasi">
+        <p className="tka-rekap-publikasi-judul">Portal orang tua (kelas 6)</p>
+        <p className="tka-rekap-publikasi-desc">
+          Snapshot nilai + ranking 10 besar gabungan 6A/6B. Tahap I: rata-rata BI+MTK. Tahap II–V:
+          rata-rata BI+MTK+IPA. Hanya tahap yang dipublikasikan yang terlihat orang tua.
         </p>
-        <p style={{ margin: '0 0 10px', fontSize: 12, color: '#4338ca', lineHeight: 1.45 }}>
-          Snapshot nilai + ranking 10 besar gabungan 6A/6B. Tahap I: rata-rata BI+MTK.
-          Tahap II–V: rata-rata BI+MTK+IPA. Hanya tahap yang dipublikasikan yang terlihat orang tua.
-        </p>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'flex-end' }}>
+        <div className="tka-rekap-publikasi-form">
           <label className="tka-rekap-field">
             <span>Kelas publish</span>
             <select
@@ -320,7 +329,7 @@ export default function TkaRekap() {
               ))}
             </select>
           </label>
-          <label className="tka-rekap-field" style={{ flex: '1 1 200px' }}>
+          <label className="tka-rekap-field tka-rekap-field--grow">
             <span>Catatan untuk orang tua (opsional)</span>
             <input
               className="lms-input"
@@ -333,10 +342,19 @@ export default function TkaRekap() {
           <button
             type="button"
             className="lms-btn-primary text-sm"
-            disabled={busyPub || loading || !kelasPublish || !bolehPublishTkaOrtu(user, profil, kelasPublish)}
+            disabled={
+              busyPub ||
+              loading ||
+              !kelasPublish ||
+              !bolehPublishTkaOrtu(user, profil, kelasPublish)
+            }
             onClick={() => void handlePublish()}
           >
-            {busyPub ? 'Memproses…' : statusPub[kelasPublish || '']?.published ? 'Perbarui publikasi' : 'Publikasikan ke portal'}
+            {busyPub
+              ? 'Memproses…'
+              : statusPub[kelasPublish || '']?.published
+                ? 'Perbarui publikasi'
+                : 'Publikasikan ke portal'}
           </button>
           {statusPub[kelasPublish || '']?.published ? (
             <button
@@ -349,23 +367,25 @@ export default function TkaRekap() {
             </button>
           ) : null}
         </div>
-        {kelasIzin.map((k) => {
-          const st = statusPub[k]
-          if (!st?.published) {
+        <div className="tka-rekap-publikasi-status">
+          {kelasIzin.map((k) => {
+            const st = statusPub[k]
+            if (!st?.published) {
+              return (
+                <span key={k} className="tka-rekap-pub-chip">
+                  {k}: belum dipublikasikan
+                </span>
+              )
+            }
             return (
-              <p key={k} style={{ margin: '8px 0 0', fontSize: 12, color: '#64748b' }}>
-                {k}: belum dipublikasikan
-              </p>
+              <span key={k} className="tka-rekap-pub-chip tka-rekap-pub-chip--ok">
+                {k}: sudah dipublikasikan
+                {st.publishedByNama ? ` · ${st.publishedByNama}` : ''}
+                {st.jumlahSiswa != null ? ` · ${st.jumlahSiswa} siswa` : ''}
+              </span>
             )
-          }
-          return (
-            <p key={k} style={{ margin: '8px 0 0', fontSize: 12, color: '#065f46' }}>
-              {k}: <strong>sudah dipublikasikan</strong>
-              {st.publishedByNama ? ` oleh ${st.publishedByNama}` : ''}
-              {st.jumlahSiswa != null ? ` · ${st.jumlahSiswa} siswa` : ''}
-            </p>
-          )
-        })}
+          })}
+        </div>
       </div>
 
       {kuisPerMapel && (
@@ -404,6 +424,37 @@ export default function TkaRekap() {
 
       {baris && tampil.length === 0 && (
         <div className="lms-empty">Tidak ada siswa di kelas yang diizinkan.</div>
+      )}
+
+      {tampil.length > 0 && (
+        <div className="tka-rekap-stats" aria-label="Ringkasan rekap">
+          <div className="tka-rekap-stat">
+            <span className="tka-rekap-stat-label">Siswa</span>
+            <span className="tka-rekap-stat-value">{ringkas.jumlah}</span>
+            <span className="tka-rekap-stat-hint">di filter aktif</span>
+          </div>
+          <div className="tka-rekap-stat">
+            <span className="tka-rekap-stat-label">Rata-rata BI</span>
+            <span className="tka-rekap-stat-value">
+              {ringkas.bi == null ? '—' : ringkas.bi}
+            </span>
+            <span className="tka-rekap-stat-hint">skala 100</span>
+          </div>
+          <div className="tka-rekap-stat">
+            <span className="tka-rekap-stat-label">Rata-rata MTK</span>
+            <span className="tka-rekap-stat-value">
+              {ringkas.mtk == null ? '—' : ringkas.mtk}
+            </span>
+            <span className="tka-rekap-stat-hint">skala 100</span>
+          </div>
+          <div className="tka-rekap-stat">
+            <span className="tka-rekap-stat-label">Rata-rata IPA</span>
+            <span className="tka-rekap-stat-value">
+              {ringkas.ipa == null ? '—' : ringkas.ipa}
+            </span>
+            <span className="tka-rekap-stat-hint">skala 100</span>
+          </div>
+        </div>
       )}
 
       {tampil.length > 0 && (

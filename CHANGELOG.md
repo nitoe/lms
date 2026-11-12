@@ -1,3 +1,11 @@
+## 2026-11-12 — UI TKA: dashboard & rekap lebih profesional
+
+- **Dashboard TKA (`TkaBeranda`)**: hero lebih dalam, aksi cepat (Rekap + Import) dalam grid 2 kolom, kartu mapel dengan CTA bar dan hover lift.
+- **Rekap (`TkaRekap`)**: header breadcrumb + judul, toolbar filter dalam kartu, panel publikasi portal ortu tanpa inline style, chip status publish, **ringkasan rata-rata BI/MTK/IPA** di atas tabel, tabel sticky header + hover lebih halus.
+- **`tka.css`**: polish konsisten (radius, bayangan, tipografi) untuk area guru TKA dan list siswa TKA — mengurangi kesan generik/tabel mentah.
+- Tidak mengubah logika bisnis, rules, atau data model.
+- File: `src/styles/tka.css`, `src/pages/tka/TkaBeranda.tsx`, `src/pages/tka/TkaRekap.tsx`.
+
 ## 2026-11-12 — Snapshot sebaran capaian TKA ke portal
 
 - Publikasi Try Out menyertakan **sebaran** per mapel (kompleksitas L1–L3, tipe materi, domain IPA) bila kuis sumber + jawaban ada di LMS.
