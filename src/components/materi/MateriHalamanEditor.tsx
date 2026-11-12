@@ -1,4 +1,5 @@
 import { useCallback, useMemo, useRef, useState } from 'react'
+import { useAuth } from '../../context/AuthContext'
 import {
   bersihkanGambarYatim,
   halamanKosong,
@@ -7,6 +8,12 @@ import {
   tambahMateriHalaman,
   unggahGambarHalaman,
 } from '../../lib/materi'
+import {
+  bolehGenerateMateriAi,
+  drafKeBlokEditor,
+  generateMateriHalamanAi,
+  ringkasHalamanSebelumnya,
+} from '../../lib/generateMateriAi'
 import type { MateriBlok, MateriHalaman, MateriLms, TpRingkas } from '../../types/materi'
 import {
   BATAS_BLOK_PER_HALAMAN,
@@ -69,12 +76,16 @@ export default function MateriHalamanEditor({
   onSelesai,
   onBatal,
 }: Props) {
+  const { user } = useAuth()
+  const bolehAi = bolehGenerateMateriAi(user?.uid)
   const [meta, setMeta] = useState<Meta>(() => ({
     judul: materiAwal?.judul || '',
     deskripsi: materiAwal?.deskripsi || '',
     bab: materiAwal?.bab || '',
     tpId: materiAwal?.tpId || '',
   }))
+  const [petunjukAi, setPetunjukAi] = useState('')
+  const [busyAi, setBusyAi] = useState(false)
   const [halaman, setHalaman] = useState<MateriHalaman[]>(() => {
     if (materiAwal?.halaman?.length) return salinHalaman(materiAwal.halaman)
     return [halamanKosong(0)]
@@ -260,6 +271,67 @@ export default function MateriHalamanEditor({
       next[j] = tmp
       return { ...h, blok: next }
     })
+  }
+
+  async function generateHalamanAi() {
+    if (!bolehAi) return
+    setBusyAi(true)
+    setError('')
+    try {
+      const tp = tpList.find((t) => t.id === meta.tpId)
+      const draf = await generateMateriHalamanAi({
+        mapel,
+        kelas,
+        tpNama: tp?.namaTp,
+        tpNomor: tp?.nomorTp,
+        judulMateri: meta.judul || undefined,
+        deskripsiMateri: meta.deskripsi || undefined,
+        indeksHalaman: aktifIdx,
+        totalHalaman: halaman.length,
+        judulHalamanSaatIni: aktif?.judul || undefined,
+        petunjukGuru: petunjukAi.trim() || undefined,
+        halamanSebelumnya: ringkasHalamanSebelumnya(halaman, aktifIdx),
+        isiMeta: aktifIdx === 0 && !meta.judul.trim(),
+      })
+      const { judul, blok, petunjukGambarMenunggu } = drafKeBlokEditor(draf)
+      setHalaman((prev) =>
+        prev.map((h, i) =>
+          i === aktifIdx
+            ? {
+                ...h,
+                judul: judul || h.judul,
+                blok,
+              }
+            : h,
+        ),
+      )
+      if (draf.judulMateri?.trim()) {
+        setMeta((m) => ({ ...m, judul: m.judul.trim() ? m.judul : draf.judulMateri! }))
+      }
+      if (draf.deskripsiMateri?.trim()) {
+        setMeta((m) => ({
+          ...m,
+          deskripsi: m.deskripsi.trim() ? m.deskripsi : draf.deskripsiMateri!,
+        }))
+      }
+      // Blok dengan tabel → buka mode HTML
+      setModeHtmlBlok((m) => {
+        const next = { ...m }
+        for (const b of blok) {
+          if (b.tipe === 'teks' && materiPunyaTabel(b.html)) next[b.id] = true
+        }
+        return next
+      })
+      if (petunjukGambarMenunggu.length > 0) {
+        setError(
+          `Teks halaman diisi AI. ${petunjukGambarMenunggu.length} petunjuk ilustrasi siap — generate gambar (Tahap C) menyusul.`,
+        )
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Gagal generate materi AI.')
+    } finally {
+      setBusyAi(false)
+    }
   }
 
   async function simpan() {
@@ -591,6 +663,42 @@ export default function MateriHalamanEditor({
                   />
                 </label>
               </div>
+
+              {bolehAi && (
+                <div className="mh-ai-bar" aria-label="Generate materi AI">
+                  <label className="materi-field mh-ai-petunjuk">
+                    <span>Petunjuk AI untuk halaman ini (opsional)</span>
+                    <input
+                      value={petunjukAi}
+                      onChange={(e) => setPetunjukAi(e.target.value)}
+                      placeholder="Contoh: fokus contoh soal luas, pakai tabel ukuran"
+                      disabled={busyAi}
+                    />
+                  </label>
+                  <button
+                    type="button"
+                    className="lms-btn-primary"
+                    disabled={busyAi || busy}
+                    onClick={() => void generateHalamanAi()}
+                    title={
+                      aktifIdx > 0
+                        ? 'Generate halaman ini sebagai kelanjutan halaman sebelumnya'
+                        : 'Generate isi halaman ini'
+                    }
+                  >
+                    {busyAi
+                      ? 'AI menulis…'
+                      : aktifIdx > 0
+                        ? `AI: isi halaman ${aktifIdx + 1} (lanjutan)`
+                        : 'AI: isi halaman ini'}
+                  </button>
+                  {aktifIdx > 0 && (
+                    <span className="mh-hint">
+                      Memakai ringkasan {aktifIdx} halaman sebelumnya agar tidak mengulang.
+                    </span>
+                  )}
+                </div>
+              )}
 
               <div className="mh-blok-list">
                 {aktif.blok.map((b, bi) => (

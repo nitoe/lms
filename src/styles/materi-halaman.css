@@ -739,3 +739,25 @@
   color: #94a3b8;
   line-height: 1.35;
 }
+
+/* AI bar di kanvas */
+.mh-ai-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.5rem 0.65rem;
+  padding: 0.55rem 0.65rem;
+  border: 1px solid #a7f3d0;
+  border-radius: 0.75rem;
+  background: #ecfdf5;
+}
+.mh-ai-petunjuk {
+  flex: 1 1 14rem;
+  min-width: 0;
+  margin: 0;
+}
+.mh-ai-bar .mh-hint {
+  flex: 1 1 100%;
+  margin: 0;
+  color: #047857;
+}

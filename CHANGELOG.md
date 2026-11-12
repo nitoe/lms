@@ -1,3 +1,13 @@
+## 2026-11-12 — Materi halaman: generate teks AI per halaman (Tahap B)
+
+- Cloud Function **`generateMateriLmsAi`** (SDM01Penilaian): satu halaman per panggilan; prompt menyertakan ringkasan halaman sebelumnya agar **kelanjutan**, bukan pengulangan.
+- Klien `src/lib/generateMateriAi.ts`: gate UID+email sama soal AI (`arif.azwar79@gmail.com`); `ringkasHalamanSebelumnya` + merge draf ke editor.
+- UI editor (hanya akun AI): petunjuk opsional + tombol **AI: isi halaman ini / lanjutan**.
+- Output HTML aman (heading, tabel, rumus `$…$`); petunjuk gambar disimpan untuk Tahap C (belum generate file gambar).
+- File LMS: `src/lib/generateMateriAi.ts`, `src/components/materi/MateriHalamanEditor.tsx`, `src/styles/materi-halaman.css`.
+- File CF (repo SDM01Penilaian): `functions/generateMateriLmsAi.js` + wire `generateMateriLmsAi` di `functions/index.js` (lihat komentar di file CF).
+- ANTIREGRESI §115.9 diperjelas.
+
 ## 2026-11-12 — Materi halaman: pipeline HTML selaras stimulus TKA (Tahap A)
 
 - **`bersihHtmlMateri`:** mendukung tabel (`table/thead/tbody/tr/th/td/caption` + colspan/rowspan/scope) selain h2/h3 — sama aman dengan `bersihHtmlStimulus` (ANTIREGRESI §9).
