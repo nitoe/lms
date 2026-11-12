@@ -29,6 +29,8 @@ import {
 } from '../types/soal'
 import { adalahMapelTka, LABEL_MAPEL_TKA, materiTkaUntuk, TIPE_SOAL_TKA } from '../lib/tkaAkses'
 import { kelasAksenMapel, LABEL_TIPE_PENDEK, materiPaket, paketMemuatMateri } from '../lib/aksenTka'
+import { daftarJawabanKuis } from '../lib/jawabanKuis'
+import KonfirmasiHapusDialog from './KonfirmasiHapusDialog'
 import KuisDetail, { INSTRUKSI_TIPE } from './KuisDetail'
 import HasilKuisPanel from './HasilKuisPanel'
 import OfflineKuisPanel from './OfflineKuisPanel'
@@ -99,6 +101,8 @@ export default function KuisPanel({ kelas, mapel }: Props) {
   const [paketSiap, setPaketSiap] = useState<PaketSoal[]>([])
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
+  /** Kuis yang sedang dikonfirmasi untuk dihapus (jumlahJawaban null = sedang dihitung / tak diketahui). */
+  const [hapusTarget, setHapusTarget] = useState<{ kuis: KuisLms; jumlahJawaban: number | null } | null>(null)
   const [langkah, setLangkah] = useState<Langkah>('daftar')
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [detailTab, setDetailTab] = useState<'atur' | 'hasil' | 'offline'>('atur')
@@ -390,22 +394,75 @@ export default function KuisPanel({ kelas, mapel }: Props) {
     setMateriPaketAktif('')
   }
 
-  async function onHapus(k: KuisLms) {
-    if (!confirm(`Hapus kuis «${k.judul}» beserta ${k.jumlahSoal} soalnya?`)) return
+  /** Langkah 1: buka dialog konfirmasi (hitung dulu hasil siswa yang akan kehilangan kuis). */
+  function onHapus(k: KuisLms) {
+    setHapusTarget({ kuis: k, jumlahJawaban: null })
+    void daftarJawabanKuis(k.id, k.kelas, k.mapel)
+      .then((list) => {
+        setHapusTarget((cur) => (cur && cur.kuis.id === k.id ? { kuis: k, jumlahJawaban: list.length } : cur))
+      })
+      .catch(() => {
+        /* jumlah tetap tidak diketahui; konfirmasi tetap berlaku */
+      })
+  }
+
+  /** Langkah 2: hapus setelah pengguna mengetik kata kunci di dialog. */
+  async function konfirmasiHapus() {
+    if (!hapusTarget) return
+    const k = hapusTarget.kuis
     setBusy(true)
     setError('')
     try {
       await hapusKuis(k.id)
+      setHapusTarget(null)
       if (selectedId === k.id) {
         setSelectedId(null)
         setLangkah('daftar')
       }
       await muat()
     } catch (err) {
+      setHapusTarget(null)
       setError(err instanceof Error ? err.message : 'Gagal menghapus.')
     } finally {
       setBusy(false)
     }
+  }
+
+  function dialogHapus() {
+    if (!hapusTarget) return null
+    const { kuis: k, jumlahJawaban } = hapusTarget
+    const tka = Boolean(k.tahapTryOutTka) || adalahMapelTka(k.mapel)
+    const rincian = [
+      `${k.jumlahSoal} soal ikut terhapus.`,
+      jumlahJawaban == null
+        ? 'Memeriksa hasil pengerjaan siswa…'
+        : jumlahJawaban > 0
+          ? `${jumlahJawaban} hasil pengerjaan siswa tidak dapat ditampilkan lagi (nilai & analisis soal hilang dari rekap kuis).`
+          : 'Belum ada hasil pengerjaan siswa.',
+    ]
+    const peringatan: string[] = []
+    if (tka) {
+      peringatan.push(
+        k.tahapTryOutTka
+          ? `Kuis Try Out TKA ${NAMA_TAHAP_TRYOUT_TKA[k.tahapTryOutTka]}: nilai otomatis dan sebaran kompetensi dari kuis ini akan hilang dari Rekap Nilai TKA. Nilai manual tidak terpengaruh.`
+          : 'Kuis TKA: nilai & sebaran dari kuis ini dapat hilang dari Rekap Nilai TKA.',
+      )
+    }
+    if (jumlahJawaban != null && jumlahJawaban > 0) {
+      peringatan.push('Siswa sudah mengerjakan kuis ini.')
+    }
+    return (
+      <KonfirmasiHapusDialog
+        judul="Hapus kuis ini?"
+        nama={k.judul}
+        rincian={rincian}
+        peringatan={peringatan}
+        saran="Hanya ingin menyembunyikan dari siswa? Pakai «Nonaktifkan» — data tetap aman."
+        busy={busy}
+        onBatal={() => setHapusTarget(null)}
+        onKonfirmasi={() => void konfirmasiHapus()}
+      />
+    )
   }
 
   async function onToggleAktif(k: KuisLms) {
@@ -1227,7 +1284,7 @@ export default function KuisPanel({ kelas, mapel }: Props) {
                       type="button"
                       className="pk-btn pk-btn--bahaya"
                       disabled={busy}
-                      onClick={() => void onHapus(k)}
+                      onClick={() => onHapus(k)}
                       aria-label={`Hapus kuis ${k.judul}`}
                     >
                       Hapus
@@ -1245,6 +1302,7 @@ export default function KuisPanel({ kelas, mapel }: Props) {
           })}
         </ul>
       )}
+      {dialogHapus()}
     </div>
   )
 }

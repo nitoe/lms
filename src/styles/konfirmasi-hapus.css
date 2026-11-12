@@ -1,0 +1,52 @@
+/* Dialog konfirmasi hapus (ANTIREGRESI §114) */
+.kh-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background: rgb(15 23 42 / 0.55);
+}
+.kh-dialog {
+  width: 100%;
+  max-width: 28rem;
+  max-height: calc(100dvh - 2rem);
+  overflow-y: auto;
+  background: #fff;
+  border-radius: 1rem;
+  padding: 1.25rem 1.25rem 1rem;
+  box-shadow: 0 20px 50px rgb(15 23 42 / 0.35);
+  border-top: 4px solid #dc2626;
+}
+.kh-judul { margin: 0; font-size: 1.05rem; font-weight: 800; color: #991b1b; }
+.kh-nama { margin: 0.35rem 0 0.7rem; font-size: 0.9rem; font-weight: 700; color: #0f172a; word-break: break-word; }
+.kh-peringatan {
+  margin-bottom: 0.6rem;
+  padding: 0.55rem 0.75rem;
+  border: 1px solid #fecaca;
+  background: #fef2f2;
+  border-radius: 0.65rem;
+  font-size: 0.8rem;
+  color: #7f1d1d;
+}
+.kh-peringatan ul, .kh-rincian { margin: 0; padding-left: 1.1rem; }
+.kh-rincian { margin-bottom: 0.6rem; font-size: 0.82rem; color: #334155; }
+.kh-saran { margin: 0 0 0.6rem; font-size: 0.78rem; color: #475569; }
+.kh-info { margin: 0 0 0.6rem; font-size: 0.82rem; color: #334155; }
+.kh-label { display: block; margin-bottom: 0.25rem; font-size: 0.8rem; color: #475569; }
+.kh-input { width: 100%; text-transform: uppercase; letter-spacing: 0.08em; }
+.kh-aksi { display: flex; justify-content: flex-end; gap: 0.5rem; margin-top: 0.9rem; }
+.kh-btn-hapus {
+  border: 0;
+  border-radius: 0.65rem;
+  background: #dc2626;
+  color: #fff;
+  font-size: 0.875rem;
+  font-weight: 700;
+  padding: 0.5rem 0.95rem;
+  cursor: pointer;
+}
+.kh-btn-hapus:hover:not(:disabled) { background: #b91c1c; }
+.kh-btn-hapus:disabled { background: #fca5a5; cursor: not-allowed; }

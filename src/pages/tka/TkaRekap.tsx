@@ -20,6 +20,13 @@ import {
   tarikPublikasiTkaOrtu,
 } from '../../lib/tkaPublikasi'
 import { KKM_TKA } from '../../lib/sebaranTka'
+import { blobCsv, blobXlsx, unduhBlob } from '../../lib/exportTabel'
+import {
+  namaBerkasTka,
+  susunBerkasTka,
+  susunLembarMapel,
+  susunLembarRekap,
+} from '../../lib/exportRekapTka'
 import type { NilaiOrtuTka, TkaPublikasiDok } from '../../types/tkaPublikasi'
 import {
   DAFTAR_TAHAP_TRYOUT_TKA,
@@ -163,6 +170,31 @@ export default function TkaRekap() {
     }
   }, [baris, kelasPublish, kelasIzin, tahap])
 
+  /** Ekspor ke Excel (semua lembar) atau CSV (tab yang sedang dibuka). Mengikuti filter tahap & kelas. */
+  function ekspor(format: 'xlsx' | 'csv') {
+    if (!baris || tampil.length === 0) return
+    setError('')
+    try {
+      const kelasLabel = kelasFilter === 'semua' ? kelasIzin.join(' + ') : kelasFilter
+      const rata = (r: BarisRekapTka) => hitungRataRata(nilaiOrtu(r), tahap)
+      if (format === 'xlsx') {
+        const lembar = susunBerkasTka({ baris: tampil, tahap, kelasLabel, rata })
+        unduhBlob(blobXlsx(lembar), namaBerkasTka(tahap, kelasLabel, 'xlsx'))
+        setInfo(`Excel diunduh: ${lembar.length} lembar, ${tampil.length} siswa (${kelasLabel}).`)
+        return
+      }
+      const mapelTab = (MAPEL_TKA as readonly string[]).includes(tab) ? (tab as MapelTkaNama) : null
+      const lembar = mapelTab ? susunLembarMapel(tampil, mapelTab) : susunLembarRekap(tampil, rata)
+      unduhBlob(
+        blobCsv(lembar),
+        namaBerkasTka(tahap, kelasLabel, 'csv', mapelTab ? LABEL_MAPEL_TKA[mapelTab] : 'nilai-akhir'),
+      )
+      setInfo(`CSV diunduh: ${lembar.nama}, ${tampil.length} siswa (${kelasLabel}).`)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Gagal mengekspor.')
+    }
+  }
+
   async function handlePublish() {
     const k = kelasPublish || kelasIzin[0]
     if (!k || !bolehPublishTkaOrtu(user, profil, k)) {
@@ -253,14 +285,34 @@ export default function TkaRekap() {
             yang sama; bisa diisi/diimpor manual jika try out di luar LMS.
           </p>
         </div>
-        <button
-          type="button"
-          className="lms-btn-secondary text-sm"
-          disabled={loading}
-          onClick={() => void muat()}
-        >
-          {loading ? 'Memuat…' : 'Muat ulang'}
-        </button>
+        <div className="tka-rekap-ekspor">
+          <button
+            type="button"
+            className="lms-btn-secondary text-sm"
+            disabled={loading || !baris || tampil.length === 0}
+            onClick={() => ekspor('xlsx')}
+            title="Semua lembar: rekap nilai akhir, tiap mata pelajaran (dengan sebaran kompetensi), keterangan"
+          >
+            Unduh Excel
+          </button>
+          <button
+            type="button"
+            className="lms-btn-secondary text-sm"
+            disabled={loading || !baris || tampil.length === 0}
+            onClick={() => ekspor('csv')}
+            title="Tab yang sedang dibuka · titik koma, UTF-8 (siap dibuka di Excel Indonesia)"
+          >
+            Unduh CSV
+          </button>
+          <button
+            type="button"
+            className="lms-btn-secondary text-sm"
+            disabled={loading}
+            onClick={() => void muat()}
+          >
+            {loading ? 'Memuat…' : 'Muat ulang'}
+          </button>
+        </div>
       </div>
 
       <div className="tka-rekap-meta-row">

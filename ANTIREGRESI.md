@@ -1,3 +1,25 @@
+## §114. Ekspor TKA & konfirmasi hapus kuis
+
+114.1 Ekspor XLSX dibuat tanpa dependensi (`exportTabel.ts`). Jangan menambah paket spreadsheet hanya untuk ekspor; bila diganti, pertahankan: header tebal, kolom nama dibekukan, angka tetap numerik (bukan teks), sheet ≤ 31 karakter.
+
+114.2 CSV: UTF-8 **BOM**, pemisah `;`, desimal `,` (Excel lokal Indonesia membuka koma-pemisah dalam satu kolom). Sel teks berawalan `= + - @` diberi `'` (cegah injeksi rumus).
+
+114.3 Ekspor mengikuti filter tahap/kelas yang tampil — jangan mengekspor kelas di luar `kelasRekapTkaBolehDilihat` (wali 6A tidak boleh membawa 6B).
+
+114.4 Hapus kuis HARUS lewat `KonfirmasiHapusDialog` (ketik **HAPUS**). Jangan kembali ke `confirm()` satu klik. Dialog menyebut dampak ke Rekap TKA untuk kuis Try Out dan menyarankan «Nonaktifkan». `hapusKuis` hanya menghapus dokumen kuis — hasil `lms_jawaban` tertinggal (yatim); jangan menambah penghapusan massal jawaban tanpa konfirmasi terpisah.
+
+## §113. Input sebaran manual
+
+113.1 Sebaran manual disimpan sebagai **poin & maks** per kompetensi (bukan persen), lewat `bangunSebaranManual`. Jumlah poin & maks kompetensi dasar WAJIB sama dengan kompetensi materi (membagi soal yang sama); jika tidak, tolak.
+
+113.2 Grid hanya memuat siswa dengan `sumber !== 'otomatis'`. Jangan menimpa nilai otomatis LMS lewat input manual — sebarannya sudah dari jawaban.
+
+113.3 Menyimpan sebaran manual HARUS lewat `simpanNilaiManualTka({ sebaran })` agar nilai & sebaran tertulis bersamaan. Mengubah nilai manual tanpa `sebaran` membuang sebaran lama mapel itu (§109.3).
+
+113.4 Validasi seluruh baris dulu; jika ada satu salah, jangan menyimpan apa pun. Setelah menyimpan, publikasi portal harus diperbarui manual («Perbarui publikasi»).
+
+113.5 Catatan nomor: entri ini sebelumnya tertulis §112 dan tertimpa oleh §112 UI Beranda; dipulihkan sebagai §113. Sebelum menulis entri, selalu cek nomor terakhir di `main` terbaru.
+
 ## §112. UI Beranda / Ruang Kelas (`rg-*`)
 
 112.1 Ringkasan tugas & kuis aktif **hanya** lewat `lib/ringkasanRuang.ts` (`useRingkasanRuang` / `muatRingkasanRuang`). Jangan menyalin query `daftarTugasGuru`/`daftarKuis` ke halaman lain. Hook aman balapan (hanya hasil permintaan terbaru yang dipakai).

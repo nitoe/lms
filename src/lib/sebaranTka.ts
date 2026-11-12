@@ -484,3 +484,45 @@ export function bangunSebaranManual(
   if (rows.domain.length) out.domain = rows.domain
   return { sebaran: out }
 }
+
+/* ---------------------------------------------------------------- kolom tabel sebaran */
+
+export type KolomSebaran = {
+  id: string
+  dim: DimensiSebaran
+  key: string
+  judul: string
+  /** Padanan tipe materi bila kompleksitas dan materi adalah pembagian yang sama (BI). */
+  sub?: string
+}
+
+/**
+ * Daftar kolom kompetensi untuk tabel per siswa / ekspor, dari agregat kelas.
+ * Kompleksitas dan tipe materi yang identik (Bahasa Indonesia) digabung menjadi satu kolom.
+ */
+export function kolomDariAgregat(ag: AgregatSebaran): KolomSebaran[] {
+  const out: KolomSebaran[] = []
+  const pasangan = pasangkanDimensiSama(ag.kompleksitas, ag.materi)
+  if (pasangan) {
+    for (const p of pasangan) {
+      out.push({
+        id: `kompleksitas:${p.kompleksitas.key}`,
+        dim: 'kompleksitas',
+        key: p.kompleksitas.key,
+        judul: p.kompleksitas.nama,
+        sub: p.materi.nama,
+      })
+    }
+  } else {
+    for (const r of ag.kompleksitas) {
+      out.push({ id: `kompleksitas:${r.key}`, dim: 'kompleksitas', key: r.key, judul: r.nama })
+    }
+    for (const r of ag.materi) {
+      out.push({ id: `materi:${r.key}`, dim: 'materi', key: r.key, judul: r.nama })
+    }
+  }
+  for (const r of ag.domain) {
+    out.push({ id: `domain:${r.key}`, dim: 'domain', key: r.key, judul: r.nama })
+  }
+  return out
+}

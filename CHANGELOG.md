@@ -1,3 +1,19 @@
+## 2026-11-13 — Ekspor hasil TKA (Excel/CSV) & konfirmasi hapus kuis
+
+- **Ekspor Rekap TKA** (`/tka/rekap`): tombol **Unduh Excel** (.xlsx, semua lembar: Rekap Nilai Akhir, tiap mapel yang punya nilai dengan capaian % per kompetensi + skor + kompetensi terlemah + catatan, Keterangan) dan **Unduh CSV** (tab yang sedang dibuka; titik koma, UTF-8 BOM, desimal koma — siap dibuka di Excel Indonesia). Mengikuti filter tahap & kelas; wali 6A/6B hanya mengekspor rombelnya.
+- Tanpa dependensi baru: pembuat XLSX/ZIP sendiri (`src/lib/exportTabel.ts`); sel teks CSV diamankan dari injeksi rumus.
+- **Konfirmasi hapus kuis** (kuis TKA maupun kuis mapel): dialog `KonfirmasiHapusDialog` — harus mengetik **HAPUS**; menampilkan jumlah soal, jumlah hasil pengerjaan siswa yang akan hilang, peringatan dampak ke Rekap Nilai TKA untuk kuis Try Out, dan saran memakai «Nonaktifkan». Menggantikan `confirm()` bawaan browser.
+- File: `src/lib/exportTabel.ts`, `src/lib/exportRekapTka.ts` (baru), `src/lib/sebaranTka.ts`, `src/pages/tka/TkaRekap.tsx`, `src/components/KonfirmasiHapusDialog.tsx` (baru), `src/styles/konfirmasi-hapus.css` (baru), `src/components/KuisPanel.tsx`, `src/styles/tka.css`.
+
+## 2026-11-12 — Input sebaran kompetensi manual (try out di luar LMS)
+
+- Tab mapel (Matematika / Bahasa Indonesia / IPA) punya tombol **+ Input sebaran kompetensi manual** untuk Try Out tahap mana pun yang dikerjakan di luar LMS.
+- Grid input: **poin maksimum** tiap kompetensi diisi sekali, lalu **poin diperoleh** tiap siswa. Nilai akhir dihitung otomatis (poin ÷ maks × 100, dibulatkan) dan boleh ditimpa; tersimpan sebagai nilai manual beserta `sebaran[mapel]`.
+- Kelompok: MTK = L1, L2 + Bilangan, Geometri dan Pengukuran, Data; BI = L1–L3 (tipe materi diturunkan); IPA = L1–L3 + Pengetahuan IPA, Keterampilan Proses Sains.
+- Validasi: semua kompetensi wajib terisi, poin ≤ maks, jumlah poin kompetensi dasar = kompetensi materi; bila ada baris salah, tidak ada yang disimpan. Siswa bernilai otomatis LMS tidak ditampilkan; data yang ada (mis. import Try Out I) ter-prefill.
+- `simpanNilaiManualTka` menerima `sebaran`. (Entri ini dipulihkan: kode sudah di repo, catatannya sempat tertimpa.)
+- File: `src/pages/tka/TkaSebaranManual.tsx`, `src/pages/tka/TkaRekapMapel.tsx`, `src/lib/sebaranTka.ts`, `src/lib/rekapTka.ts`, `src/styles/tka.css`. Tanpa perubahan `firestore.rules`.
+
 ## 2026-11-12 — Beranda, Ruang Kelas (daftar & detail), kartu ruang: UI v2
 
 - **Beranda:** hero baru (salam sesuai waktu, tanggal, peran, 4 angka: ruang, kelas, tugas aktif, kuis aktif yang bisa diklik). Tata letak dua kolom di layar lebar: ruang kelas di kiri; **Agenda penugasan** (5 tugas/kuis aktif, urut tenggat terdekat, tenggat relatif berwarna) dan **Pintasan** (Tugas baru, Ruang kelas, Rekap nilai, TKA bila berhak) di kanan; di ponsel agenda tampil lebih dulu.

@@ -1474,7 +1474,7 @@ b.tka-sb-tuntas { color: #047857; }
   border-bottom: 1px solid #e2e8f0;
 }
 
-/* ---- Input sebaran manual (ANTIREGRESI §112) ---- */
+/* ---- Input sebaran manual (ANTIREGRESI §113) ---- */
 .tka-sbm {
   border: 1px solid #c7d2fe;
   background: #f8faff;
@@ -1485,3 +1485,6 @@ b.tka-sb-tuntas { color: #047857; }
 .tka-sbm-maks td { background: #eef2ff; }
 .tka-sbm-ok { font-size: 0.72rem; font-weight: 600; color: #047857; }
 .tka-sbm-salah { font-size: 0.72rem; font-weight: 600; color: #b91c1c; max-width: 16rem; white-space: normal; }
+
+/* ---- Ekspor rekap TKA (ANTIREGRESI §114) ---- */
+.tka-rekap-ekspor { display: flex; flex-wrap: wrap; gap: 0.4rem; align-items: flex-start; }
