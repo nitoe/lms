@@ -1,7 +1,6 @@
 /**
  * Tab satu mapel pada Rekap Try Out TKA: tabel nilai + sebaran capaian.
- * - Ringkasan nilai akhir & distribusi rentang nilai per kelas (6A, 6B, gabungan)
- * - Sebaran kompetensi: kompleksitas, tipe materi, domain (IPA)
+ * - Sebaran kompetensi: kompetensi dasar (L1–L3) dan kompetensi materi (tipe materi; IPA = domain)
  * - Tabel siswa: nilai akhir + capaian per kompetensi
  * ANTIREGRESI §109.
  */
@@ -12,7 +11,6 @@ import {
   KKM_TKA,
   NAMA_DIMENSI,
   agregatSebaran,
-  distribusiNilai,
   kompetensiTerlemah,
   pasangkanDimensiSama,
   type AgregatSebaran,
@@ -160,6 +158,25 @@ export default function TkaRekapMapel({
     return out
   }, [dasar, tampilDimensi])
 
+  // Kelompok header: kompetensi dasar (L1–L3) dan kompetensi materi (tipe materi / domain IPA).
+  const kelompokKolom = useMemo(() => {
+    const out: { id: string; label: string; jumlah: number }[] = []
+    for (const c of kolom) {
+      const label = tampilDimensi.pasangan
+        ? 'Kompetensi dasar · materi'
+        : c.dim === 'kompleksitas'
+          ? 'Kompetensi dasar (L1–L3)'
+          : c.dim === 'domain'
+            ? 'Kompetensi materi (Pengetahuan IPA & Keterampilan Proses Sains)'
+            : 'Kompetensi materi'
+      const id = tampilDimensi.pasangan ? 'pasangan' : c.dim === 'domain' ? 'materi-ipa' : c.dim
+      const last = out[out.length - 1]
+      if (last && last.id === id) last.jumlah += 1
+      else out.push({ id, label, jumlah: 1 })
+    }
+    return out
+  }, [kolom, tampilDimensi.pasangan])
+
   async function simpan(row: BarisRekapTka, nilai: number | null) {
     const sel = row.perMapel[mapel]
     if (
@@ -280,10 +297,6 @@ export default function TkaRekapMapel({
     )
   }
 
-  const distribusi = scopes.map((s) => ({ scope: s, d: distribusiNilai(s.nilai) }))
-  const distDasar = distribusi[distribusi.length - 1]?.d
-  const maksBin = Math.max(1, ...(distDasar?.bins.map((b) => b.jumlah) ?? [1]))
-
   return (
     <div className="space-y-4">
       <div className="tka-rekap-sumber">
@@ -319,103 +332,6 @@ export default function TkaRekapMapel({
         </div>
       )}
 
-      {nNilai > 0 && (
-        <>
-          <section className="space-y-2">
-            <h2 className="tka-sb-judul">Ringkasan nilai akhir</h2>
-            <div className="tka-rekap-table-wrap">
-              <table className="tka-rekap-table tka-sb-table">
-                <thead>
-                  <tr>
-                    <th className="tka-rekap-th-nama">Kelas</th>
-                    <th>Siswa (bernilai)</th>
-                    <th>Rata-rata</th>
-                    <th>Median</th>
-                    <th>Terendah</th>
-                    <th>Tertinggi</th>
-                    <th>Tuntas (≥ {KKM_TKA})</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {distribusi.map(({ scope, d }) => (
-                    <tr key={scope.id}>
-                      <td className="tka-rekap-nama">{scope.label}</td>
-                      <td>
-                        {d.n} / {scope.rows.length}
-                      </td>
-                      <td className="tka-sb-hitung">
-                        <b>{fmt(d.rata)}</b>
-                      </td>
-                      <td className="tka-sb-hitung">{fmt(d.median)}</td>
-                      <td className="tka-sb-hitung">{fmt(d.min)}</td>
-                      <td className="tka-sb-hitung">{fmt(d.max)}</td>
-                      <td className="tka-sb-hitung">
-                        {d.tuntas}
-                        <span className="tka-sb-sub">{d.n ? `${Math.round((d.tuntas / d.n) * 100)}%` : '—'}</span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </section>
-
-          <section className="space-y-2">
-            <h2 className="tka-sb-judul">Sebaran rentang nilai akhir</h2>
-            <div className="tka-rekap-table-wrap">
-              <table className="tka-rekap-table tka-sb-table">
-                <thead>
-                  <tr>
-                    <th className="tka-rekap-th-nama">Rentang nilai</th>
-                    {distribusi.map(({ scope }) => (
-                      <th key={scope.id}>{scope.label}</th>
-                    ))}
-                    <th>Grafik</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {(distDasar?.bins ?? []).map((b, i) => (
-                    <tr key={b.label}>
-                      <td className="tka-rekap-nama">{b.label}</td>
-                      {distribusi.map(({ scope, d }) => (
-                        <td key={scope.id} className="tka-sb-hitung">
-                          {d.bins[i].jumlah}
-                        </td>
-                      ))}
-                      <td>
-                        <span className="tka-sb-bar tka-sb-bar--lebar" aria-hidden>
-                          <span
-                            className={`tka-sb-bar-isi ${b.dari >= KKM_TKA ? 'tka-sb-tuntas' : b.dari >= BATAS_RENDAH_TKA ? 'tka-sb-sedang' : 'tka-sb-rendah'}`}
-                            style={{ width: `${(b.jumlah / maksBin) * 100}%` }}
-                          />
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </section>
-        </>
-      )}
-
-      {nSebaran > 0 && dasar && (
-        <section className="space-y-2">
-          <h2 className="tka-sb-judul">Sebaran kompetensi</h2>
-          <p className="text-xs text-slate-500">
-            Capaian = gabungan poin diperoleh ÷ poin maksimum (berbobot poin) pada tiap kompetensi.
-            Kolom kanan: banyak siswa menurut capaian (rendah / sedang / tuntas).
-            {tampilDimensi.pasangan
-              ? ' Pada Bahasa Indonesia, tingkat kompleksitas dan tipe materi adalah pembagian soal yang sama, sehingga ditampilkan dalam satu tabel.'
-              : ''}
-          </p>
-          {tampilDimensi.pasangan ? <div key="pasangan">{tabelDimensi('pasangan')}</div> : null}
-          {tampilDimensi.dims.map((d) => (
-            <div key={d}>{tabelDimensi(d)}</div>
-          ))}
-        </section>
-      )}
-
       {rowsTabel.length > 0 && (
         <section className="space-y-2">
           <h2 className="tka-sb-judul">Nilai &amp; capaian per siswa</h2>
@@ -423,17 +339,26 @@ export default function TkaRekapMapel({
             <table className="tka-rekap-table tka-sb-table">
               <thead>
                 <tr>
-                  <th className="tka-rekap-th-nama">Siswa</th>
-                  <th>Kelas</th>
-                  <th>Nilai akhir</th>
-                  {kolom.map((c) => (
-                    <th key={c.id} title={c.sub ? `${c.judul} / ${c.sub}` : c.judul}>
-                      {c.judul}
-                      {c.sub ? <span className="tka-sb-sub">{c.sub}</span> : null}
+                  <th className="tka-rekap-th-nama" rowSpan={kolom.length ? 2 : 1}>Siswa</th>
+                  <th rowSpan={kolom.length ? 2 : 1}>Kelas</th>
+                  <th rowSpan={kolom.length ? 2 : 1}>Nilai akhir</th>
+                  {kelompokKolom.map((g) => (
+                    <th key={g.id} colSpan={g.jumlah} className="tka-sb-grup">
+                      {g.label}
                     </th>
                   ))}
-                  {kolom.length > 0 && <th>Terlemah</th>}
+                  {kolom.length > 0 && <th rowSpan={2}>Terlemah</th>}
                 </tr>
+                {kolom.length > 0 && (
+                  <tr>
+                    {kolom.map((c) => (
+                      <th key={c.id} title={c.sub ? `${c.judul} / ${c.sub}` : c.judul}>
+                        {c.judul}
+                        {c.sub ? <span className="tka-sb-sub">{c.sub}</span> : null}
+                      </th>
+                    ))}
+                  </tr>
+                )}
               </thead>
               <tbody>
                 {rowsTabel.map((r) => {
@@ -563,6 +488,24 @@ export default function TkaRekapMapel({
           </p>
         </section>
       )}
+      {nSebaran > 0 && dasar && (
+        <section className="space-y-2">
+          <h2 className="tka-sb-judul">Sebaran kompetensi per kelas</h2>
+          <p className="text-xs text-slate-500">
+            Capaian = gabungan poin diperoleh ÷ poin maksimum (berbobot poin) pada tiap kompetensi.
+            Kolom kanan: banyak siswa menurut capaian (rendah / sedang / tuntas).
+            {tampilDimensi.pasangan
+              ? ' Pada Bahasa Indonesia, tingkat kompleksitas dan tipe materi adalah pembagian soal yang sama, sehingga ditampilkan dalam satu tabel.'
+              : ''}
+          </p>
+          {tampilDimensi.pasangan ? <div key="pasangan">{tabelDimensi('pasangan')}</div> : null}
+          {tampilDimensi.dims.map((d) => (
+            <div key={d}>{tabelDimensi(d)}</div>
+          ))}
+        </section>
+      )}
+
+
     </div>
   )
 }

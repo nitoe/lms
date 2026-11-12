@@ -158,7 +158,9 @@ export function peringatanLabelSebaran(
   for (const mapel of MAPEL_TKA) {
     for (const k of kuisPerMapel[mapel] ?? []) {
       const soal = k.soal ?? []
-      const tanpaMateri = soal.filter((s) => !(s.tipeMateri || '').trim()).length
+      // IPA memakai domain (bukan tipe materi) sebagai kompetensi materi.
+      const tanpaMateri =
+        mapel === 'TKA IPA' ? 0 : soal.filter((s) => !(s.tipeMateri || '').trim()).length
       if (tanpaMateri > 0) {
         out.push(`${k.judul}: ${tanpaMateri} soal belum berlabel tipe materi (sebaran materi tidak lengkap).`)
       }

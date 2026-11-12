@@ -1464,3 +1464,12 @@ b.tka-sb-tuntas { color: #047857; }
 .tka-sb-chip.tka-sb-rendah { background: #fee2e2; color: #991b1b; }
 .tka-sb-chip.tka-sb-sedang { background: #fef3c7; color: #92400e; }
 .tka-sb-chip.tka-sb-tuntas { background: #d1fae5; color: #065f46; }
+
+/* ---- Rekap TKA: header kelompok kompetensi (ANTIREGRESI §110) ---- */
+.tka-sb-grup {
+  text-align: center;
+  white-space: normal !important;
+  font-size: 0.68rem;
+  color: #475569;
+  border-bottom: 1px solid #e2e8f0;
+}

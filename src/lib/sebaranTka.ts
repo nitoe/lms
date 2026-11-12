@@ -4,7 +4,9 @@
  * Aturan (ANTIREGRESI §109):
  * - Berbobot POIN, bukan jumlah soal. Skor parsial (PGK / Benar-Salah) ikut dihitung.
  * - Penyebut = seluruh soal kuis (soal tanpa jawaban = 0 poin), bukan hanya soal yang tampil.
- * - Dimensi: kompleksitas (L1–L3), tipe materi, domain (IPA).
+ * - Kompetensi dasar = tingkat kompleksitas L1–L3 (semua mapel).
+ * - Kompetensi materi: Matematika & Bahasa Indonesia = tipe materi; IPA = dua kelompok domain
+ *   (Pengetahuan IPA, Keterampilan Proses Sains), BUKAN 11 tipe materi IPA.
  */
 import type { DetailJawabanSoal } from './jawabanKuis'
 import { MATERI_TKA, type MapelTkaNama } from './tkaAkses'
@@ -41,9 +43,9 @@ export const NAMA_KOMPLEKSITAS_TKA: Record<KompleksitasSoal, string> = {
 export type DimensiSebaran = 'kompleksitas' | 'materi' | 'domain'
 
 export const NAMA_DIMENSI: Record<DimensiSebaran, string> = {
-  kompleksitas: 'Tingkat kompleksitas',
-  materi: 'Kompetensi materi',
-  domain: 'Domain kompetensi',
+  kompleksitas: 'Kompetensi dasar · tingkat kompleksitas',
+  materi: 'Kompetensi materi · tipe materi',
+  domain: 'Kompetensi materi · Pengetahuan IPA & Keterampilan Proses Sains',
 }
 
 export function persenPoin(poin: number, maks: number): number {
@@ -108,8 +110,9 @@ export function hitungSebaranDariJawaban(
     const kk = normalisasiKompleksitas(s.kompleksitas)
     tambah(kMap, kk, NAMA_KOMPLEKSITAS_TKA[kk], poin, maks)
 
+    // IPA: kompetensi materi = domain (2 kelompok), bukan 11 tipe materi.
     const materi = (s.tipeMateri || '').trim()
-    if (materi) tambah(mMap, materi, materi, poin, maks)
+    if (materi && mapel !== 'TKA IPA') tambah(mMap, materi, materi, poin, maks)
 
     const dom = normalisasiDomainTka(s.domainTka)
     if (dom) tambah(dMap, dom, NAMA_DOMAIN_TKA[dom], poin, maks)
@@ -144,10 +147,10 @@ export function hitungSebaranDariJawaban(
   return out
 }
 
-/** Baris sebaran paling lemah (utamakan tipe materi; bila tak ada, kompleksitas). */
+/** Baris sebaran paling lemah (kompetensi materi: tipe materi / domain IPA; bila tak ada, kompleksitas). */
 export function kompetensiTerlemah(s: SebaranMapelTka | null | undefined): BarisSebaranTka | null {
   if (!s) return null
-  const sumber = s.materi?.length ? s.materi : s.kompleksitas
+  const sumber = s.materi?.length ? s.materi : s.domain?.length ? s.domain : s.kompleksitas
   if (!sumber?.length) return null
   return sumber.reduce((a, b) => (b.persen < a.persen ? b : a))
 }
