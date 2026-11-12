@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { daftarRuangKelas, DAFTAR_KELAS_SD } from '../lib/kelasLms'
-import { ambilTugas, buatTugas, formatTenggat, updateTugas } from '../lib/tugas'
+import { ambilTugas, buatTugas, updateTugas } from '../lib/tugas'
 import { aksenMapel, inisialMapel } from '../lib/uiAksen'
 import {
   infoTenggat,
@@ -32,7 +32,6 @@ import { generateIsiTugasAi, generateKategoriTugasAi } from '../lib/tugasAi'
 import type {
   JenisPenilaianTugas,
   JenisTugas,
-  KategoriPenilaian,
   PengaturanPenilaianTugas,
   RentangPredikat,
   TpTugas,
@@ -677,27 +676,6 @@ export default function TugasDetail() {
     }
   }
 
-  function tambahKategori() {
-    setPengaturan((p) => ({
-      ...p,
-      kategori: [...p.kategori, { id: idBaru(), nama: '', deskripsi: '' }],
-    }))
-  }
-
-  function updateKategori(id: string, patch: Partial<KategoriPenilaian>) {
-    setPengaturan((p) => ({
-      ...p,
-      kategori: p.kategori.map((k) => (k.id === id ? { ...k, ...patch } : k)),
-    }))
-  }
-
-  function hapusKategori(id: string) {
-    setPengaturan((p) => ({
-      ...p,
-      kategori: p.kategori.filter((k) => k.id !== id),
-    }))
-  }
-
   function updateRentang(i: number, patch: Partial<RentangPredikat>) {
     if (pengaturan.rentangTerkunci) return
     setPengaturan((p) => ({
@@ -1338,7 +1316,6 @@ export default function TugasDetail() {
                               <tr key={r.siswaId}>
                                 <td className="td-td-nama">
                                   <b>{r.siswaNama}</b>
-                                  {r.nisn && <small>{r.nisn}</small>}
                                 </td>
                                 {kategoriAktif.map((k) => (
                                   <td key={k.id}>
