@@ -10,6 +10,8 @@
 
 113.5 Logika skor, predikat, AI kategori/isi, dan simpan nilai per siswa **tidak** boleh diubah hanya demi gaya CSS. UI v2 adalah presentasi saja (selaras §111 katalog).
 
+113.6 Tabel daftar nilai (`.td-tabel--nilai`): `table-layout: fixed`, header kategori (`.td-th-kat`) boleh patah 2–3 baris — **jangan** `white-space: nowrap` pada header kategori. Kolom siswa boleh sticky; input skor `width: 100%` di dalam sel.
+
 ## §112. Input sebaran manual
 
 112.1 Sebaran manual disimpan sebagai **poin & maks** per kompetensi (bukan persen), lewat `bangunSebaranManual`. Jumlah poin & maks kompetensi dasar WAJIB sama dengan kompetensi materi (membagi soal yang sama); jika tidak, tolak.

@@ -6,6 +6,7 @@
 - **Daftar nilai:** toolbar, tabel kompak, input skor, tombol AI per baris, empty/skeleton.
 - Build: hapus import/fungsi tak terpakai (`formatTenggat`, helper kategori lama); kolom siswa hanya `siswaNama` (tipe `BarisNilaiTugas` tanpa `nisn`).
 - **Lebar & sub-tab:** `.td-form` tanpa `max-width` (hilangkan ruang kosong kanan); sub-tab nilai (Pengaturan penilaian / Daftar nilai) diperbesar selebar konten dengan hint, setinggi tab utama.
+- **Daftar nilai responsif:** `table-layout: fixed`, header kategori boleh 2–3 baris (bukan satu baris panjang), kolom siswa sticky, input skor menyesuaikan lebar sel.
 - Tidak mengubah logika data (`lib/tugas.ts`, `nilaiTugas`, `penilaianTugas`), route, data model, maupun `firestore.rules`.
 - File: `src/pages/TugasDetail.tsx`, `src/styles/tugas.css` (lanjutan katalog).
 

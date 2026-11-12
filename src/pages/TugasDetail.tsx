@@ -1295,15 +1295,23 @@ export default function TugasDetail() {
                           <tr>
                             <th className="td-th-nama">Siswa</th>
                             {kategoriAktif.map((k) => (
-                              <th key={k.id} title={k.deskripsi || k.nama}>
+                              <th
+                                key={k.id}
+                                className="td-th-kat"
+                                title={k.deskripsi ? `${k.nama} — ${k.deskripsi}` : k.nama}
+                              >
                                 {k.nama || '—'}
                               </th>
                             ))}
-                            <th>Nilai akhir</th>
-                            <th>Predikat</th>
-                            {bisaAi && <th title="Generate dari predikat">AI</th>}
-                            <th>Komentar</th>
-                            <th></th>
+                            <th className="td-th-akhir">Nilai akhir</th>
+                            <th className="td-th-pred">Predikat</th>
+                            {bisaAi && (
+                              <th className="td-th-ai" title="Generate dari predikat">
+                                AI
+                              </th>
+                            )}
+                            <th className="td-th-komen">Komentar</th>
+                            <th className="td-th-aksi" aria-label="Aksi" />
                           </tr>
                         </thead>
                         <tbody>
@@ -1320,13 +1328,14 @@ export default function TugasDetail() {
                                   <b>{r.siswaNama}</b>
                                 </td>
                                 {kategoriAktif.map((k) => (
-                                  <td key={k.id}>
+                                  <td key={k.id} className="td-td-skor">
                                     <input
                                       type="text"
                                       inputMode="decimal"
                                       className="td-input-sm"
                                       value={d.perKategori[k.id] ?? ''}
                                       onChange={(e) => onSkorKategori(r.siswaId, k.id, e.target.value)}
+                                      aria-label={`${k.nama} — ${r.siswaNama}`}
                                     />
                                   </td>
                                 ))}
