@@ -10,6 +10,7 @@ import {
   ruangTka,
   type MapelTkaNama,
 } from '../../lib/tkaAkses'
+import TkaKuisAktif from './TkaKuisAktif'
 import '../../styles/tka.css'
 
 const META_MAPEL: Record<
@@ -105,6 +106,8 @@ export default function TkaBeranda() {
           </Link>
         )}
       </section>
+
+      <TkaKuisAktif meta={META_MAPEL} />
 
       <div>
         <p className="tka-dash-section-label">Mata pelajaran TKA</p>

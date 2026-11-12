@@ -1,3 +1,9 @@
+## 2026-11-13 — Kuis TKA per mapel terpisah & daftar kuis aktif di dashboard TKA
+
+- **Perbaikan:** tab Kuis pada ruang TKA (Matematika / Bahasa Indonesia / IPA) tidak lagi menampilkan kuis TKA mata pelajaran lain. Penyebab: tiga mapel TKA berbagi kelas bank «6», dan daftar kuis menggabungkan semua kuis buatan guru di kelas yang sama tanpa memeriksa mapel. Kini untuk mapel TKA hanya kuis bermapel sama yang tampil (Bank Soal sudah terfilter per mapel).
+- **Dashboard utama TKA** (`/tka`): bagian baru **Kuis TKA aktif**, dikelompokkan per mata pelajaran — judul, tahap Try Out, jumlah soal, durasi, jendela waktu, status (Berlangsung / Terjadwal) dan tautan «Buka» ke tab Kuis ruang mapel. Aktif = `aktif` menyala dan `waktuSelesai` belum lewat.
+- File: `src/components/KuisPanel.tsx`, `src/pages/tka/TkaBeranda.tsx`, `src/pages/tka/TkaKuisAktif.tsx` (baru), `src/styles/tka.css`. Tanpa perubahan `firestore.rules`.
+
 ## 2026-11-13 — Ekspor hasil TKA (Excel/CSV) & konfirmasi hapus kuis
 
 - **Ekspor Rekap TKA** (`/tka/rekap`): tombol **Unduh Excel** (.xlsx, semua lembar: Rekap Nilai Akhir, tiap mapel yang punya nilai dengan capaian % per kompetensi + skor + kompetensi terlemah + catatan, Keterangan) dan **Unduh CSV** (tab yang sedang dibuka; titik koma, UTF-8 BOM, desimal koma — siap dibuka di Excel Indonesia). Mengikuti filter tahap & kelas; wali 6A/6B hanya mengekspor rombelnya.

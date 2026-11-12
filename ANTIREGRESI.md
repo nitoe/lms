@@ -1,3 +1,11 @@
+## §115. Kuis TKA terpisah per mapel & daftar kuis aktif
+
+115.1 Mapel TKA berbagi kelas bank «6». Daftar kuis ruang TKA HARUS difilter `mapel` yang sama; jangan menggabung `daftarKuisDibuatOleh()` tanpa memeriksa mapel untuk mapel TKA (penyebab kuis TKA mapel lain muncul). Toleransi mapel beda hanya untuk mapel non-TKA.
+
+115.2 Setiap query `lms_kuis` harus `where kelas + mapel` (rules). Daftar kuis aktif di dashboard TKA melakukan satu query per mapel (`daftarKuis(ruangTka(m).kelas, m)`), bukan query lintas-mapel.
+
+115.3 «Aktif» = `aktif === true` dan `waktuSelesai` kosong/di masa depan; `waktuMulai` di masa depan = «Terjadwal». Waktu bisa berupa string ISO atau Timestamp Firestore — gunakan `keTanggal`.
+
 ## §114. Ekspor TKA & konfirmasi hapus kuis
 
 114.1 Ekspor XLSX dibuat tanpa dependensi (`exportTabel.ts`). Jangan menambah paket spreadsheet hanya untuk ekspor; bila diganti, pertahankan: header tebal, kolom nama dibekukan, angka tetap numerik (bukan teks), sheet ≤ 31 karakter.

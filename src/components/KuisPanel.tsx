@@ -138,8 +138,12 @@ export default function KuisPanel({ kelas, mapel }: Props) {
       // mapel beda sedikit — tetap ditampilkan agar data lama tidak hilang dari UI).
       const map = new Map<string, KuisLms>()
       for (const item of k) map.set(item.id, item)
+      // TKA: tiga mapel berbagi kelas bank «6» — kuis mapel TKA lain JANGAN ikut tampil
+      // (ANTIREGRESI §115). Mapel biasa tetap toleran terhadap data lama.
+      const ketatMapel = adalahMapelTka(mapel)
       for (const item of milikSaya) {
         if (String(item.kelas || '').toUpperCase() !== kelasU) continue
+        if (ketatMapel && String(item.mapel || '').trim() !== String(mapel).trim()) continue
         // prioritaskan mapel yang sama; tetap sertakan mapel lain di kelas ini milik saya
         if (!map.has(item.id)) map.set(item.id, item)
       }
