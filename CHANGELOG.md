@@ -1,3 +1,10 @@
+## 2026-11-12 — Rekap TKA: filter tahap/kelas tidak lagi kotak kosong
+
+- Panel filter (Tahap Try Out / Kelas) tidak dipaksa setinggi panel portal ortu — hilangkan ruang putih besar di tengah kartu.
+- Select lebih besar (`0.9375rem`, min-height 2.5rem, font-weight 600); label tetap ringkas di atas.
+- Grid kontrol: `align-items: start` agar toolbar hanya setinggi isinya.
+- File: `src/styles/tka.css`.
+
 ## 2026-11-12 — UI TKA: full-width + rekap lebih padat (perbaikan regresi)
 
 - **Perbaikan regresi lebar:** hapus `max-width: 72rem` pada `.tka-dash` / `.tka-rekap` yang menyisakan ruang kosong di kanan (konten shell hingga 1600px). Sekarang `width: 100%`.

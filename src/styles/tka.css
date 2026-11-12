@@ -813,30 +813,42 @@
 .tka-rekap-toolbar {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.85rem 1.25rem;
+  gap: 0.75rem 1rem;
   align-items: flex-end;
-  padding: 0.95rem 1.1rem;
-  border-radius: 1rem;
+  align-content: flex-start;
+  padding: 0.85rem 1rem;
+  border-radius: 0.9rem;
   border: 1px solid #e2e8f0;
   background: #fff;
   box-shadow: 0 1px 2px rgba(23, 23, 57, 0.04);
+  /* jangan memanjang mengisi tinggi panel publikasi */
+  height: auto !important;
+  align-self: start;
 }
 .tka-rekap-field {
   display: flex;
   flex-direction: column;
-  gap: 0.3rem;
-  font-size: 0.72rem;
+  gap: 0.35rem;
+  flex: 1 1 8.5rem;
+  min-width: 8.5rem;
+  font-size: 0.7rem;
   font-weight: 700;
   color: #64748b;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
 }
 .tka-rekap-field select,
 .tka-rekap-field input {
-  min-width: 10rem;
+  min-width: 0;
+  width: 100%;
   text-transform: none;
   letter-spacing: normal;
-  font-weight: 500;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: #0f172a;
+  line-height: 1.35;
+  padding: 0.55rem 0.75rem;
+  min-height: 2.5rem;
 }
 
 /* Publication panel */
@@ -1227,17 +1239,13 @@
   gap: 0.85rem;
   width: 100%;
   grid-template-columns: 1fr;
+  align-items: start;
 }
 @media (min-width: 1100px) {
+  /* filter kompak di kiri, panel portal mengisi sisa — tinggi tidak disamakan */
   .tka-rekap-controls {
-    grid-template-columns: minmax(16rem, 22rem) minmax(0, 1fr);
-    align-items: stretch;
-  }
-  .tka-rekap-controls .tka-rekap-toolbar {
-    height: 100%;
-  }
-  .tka-rekap-controls .tka-rekap-publikasi {
-    height: 100%;
+    grid-template-columns: minmax(18rem, 24rem) minmax(0, 1fr);
+    align-items: start;
   }
 }
 
