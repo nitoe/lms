@@ -304,17 +304,34 @@
   .td-tab-hint::before { content: '· '; }
 }
 
+/* Sub-tab nilai: selebar konten, setinggi tab utama agar mudah dikenali */
 .td-subtabs {
-  display: inline-flex; flex-wrap: wrap; gap: 0.3rem;
-  background: #f1f3f8; border-radius: 0.75rem; padding: 0.28rem;
+  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.45rem;
+  background: #fff; border: 1px solid var(--color-border); border-radius: 0.95rem;
+  padding: 0.4rem; box-shadow: 0 1px 3px rgba(23, 23, 57, 0.04);
 }
 .td-subtab {
-  font-family: inherit; cursor: pointer; border: none; border-radius: 0.55rem;
-  padding: 0.4rem 0.85rem; font-size: 0.78rem; font-weight: 700; color: #475569; background: transparent;
+  display: flex; flex-direction: column; align-items: flex-start; gap: 0.05rem;
+  font-family: inherit; cursor: pointer; text-align: left;
+  border: 1px solid transparent; border-radius: 0.7rem;
+  padding: 0.6rem 0.85rem; background: transparent; color: #475569;
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
 }
-.td-subtab:hover { color: #1a1d33; }
-.td-subtab--on { background: #fff; color: #1a1d33; box-shadow: 0 1px 2px rgba(23, 23, 57, 0.08); }
+.td-subtab:hover { background: #f8f9fd; }
 .td-subtab:focus-visible { outline: 2px solid var(--tg-a, var(--color-muh-600)); outline-offset: 1px; }
+.td-subtab--on {
+  background: color-mix(in srgb, var(--tg-a, #313083) 9%, #fff);
+  border-color: color-mix(in srgb, var(--tg-a, #313083) 28%, #fff);
+  color: #1a1d33;
+}
+.td-subtab-label { font-size: 0.86rem; font-weight: 750; }
+.td-subtab-hint { font-size: 0.68rem; font-weight: 600; color: var(--color-muted); }
+.td-subtab--on .td-subtab-hint { color: color-mix(in srgb, var(--tg-a, #313083) 70%, #64748b); }
+@media (max-width: 520px) {
+  .td-subtabs { grid-template-columns: 1fr; }
+  .td-subtab { flex-direction: row; align-items: center; gap: 0.5rem; }
+  .td-subtab-hint::before { content: '· '; }
+}
 
 /* Feedback */
 .td-sukses {
@@ -323,7 +340,7 @@
 }
 
 /* Form layout */
-.td-form { display: flex; flex-direction: column; gap: 0.9rem; width: 100%; max-width: 52rem; }
+.td-form { display: flex; flex-direction: column; gap: 0.9rem; width: 100%; min-width: 0; }
 .td-kartu {
   background: #fff; border: 1px solid var(--color-border); border-radius: 1rem;
   box-shadow: 0 1px 3px rgba(23, 23, 57, 0.04); overflow: hidden;

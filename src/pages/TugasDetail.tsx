@@ -1027,7 +1027,8 @@ export default function TugasDetail() {
               className={`td-subtab${subNilai === 'pengaturan-nilai' ? ' td-subtab--on' : ''}`}
               onClick={() => setSubNilai('pengaturan-nilai')}
             >
-              Pengaturan penilaian
+              <span className="td-subtab-label">Pengaturan penilaian</span>
+              <span className="td-subtab-hint">Kategori rubrik & predikat</span>
             </button>
             <button
               type="button"
@@ -1036,7 +1037,8 @@ export default function TugasDetail() {
               className={`td-subtab${subNilai === 'daftar-nilai' ? ' td-subtab--on' : ''}`}
               onClick={() => setSubNilai('daftar-nilai')}
             >
-              Daftar nilai
+              <span className="td-subtab-label">Daftar nilai</span>
+              <span className="td-subtab-hint">Isi skor per siswa</span>
             </button>
           </nav>
 

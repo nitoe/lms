@@ -5,6 +5,7 @@
 - **Form kartu (`.td-*`):** identitas, mapel & TP, instruksi, kategori rubrik, rentang predikat — hierarki jelas; tombol memakai `.tg-btn`.
 - **Daftar nilai:** toolbar, tabel kompak, input skor, tombol AI per baris, empty/skeleton.
 - Build: hapus import/fungsi tak terpakai (`formatTenggat`, helper kategori lama); kolom siswa hanya `siswaNama` (tipe `BarisNilaiTugas` tanpa `nisn`).
+- **Lebar & sub-tab:** `.td-form` tanpa `max-width` (hilangkan ruang kosong kanan); sub-tab nilai (Pengaturan penilaian / Daftar nilai) diperbesar selebar konten dengan hint, setinggi tab utama.
 - Tidak mengubah logika data (`lib/tugas.ts`, `nilaiTugas`, `penilaianTugas`), route, data model, maupun `firestore.rules`.
 - File: `src/pages/TugasDetail.tsx`, `src/styles/tugas.css` (lanjutan katalog).
 

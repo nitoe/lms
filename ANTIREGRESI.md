@@ -2,7 +2,7 @@
 
 113.1 Kelas `.td-*` hanya untuk halaman detail (`TugasDetail`); katalog tetap `.tg-*`. Keduanya berbagi `--tg-a` (diset di root detail dari `aksenMapel`) dan tombol `.tg-btn`.
 
-113.2 Jangan menambah `max-width` pada `.tg-halaman` di detail; form detail boleh `max-width: 52rem` pada `.td-form` saja agar kolom input nyaman dibaca.
+113.2 Jangan menambah `max-width` pada `.tg-halaman` maupun `.td-form` — konten detail mengikuti lebar shell penuh (sama katalog). Sub-tab nilai (`.td-subtabs`) harus selebar konten dan setinggi tab utama, bukan pill kecil di pojok.
 
 113.3 Tenggat di hero memakai `infoTenggat` yang sama dengan katalog (`lib/tugasUi.ts`). Nada alarm hanya bermakna bila tugas aktif; draf tidak dipaksa warna «lewat».
 
