@@ -477,3 +477,59 @@
 .tka-rekap-petunjuk p { margin: 0; }
 .tka-rekap-petunjuk p + p { margin-top: 0.35rem; }
 .tka-rekap-nilai { min-width: 7.5rem; vertical-align: top; }
+
+
+/* ── Import rekap TKA (admin) ───────────────── */
+.tka-import-box {
+  border-radius: 0.75rem;
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+  padding: 0.85rem 1rem;
+}
+.tka-import-stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+.tka-import-stats > div {
+  background: #f1f5f9;
+  border-radius: 0.7rem;
+  padding: 0.55rem 0.65rem;
+  text-align: center;
+  display: grid;
+  gap: 0.1rem;
+}
+.tka-import-stats b { font-size: 1.15rem; color: #0f172a; }
+.tka-import-stats span { font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: #64748b; }
+.tka-import-stats .ok { background: #d1fae5; }
+.tka-import-stats .ok b { color: #065f46; }
+.tka-import-stats .warn { background: #fef3c7; }
+.tka-import-stats .warn b { color: #92400e; }
+.tka-import-stats .bad { background: #fee2e2; }
+.tka-import-stats .bad b { color: #991b1b; }
+.tka-import-row--warn td { background: #fffbeb; }
+.tka-import-row--bad td { background: #fef2f2; }
+.tka-import-badge-bad {
+  font-size: 0.625rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 0.05rem 0.35rem;
+  border-radius: 999px;
+  background: #fee2e2;
+  color: #991b1b;
+}
+.tka-dash-rekap--admin {
+  border-color: #fde68a;
+  background: linear-gradient(135deg, #fffbeb 0%, #f8fafc 60%);
+}
+.tka-dash-rekap--admin:hover {
+  border-color: #f59e0b;
+  box-shadow: 0 8px 24px rgba(245, 158, 11, 0.12);
+}
+.tka-dash-rekap-icon--admin {
+  background: #d97706;
+}
+.tka-dash-rekap--admin .tka-dash-rekap-cta {
+  color: #b45309;
+}

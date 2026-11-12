@@ -20,6 +20,7 @@ import SiswaKuis from './pages/siswa/SiswaKuis'
 import SiswaTka from './pages/siswa/SiswaTka'
 import TkaBeranda from './pages/tka/TkaBeranda'
 import TkaRekap from './pages/tka/TkaRekap'
+import TkaImportRekap from './pages/tka/TkaImportRekap'
 import OrangtuaBeranda from './pages/OrangtuaBeranda'
 import { isStaf } from './lib/peran'
 import { bolehAksesTkaStaf } from './lib/tkaAkses'
@@ -41,6 +42,14 @@ function WajibTkaStaf({ children }: { children: ReactNode }) {
   if (!bolehAksesTkaStaf(user, profil)) return <Navigate to="/" replace />
   return children
 }
+
+function WajibAdminLms({ children }: { children: ReactNode }) {
+  const { profil, loading } = useAuth()
+  if (loading) return <div className="p-8 text-sm text-muted">Memuat…</div>
+  if (profil?.role !== 'admin') return <Navigate to="/tka" replace />
+  return children
+}
+
 
 function WajibOrangtua({ children }: { children: ReactNode }) {
   const { user, profil, peran, loading } = useAuth()
@@ -140,6 +149,16 @@ export default function App() {
           element={
             <WajibTkaStaf>
               <TkaRekap />
+            </WajibTkaStaf>
+          }
+        />
+        <Route
+          path="tka/import-rekap"
+          element={
+            <WajibTkaStaf>
+              <WajibAdminLms>
+                <TkaImportRekap />
+              </WajibAdminLms>
             </WajibTkaStaf>
           }
         />

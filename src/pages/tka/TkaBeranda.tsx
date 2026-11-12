@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
+import { peranDari } from '../../lib/peran'
 import {
   EMAIL_AKSES_KHUSUS_TKA,
   LABEL_MAPEL_TKA,
@@ -39,6 +40,7 @@ export default function TkaBeranda() {
   const { user, profil } = useAuth()
   const akunUji = (user?.email || '').toLowerCase() === EMAIL_AKSES_KHUSUS_TKA
   const boleh = bolehAksesTkaStaf(user, profil)
+  const isAdminLms = peranDari(profil) === 'admin'
 
   if (!boleh) {
     return (
@@ -65,6 +67,25 @@ export default function TkaBeranda() {
         </div>
       </section>
 
+
+      {isAdminLms && (
+        <section className="tka-dash-aksi" aria-label="Import rekap admin">
+          <Link to="/tka/import-rekap" className="tka-dash-rekap tka-dash-rekap--admin">
+            <div className="tka-dash-rekap-icon tka-dash-rekap-icon--admin" aria-hidden>
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M12 3v12m0 0l-4-4m4 4l4-4M4 19h16" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </div>
+            <div>
+              <h2 className="tka-dash-rekap-judul">Import Rekap Try Out</h2>
+              <p className="tka-dash-rekap-desc">
+                Admin LMS: impor massal nilai try out (portal tka2026 atau JSON) ke rekap tahap I–V.
+              </p>
+            </div>
+            <span className="tka-dash-rekap-cta">Buka tool →</span>
+          </Link>
+        </section>
+      )}
       <section className="tka-dash-aksi" aria-label="Rekap nilai">
         <Link to="/tka/rekap" className="tka-dash-rekap">
           <div className="tka-dash-rekap-icon" aria-hidden>
