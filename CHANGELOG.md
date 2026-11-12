@@ -1,3 +1,11 @@
+## 2026-11-12 — Snapshot sebaran capaian TKA ke portal
+
+- Publikasi Try Out menyertakan **sebaran** per mapel (kompleksitas L1–L3, tipe materi, domain IPA) bila kuis sumber + jawaban ada di LMS.
+- Tipe baru: `SebaranOrtuTka` / `SebaranMapelOrtu` di `src/types/tkaPublikasi.ts`.
+- Label portal: `LABEL_MAPEL_ORTU` (Bahasa Indonesia, Matematika, IPA).
+- Helper `hitungSebaranDariDetail` (pola sama HasilTka siswa).
+- File: `src/types/tkaPublikasi.ts`, `src/lib/tkaPublikasi.ts`.
+
 ## 2026-11-12 — Publikasi Try Out TKA ke portal orang tua
 
 - Snapshot hasil per **kelas × tahap** (`lms_tka_publikasi`, `lms_tka_hasil_ortu`) setelah wali/admin publish dari `/tka/rekap`.

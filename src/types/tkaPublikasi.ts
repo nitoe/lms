@@ -1,13 +1,47 @@
 /**
  * Publikasi hasil Try Out TKA ke portal orang tua (khusus kelas 6).
  * Snapshot — bukan baca live lms_rekap_tka.
+ *
+ * Selain nilai akhir per mapel, snapshot dapat memuat sebaran capaian:
+ * - per tingkat kompleksitas (L1 / L2 / L3)
+ * - per tipe materi (Bilangan, Pemahaman Tekstual, …)
+ * - per domain TKA IPA (pengetahuan / keterampilan_proses)
  */
 import type { TahapTryOutTka } from './kuis'
 
 /** Kunci mapel ringkas di snapshot portal (bukan nama TKA panjang). */
 export type MapelOrtuTka = 'BI' | 'MTK' | 'IPA'
 
+/** Label tampilan penuh untuk portal (jangan disingkat BI). */
+export const LABEL_MAPEL_ORTU: Record<MapelOrtuTka, string> = {
+  BI: 'Bahasa Indonesia',
+  MTK: 'Matematika',
+  IPA: 'IPA',
+}
+
 export type NilaiOrtuTka = Partial<Record<MapelOrtuTka, number | null>>
+
+/** Satu baris sebaran (kompleksitas / materi / domain). */
+export type SebaranBarisOrtu = {
+  /** Kunci stabil (L1, Bilangan, pengetahuan, …). */
+  key: string
+  /** Label tampilan. */
+  nama: string
+  benar: number
+  total: number
+  /** 0–100. */
+  persen: number
+}
+
+/** Sebaran satu mapel untuk satu siswa × tahap. */
+export type SebaranMapelOrtu = {
+  kompleksitas?: SebaranBarisOrtu[]
+  materi?: SebaranBarisOrtu[]
+  /** Khusus IPA: Pengetahuan IPA vs Keterampilan Proses Sains. */
+  domain?: SebaranBarisOrtu[]
+}
+
+export type SebaranOrtuTka = Partial<Record<MapelOrtuTka, SebaranMapelOrtu>>
 
 /** `lms_tka_publikasi/{kelas}_{tahap}` — gerbang publish per rombel × tahap. */
 export type TkaPublikasiDok = {
@@ -40,6 +74,8 @@ export type TkaHasilOrtuDok = {
   published: boolean
   publishedAt?: unknown
   catatanOrtu?: string
+  /** Sebaran capaian per mapel (opsional; diisi saat publish dari data LMS). */
+  sebaran?: SebaranOrtuTka
   updatedAt?: unknown
 }
 

@@ -3,6 +3,7 @@
  * - Publish per kelas × tahap (6A_I, 6B_I, …)
  * - Ranking 10 besar dari gabungan 6A+6B
  * - Rata tahap I: BI+MTK; tahap II–V: BI+MTK+IPA
+ * - Sebaran capaian (kompleksitas / materi / domain IPA) dari jawaban LMS bila ada
  */
 import {
   collection,
@@ -16,12 +17,26 @@ import {
   writeBatch,
 } from 'firebase/firestore'
 import { auth, db } from './firebase'
+import { daftarJawabanKuis } from './jawabanKuis'
+import { ambilKuis } from './kuis'
 import { bangunRekapTka } from './rekapTka'
 import { KELAS_TKA, type MapelTkaNama } from './tkaAkses'
 import type { TahapTryOutTka } from '../types/kuis'
+import type { Soal } from '../types/soal'
+import {
+  NAMA_DOMAIN_TKA,
+  NAMA_KOMPLEKSITAS,
+  normalisasiKompleksitas,
+  normalisasiDomainTka,
+  type DomainTka,
+  type KompleksitasSoal,
+} from '../types/soal'
 import type {
   MapelOrtuTka,
   NilaiOrtuTka,
+  SebaranBarisOrtu,
+  SebaranMapelOrtu,
+  SebaranOrtuTka,
   TkaHasilOrtuDok,
   TkaPeringkatBaris,
   TkaPeringkatDok,
@@ -66,6 +81,67 @@ export function hitungRataRata(
   return Math.round((sum / nums.length) * 10) / 10
 }
 
+/**
+ * Hitung sebaran capaian dari snapshot soal kuis + detail jawaban siswa.
+ * Pola sama dengan HasilTka di SiswaTka.tsx.
+ */
+export function hitungSebaranDariDetail(
+  soalList: Soal[] | undefined,
+  detail: { soalId: string; benar?: boolean }[] | undefined,
+): SebaranMapelOrtu | null {
+  if (!soalList?.length || !detail?.length) return null
+  const peta = new Map(detail.map((d) => [d.soalId, d.benar === true]))
+
+  type Acc = { key: string; nama: string; benar: number; total: number }
+  const kMap = new Map<string, Acc>()
+  const mMap = new Map<string, Acc>()
+  const dMap = new Map<string, Acc>()
+
+  for (const s of soalList) {
+    const benar = peta.get(s.id) === true ? 1 : 0
+    const kk = normalisasiKompleksitas(s.kompleksitas) as KompleksitasSoal
+    const kn = NAMA_KOMPLEKSITAS[kk]
+    const kb = kMap.get(kk) ?? { key: kk, nama: kn, benar: 0, total: 0 }
+    kb.benar += benar
+    kb.total += 1
+    kMap.set(kk, kb)
+
+    if (s.tipeMateri) {
+      const key = s.tipeMateri
+      const mb = mMap.get(key) ?? { key, nama: s.tipeMateri, benar: 0, total: 0 }
+      mb.benar += benar
+      mb.total += 1
+      mMap.set(key, mb)
+    }
+
+    const dom = normalisasiDomainTka(s.domainTka)
+    if (dom) {
+      const dn = NAMA_DOMAIN_TKA[dom as DomainTka]
+      const db = dMap.get(dom) ?? { key: dom, nama: dn, benar: 0, total: 0 }
+      db.benar += benar
+      db.total += 1
+      dMap.set(dom, db)
+    }
+  }
+
+  const toBaris = (m: Map<string, Acc>): SebaranBarisOrtu[] =>
+    [...m.values()].map((b) => ({
+      key: b.key,
+      nama: b.nama,
+      benar: b.benar,
+      total: b.total,
+      persen: b.total ? Math.round((b.benar / b.total) * 1000) / 10 : 0,
+    }))
+
+  const out: SebaranMapelOrtu = {}
+  const kompleksitas = toBaris(kMap)
+  const materi = toBaris(mMap)
+  const domain = toBaris(dMap)
+  if (kompleksitas.length) out.kompleksitas = kompleksitas
+  if (materi.length) out.materi = materi
+  if (domain.length) out.domain = domain
+  return kompleksitas.length || materi.length || domain.length ? out : null
+}
 
 /**
  * Bangun ranking gabungan 6A+6B untuk satu tahap dari data manual/rekap.
@@ -130,6 +206,7 @@ export async function muatStatusPublikasi(
 
 /**
  * Publikasikan snapshot satu kelas × tahap + hitung ulang ranking 6A+6B.
+ * Menyertakan sebaran capaian bila kuis sumber + jawaban tersedia di LMS.
  */
 export async function publikasikanTkaOrtu(input: {
   kelas: string
@@ -146,7 +223,6 @@ export async function publikasikanTkaOrtu(input: {
   }
   const { tahap } = input
 
-  // Nilai gabungan otomatis+manual (rekap LMS) untuk 6A+6B — dasar ranking & snapshot
   const rekap = await bangunRekapTka({ tahap, kelasList: ['6A', '6B'] })
   const semuaSiswa = rekap.siswa
 
@@ -161,6 +237,7 @@ export async function publikasikanTkaOrtu(input: {
       siswaNama: b.siswaNama,
       kelas: String(b.kelas).toUpperCase(),
       nilai,
+      perMapel: b.perMapel,
     }
   })
 
@@ -170,35 +247,75 @@ export async function publikasikanTkaOrtu(input: {
   const siswaKelas = semuaSiswa.filter((s) => String(s.kelas).toUpperCase() === kelas)
   const catatan = (input.catatanOrtu || '').trim().slice(0, 500)
 
-  // Batch: snapshot siswa kelas ini + publikasi + peringkat
-  // Firestore batch max 500
+  // Cache kuis agar tidak di-download berulang
+  const kuisCache = new Map<string, Awaited<ReturnType<typeof ambilKuis>>>()
+  async function getKuis(id: string) {
+    if (kuisCache.has(id)) return kuisCache.get(id) ?? null
+    const k = await ambilKuis(id)
+    kuisCache.set(id, k)
+    return k
+  }
+
+  // Jawaban per kuis×kelas×mapel (cache) — daftarJawabanKuis wajib 3 arg (rules)
+  const jawCache = new Map<string, Awaited<ReturnType<typeof daftarJawabanKuis>>>()
+  async function getJaw(kuisId: string, kelasJaw: string, mapel: string) {
+    const key = `${kuisId}|${kelasJaw}|${mapel}`
+    if (jawCache.has(key)) return jawCache.get(key) ?? []
+    const j = await daftarJawabanKuis(kuisId, kelasJaw, mapel)
+    jawCache.set(key, j)
+    return j
+  }
+
   const ops: { ref: ReturnType<typeof doc>; data: Record<string, unknown> }[] = []
 
   for (const s of siswaKelas) {
-    const nilai = pesertaSemua.find((p) => p.siswaId === s.id)?.nilai || {
-      BI: null,
-      MTK: null,
-      IPA: null,
-    }
+    const baris = pesertaSemua.find((p) => p.siswaId === s.id)
+    const nilai = baris?.nilai || { BI: null, MTK: null, IPA: null }
     const rank = rankBySiswa.get(s.id)
+
+    // Sebaran per mapel (best-effort)
+    const sebaran: SebaranOrtuTka = {}
+    if (baris) {
+      for (const mapelTka of ['TKA Bahasa Indonesia', 'TKA Matematika', 'TKA IPA'] as MapelTkaNama[]) {
+        const sel = baris.perMapel[mapelTka]
+        const ortuKey = MAPEL_KE_ORTU[mapelTka]
+        const kid = sel?.kuisId
+        if (!kid) continue
+        try {
+          const kuis = await getKuis(kid)
+          if (!kuis?.soal?.length) continue
+          const list = await getJaw(kid, kelas, mapelTka)
+          const milik = list
+            .filter((j) => j.siswaId === s.id || j.siswaUid === s.id)
+            .sort((a, b) => (b.skorOtomatis || 0) - (a.skorOtomatis || 0))
+          const terbaik = milik[0]
+          if (!terbaik?.detail?.length) continue
+          const seb = hitungSebaranDariDetail(kuis.soal, terbaik.detail)
+          if (seb) sebaran[ortuKey] = seb
+        } catch (e) {
+          console.warn('sebaran publish', s.id, mapelTka, e)
+        }
+      }
+    }
+
     const id = idTkaHasilOrtu(kelas, tahap, s.id)
-    ops.push({
-      ref: doc(db, 'lms_tka_hasil_ortu', id),
-      data: {
-        kelas,
-        tahap,
-        siswaId: s.id,
-        siswaNama: s.nama,
-        nilai,
-        rataRata: rank ? rank.rataRata : hitungRataRata(nilai, tahap),
-        peringkat: rank ? rank.peringkat : null,
-        jumlahPesertaRanking: jumlahPeserta,
-        published: true,
-        publishedAt: serverTimestamp(),
-        catatanOrtu: catatan,
-        updatedAt: serverTimestamp(),
-      },
-    })
+    const data: Record<string, unknown> = {
+      kelas,
+      tahap,
+      siswaId: s.id,
+      siswaNama: s.nama,
+      nilai,
+      rataRata: rank ? rank.rataRata : hitungRataRata(nilai, tahap),
+      peringkat: rank ? rank.peringkat : null,
+      jumlahPesertaRanking: jumlahPeserta,
+      published: true,
+      publishedAt: serverTimestamp(),
+      catatanOrtu: catatan,
+      updatedAt: serverTimestamp(),
+    }
+    if (Object.keys(sebaran).length) data.sebaran = sebaran
+
+    ops.push({ ref: doc(db, 'lms_tka_hasil_ortu', id), data })
   }
 
   ops.push({
@@ -266,8 +383,6 @@ export async function tarikPublikasiTkaOrtu(input: {
     { merge: true },
   )
 
-  // Tandai semua snapshot kelas ini unpublished
-  // Query satu field (hindari composite index); filter tahap di klien.
   const q = query(collection(db, 'lms_tka_hasil_ortu'), where('kelas', '==', kelas))
   const snap = await getDocs(q)
   const docs = snap.docs.filter((d) => String(d.data().tahap) === tahap)
@@ -281,5 +396,5 @@ export async function tarikPublikasiTkaOrtu(input: {
   }
 }
 
-export type { TkaPublikasiDok, TkaHasilOrtuDok, TkaPeringkatDok }
+export type { TkaPublikasiDok, TkaHasilOrtuDok, TkaPeringkatDok, SebaranOrtuTka, SebaranMapelOrtu }
 export { ORTU_KE_MAPEL, MAPEL_KE_ORTU }
