@@ -1,3 +1,13 @@
+## 2026-11-12 — Materi halaman: generate gambar AI terpisah (Tahap C) + UI per halaman
+
+- **Tombol AI teks** hanya di kanvas **halaman aktif** (bukan global). Label jelas: «AI untuk halaman N saja».
+- **Generate gambar** callable baru `generateIlustrasiMateriLmsAi` — terpisah dari teks; petunjuk per blok gambar.
+- Blok gambar: field petunjuk + «Generate gambar AI» / unggah file; placeholder url kosong sampai digenerate.
+- Frontend LMS **wajib di-deploy** agar tombol muncul (deploy CF saja tidak menambah UI).
+- AI teks menghasilkan **HTML aman** (h2/h3, tabel, list, `$rumus$`) — mode Visual / HTML di editor.
+- File LMS: `generateMateriAi.ts`, `MateriHalamanEditor.tsx`, `materi.ts`, `types/materi.ts`, css, changelog, antiregresi.
+- File CF: `generateMateriLmsAi.js` + `index.js` (penuh) di SDM01Penilaian.
+
 ## 2026-11-12 — Materi halaman: generate teks AI per halaman (Tahap B)
 
 - Cloud Function **`generateMateriLmsAi`** (SDM01Penilaian): satu halaman per panggilan; prompt menyertakan ringkasan halaman sebelumnya agar **kelanjutan**, bukan pengulangan.

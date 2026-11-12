@@ -761,3 +761,22 @@
   margin: 0;
   color: #047857;
 }
+
+.mh-ai-bar-title {
+  flex: 1 1 100%;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #065f46;
+}
+.mh-ai-bar-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  align-items: center;
+}
+.mh-img-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.35rem;
+}

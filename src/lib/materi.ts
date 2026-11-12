@@ -235,15 +235,21 @@ function normalisasiHalaman(list: MateriHalaman[] | undefined): MateriHalaman[] 
         const html = bersihHtmlMateri(b.html)
         if (htmlKosong(html) && blok.length > 1) continue
         bersih.push({ id: b.id || idBaru('b'), tipe: 'teks', html })
-      } else if (b.tipe === 'gambar' && b.url) {
-        bersih.push({
+      } else if (b.tipe === 'gambar') {
+        const url = typeof b.url === 'string' ? b.url.trim() : ''
+        const petunjuk =
+          typeof b.petunjukGambar === 'string' ? b.petunjukGambar.trim().slice(0, 2000) : ''
+        if (!url && !petunjuk) continue
+        const item: MateriBlok = {
           id: b.id || idBaru('b'),
           tipe: 'gambar',
-          url: String(b.url),
+          url: url || '',
           storagePath: b.storagePath,
           alt: b.alt?.trim() || undefined,
           caption: b.caption?.trim() || undefined,
-        })
+        }
+        if (petunjuk) item.petunjukGambar = petunjuk
+        bersih.push(item)
       }
     }
     if (bersih.length === 0) {
@@ -369,6 +375,34 @@ export async function unggahGambarHalaman(
   const storagePath = `lms/materi/${k}/halaman_${stamp}_${aman}`
   const r = ref(storage, storagePath)
   await uploadBytes(r, file, { contentType: file.type })
+  const url = await getDownloadURL(r)
+  return { url, storagePath }
+}
+
+/** Unggah data URL (hasil generate AI) ke Storage materi halaman. */
+export async function unggahDataUrlHalaman(
+  kelas: string,
+  dataUrl: string,
+  namaFile = 'ilustrasi-ai.webp',
+): Promise<{ url: string; storagePath: string }> {
+  if (!dataUrl.startsWith('data:image/')) {
+    throw new Error('Data gambar AI tidak valid.')
+  }
+  const uid = auth.currentUser?.uid
+  if (!uid) throw new Error('Anda harus masuk terlebih dahulu.')
+
+  const res = await fetch(dataUrl)
+  const blob = await res.blob()
+  if (blob.size > BATAS_UKURAN.gambarHalaman) {
+    throw new Error('Gambar AI terlalu besar setelah generate.')
+  }
+  const k = String(kelas).toUpperCase()
+  const aman = namaFile.replace(/[^\w.\-()+ ]/g, '_').slice(0, 80)
+  const stamp = Date.now()
+  const storagePath = `lms/materi/${k}/halaman_${stamp}_${aman}`
+  const r = ref(storage, storagePath)
+  const contentType = blob.type || 'image/webp'
+  await uploadBytes(r, blob, { contentType })
   const url = await getDownloadURL(r)
   return { url, storagePath }
 }

@@ -11,8 +11,10 @@ import {
 import {
   bolehGenerateMateriAi,
   drafKeBlokEditor,
+  generateDanSimpanIlustrasiMateri,
   generateMateriHalamanAi,
   ringkasHalamanSebelumnya,
+  ringkasHalamanUntukAi,
 } from '../../lib/generateMateriAi'
 import type { MateriBlok, MateriHalaman, MateriLms, TpRingkas } from '../../types/materi'
 import {
@@ -54,10 +56,11 @@ function salinHalaman(list: MateriHalaman[]): MateriHalaman[] {
       return {
         id: b.id || idBaru('b'),
         tipe: 'gambar' as const,
-        url: b.url,
+        url: b.url || '',
         storagePath: b.storagePath,
         alt: b.alt,
         caption: b.caption,
+        petunjukGambar: b.petunjukGambar,
       }
     }),
   }))
@@ -86,6 +89,8 @@ export default function MateriHalamanEditor({
   }))
   const [petunjukAi, setPetunjukAi] = useState('')
   const [busyAi, setBusyAi] = useState(false)
+  /** id blok gambar yang sedang digenerate AI */
+  const [busyGambarId, setBusyGambarId] = useState<string | null>(null)
   const [halaman, setHalaman] = useState<MateriHalaman[]>(() => {
     if (materiAwal?.halaman?.length) return salinHalaman(materiAwal.halaman)
     return [halamanKosong(0)]
@@ -324,7 +329,7 @@ export default function MateriHalamanEditor({
       })
       if (petunjukGambarMenunggu.length > 0) {
         setError(
-          `Teks halaman diisi AI. ${petunjukGambarMenunggu.length} petunjuk ilustrasi siap — generate gambar (Tahap C) menyusul.`,
+          `Teks halaman ${aktifIdx + 1} diisi AI. ${petunjukGambarMenunggu.length} blok gambar punya petunjuk — klik «Generate gambar AI» di blok tersebut (tidak menulis ulang teks).`,
         )
       }
     } catch (e) {
@@ -332,6 +337,62 @@ export default function MateriHalamanEditor({
     } finally {
       setBusyAi(false)
     }
+  }
+
+
+  async function generateGambarBlok(blokId: string) {
+    if (!bolehAi || !aktif) return
+    const b = aktif.blok.find((x) => x.id === blokId)
+    if (!b || b.tipe !== 'gambar') return
+    const petunjuk = (b.petunjukGambar || '').trim()
+    if (!petunjuk) {
+      setError('Isi petunjuk gambar dulu sebelum generate AI.')
+      return
+    }
+    setBusyGambarId(blokId)
+    setError('')
+    try {
+      const konteks = ringkasHalamanUntukAi(aktif).ringkasan
+      const { url, storagePath } = await generateDanSimpanIlustrasiMateri({
+        kelas,
+        mapel,
+        petunjukGambar: petunjuk,
+        konteksHalaman: konteks,
+        caption: b.caption,
+      })
+      // hapus storage lama bila diganti
+      const pathLama = b.storagePath
+      updateBlok(blokId, { url, storagePath, petunjukGambar: petunjuk } as Partial<MateriBlok>)
+      if (pathLama && pathLama !== storagePath) {
+        // cleanup non-blocking via bersihkan saat simpan
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Gagal generate gambar AI.')
+    } finally {
+      setBusyGambarId(null)
+    }
+  }
+
+  function tambahBlokGambarAi() {
+    if (!aktif) return
+    if (aktif.blok.length >= BATAS_BLOK_PER_HALAMAN) {
+      setError(`Maksimal ${BATAS_BLOK_PER_HALAMAN} blok per halaman.`)
+      return
+    }
+    const id = idBaru('b')
+    setHalaman((prev) =>
+      prev.map((h, i) =>
+        i === aktifIdx
+          ? {
+              ...h,
+              blok: [
+                ...h.blok,
+                { id, tipe: 'gambar' as const, url: '', petunjukGambar: '' },
+              ],
+            }
+          : h,
+      ),
+    )
   }
 
   async function simpan() {
@@ -665,38 +726,42 @@ export default function MateriHalamanEditor({
               </div>
 
               {bolehAi && (
-                <div className="mh-ai-bar" aria-label="Generate materi AI">
+                <div className="mh-ai-bar" aria-label={`AI hanya untuk halaman ${aktifIdx + 1}`}>
+                  <div className="mh-ai-bar-title">
+                    AI untuk <strong>halaman {aktifIdx + 1}</strong> saja
+                    {aktifIdx > 0 ? ' · kelanjutan dari halaman sebelumnya' : ''}
+                  </div>
                   <label className="materi-field mh-ai-petunjuk">
-                    <span>Petunjuk AI untuk halaman ini (opsional)</span>
+                    <span>Petunjuk teks halaman ini (opsional)</span>
                     <input
                       value={petunjukAi}
                       onChange={(e) => setPetunjukAi(e.target.value)}
-                      placeholder="Contoh: fokus contoh soal luas, pakai tabel ukuran"
+                      placeholder="Contoh: fokus contoh luas, pakai tabel ukuran, sertakan rumus"
                       disabled={busyAi}
                     />
                   </label>
-                  <button
-                    type="button"
-                    className="lms-btn-primary"
-                    disabled={busyAi || busy}
-                    onClick={() => void generateHalamanAi()}
-                    title={
-                      aktifIdx > 0
-                        ? 'Generate halaman ini sebagai kelanjutan halaman sebelumnya'
-                        : 'Generate isi halaman ini'
-                    }
-                  >
-                    {busyAi
-                      ? 'AI menulis…'
-                      : aktifIdx > 0
-                        ? `AI: isi halaman ${aktifIdx + 1} (lanjutan)`
-                        : 'AI: isi halaman ini'}
-                  </button>
-                  {aktifIdx > 0 && (
-                    <span className="mh-hint">
-                      Memakai ringkasan {aktifIdx} halaman sebelumnya agar tidak mengulang.
-                    </span>
-                  )}
+                  <div className="mh-ai-bar-actions">
+                    <button
+                      type="button"
+                      className="lms-btn-primary"
+                      disabled={busyAi || busy || !!busyGambarId}
+                      onClick={() => void generateHalamanAi()}
+                    >
+                      {busyAi ? 'AI menulis teks…' : `Generate teks halaman ${aktifIdx + 1}`}
+                    </button>
+                    <button
+                      type="button"
+                      className="lms-btn-secondary"
+                      disabled={busyAi || busy || !!busyGambarId}
+                      onClick={tambahBlokGambarAi}
+                    >
+                      + Blok gambar AI
+                    </button>
+                  </div>
+                  <span className="mh-hint">
+                    Teks memakai HTML aman (heading, tabel, daftar, rumus $…$). Generate gambar di
+                    setiap blok gambar — terpisah, tidak menulis ulang teks.
+                  </span>
                 </div>
               )}
 
@@ -785,7 +850,11 @@ export default function MateriHalamanEditor({
                         {b.url ? (
                           <img src={b.url} alt={b.alt || ''} className="mh-img-preview" />
                         ) : (
-                          <div className="mh-img-empty">Belum ada gambar</div>
+                          <div className="mh-img-empty">
+                            {b.petunjukGambar?.trim()
+                              ? 'Petunjuk siap — generate gambar AI atau unggah file'
+                              : 'Belum ada gambar'}
+                          </div>
                         )}
                         <label className="materi-field">
                           <span>Keterangan (opsional)</span>
@@ -795,17 +864,54 @@ export default function MateriHalamanEditor({
                             placeholder="Caption gambar"
                           />
                         </label>
-                        <button
-                          type="button"
-                          className="lms-btn-secondary"
-                          disabled={busy}
-                          onClick={() => {
-                            setUnggahUntukBlok(b.id)
-                            fileRef.current?.click()
-                          }}
-                        >
-                          Ganti gambar
-                        </button>
+                        {bolehAi && (
+                          <label className="materi-field">
+                            <span>Petunjuk ilustrasi AI (blok ini saja)</span>
+                            <textarea
+                              rows={2}
+                              value={b.petunjukGambar || ''}
+                              onChange={(e) =>
+                                updateBlok(b.id, {
+                                  petunjukGambar: e.target.value,
+                                } as Partial<MateriBlok>)
+                              }
+                              placeholder="Contoh: infografis luas persegi panjang, warna pastel, tanpa angka jawaban"
+                              disabled={busyGambarId === b.id}
+                            />
+                          </label>
+                        )}
+                        <div className="mh-img-actions">
+                          {bolehAi && (
+                            <button
+                              type="button"
+                              className="lms-btn-primary"
+                              disabled={
+                                busy ||
+                                busyAi ||
+                                busyGambarId === b.id ||
+                                !(b.petunjukGambar || '').trim()
+                              }
+                              onClick={() => void generateGambarBlok(b.id)}
+                            >
+                              {busyGambarId === b.id
+                                ? 'AI menggambar…'
+                                : b.url
+                                  ? 'Generate ulang gambar'
+                                  : 'Generate gambar AI'}
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            className="lms-btn-secondary"
+                            disabled={busy || busyGambarId === b.id}
+                            onClick={() => {
+                              setUnggahUntukBlok(b.id)
+                              fileRef.current?.click()
+                            }}
+                          >
+                            {b.url ? 'Ganti file' : 'Unggah file'}
+                          </button>
+                        </div>
                       </div>
                     )}
                   </div>

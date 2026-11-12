@@ -13,10 +13,16 @@ export type MateriBlok =
   | {
       id: string
       tipe: 'gambar'
+      /** Kosong string = placeholder menunggu unggah / generate AI. */
       url: string
       storagePath?: string
       alt?: string
       caption?: string
+      /**
+       * Petunjuk untuk generate ilustrasi AI (hanya editor; tidak ditampilkan siswa).
+       * Dihapus dari payload simpan bila url sudah terisi (opsional dipertahankan).
+       */
+      petunjukGambar?: string
     }
 
 /** Satu halaman dalam materi jenis halaman. */

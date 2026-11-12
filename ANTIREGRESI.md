@@ -16,6 +16,8 @@
 
 115.8 Mode sunting blok teks: **Visual** (TipTap) untuk narasi biasa; **HTML / tabel** (textarea) bila ada `<table>` atau rumus kompleks — pola sama dengan stimulus TKA (`TkaFieldEditor` memakai textarea agar tabel tidak hilang). Jangan memaksa tabel lewat TipTap tanpa ekstensi tabel.
 
+115.10 Generate **gambar** materi (`generateIlustrasiMateriLmsAi`) **wajib terpisah** dari generate teks. UI generate teks dan generate gambar hanya berlaku untuk **halaman / blok aktif**, bukan seluruh materi sekaligus. Jangan menyembunyikan tombol AI di bilah global yang tidak terikat halaman.
+
 115.9 Generate teks materi AI **per halaman** (`generateMateriLmsAi`): prompt WAJIB menyertakan `halamanSebelumnya` (ringkasan teks polos) agar kelanjutan, bukan pengulangan. Gate sama soal AI (`bolehPemanggilAi` / `bolehGenerateMateriAi`: UID + `arif.azwar79@gmail.com`). Generate **gambar** tetap terpisah (Tahap C) — jangan digabung ke callable teks. KaTeX untuk mapel Matematika: AI boleh menulis `$…$` / `$$…$$`; render di viewer (Tahap A).
 
 ## §114. UI dashboard ruang kelas (`rk-*`)
