@@ -1,3 +1,15 @@
+## §114. UI dashboard ruang kelas (`rk-*`)
+
+114.1 Kelas `.rk-*` untuk katalog `/kelas` (`KelasList` + `RuangCard`). Jangan mencampur dengan `.tg-*` (tugas) atau `.td-*` (detail tugas) kecuali pola visual yang disengaja sama.
+
+114.2 Aksen kartu: set `--rk-a`, `--rk-cover`, `--rk-fg` **inline per kartu** dari `aksenMapel` — sama deterministik dengan cover hero detail ruang. Jangan hash warna terpisah.
+
+114.3 Monitor penugasan aktif memuat tugas (`daftarTugasGuru`) + kuis per pasangan kelas×mapel; gagal parsial **tidak** boleh menggagalkan seluruh halaman (tetap `catch` per sumber).
+
+114.4 Grid `.rk-grid` memakai `<ul>/<li>`; jangan `display: contents` pada `<li>` (selaras §111.5).
+
+114.5 Jangan menambah `max-width` pada `.rk-halaman` / `.rk-grid` — lebar penuh shell.
+
 ## §113. UI detail tugas (`td-*`)
 
 113.1 Kelas `.td-*` hanya untuk halaman detail (`TugasDetail`); katalog tetap `.tg-*`. Keduanya berbagi `--tg-a` (diset di root detail dari `aksenMapel`) dan tombol `.tg-btn`.

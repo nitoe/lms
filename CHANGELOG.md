@@ -1,3 +1,13 @@
+## 2026-11-12 — Dashboard ruang kelas: UI v2
+
+- **Kepala & ringkasan:** judul halaman, strip angka (ruang, kelas, tugas aktif, kuis aktif).
+- **Monitor penugasan aktif:** panel rapi dengan badge Tugas/Kuis, meta mapel·kelas, tautan langsung, catatan wali.
+- **Cari & saring:** pencarian mapel/kelas, segmen filter kelas, hitungan ruang.
+- **Kartu ruang (`.rk-kartu`):** cover gradien per mapel, badge kelas/wali, monogram, pill tugas/kuis aktif, CTA.
+- Empty state dengan aksi reset saringan. Lebar penuh shell.
+- Tidak mengubah logika data (`kelasLms`, monitor tugas/kuis), route, maupun `firestore.rules`.
+- File: `src/pages/KelasList.tsx`, `src/components/RuangCard.tsx`, `src/styles/kelas.css` (baru).
+
 ## 2026-11-12 — Detail tugas (guru): UI v2
 
 - **Hero:** aksen mapel (`--tg-a`), monogram, chip jenis/kelas/status/penilaian, tenggat relatif (selaras katalog `tg-*`).

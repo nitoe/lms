@@ -16,8 +16,7 @@ type Props = {
 }
 
 /**
- * Kartu ruang kelas gaya LMS modern:
- * cover gradien + dekorasi, judul, chip kelas, CTA soft.
+ * Kartu ruang kelas — cover beraksen mapel, chip kelas, ringkas tugas/kuis aktif.
  */
 export default function RuangCard({ ruang, meta, ringkas }: Props) {
   const a = aksenMapel(ruang.mapel)
@@ -37,37 +36,31 @@ export default function RuangCard({ ruang, meta, ringkas }: Props) {
       : `Ruang belajar · Kelas ${ruang.kelas}`)
 
   return (
-    <Link to={`/kelas/${encodeURIComponent(ruang.id)}`} className="lms-card group">
-      <div className="lms-card-cover" style={{ background: a.cover }}>
-        <div className="lms-card-cover-deco" aria-hidden />
-        <div className="lms-card-cover-badge">
+    <Link
+      to={`/kelas/${encodeURIComponent(ruang.id)}`}
+      className="rk-kartu"
+      style={{ ['--rk-a' as string]: a.bar, ['--rk-cover' as string]: a.cover, ['--rk-fg' as string]: a.coverFg }}
+    >
+      <div className="rk-kartu-cover" aria-hidden>
+        <div className="rk-kartu-deco" />
+        <span className="rk-kartu-badge">
           Kelas {ruang.kelas}
           {ruang.sebagaiWali ? ' · Wali' : ''}
-        </div>
-        <div className="lms-card-cover-mark" style={{ color: a.coverFg }} aria-hidden>
-          {inisialMapel(ruang.mapel)}
-        </div>
+        </span>
+        <span className="rk-kartu-mark">{inisialMapel(ruang.mapel)}</span>
       </div>
-      <div className="lms-card-body">
-        <h3 className="lms-card-title">{ruang.mapel}</h3>
-        <p className="lms-card-meta">{metaTeks}</p>
-        <div className="lms-card-footer">
-          <span className={`lms-chip ${a.chip}`}>Kelas {ruang.kelas}</span>
+      <div className="rk-kartu-badan">
+        <h3 className="rk-kartu-judul">{ruang.mapel}</h3>
+        <p className="rk-kartu-meta">{metaTeks}</p>
+        <div className="rk-kartu-kaki">
+          <span className="rk-chip">Kelas {ruang.kelas}</span>
           {adaAktif ? (
-            <span className="inline-flex items-center gap-1.5 text-xs font-medium text-muh-800">
-              {nTugas > 0 && (
-                <span className="rounded-full bg-amber-50 px-2 py-0.5 text-amber-800 ring-1 ring-amber-200/80">
-                  {nTugas} tugas
-                </span>
-              )}
-              {nKuis > 0 && (
-                <span className="rounded-full bg-sky-50 px-2 py-0.5 text-sky-800 ring-1 ring-sky-200/80">
-                  {nKuis} kuis
-                </span>
-              )}
+            <span className="rk-kartu-aktif">
+              {nTugas > 0 && <span className="rk-pill rk-pill--tugas">{nTugas} tugas</span>}
+              {nKuis > 0 && <span className="rk-pill rk-pill--kuis">{nKuis} kuis</span>}
             </span>
           ) : (
-            <span className="lms-card-cta">Buka →</span>
+            <span className="rk-kartu-cta">Buka →</span>
           )}
         </div>
       </div>
