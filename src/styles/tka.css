@@ -472,7 +472,8 @@
    Dashboard TKA guru — kelas .tka-dash-*
    ============================================================================ */
 .tka-dash {
-  max-width: 72rem;
+  width: 100%;
+  max-width: none;
 }
 
 .tka-dash-hero {
@@ -535,10 +536,15 @@
   display: grid;
   gap: 0.85rem;
   grid-template-columns: 1fr;
+  width: 100%;
 }
 @media (min-width: 768px) {
   .tka-dash-aksi-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  /* satu kartu saja → full width, jangan sisakan kolom kosong */
+  .tka-dash-aksi-grid:has(> :only-child) {
+    grid-template-columns: 1fr;
   }
 }
 
@@ -629,6 +635,7 @@
   display: grid;
   gap: 1rem;
   grid-template-columns: 1fr;
+  width: 100%;
 }
 @media (min-width: 768px) {
   .tka-dash-grid {
@@ -736,7 +743,8 @@
 
 /* ── Rekap Nilai TKA ─────────────────────────── */
 .tka-rekap {
-  max-width: 72rem;
+  width: 100%;
+  max-width: none;
 }
 
 .tka-rekap-header {
@@ -902,23 +910,39 @@
 .tka-rekap-stats {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.65rem;
+  gap: 0.75rem;
+  width: 100%;
 }
-@media (min-width: 640px) {
+@media (min-width: 720px) {
   .tka-rekap-stats {
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 }
 .tka-rekap-stat {
+  position: relative;
+  overflow: hidden;
   background: #fff;
   border: 1px solid #e2e8f0;
-  border-radius: 0.95rem;
-  padding: 0.85rem 1rem;
+  border-radius: 1rem;
+  padding: 0.95rem 1.05rem;
   display: flex;
   flex-direction: column;
-  gap: 0.15rem;
-  box-shadow: 0 1px 2px rgba(23, 23, 57, 0.03);
+  gap: 0.2rem;
+  box-shadow: 0 1px 3px rgba(23, 23, 57, 0.04);
 }
+.tka-rekap-stat::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: #94a3b8;
+}
+.tka-rekap-stat--siswa::before { background: #6366f1; }
+.tka-rekap-stat--bi::before { background: #3b82f6; }
+.tka-rekap-stat--mtk::before { background: #14b8a6; }
+.tka-rekap-stat--ipa::before { background: #e11d48; }
 .tka-rekap-stat-label {
   font-size: 0.68rem;
   font-weight: 700;
@@ -927,11 +951,12 @@
   color: #8b92a8;
 }
 .tka-rekap-stat-value {
-  font-size: 1.35rem;
+  font-size: 1.45rem;
   font-weight: 800;
   color: #0f172a;
   font-variant-numeric: tabular-nums;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.025em;
+  line-height: 1.15;
 }
 .tka-rekap-stat-hint {
   font-size: 0.7rem;
@@ -1176,3 +1201,50 @@
   background: #fee2e2;
   color: #991b1b;
 }
+
+
+/* Aksen kolom mapel di header rekap */
+.tka-rekap-th-bi { color: #1d4ed8 !important; }
+.tka-rekap-th-mtk { color: #0f766e !important; }
+.tka-rekap-th-ipa { color: #be123c !important; }
+
+/* Panel meta ringkas (akses + hint digabung visual) */
+.tka-rekap-meta-row {
+  display: grid;
+  gap: 0.65rem;
+  grid-template-columns: 1fr;
+  width: 100%;
+}
+@media (min-width: 900px) {
+  .tka-rekap-meta-row {
+    grid-template-columns: 1.2fr 1fr;
+  }
+}
+
+/* Toolbar + publish side-by-side on wide screens */
+.tka-rekap-controls {
+  display: grid;
+  gap: 0.85rem;
+  width: 100%;
+  grid-template-columns: 1fr;
+}
+@media (min-width: 1100px) {
+  .tka-rekap-controls {
+    grid-template-columns: minmax(16rem, 22rem) minmax(0, 1fr);
+    align-items: stretch;
+  }
+  .tka-rekap-controls .tka-rekap-toolbar {
+    height: 100%;
+  }
+  .tka-rekap-controls .tka-rekap-publikasi {
+    height: 100%;
+  }
+}
+
+.tka-rekap-table th.tka-rekap-th-nilai {
+  text-align: center;
+}
+.tka-rekap-table td.tka-rekap-nilai {
+  text-align: left;
+}
+

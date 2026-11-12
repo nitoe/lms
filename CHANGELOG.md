@@ -1,8 +1,9 @@
-## 2026-11-12 — UI TKA: dashboard & rekap lebih profesional
+## 2026-11-12 — UI TKA: full-width + rekap lebih padat (perbaikan regresi)
 
-- **Dashboard TKA (`TkaBeranda`)**: hero lebih dalam, aksi cepat (Rekap + Import) dalam grid 2 kolom, kartu mapel dengan CTA bar dan hover lift.
-- **Rekap (`TkaRekap`)**: header breadcrumb + judul, toolbar filter dalam kartu, panel publikasi portal ortu tanpa inline style, chip status publish, **ringkasan rata-rata BI/MTK/IPA** di atas tabel, tabel sticky header + hover lebih halus.
-- **`tka.css`**: polish konsisten (radius, bayangan, tipografi) untuk area guru TKA dan list siswa TKA — mengurangi kesan generik/tabel mentah.
+- **Perbaikan regresi lebar:** hapus `max-width: 72rem` pada `.tka-dash` / `.tka-rekap` yang menyisakan ruang kosong di kanan (konten shell hingga 1600px). Sekarang `width: 100%`.
+- Grid aksi: satu kartu saja mengisi full width (`:has(> :only-child)`).
+- **Dashboard TKA:** hero, aksi Rekap/Import, kartu mapel — memakai lebar konten penuh.
+- **Rekap:** meta (akses + hint) 2 kolom; toolbar filter + panel portal ortu berdampingan di layar lebar; **stat ringkas** dengan aksen warna mapel (BI/MTK/IPA); header kolom mapel berwarna; tabel sticky.
 - Tidak mengubah logika bisnis, rules, atau data model.
 - File: `src/styles/tka.css`, `src/pages/tka/TkaBeranda.tsx`, `src/pages/tka/TkaRekap.tsx`.
 

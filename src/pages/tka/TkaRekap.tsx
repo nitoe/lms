@@ -256,135 +256,139 @@ export default function TkaRekap() {
         </button>
       </div>
 
-      <div className="tka-rekap-akses">
-        {adminTka ? (
-          <p>
-            Akses <strong>admin TKA</strong> ({EMAIL_AKSES_KHUSUS_TKA}): rekap siswa{' '}
-            <strong>6A dan 6B</strong>.
-          </p>
-        ) : (
-          <p>
-            Rekap terbatas pada kelas yang Anda wali: <strong>{kelasIzin.join(', ') || '—'}</strong>.
-            Guru 6A tidak melihat siswa 6B, dan sebaliknya.
-          </p>
-        )}
+      <div className="tka-rekap-meta-row">
+        <div className="tka-rekap-akses">
+          {adminTka ? (
+            <p>
+              Akses <strong>admin TKA</strong> ({EMAIL_AKSES_KHUSUS_TKA}): rekap siswa{' '}
+              <strong>6A dan 6B</strong>.
+            </p>
+          ) : (
+            <p>
+              Rekap terbatas pada kelas yang Anda wali:{' '}
+              <strong>{kelasIzin.join(', ') || '—'}</strong>. Guru 6A tidak melihat siswa 6B, dan
+              sebaliknya.
+            </p>
+          )}
+        </div>
+        <div className="tka-rekap-hint-manual" role="note">
+          Try out tidak lewat LMS? Isi nilai lewat tombol <strong>+ Isi manual</strong> di kolom BI /
+          MTK / IPA pada tabel.
+        </div>
       </div>
 
-      <div className="tka-rekap-hint-manual" role="note">
-        Try out tidak lewat LMS? Isi nilai lewat tombol <strong>+ Isi manual</strong> di kolom BI /
-        MTK / IPA pada tabel di bawah.
-      </div>
-
-      <div className="tka-rekap-toolbar">
-        <label className="tka-rekap-field">
-          <span>Tahap Try Out</span>
-          <select
-            value={tahap}
-            onChange={(e) => setTahap(e.target.value as TahapTryOutTka)}
-            className="lms-input"
-          >
-            {DAFTAR_TAHAP_TRYOUT_TKA.map((t) => (
-              <option key={t} value={t}>
-                {NAMA_TAHAP_TRYOUT_TKA[t]}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="tka-rekap-field">
-          <span>Kelas</span>
-          <select
-            value={kelasFilter}
-            onChange={(e) => setKelasFilter(e.target.value)}
-            className="lms-input"
-          >
-            <option value="semua">Semua ({kelasIzin.join(', ')})</option>
-            {kelasIzin.map((k) => (
-              <option key={k} value={k}>
-                {k}
-              </option>
-            ))}
-          </select>
-        </label>
-      </div>
-
-      <div className="tka-rekap-publikasi">
-        <p className="tka-rekap-publikasi-judul">Portal orang tua (kelas 6)</p>
-        <p className="tka-rekap-publikasi-desc">
-          Snapshot nilai + ranking 10 besar gabungan 6A/6B. Tahap I: rata-rata BI+MTK. Tahap II–V:
-          rata-rata BI+MTK+IPA. Hanya tahap yang dipublikasikan yang terlihat orang tua.
-        </p>
-        <div className="tka-rekap-publikasi-form">
+      <div className="tka-rekap-controls">
+        <div className="tka-rekap-toolbar">
           <label className="tka-rekap-field">
-            <span>Kelas publish</span>
+            <span>Tahap Try Out</span>
             <select
+              value={tahap}
+              onChange={(e) => setTahap(e.target.value as TahapTryOutTka)}
               className="lms-input"
-              value={kelasPublish || kelasIzin[0] || ''}
-              onChange={(e) => setKelasPublish(e.target.value)}
             >
-              {kelasIzin.map((k) => (
-                <option key={k} value={k} disabled={!bolehPublishTkaOrtu(user, profil, k)}>
-                  {k}
-                  {statusPub[k]?.published ? ' · sudah publish' : ''}
+              {DAFTAR_TAHAP_TRYOUT_TKA.map((t) => (
+                <option key={t} value={t}>
+                  {NAMA_TAHAP_TRYOUT_TKA[t]}
                 </option>
               ))}
             </select>
           </label>
-          <label className="tka-rekap-field tka-rekap-field--grow">
-            <span>Catatan untuk orang tua (opsional)</span>
-            <input
+          <label className="tka-rekap-field">
+            <span>Kelas</span>
+            <select
+              value={kelasFilter}
+              onChange={(e) => setKelasFilter(e.target.value)}
               className="lms-input"
-              value={catatanOrtu}
-              onChange={(e) => setCatatanOrtu(e.target.value)}
-              maxLength={500}
-              placeholder="Mis. Try Out I fokus BI & Matematika"
-            />
+            >
+              <option value="semua">Semua ({kelasIzin.join(', ')})</option>
+              {kelasIzin.map((k) => (
+                <option key={k} value={k}>
+                  {k}
+                </option>
+              ))}
+            </select>
           </label>
-          <button
-            type="button"
-            className="lms-btn-primary text-sm"
-            disabled={
-              busyPub ||
-              loading ||
-              !kelasPublish ||
-              !bolehPublishTkaOrtu(user, profil, kelasPublish)
-            }
-            onClick={() => void handlePublish()}
-          >
-            {busyPub
-              ? 'Memproses…'
-              : statusPub[kelasPublish || '']?.published
-                ? 'Perbarui publikasi'
-                : 'Publikasikan ke portal'}
-          </button>
-          {statusPub[kelasPublish || '']?.published ? (
+        </div>
+
+        <div className="tka-rekap-publikasi">
+          <p className="tka-rekap-publikasi-judul">Portal orang tua (kelas 6)</p>
+          <p className="tka-rekap-publikasi-desc">
+            Snapshot nilai + ranking 10 besar gabungan 6A/6B. Tahap I: BI+MTK. Tahap II–V:
+            BI+MTK+IPA. Hanya tahap yang dipublikasikan yang terlihat orang tua.
+          </p>
+          <div className="tka-rekap-publikasi-form">
+            <label className="tka-rekap-field">
+              <span>Kelas publish</span>
+              <select
+                className="lms-input"
+                value={kelasPublish || kelasIzin[0] || ''}
+                onChange={(e) => setKelasPublish(e.target.value)}
+              >
+                {kelasIzin.map((k) => (
+                  <option key={k} value={k} disabled={!bolehPublishTkaOrtu(user, profil, k)}>
+                    {k}
+                    {statusPub[k]?.published ? ' · sudah publish' : ''}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="tka-rekap-field tka-rekap-field--grow">
+              <span>Catatan untuk orang tua (opsional)</span>
+              <input
+                className="lms-input"
+                value={catatanOrtu}
+                onChange={(e) => setCatatanOrtu(e.target.value)}
+                maxLength={500}
+                placeholder="Mis. Try Out I fokus BI & Matematika"
+              />
+            </label>
             <button
               type="button"
-              className="lms-btn-secondary text-sm"
-              disabled={busyPub || loading}
-              onClick={() => void handleTarik()}
+              className="lms-btn-primary text-sm"
+              disabled={
+                busyPub ||
+                loading ||
+                !kelasPublish ||
+                !bolehPublishTkaOrtu(user, profil, kelasPublish)
+              }
+              onClick={() => void handlePublish()}
             >
-              Tarik publikasi
+              {busyPub
+                ? 'Memproses…'
+                : statusPub[kelasPublish || '']?.published
+                  ? 'Perbarui publikasi'
+                  : 'Publikasikan ke portal'}
             </button>
-          ) : null}
-        </div>
-        <div className="tka-rekap-publikasi-status">
-          {kelasIzin.map((k) => {
-            const st = statusPub[k]
-            if (!st?.published) {
+            {statusPub[kelasPublish || '']?.published ? (
+              <button
+                type="button"
+                className="lms-btn-secondary text-sm"
+                disabled={busyPub || loading}
+                onClick={() => void handleTarik()}
+              >
+                Tarik publikasi
+              </button>
+            ) : null}
+          </div>
+          <div className="tka-rekap-publikasi-status">
+            {kelasIzin.map((k) => {
+              const st = statusPub[k]
+              if (!st?.published) {
+                return (
+                  <span key={k} className="tka-rekap-pub-chip">
+                    {k}: belum dipublikasikan
+                  </span>
+                )
+              }
               return (
-                <span key={k} className="tka-rekap-pub-chip">
-                  {k}: belum dipublikasikan
+                <span key={k} className="tka-rekap-pub-chip tka-rekap-pub-chip--ok">
+                  {k}: sudah dipublikasikan
+                  {st.publishedByNama ? ` · ${st.publishedByNama}` : ''}
+                  {st.jumlahSiswa != null ? ` · ${st.jumlahSiswa} siswa` : ''}
                 </span>
               )
-            }
-            return (
-              <span key={k} className="tka-rekap-pub-chip tka-rekap-pub-chip--ok">
-                {k}: sudah dipublikasikan
-                {st.publishedByNama ? ` · ${st.publishedByNama}` : ''}
-                {st.jumlahSiswa != null ? ` · ${st.jumlahSiswa} siswa` : ''}
-              </span>
-            )
-          })}
+            })}
+          </div>
         </div>
       </div>
 
@@ -428,26 +432,26 @@ export default function TkaRekap() {
 
       {tampil.length > 0 && (
         <div className="tka-rekap-stats" aria-label="Ringkasan rekap">
-          <div className="tka-rekap-stat">
+          <div className="tka-rekap-stat tka-rekap-stat--siswa">
             <span className="tka-rekap-stat-label">Siswa</span>
             <span className="tka-rekap-stat-value">{ringkas.jumlah}</span>
             <span className="tka-rekap-stat-hint">di filter aktif</span>
           </div>
-          <div className="tka-rekap-stat">
+          <div className="tka-rekap-stat tka-rekap-stat--bi">
             <span className="tka-rekap-stat-label">Rata-rata BI</span>
             <span className="tka-rekap-stat-value">
               {ringkas.bi == null ? '—' : ringkas.bi}
             </span>
             <span className="tka-rekap-stat-hint">skala 100</span>
           </div>
-          <div className="tka-rekap-stat">
+          <div className="tka-rekap-stat tka-rekap-stat--mtk">
             <span className="tka-rekap-stat-label">Rata-rata MTK</span>
             <span className="tka-rekap-stat-value">
               {ringkas.mtk == null ? '—' : ringkas.mtk}
             </span>
             <span className="tka-rekap-stat-hint">skala 100</span>
           </div>
-          <div className="tka-rekap-stat">
+          <div className="tka-rekap-stat tka-rekap-stat--ipa">
             <span className="tka-rekap-stat-label">Rata-rata IPA</span>
             <span className="tka-rekap-stat-value">
               {ringkas.ipa == null ? '—' : ringkas.ipa}
@@ -464,9 +468,19 @@ export default function TkaRekap() {
               <tr>
                 <th className="tka-rekap-th-nama">Siswa</th>
                 <th>Kelas</th>
-                {MAPEL_TKA.map((m) => (
-                  <th key={m}>{LABEL_SINGKAT[m]}</th>
-                ))}
+                {MAPEL_TKA.map((m) => {
+                  const cls =
+                    m === 'TKA Bahasa Indonesia'
+                      ? 'tka-rekap-th-nilai tka-rekap-th-bi'
+                      : m === 'TKA Matematika'
+                        ? 'tka-rekap-th-nilai tka-rekap-th-mtk'
+                        : 'tka-rekap-th-nilai tka-rekap-th-ipa'
+                  return (
+                    <th key={m} className={cls}>
+                      {LABEL_SINGKAT[m]}
+                    </th>
+                  )
+                })}
               </tr>
             </thead>
             <tbody>
