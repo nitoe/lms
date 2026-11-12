@@ -83,28 +83,33 @@ export async function muatRekapTkaManual(
   const map = new Map<string, RekapTkaDok>()
   await Promise.all(
     kelasList.map(async (kelas) => {
-      const q = query(
-        koleksi(),
-        where('tahap', '==', tahap),
-        where('kelas', '==', String(kelas).toUpperCase()),
-      )
-      const snap = await getDocs(q)
-      for (const d of snap.docs) {
-        const data = d.data()
-        map.set(d.id, {
-          id: d.id,
-          kelas: String(data.kelas ?? kelas),
-          tahap: data.tahap as TahapTryOutTka,
-          siswaId: String(data.siswaId ?? ''),
-          siswaNama: String(data.siswaNama ?? ''),
-          nilai: (data.nilai as RekapTkaDok['nilai']) ?? {},
-          sumber: (data.sumber as RekapTkaDok['sumber']) ?? {},
-          kuisIdRef: (data.kuisIdRef as RekapTkaDok['kuisIdRef']) ?? {},
-          diubahOleh: typeof data.diubahOleh === 'string' ? data.diubahOleh : undefined,
-          diubahOlehNama: typeof data.diubahOlehNama === 'string' ? data.diubahOlehNama : undefined,
-          updatedAt: data.updatedAt,
-          createdAt: data.createdAt,
-        })
+      try {
+        const q = query(
+          koleksi(),
+          where('tahap', '==', tahap),
+          where('kelas', '==', String(kelas).toUpperCase()),
+        )
+        const snap = await getDocs(q)
+        for (const d of snap.docs) {
+          const data = d.data()
+          map.set(d.id, {
+            id: d.id,
+            kelas: String(data.kelas ?? kelas),
+            tahap: data.tahap as TahapTryOutTka,
+            siswaId: String(data.siswaId ?? ''),
+            siswaNama: String(data.siswaNama ?? ''),
+            nilai: (data.nilai as RekapTkaDok['nilai']) ?? {},
+            sumber: (data.sumber as RekapTkaDok['sumber']) ?? {},
+            kuisIdRef: (data.kuisIdRef as RekapTkaDok['kuisIdRef']) ?? {},
+            diubahOleh: typeof data.diubahOleh === 'string' ? data.diubahOleh : undefined,
+            diubahOlehNama: typeof data.diubahOlehNama === 'string' ? data.diubahOlehNama : undefined,
+            updatedAt: data.updatedAt,
+            createdAt: data.createdAt,
+          })
+        }
+      } catch (e) {
+        // Tanpa rules lms_rekap_tka, query gagal permission — jangan gagalkan seluruh rekap.
+        console.warn('muatRekapTkaManual', kelas, e)
       }
     }),
   )
