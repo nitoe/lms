@@ -196,8 +196,20 @@ export async function simpanNilaiManualTka(input: {
   const id = idRekapTka(kelas, input.tahap, input.siswaId)
   const ref = doc(db, 'lms_rekap_tka', id)
 
-  const existing = await getDoc(ref)
-  const prev = existing.exists() ? existing.data() : {}
+  // getDoc dokumen yang belum ada bisa permission-denied (resource==null di rules).
+  // Anggap kosong jika gagal / tidak ada — setDoc merge akan create.
+  let prev: Record<string, unknown> = {}
+  let sudahAda = false
+  try {
+    const existing = await getDoc(ref)
+    if (existing.exists()) {
+      prev = existing.data() as Record<string, unknown>
+      sudahAda = true
+    }
+  } catch (e) {
+    console.warn('simpanNilaiManualTka getDoc', id, e)
+  }
+
   const nilai: Record<string, number | null> = {
     ...((prev.nilai as Record<string, number | null>) || {}),
   }
@@ -227,7 +239,7 @@ export async function simpanNilaiManualTka(input: {
       diubahOleh: uid,
       diubahOlehNama: input.namaGuru || '',
       updatedAt: serverTimestamp(),
-      ...(existing.exists() ? {} : { createdAt: serverTimestamp() }),
+      ...(sudahAda ? {} : { createdAt: serverTimestamp() }),
     },
     { merge: true },
   )

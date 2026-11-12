@@ -169,6 +169,11 @@ export default function TkaRekap() {
         )}
       </div>
 
+      <div className="tka-rekap-hint-manual" role="note">
+        Try out tidak lewat LMS? Isi nilai lewat tombol <strong>+ Isi manual</strong> di kolom
+        BI / MTK / IPA pada tabel di bawah.
+      </div>
+
       <div className="tka-rekap-toolbar">
         <label className="tka-rekap-field">
           <span>Tahap Try Out</span>
@@ -270,9 +275,17 @@ export default function TkaRekap() {
                               step={0.5}
                               value={edit.draft}
                               onChange={(e) => setEdit({ ...edit, draft: e.target.value })}
-                              className="lms-input"
+                              className="lms-input tka-rekap-input"
                               autoFocus
                               placeholder="0–100"
+                              aria-label={`Nilai manual ${LABEL_SINGKAT[m]} ${r.siswaNama}`}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  e.preventDefault()
+                                  void simpanEdit()
+                                }
+                                if (e.key === 'Escape') setEdit(null)
+                              }}
                             />
                             <button
                               type="button"
@@ -290,32 +303,77 @@ export default function TkaRekap() {
                             >
                               Batal
                             </button>
+                            {sel.sumber === 'manual' && (
+                              <button
+                                type="button"
+                                className="tka-rekap-btn-hapus text-xs"
+                                disabled={busySimpan}
+                                title="Hapus nilai manual, kembali ke LMS bila ada"
+                                onClick={() => {
+                                  setEdit({ siswaId: r.siswaId, mapel: m, draft: '' })
+                                  // simpan kosong = hapus override
+                                  void (async () => {
+                                    setBusySimpan(true)
+                                    setError('')
+                                    try {
+                                      await simpanNilaiManualTka({
+                                        kelas: r.kelas,
+                                        tahap,
+                                        siswaId: r.siswaId,
+                                        siswaNama: r.siswaNama,
+                                        mapel: m,
+                                        nilai: null,
+                                        namaGuru: profil?.nama,
+                                      })
+                                      setEdit(null)
+                                      setInfo('Nilai manual dihapus.')
+                                      await muat()
+                                    } catch (err) {
+                                      setError(err instanceof Error ? err.message : 'Gagal menghapus.')
+                                    } finally {
+                                      setBusySimpan(false)
+                                    }
+                                  })()
+                                }}
+                              >
+                                Hapus manual
+                              </button>
+                            )}
                           </div>
                         ) : (
-                          <button
-                            type="button"
-                            className="tka-rekap-sel"
-                            title={
-                              sel.sumber === 'otomatis' && sel.dariKuis
-                                ? `Dari kuis: ${sel.dariKuis} — klik untuk ubah manual`
-                                : 'Klik untuk input manual'
-                            }
-                            onClick={() =>
-                              setEdit({
-                                siswaId: r.siswaId,
-                                mapel: m,
-                                draft: sel.nilai != null ? String(sel.nilai) : '',
-                              })
-                            }
-                          >
-                            <span className="tka-rekap-angka">{teksNilai(sel)}</span>
-                            {sel.sumber === 'manual' && (
-                              <span className="tka-rekap-badge tka-rekap-badge--manual">manual</span>
-                            )}
-                            {sel.sumber === 'otomatis' && (
-                              <span className="tka-rekap-badge tka-rekap-badge--auto">LMS</span>
-                            )}
-                          </button>
+                          <div className="tka-rekap-cell">
+                            <div className="tka-rekap-cell-nilai">
+                              <span className="tka-rekap-angka">{teksNilai(sel)}</span>
+                              {sel.sumber === 'manual' && (
+                                <span className="tka-rekap-badge tka-rekap-badge--manual">manual</span>
+                              )}
+                              {sel.sumber === 'otomatis' && (
+                                <span
+                                  className="tka-rekap-badge tka-rekap-badge--auto"
+                                  title={sel.dariKuis ? `Dari kuis: ${sel.dariKuis}` : undefined}
+                                >
+                                  LMS
+                                </span>
+                              )}
+                            </div>
+                            <button
+                              type="button"
+                              className={
+                                sel.nilai == null
+                                  ? 'tka-rekap-btn-isi'
+                                  : 'tka-rekap-btn-ubah'
+                              }
+                              onClick={() =>
+                                setEdit({
+                                  siswaId: r.siswaId,
+                                  mapel: m,
+                                  draft: sel.nilai != null ? String(sel.nilai) : '',
+                                })
+                              }
+                            >
+                              {sel.nilai == null ? '+ Isi manual' : 'Ubah'}
+                            </button>
+                          </div>
                         )}
                       </td>
                     )
@@ -327,10 +385,17 @@ export default function TkaRekap() {
         </div>
       )}
 
-      <p className="text-xs text-slate-500">
-        Klik sel nilai untuk mengisi manual (misalnya try out kertas). Kosongkan lalu simpan untuk
-        menghapus override dan kembali ke nilai dari kuis LMS. Label mapel: {MAPEL_TKA.map((m) => `${LABEL_SINGKAT[m]}=${LABEL_MAPEL_TKA[m]}`).join(' · ')}.
-      </p>
+      <div className="tka-rekap-petunjuk">
+        <p>
+          <strong>Input manual:</strong> tombol <em>+ Isi manual</em> / <em>Ubah</em> pada setiap
+          sel mapel — untuk try out di luar LMS (kertas, sistem lain). Nilai 0–100.
+        </p>
+        <p>
+          Kosongkan field lalu <em>Simpan</em>, atau <em>Hapus manual</em>, untuk menghapus
+          override dan kembali ke nilai otomatis dari kuis LMS (jika ada). Mapel:{' '}
+          {MAPEL_TKA.map((m) => `${LABEL_SINGKAT[m]}=${LABEL_MAPEL_TKA[m]}`).join(' · ')}.
+        </p>
+      </div>
     </div>
   )
 }

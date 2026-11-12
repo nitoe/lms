@@ -402,3 +402,78 @@
 }
 .tka-rekap-akses p { margin: 0; }
 .tka-rekap-akses strong { color: #0f172a; }
+
+.tka-rekap-hint-manual {
+  border-radius: 0.75rem;
+  border: 1px solid #fde68a;
+  background: #fffbeb;
+  padding: 0.65rem 1rem;
+  font-size: 0.8125rem;
+  color: #92400e;
+}
+.tka-rekap-hint-manual strong { color: #78350f; }
+.tka-rekap-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.35rem;
+  min-width: 7rem;
+}
+.tka-rekap-cell-nilai {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem;
+}
+.tka-rekap-btn-isi,
+.tka-rekap-btn-ubah {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  padding: 0.2rem 0.5rem;
+  border-radius: 0.375rem;
+  cursor: pointer;
+  border: 1px solid transparent;
+  line-height: 1.3;
+}
+.tka-rekap-btn-isi {
+  background: #eef2ff;
+  color: #3730a3;
+  border-color: #c7d2fe;
+}
+.tka-rekap-btn-isi:hover {
+  background: #e0e7ff;
+}
+.tka-rekap-btn-ubah {
+  background: #f1f5f9;
+  color: #334155;
+  border-color: #e2e8f0;
+}
+.tka-rekap-btn-ubah:hover {
+  background: #e2e8f0;
+}
+.tka-rekap-btn-hapus {
+  font-weight: 600;
+  color: #b91c1c;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  text-decoration: underline;
+  padding: 0;
+}
+.tka-rekap-btn-hapus:hover { color: #991b1b; }
+.tka-rekap-input {
+  width: 4.75rem !important;
+  min-width: 4.75rem;
+}
+.tka-rekap-petunjuk {
+  border-radius: 0.75rem;
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+  padding: 0.75rem 1rem;
+  font-size: 0.75rem;
+  color: #64748b;
+  line-height: 1.45;
+}
+.tka-rekap-petunjuk p { margin: 0; }
+.tka-rekap-petunjuk p + p { margin-top: 0.35rem; }
+.tka-rekap-nilai { min-width: 7.5rem; vertical-align: top; }

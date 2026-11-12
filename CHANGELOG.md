@@ -1,3 +1,11 @@
+## 2026-11-12 — Rekap TKA: input manual nilai yang jelas
+
+- Tombol **+ Isi manual** / **Ubah** pada setiap sel mapel (bukan hanya klik angka tersembunyi).
+- Petunjuk di atas tabel untuk try out di luar LMS; Enter = simpan, Esc = batal; **Hapus manual**.
+- `simpanNilaiManualTka`: getDoc dokumen baru tidak menggagalkan create.
+- Rules `lms_rekap_tka`: `get` izinkan `resource == null` (dokumen belum ada) agar input manual pertama berhasil.
+- File: `src/pages/tka/TkaRekap.tsx`, `src/lib/rekapTka.ts`, `src/styles/tka.css`, `firestore.rules`.
+
 ## 2026-11-12 — Rules `lms_rekap_tka` (perbaiki permission denied)
 
 - **Akar masalah:** kode rekap sudah di repo, tetapi `firestore.rules` di main belum memuat koleksi `lms_rekap_tka` → query manual rekap kena default deny («Missing or insufficient permissions»).
