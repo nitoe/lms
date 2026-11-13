@@ -603,6 +603,8 @@
     clamp(1.1rem, 2.2vw, 1.85rem);
   min-height: 12rem;
   box-sizing: border-box;
+  overflow-x: visible;
+  min-width: 0;
 }
 @media (min-width: 640px) {
   .mh-page {
@@ -615,14 +617,18 @@
   }
 }
 
-/* Blok teks: full lebar kartu (bukan 65ch yang menyisakan ruang kosong di PC) */
+/* Blok teks: full lebar kartu; overflow-x agar tabel lebar bisa digeser di HP */
 .mh-blok--teks {
   font-size: 0.95rem;
   line-height: 1.65;
   color: #1e293b;
   max-width: none;
   width: 100%;
+  min-width: 0;
   box-sizing: border-box;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
 }
 @media (min-width: 768px) {
   .mh-blok--teks {
@@ -752,23 +758,36 @@
 }
 
 /* Tabel di blok teks (selaras tampilan stimulus TKA / soal-rich-view) */
+/* Tabel lebar: min-width 100% tapi boleh melebar (max-content) + scroll di parent */
 .mh-blok--teks table {
-  width: 100%;
+  width: max-content;
+  min-width: 100%;
+  max-width: none;
   border-collapse: collapse;
   margin: 0.65rem 0 0.85rem;
-  font-size: 0.88rem;
+  font-size: 0.82rem;
+  box-sizing: border-box;
+}
+@media (min-width: 640px) {
+  .mh-blok--teks table {
+    font-size: 0.88rem;
+  }
 }
 .mh-blok--teks th,
 .mh-blok--teks td {
   border: 1px solid #cbd5e1;
-  padding: 0.4rem 0.55rem;
+  padding: 0.4rem 0.5rem;
   text-align: left;
   vertical-align: top;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+  min-width: 5.5rem;
 }
 .mh-blok--teks th {
   background: #f1f5f9;
   font-weight: 700;
   color: #0f172a;
+  white-space: normal;
 }
 .mh-blok--teks caption {
   caption-side: bottom;
@@ -776,6 +795,20 @@
   font-size: 0.75rem;
   color: #64748b;
   text-align: center;
+  width: 100%;
+  max-width: 100%;
+  white-space: normal;
+}
+/* Petunjuk geser di HP bila tabel melebihi layar */
+@media (max-width: 639px) {
+  .mh-blok--teks:has(table) {
+    /* fallback visual: sedikit bayangan tepi kanan saat bisa digeser */
+    background:
+      linear-gradient(to right, #fff 85%, rgba(255, 255, 255, 0)) left / 1.25rem 100% no-repeat,
+      linear-gradient(to left, #fff 85%, rgba(255, 255, 255, 0)) right / 1.25rem 100% no-repeat,
+      #fff;
+    background-attachment: local, local, scroll;
+  }
 }
 .mh-blok--teks .katex-display {
   margin: 0.65rem 0;

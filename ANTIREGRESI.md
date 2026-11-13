@@ -1,3 +1,7 @@
+## §125. Viewer materi
+
+125.5 Tabel lebar: `.mh-blok--teks { overflow-x: auto }`, tabel `width: max-content; min-width: 100%`.
+
 ## §123. Kompetensi dasar & materi: dua daftar terpisah
 
 ## §125. Viewer materi multi-halaman: CSS Grid responsif

@@ -1,3 +1,10 @@
+## 2026-11-13 — Tabel materi lebar: scroll horizontal di HP
+
+- Tabel multi-kolom di viewer materi tidak lagi terpotong di smartphone.
+- `.mh-blok--teks` memakai `overflow-x: auto` + touch momentum; tabel `width: max-content; min-width: 100%`.
+- Sel: `word-break` / `min-width` agar kolom tetap terbaca saat digeser.
+- File: `src/styles/materi-halaman.css`. ANTIREGRESI §125.5.
+
 ## 2026-11-13 — Viewer materi: full-width responsif (tanpa gutter kiri/kanan)
 
 - `.mh-viewer` flex full parent (bukan grid 72rem). Teks/kartu tanpa max-width ch.
