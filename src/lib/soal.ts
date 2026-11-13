@@ -14,6 +14,7 @@ import { auth, db } from './firebase'
 import { htmlKosong, teksPolos } from './html'
 import type { KompleksitasSoal, OpsiSoal, PaketSoal, Soal, TipeSoal } from '../types/soal'
 import { BATAS_SOAL_PER_PAKET, normalisasiKompleksitas } from '../types/soal'
+import { adalahMapelTka, KELAS_TKA_BANK } from './tkaAkses'
 
 export function idAcak(): string {
   return crypto.randomUUID().replace(/-/g, '').slice(0, 12)
@@ -201,15 +202,74 @@ export const BATAS_UKURAN_PAKET = 900_000
 
 const koleksi = () => collection(db, 'lms_paket_soal')
 
-export async function daftarPaket(kelas: string, mapel: string): Promise<PaketSoal[]> {
-  // Hanya equality — tanpa orderBy agar tidak perlu composite index (ANTIREGRESI §12).
+/** Satu query kelas × mapel. Hanya equality — tanpa orderBy agar tidak perlu composite index (ANTIREGRESI §12). */
+async function daftarPaketSatuKelas(kelas: string, mapel: string): Promise<PaketSoal[]> {
   const q = query(koleksi(), where('kelas', '==', String(kelas).toUpperCase()), where('mapel', '==', mapel))
   const snap = await getDocs(q)
-  const list = snap.docs.map((d) => ({ id: d.id, ...d.data() }) as PaketSoal)
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() }) as PaketSoal)
+}
+
+/**
+ * Daftar paket soal kelas × mapel.
+ *
+ * Mapel TKA: bank bersama berkas di kelas kanonik «6», tetapi soal hasil migrasi dari tka2026 dapat
+ * tersimpan di kelas 6A / 6B. Karena itu mapel TKA SELALU mencari ketiga kelas (6, 6A, 6B) lalu
+ * menggabungkannya per id — sama seperti Bank Soal — agar paket yang terlihat di Bank Soal juga
+ * terdeteksi di penyusunan kuis (ANTIREGRESI §116). Satu query yang ditolak tidak membatalkan yang lain.
+ */
+export async function daftarPaket(kelas: string, mapel: string): Promise<PaketSoal[]> {
+  const kelasU = String(kelas).toUpperCase()
   const ms = (v: unknown) => (v && typeof (v as { toMillis?: () => number }).toMillis === 'function'
     ? (v as { toMillis: () => number }).toMillis() : 0)
+
+  if (!adalahMapelTka(mapel)) {
+    const list = await daftarPaketSatuKelas(kelasU, mapel)
+    list.sort((a, b) => ms(b.updatedAt) - ms(a.updatedAt))
+    return list
+  }
+
+  const kelasCari = Array.from(new Set([kelasU, KELAS_TKA_BANK, '6A', '6B']))
+  const hasil = await Promise.allSettled(kelasCari.map((k) => daftarPaketSatuKelas(k, mapel)))
+  const berhasil = hasil.filter((h): h is PromiseFulfilledResult<PaketSoal[]> => h.status === 'fulfilled')
+  if (berhasil.length === 0) {
+    const gagal = hasil.find((h): h is PromiseRejectedResult => h.status === 'rejected')
+    throw gagal?.reason instanceof Error ? gagal.reason : new Error('Gagal memuat paket soal.')
+  }
+  const peta = new Map<string, PaketSoal>()
+  for (const h of berhasil) for (const p of h.value) peta.set(p.id, p)
+  const list = [...peta.values()]
   list.sort((a, b) => ms(b.updatedAt) - ms(a.updatedAt))
   return list
+}
+
+/** Ringkasan untuk diagnosis: mengapa tidak ada paket «Siap» yang terdeteksi. */
+export type RingkasanPaket = {
+  total: number
+  siap: number
+  draf: number
+  /** Berstatus Siap tetapi tidak berisi soal. */
+  siapKosong: number
+  /** Jumlah paket per kelas penyimpanan (mis. {"6": 3, "6A": 12}). */
+  perKelas: Record<string, number>
+}
+
+export async function ringkasanPaket(kelas: string, mapel: string): Promise<RingkasanPaket> {
+  const semua = await daftarPaket(kelas, mapel)
+  const perKelas: Record<string, number> = {}
+  let siap = 0
+  let draf = 0
+  let siapKosong = 0
+  for (const p of semua) {
+    const k = String(p.kelas || '').toUpperCase() || '?'
+    perKelas[k] = (perKelas[k] ?? 0) + 1
+    if (p.status === 'siap') {
+      if ((p.soal?.length ?? 0) > 0) siap += 1
+      else siapKosong += 1
+    } else {
+      draf += 1
+    }
+  }
+  return { total: semua.length, siap, draf, siapKosong, perKelas }
 }
 
 export async function ambilPaket(id: string): Promise<PaketSoal | null> {

@@ -1,3 +1,13 @@
+## §116. Paket soal TKA lintas kelas 6 / 6A / 6B
+
+116.1 Bank soal TKA berkelas kanonik «6», tetapi paket hasil migrasi tka2026 bisa berkelas **6A/6B**. Semua pembaca paket TKA (Bank Soal, wizard kuis, `buatKuisDariPaket`, «Tambah paket» di `KuisDetail`) HARUS lewat `daftarPaket()` yang menggabungkan 6, 6A, 6B untuk mapel TKA. Jangan menulis query `lms_paket_soal` langsung dengan `kelas == '6'` saja.
+
+116.2 Query per kelas memakai `Promise.allSettled`: penolakan rules pada satu kelas tidak boleh mengosongkan daftar. Hanya bila SEMUA query gagal, lempar error.
+
+116.3 Paket «Siap» dideteksi wizard bila `status === 'siap'` DAN `soal.length > 0`. Bila daftar kosong, tampilkan diagnosis (`ringkasanPaket`) agar penyebab (draf / siap tanpa soal / kelas) terlihat, bukan hanya pesan «belum ada paket».
+
+116.4 Mapel non-TKA tidak berubah (satu kelas, tanpa penggabungan).
+
 ## §115. Kuis TKA terpisah per mapel & daftar kuis aktif
 
 115.1 Mapel TKA berbagi kelas bank «6». Daftar kuis ruang TKA HARUS difilter `mapel` yang sama; jangan menggabung `daftarKuisDibuatOleh()` tanpa memeriksa mapel untuk mapel TKA (penyebab kuis TKA mapel lain muncul). Toleransi mapel beda hanya untuk mapel non-TKA.

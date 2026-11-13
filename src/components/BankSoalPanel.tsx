@@ -103,19 +103,8 @@ export default function BankSoalPanel({ kelas, mapel, ruangId }: Props) {
     setError('')
     try {
       if (isTka) {
-        // Bank bersama: kelas kanonik «6» + sisa migrasi 6A/6B.
-        const kelasCari = Array.from(new Set([kelas, KELAS_TKA_BANK, '6A', '6B']))
-        const packs = await Promise.all(kelasCari.map((k) => daftarPaket(k, mapel)))
-        const byId = new Map<string, PaketSoal>()
-        for (const arr of packs) {
-          for (const p of arr) byId.set(p.id, p)
-        }
-        const merged = [...byId.values()]
-        const ms = (v: unknown) =>
-          v && typeof (v as { toMillis?: () => number }).toMillis === 'function'
-            ? (v as { toMillis: () => number }).toMillis()
-            : 0
-        merged.sort((a, b) => ms(b.updatedAt) - ms(a.updatedAt))
+        // Bank bersama TKA: daftarPaket sudah menggabungkan kelas «6» + sisa migrasi 6A/6B (ANTIREGRESI §116).
+        const merged = await daftarPaket(kelas, mapel)
         setList(merged)
         setTpList([])
       } else {

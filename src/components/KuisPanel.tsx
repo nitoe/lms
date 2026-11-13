@@ -17,6 +17,7 @@ import {
   susunOtomatis,
 } from '../lib/susunKuis'
 import { teksPolos } from '../lib/html'
+import { ringkasanPaket } from '../lib/soal'
 import type { FilterSusunKuis, KuisLms, ModeSusunKuis, SoalKuis, TahapTryOutTka } from '../types/kuis'
 import { DAFTAR_TAHAP_TRYOUT_TKA, NAMA_JENIS_PENILAIAN, NAMA_TAHAP_TRYOUT_TKA } from '../types/kuis'
 import type { KompleksitasSoal, PaketSoal, TipeSoal } from '../types/soal'
@@ -99,6 +100,8 @@ export default function KuisPanel({ kelas, mapel }: Props) {
 
   const [list, setList] = useState<KuisLms[] | null>(null)
   const [paketSiap, setPaketSiap] = useState<PaketSoal[]>([])
+  /** Diagnosis bila tidak ada paket Siap padahal Bank Soal TKA berisi paket (ANTIREGRESI §116). */
+  const [diagnosaPaket, setDiagnosaPaket] = useState('')
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
   /** Kuis yang sedang dikonfirmasi untuk dihapus (jumlahJawaban null = sedang dihitung / tak diketahui). */
@@ -154,6 +157,21 @@ export default function KuisPanel({ kelas, mapel }: Props) {
       })
       setList(gabung)
       setPaketSiap(p)
+      setDiagnosaPaket('')
+      if (p.length === 0 && adalahMapelTka(mapel)) {
+        void ringkasanPaket(kelas, mapel)
+          .then((r) => {
+            if (r.total === 0) return
+            const kelasTeks = Object.entries(r.perKelas)
+              .map(([kl, n]) => `${kl}: ${n}`)
+              .join(', ')
+            const bagian = [`Bank Soal memuat ${r.total} paket (${kelasTeks})`]
+            if (r.draf > 0) bagian.push(`${r.draf} masih Draf`)
+            if (r.siapKosong > 0) bagian.push(`${r.siapKosong} berstatus Siap tetapi tidak berisi soal`)
+            setDiagnosaPaket(bagian.join(' · ') + '.')
+          })
+          .catch(() => {})
+      }
       if (gabung.length === 0 && k.length === 0) {
         // biarkan empty state; error hanya jika keduanya gagal total sudah di-catch di atas
       }
@@ -721,6 +739,7 @@ export default function KuisPanel({ kelas, mapel }: Props) {
                 <div className="wz-kosong-paket">
                   Belum ada paket berstatus <strong>Siap</strong>. Buka tab <strong>Bank Soal</strong>, lengkapi
                   paket, lalu ubah statusnya menjadi Siap.
+                  {diagnosaPaket && <span className="block mt-1 text-xs opacity-80">{diagnosaPaket}</span>}
                 </div>
               ) : (
                 <>

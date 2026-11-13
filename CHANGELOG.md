@@ -1,3 +1,10 @@
+## 2026-11-13 — Paket soal TKA hasil migrasi terdeteksi di penyusunan kuis
+
+- **Perbaikan:** paket soal TKA **Bahasa Indonesia dan Matematika** (hasil migrasi dari tka2026) yang sudah berstatus Siap terlihat di Bank Soal tetapi tidak muncul di wizard «Susun kuis». Penyebab: sisa migrasi dapat tersimpan di kelas **6A/6B**, sedangkan wizard (dan pembuatan kuis) hanya mencari kelas bank «6»; Bank Soal sudah mencari ketiganya. Mapel IPA tidak terdampak karena dibuat langsung di LMS (kelas «6»).
+- `daftarPaket` kini sadar-TKA: untuk mapel TKA selalu mencari kelas 6, 6A, 6B lalu menggabungkan per id (satu query yang ditolak tidak membatalkan yang lain). Dipakai bersama oleh Bank Soal, wizard kuis, pembuatan kuis, dan «Tambah paket» di detail kuis.
+- Bila tetap tidak ada paket Siap, wizard menampilkan **diagnosis**: jumlah paket di Bank Soal per kelas, berapa yang masih Draf, dan berapa yang berstatus Siap tetapi tidak berisi soal.
+- File: `src/lib/soal.ts`, `src/components/KuisPanel.tsx`, `src/components/BankSoalPanel.tsx`. Tanpa perubahan `firestore.rules`.
+
 ## 2026-11-13 — Kuis TKA per mapel terpisah & daftar kuis aktif di dashboard TKA
 
 - **Perbaikan:** tab Kuis pada ruang TKA (Matematika / Bahasa Indonesia / IPA) tidak lagi menampilkan kuis TKA mata pelajaran lain. Penyebab: tiga mapel TKA berbagi kelas bank «6», dan daftar kuis menggabungkan semua kuis buatan guru di kelas yang sama tanpa memeriksa mapel. Kini untuk mapel TKA hanya kuis bermapel sama yang tampil (Bank Soal sudah terfilter per mapel).
