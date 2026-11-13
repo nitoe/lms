@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useAuth } from '../context/AuthContext'
-import { daftarMateri, hapusMateri, tambahMateri } from '../lib/materi'
+import { aturBerbagiMateri, daftarMateri, hapusMateri, tambahMateri } from '../lib/materi'
+import BerbagiKelasDialog from './BerbagiKelasDialog'
+import { labelKelasDibagikan } from '../lib/kelasLms'
 import { getTpMapelKelas } from '../lib/tpData'
 import type { MateriLms } from '../types/materi'
 import type { TpRingkas } from '../types/materi'
@@ -129,6 +131,7 @@ export default function MateriPanel({ kelas, mapel }: Props) {
   const [editHalaman, setEditHalaman] = useState<MateriLms | null | undefined>(undefined)
   /** Materi halaman yang dibuka pratinjau/baca di panel guru. */
   const [bacaHalaman, setBacaHalaman] = useState<MateriLms | null>(null)
+  const [berbagiTarget, setBerbagiTarget] = useState<MateriLms | null>(null)
 
   const muat = useCallback(async () => {
     setError('')
@@ -526,6 +529,14 @@ export default function MateriPanel({ kelas, mapel }: Props) {
                     {m.fileName && <span>{m.fileName}</span>}
                     {m.ukuran ? <span>{formatUkuran(m.ukuran)}</span> : null}
                     {m.dibuatOlehNama && <span>{m.dibuatOlehNama}</span>}
+                    {String(m.kelas || '').toUpperCase() !== String(kelas).toUpperCase() && (
+                      <span className="materi-jenis-chip" title="Materi dari kelas lain">Dari {m.kelas}</span>
+                    )}
+                    {labelKelasDibagikan(m.kelas, m.kelasList) && String(m.kelas || '').toUpperCase() === String(kelas).toUpperCase() && (
+                      <span className="materi-jenis-chip" title="Dibagikan ke kelas paralel">
+                        Dibagikan · {labelKelasDibagikan(m.kelas, m.kelasList)}
+                      </span>
+                    )}
                   </div>
                 </div>
                 <div className="materi-item-actions">
@@ -556,6 +567,16 @@ export default function MateriPanel({ kelas, mapel }: Props) {
                       Buka
                     </a>
                   ) : null}
+                  {String(m.kelas || '').toUpperCase() === String(kelas).toUpperCase() && (
+                    <button
+                      type="button"
+                      className="lms-btn-secondary"
+                      disabled={busy}
+                      onClick={() => setBerbagiTarget(m)}
+                    >
+                      Bagikan
+                    </button>
+                  )}
                   <button
                     type="button"
                     disabled={busy}
@@ -570,6 +591,32 @@ export default function MateriPanel({ kelas, mapel }: Props) {
           </ul>
         </section>
       ))}
+
+      <BerbagiKelasDialog
+        open={!!berbagiTarget}
+        judulItem={berbagiTarget?.judul || ''}
+        jenis="materi"
+        kelasUtama={berbagiTarget?.kelas || kelas}
+        mapel={mapel}
+        kelasListSaatIni={berbagiTarget?.kelasList}
+        profil={profil}
+        busy={busy}
+        onBatal={() => setBerbagiTarget(null)}
+        onSimpan={async (list) => {
+          if (!berbagiTarget) return
+          setBusy(true)
+          setError('')
+          try {
+            await aturBerbagiMateri(berbagiTarget.id, berbagiTarget.kelas, list)
+            setBerbagiTarget(null)
+            await muat()
+          } catch (err) {
+            setError(err instanceof Error ? err.message : 'Gagal mengatur berbagi.')
+          } finally {
+            setBusy(false)
+          }
+        }}
+      />
     </div>
   )
 }

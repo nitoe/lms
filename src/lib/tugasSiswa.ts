@@ -25,6 +25,9 @@ function docKeTugas(id: string, data: Record<string, unknown>): TugasLms {
   return {
     id,
     kelas: String(data.kelas || '').toUpperCase(),
+    kelasList: Array.isArray(data.kelasList)
+      ? (data.kelasList as string[]).map((x) => String(x).toUpperCase()).filter(Boolean)
+      : undefined,
     mapel: String(data.mapel || ''),
     mapelLain: Array.isArray(data.mapelLain)
       ? (data.mapelLain as string[]).filter(Boolean)
@@ -55,13 +58,33 @@ function docKeTugas(id: string, data: Record<string, unknown>): TugasLms {
  * aktif == true && kelas == claim kelas).
  */
 export async function daftarTugasAktifKelas(kelas: string): Promise<TugasLms[]> {
-  const q = query(
+  const k = String(kelas).toUpperCase()
+  const map = new Map<string, TugasLms>()
+
+  const q1 = query(
     collection(db, 'lms_tugas'),
-    where('kelas', '==', String(kelas).toUpperCase()),
+    where('kelas', '==', k),
     where('aktif', '==', true),
   )
-  const snap = await getDocs(q)
-  const list = snap.docs.map((d) => docKeTugas(d.id, d.data() as Record<string, unknown>))
+  const snap1 = await getDocs(q1)
+  for (const d of snap1.docs) {
+    map.set(d.id, docKeTugas(d.id, d.data() as Record<string, unknown>))
+  }
+
+  // Share: array-contains saja (filter aktif di klien) agar tidak butuh index compound baru
+  try {
+    const q2 = query(collection(db, 'lms_tugas'), where('kelasList', 'array-contains', k))
+    const snap2 = await getDocs(q2)
+    for (const d of snap2.docs) {
+      if (map.has(d.id)) continue
+      const t = docKeTugas(d.id, d.data() as Record<string, unknown>)
+      if (t.aktif) map.set(d.id, t)
+    }
+  } catch (e) {
+    console.warn('daftarTugasAktifKelas kelasList', e)
+  }
+
+  const list = [...map.values()]
   list.sort((a, b) => {
     const ta = tenggatMs(a.tenggat)
     const tb = tenggatMs(b.tenggat)

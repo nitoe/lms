@@ -32,6 +32,7 @@ import {
   susunOtomatis,
 } from './susunKuis'
 import { daftarPaket } from './soal'
+import { normalisasiKelasList } from './kelasLms'
 
 function koleksi() {
   return collection(db, 'lms_kuis')
@@ -42,25 +43,46 @@ function bersihkan<T>(x: T): T {
   return JSON.parse(JSON.stringify(x)) as T
 }
 
+function mapDokKuis(id: string, data: Record<string, unknown>): KuisLms {
+  return {
+    id,
+    ...data,
+    kelas: String(data.kelas || '').toUpperCase(),
+    kelasList: Array.isArray(data.kelasList)
+      ? (data.kelasList as string[]).map((x) => String(x).toUpperCase()).filter(Boolean)
+      : undefined,
+    sumberPaketIds: Array.isArray(data.sumberPaketIds) ? data.sumberPaketIds : [],
+    soal: Array.isArray(data.soal) ? data.soal : [],
+    modeSusun: (data.modeSusun as ModeSusunKuis) || 'manual',
+    jumlahSoal: typeof data.jumlahSoal === 'number' ? data.jumlahSoal : ((data.soal as unknown[])?.length ?? 0),
+    totalPoin: typeof data.totalPoin === 'number' ? data.totalPoin : 0,
+  } as KuisLms
+}
+
 export async function daftarKuis(kelas: string, mapel: string): Promise<KuisLms[]> {
-  const q = query(
-    koleksi(),
-    where('kelas', '==', String(kelas).toUpperCase()),
-    where('mapel', '==', mapel),
+  const k = String(kelas).toUpperCase()
+  const map = new Map<string, KuisLms>()
+
+  const snap = await getDocs(
+    query(koleksi(), where('kelas', '==', k), where('mapel', '==', mapel)),
   )
-  const snap = await getDocs(q)
-  const list = snap.docs.map((d) => {
-    const data = d.data()
-    return {
-      id: d.id,
-      ...data,
-      sumberPaketIds: Array.isArray(data.sumberPaketIds) ? data.sumberPaketIds : [],
-      soal: Array.isArray(data.soal) ? data.soal : [],
-      modeSusun: (data.modeSusun as ModeSusunKuis) || 'manual',
-      jumlahSoal: typeof data.jumlahSoal === 'number' ? data.jumlahSoal : (data.soal?.length ?? 0),
-      totalPoin: typeof data.totalPoin === 'number' ? data.totalPoin : 0,
-    } as KuisLms
-  })
+  for (const d of snap.docs) {
+    map.set(d.id, mapDokKuis(d.id, d.data() as Record<string, unknown>))
+  }
+
+  try {
+    const snap2 = await getDocs(query(koleksi(), where('kelasList', 'array-contains', k)))
+    for (const d of snap2.docs) {
+      if (map.has(d.id)) continue
+      const item = mapDokKuis(d.id, d.data() as Record<string, unknown>)
+      if (item.mapel !== mapel) continue
+      map.set(d.id, item)
+    }
+  } catch (e) {
+    console.warn('daftarKuis kelasList', e)
+  }
+
+  const list = [...map.values()]
   list.sort((a, b) => {
     const ta = (a.updatedAt as { seconds?: number })?.seconds ?? 0
     const tb = (b.updatedAt as { seconds?: number })?.seconds ?? 0
@@ -80,6 +102,10 @@ export async function daftarKuisDibuatOleh(uid?: string): Promise<KuisLms[]> {
     return {
       id: d.id,
       ...data,
+      kelas: String(data.kelas || '').toUpperCase(),
+      kelasList: Array.isArray(data.kelasList)
+        ? (data.kelasList as string[]).map((x) => String(x).toUpperCase()).filter(Boolean)
+        : undefined,
       sumberPaketIds: Array.isArray(data.sumberPaketIds) ? data.sumberPaketIds : [],
       soal: Array.isArray(data.soal) ? data.soal : [],
       modeSusun: (data.modeSusun as ModeSusunKuis) || 'manual',
@@ -176,8 +202,10 @@ export async function buatKuisDariPaket(input: InputBuatKuis): Promise<string> {
   }
 
   const ringkas = hitungRingkasanKuis(soal)
+  const kelasU = String(input.kelas).toUpperCase()
   const payload = bersihkan({
-    kelas: String(input.kelas).toUpperCase(),
+    kelas: kelasU,
+    kelasList: normalisasiKelasList(kelasU),
     mapel: input.mapel.trim(),
     judul,
     deskripsi: input.deskripsi?.trim() || undefined,
@@ -266,4 +294,18 @@ export async function hapusKuis(kuisId: string): Promise<void> {
 export async function daftarPaketSiap(kelas: string, mapel: string): Promise<PaketSoal[]> {
   const semua = await daftarPaket(kelas, mapel)
   return semua.filter((p) => p.status === 'siap' && (p.soal?.length ?? 0) > 0)
+}
+
+
+/** Atur kelas yang boleh melihat kuis (paralel se-tingkat yang diampu). */
+export async function aturBerbagiKuis(
+  id: string,
+  kelasUtama: string,
+  kelasListBaru: string[],
+): Promise<void> {
+  const list = normalisasiKelasList(kelasUtama, kelasListBaru)
+  await updateDoc(doc(db, 'lms_kuis', id), {
+    kelasList: list,
+    updatedAt: serverTimestamp(),
+  })
 }

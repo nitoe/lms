@@ -37,7 +37,14 @@ export interface MateriHalaman {
 /** Dokumen `lms_materi/{id}`. */
 export interface MateriLms {
   id: string
+  /** Kelas utama (tempat materi dibuat). */
   kelas: string
+  /**
+   * Semua kelas yang boleh membaca materi ini (selalu memuat `kelas`).
+   * Dokumen lama tanpa field ini = hanya `[kelas]`.
+   * Share hanya ke paralel se-tingkat yang diampu guru.
+   */
+  kelasList?: string[]
   mapel: string
   judul: string
   deskripsi?: string

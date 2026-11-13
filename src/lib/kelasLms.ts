@@ -131,3 +131,84 @@ export function perluasDenganMapelMaster(
   }
   return urutRuang([...map.values()])
 }
+
+/** Digit tingkatan dari kode rombel, mis. "5A" → "5", "6B" → "6". */
+export function tingkatanKelas(kelas: string): string {
+  const m = String(kelas || '')
+    .trim()
+    .toUpperCase()
+    .match(/^(\d+)/)
+  return m ? m[1] : ''
+}
+
+/** Semua rombel se-tingkat di DAFTAR_KELAS_SD, tanpa kelas sendiri. */
+export function kelasParalelSamaTingkat(kelas: string): string[] {
+  const k = String(kelas || '').trim().toUpperCase()
+  const t = tingkatanKelas(k)
+  if (!t) return []
+  return DAFTAR_KELAS_SD.filter((x) => x !== k && tingkatanKelas(x) === t)
+}
+
+/**
+ * Pastikan kelas utama selalu ada di list, unik, huruf besar, max 12.
+ * Dipakai saat create & atur berbagi.
+ */
+export function normalisasiKelasList(kelasUtama: string, list?: string[] | null): string[] {
+  const utama = String(kelasUtama || '').trim().toUpperCase()
+  const set = new Set<string>()
+  if (utama) set.add(utama)
+  for (const x of list || []) {
+    const u = String(x || '').trim().toUpperCase()
+    if (u) set.add(u)
+  }
+  return [...set].slice(0, 12)
+}
+
+/** Apakah tujuan boleh menjadi target share dari asal (se-tingkat, beda rombel). */
+export function bolehShareKe(asal: string, tujuan: string): boolean {
+  const a = String(asal || '').trim().toUpperCase()
+  const t = String(tujuan || '').trim().toUpperCase()
+  if (!a || !t || a === t) return false
+  return tingkatanKelas(a) === tingkatanKelas(t) && tingkatanKelas(a) !== ''
+}
+
+/**
+ * Kelas paralel se-tingkat yang guru ampu untuk mapel tertentu.
+ * Sumber: penugasan / penugasanKelasMapel / waliKelas (wali = semua mapel di kelasnya).
+ * Hanya kelas yang diampu — tidak menampilkan 5C jika guru hanya ampu 5A & 5B.
+ */
+export function kelasBolehShare(
+  profil: AppUser | null,
+  kelasUtama: string,
+  mapel: string,
+): string[] {
+  if (!profil) return []
+  const utama = String(kelasUtama || '').trim().toUpperCase()
+  const mapelN = String(mapel || '').trim()
+  if (!utama || !mapelN) return []
+
+  const paralel = kelasParalelSamaTingkat(utama)
+  if (paralel.length === 0) return []
+
+  const wali = new Set((profil.waliKelas || []).map((k) => String(k).toUpperCase()))
+  const ampu = new Set<string>()
+
+  for (const p of penugasanDariProfil(profil)) {
+    if (String(p.mapel || '').trim() === mapelN) {
+      ampu.add(String(p.kelas).toUpperCase())
+    }
+  }
+  // Wali boleh semua mapel di kelas yang diwalikan
+  for (const k of wali) ampu.add(k)
+
+  return paralel.filter((k) => ampu.has(k))
+}
+
+/** Label singkat untuk chip UI, mis. "5B, 5C". */
+export function labelKelasDibagikan(kelasUtama: string, kelasList?: string[] | null): string {
+  const utama = String(kelasUtama || '').toUpperCase()
+  const lain = (kelasList || [])
+    .map((k) => String(k).toUpperCase())
+    .filter((k) => k && k !== utama)
+  return lain.join(', ')
+}

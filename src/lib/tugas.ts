@@ -19,6 +19,7 @@ import type {
   TugasLms,
   TpTugas,
 } from '../types/tugas'
+import { normalisasiKelasList } from './kelasLms'
 
 /**
  * Firestore menolak `undefined`. Rapikan pengaturan penilaian:
@@ -142,14 +143,29 @@ function sortTerbaru(list: TugasLms[]): TugasLms[] {
 
 /** Daftar tugas per kelas × mapel (kompatibilitas panel lama & query sempit). */
 export async function daftarTugas(kelas: string, mapel: string): Promise<TugasLms[]> {
-  const q = query(
-    koleksi(),
-    where('kelas', '==', String(kelas).toUpperCase()),
-    where('mapel', '==', mapel),
+  const k = String(kelas).toUpperCase()
+  const map = new Map<string, TugasLms>()
+
+  const snap = await getDocs(
+    query(koleksi(), where('kelas', '==', k), where('mapel', '==', mapel)),
   )
-  const snap = await getDocs(q)
-  const list = snap.docs.map((d) => docKeTugas(d.id, d.data() as Record<string, unknown>))
-  return sortTerbaru(list)
+  for (const d of snap.docs) {
+    map.set(d.id, docKeTugas(d.id, d.data() as Record<string, unknown>))
+  }
+
+  try {
+    const snap2 = await getDocs(query(koleksi(), where('kelasList', 'array-contains', k)))
+    for (const d of snap2.docs) {
+      if (map.has(d.id)) continue
+      const item = docKeTugas(d.id, d.data() as Record<string, unknown>)
+      if (item.mapel !== mapel) continue
+      map.set(d.id, item)
+    }
+  } catch (e) {
+    console.warn('daftarTugas kelasList', e)
+  }
+
+  return sortTerbaru([...map.values()])
 }
 
 /**
@@ -252,8 +268,10 @@ export async function buatTugas(input: TugasInput): Promise<string> {
   const jenis = input.jenis === 'proyek' ? 'proyek' : 'mapel'
   const tpList = normalisasiTpList(input.tpList)
 
+  const kelasU = String(input.kelas).toUpperCase()
   const payload: Record<string, unknown> = {
-    kelas: String(input.kelas).toUpperCase(),
+    kelas: kelasU,
+    kelasList: normalisasiKelasList(kelasU),
     mapel: input.mapel.trim(),
     judul,
     jenis,
@@ -367,5 +385,19 @@ export function formatTenggat(tenggat: unknown): string {
     year: 'numeric',
     hour: '2-digit',
     minute: '2-digit',
+  })
+}
+
+
+/** Atur kelas yang boleh melihat tugas (paralel se-tingkat yang diampu). */
+export async function aturBerbagiTugas(
+  id: string,
+  kelasUtama: string,
+  kelasListBaru: string[],
+): Promise<void> {
+  const list = normalisasiKelasList(kelasUtama, kelasListBaru)
+  await updateDoc(doc(db, 'lms_tugas', id), {
+    kelasList: list,
+    updatedAt: serverTimestamp(),
   })
 }

@@ -30,33 +30,49 @@ import {
   BATAS_UKURAN,
 } from '../types/materi'
 import { bersihHtmlMateri, htmlKosong } from './html'
+import { normalisasiKelasList } from './kelasLms'
 
 function koleksi() {
   return collection(db, 'lms_materi')
 }
 
 export async function daftarMateri(kelas: string, mapel: string): Promise<MateriLms[]> {
-  const q = query(
-    koleksi(),
-    where('kelas', '==', String(kelas).toUpperCase()),
-    where('mapel', '==', mapel),
-    orderBy('urutan', 'asc'),
-  )
-  try {
-    const snap = await getDocs(q)
-    return snap.docs.map((d) => ({ id: d.id, ...d.data() }) as MateriLms)
-  } catch {
-    // Fallback tanpa orderBy jika index belum ada
-    const q2 = query(
-      koleksi(),
-      where('kelas', '==', String(kelas).toUpperCase()),
-      where('mapel', '==', mapel),
-    )
-    const snap = await getDocs(q2)
-    const list = snap.docs.map((d) => ({ id: d.id, ...d.data() }) as MateriLms)
-    list.sort((a, b) => (a.urutan ?? 0) - (b.urutan ?? 0))
-    return list
+  const k = String(kelas).toUpperCase()
+  const map = new Map<string, MateriLms>()
+
+  async function tarik(qRef: ReturnType<typeof query>) {
+    const snap = await getDocs(qRef)
+    for (const d of snap.docs) {
+      if (!map.has(d.id)) map.set(d.id, { id: d.id, ...d.data() } as MateriLms)
+    }
   }
+
+  // 1) milik kelas ini (legacy + utama)
+  try {
+    await tarik(
+      query(koleksi(), where('kelas', '==', k), where('mapel', '==', mapel), orderBy('urutan', 'asc')),
+    )
+  } catch {
+    await tarik(query(koleksi(), where('kelas', '==', k), where('mapel', '==', mapel)))
+  }
+
+  // 2) dibagikan ke kelas ini (kelasList)
+  try {
+    const snap = await getDocs(
+      query(koleksi(), where('kelasList', 'array-contains', k)),
+    )
+    for (const d of snap.docs) {
+      const data = d.data() as MateriLms
+      if (String(data.mapel || '') !== mapel) continue
+      if (!map.has(d.id)) map.set(d.id, { id: d.id, ...data })
+    }
+  } catch (e) {
+    console.warn('daftarMateri kelasList', e)
+  }
+
+  const list = [...map.values()]
+  list.sort((a, b) => (a.urutan ?? 0) - (b.urutan ?? 0))
+  return list
 }
 
 export async function ambilMateri(id: string): Promise<MateriLms | null> {
@@ -173,6 +189,7 @@ export async function tambahMateri(input: MateriBaruInput): Promise<string> {
 
   const payload: Record<string, unknown> = {
     kelas,
+    kelasList: normalisasiKelasList(kelas),
     mapel,
     judul,
     jenis,
@@ -310,6 +327,7 @@ export async function tambahMateriHalaman(input: MateriHalamanInput): Promise<st
 
   const payload: Record<string, unknown> = {
     kelas,
+    kelasList: normalisasiKelasList(kelas),
     mapel,
     judul,
     jenis: 'halaman' as JenisMateri,
@@ -449,4 +467,22 @@ export async function bersihkanGambarYatim(
   const tetap = new Set(kumpulkanStoragePath(sesudah))
   const yatim = [...sebelum].filter((p) => !tetap.has(p))
   if (yatim.length) await hapusStoragePaths(yatim)
+}
+
+
+/**
+ * Atur daftar kelas yang boleh membaca materi (selain kelas utama).
+ * `kelasListBaru` harus sudah difilter UI ke paralel se-tingkat yang diampu;
+ * rules juga menegakkan lmsTulisMapelKelas per kelas.
+ */
+export async function aturBerbagiMateri(
+  id: string,
+  kelasUtama: string,
+  kelasListBaru: string[],
+): Promise<void> {
+  const list = normalisasiKelasList(kelasUtama, kelasListBaru)
+  await updateDoc(doc(db, 'lms_materi', id), {
+    kelasList: list,
+    updatedAt: serverTimestamp(),
+  })
 }

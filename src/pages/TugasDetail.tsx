@@ -2,7 +2,9 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { cakupanTugas } from '../lib/cakupanTugas'
-import { ambilTugas, buatTugas, updateTugas } from '../lib/tugas'
+import { ambilTugas, aturBerbagiTugas, buatTugas, updateTugas } from '../lib/tugas'
+import BerbagiKelasDialog from '../components/BerbagiKelasDialog'
+import { labelKelasDibagikan } from '../lib/kelasLms'
 import { aksenMapel, inisialMapel } from '../lib/uiAksen'
 import {
   infoTenggat,
@@ -117,6 +119,7 @@ export default function TugasDetail() {
   const [instruksi, setInstruksi] = useState('')
   const [tenggatStr, setTenggatStr] = useState('')
   const [aktif, setAktif] = useState(false)
+  const [berbagiOpen, setBerbagiOpen] = useState(false)
   const [jenisPenilaian, setJenisPenilaian] = useState<JenisPenilaianTugas>('slm')
   const [tpDipilih, setTpDipilih] = useState<TpTugas[]>([])
   /** Opsi TP per nama mapel. */
@@ -835,6 +838,34 @@ export default function TugasDetail() {
         </div>
       )}
 
+      <BerbagiKelasDialog
+        open={berbagiOpen && !!tugas}
+        judulItem={tugas?.judul || judul}
+        jenis="tugas"
+        kelasUtama={tugas?.kelas || kelas}
+        mapel={tugas?.mapel || (blokMapel[0]?.mapel || '')}
+        kelasListSaatIni={tugas?.kelasList}
+        profil={profil}
+        busy={busy}
+        onBatal={() => setBerbagiOpen(false)}
+        onSimpan={async (list) => {
+          if (!tugas) return
+          setBusy(true)
+          setError('')
+          try {
+            await aturBerbagiTugas(tugas.id, tugas.kelas, list)
+            setBerbagiOpen(false)
+            const t2 = await ambilTugas(tugas.id)
+            if (t2) setTugas(t2)
+            setSukses('Pengaturan berbagi disimpan.')
+          } catch (err) {
+            setError(err instanceof Error ? err.message : 'Gagal mengatur berbagi.')
+          } finally {
+            setBusy(false)
+          }
+        }}
+      />
+
       {tab === 'pengaturan' && (
         <form onSubmit={(e) => void simpanPengaturan(e)} className="td-form">
           <section className="td-kartu">
@@ -898,6 +929,26 @@ export default function TugasDetail() {
                 <input type="checkbox" checked={aktif} onChange={(e) => setAktif(e.target.checked)} />
                 <span>Aktifkan tugas (tampil untuk siswa)</span>
               </label>
+              {tugas && (
+                <div className="td-field td-field--full" style={{ marginTop: '0.5rem' }}>
+                  <span className="td-label" style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, marginBottom: '0.35rem' }}>
+                    Berbagi ke kelas paralel
+                  </span>
+                  <p style={{ margin: '0 0 0.4rem', fontSize: '0.8rem', color: '#64748b' }}>
+                    {labelKelasDibagikan(tugas.kelas, tugas.kelasList)
+                      ? `Saat ini dibagikan ke: ${labelKelasDibagikan(tugas.kelas, tugas.kelasList)}`
+                      : 'Belum dibagikan ke kelas lain. Hanya kelas yang Anda ampu untuk mapel ini.'}
+                  </p>
+                  <button
+                    type="button"
+                    className="tg-btn"
+                    disabled={busy}
+                    onClick={() => setBerbagiOpen(true)}
+                  >
+                    Atur berbagi…
+                  </button>
+                </div>
+              )}
             </div>
           </section>
 

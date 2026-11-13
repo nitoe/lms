@@ -4,16 +4,30 @@ import type { MateriLms } from '../types/materi'
 
 /**
  * Semua materi untuk satu kelas (dibaca siswa).
- * Sengaja hanya satu filter `where kelas ==` agar TIDAK butuh composite index;
- * pengelompokan per mapel & pengurutan dilakukan di klien (lihat ANTIREGRESI §10).
+ * Dual query agar dokumen lama (hanya field `kelas`) dan yang di-share (`kelasList`)
+ * sama-sama tampil. Pengelompokan per mapel & pengurutan di klien (ANTIREGRESI §10, §126).
  */
 export async function daftarMateriKelas(kelas: string): Promise<MateriLms[]> {
-  const q = query(
-    collection(db, 'lms_materi'),
-    where('kelas', '==', String(kelas).toUpperCase()),
-  )
-  const snap = await getDocs(q)
-  const list = snap.docs.map((d) => ({ id: d.id, ...d.data() }) as MateriLms)
+  const k = String(kelas).toUpperCase()
+  const map = new Map<string, MateriLms>()
+
+  const q1 = query(collection(db, 'lms_materi'), where('kelas', '==', k))
+  const snap1 = await getDocs(q1)
+  for (const d of snap1.docs) {
+    map.set(d.id, { id: d.id, ...d.data() } as MateriLms)
+  }
+
+  try {
+    const q2 = query(collection(db, 'lms_materi'), where('kelasList', 'array-contains', k))
+    const snap2 = await getDocs(q2)
+    for (const d of snap2.docs) {
+      if (!map.has(d.id)) map.set(d.id, { id: d.id, ...d.data() } as MateriLms)
+    }
+  } catch (e) {
+    console.warn('daftarMateriKelas kelasList', e)
+  }
+
+  const list = [...map.values()]
   list.sort((a, b) => (a.urutan ?? 0) - (b.urutan ?? 0))
   return list
 }

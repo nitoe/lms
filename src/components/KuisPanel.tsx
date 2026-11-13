@@ -6,6 +6,7 @@ import {
   daftarKuis,
   daftarKuisDibuatOleh,
   daftarPaketSiap,
+  aturBerbagiKuis,
   hapusKuis,
   updateKuis,
 } from '../lib/kuis'
@@ -37,6 +38,8 @@ import {
 import { adalahMapelTka, LABEL_MAPEL_TKA, materiTkaUntuk, TIPE_SOAL_TKA } from '../lib/tkaAkses'
 import { kelasAksenMapel, LABEL_TIPE_PENDEK, materiPaket, paketMemuatMateri } from '../lib/aksenTka'
 import KonfirmasiHapusDialog from './KonfirmasiHapusDialog'
+import BerbagiKelasDialog from './BerbagiKelasDialog'
+import { labelKelasDibagikan } from '../lib/kelasLms'
 import KuisDetail, { INSTRUKSI_TIPE } from './KuisDetail'
 import HasilKuisPanel from './HasilKuisPanel'
 import OfflineKuisPanel from './OfflineKuisPanel'
@@ -111,6 +114,7 @@ export default function KuisPanel({ kelas, mapel }: Props) {
   const [diagnosaPaket, setDiagnosaPaket] = useState('')
   /** Kuis yang sedang dikonfirmasi untuk dihapus (jumlahJawaban null = sedang dihitung). */
   const [hapusTarget, setHapusTarget] = useState<{ kuis: KuisLms; jumlahJawaban: number | null } | null>(null)
+  const [berbagiTarget, setBerbagiTarget] = useState<KuisLms | null>(null)
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
   const [langkah, setLangkah] = useState<Langkah>('daftar')
@@ -152,7 +156,11 @@ export default function KuisPanel({ kelas, mapel }: Props) {
       // (ANTIREGRESI §120). Mapel biasa tetap toleran terhadap data lama.
       const ketatMapel = adalahMapelTka(mapel)
       for (const item of milikSaya) {
-        if (String(item.kelas || '').toUpperCase() !== kelasU) continue
+        const itemKelas = String(item.kelas || '').toUpperCase()
+        const diList =
+          Array.isArray(item.kelasList) &&
+          item.kelasList.map((x) => String(x).toUpperCase()).includes(kelasU)
+        if (itemKelas !== kelasU && !diList) continue
         if (ketatMapel && String(item.mapel || '').trim() !== String(mapel).trim()) continue
         // prioritaskan mapel yang sama; tetap sertakan mapel lain di kelas ini milik saya
         if (!map.has(item.id)) map.set(item.id, item)
@@ -1292,6 +1300,15 @@ export default function KuisPanel({ kelas, mapel }: Props) {
                     <span className={`pk-status pk-status--${k.aktif ? 'siap' : 'draf'}`}>
                       {k.aktif ? 'Aktif' : 'Draf'}
                     </span>
+                    {labelKelasDibagikan(k.kelas, k.kelasList) &&
+                      String(k.kelas || '').toUpperCase() === String(kelas).toUpperCase() && (
+                      <span className="pk-materi" title="Dibagikan ke kelas paralel">
+                        → {labelKelasDibagikan(k.kelas, k.kelasList)}
+                      </span>
+                    )}
+                    {String(k.kelas || '').toUpperCase() !== String(kelas).toUpperCase() && (
+                      <span className="pk-materi" title="Dari kelas lain">Dari {k.kelas}</span>
+                    )}
                   </div>
                   <button type="button" className="pk-judul" title={k.judul} onClick={bukaKuis}>
                     {k.judul}
@@ -1312,6 +1329,16 @@ export default function KuisPanel({ kelas, mapel }: Props) {
                 <div className="pk-kaki">
                   <span className="pk-waktu">{labelMode}</span>
                   <div className="pk-aksi">
+                    {String(k.kelas || '').toUpperCase() === String(kelas).toUpperCase() && (
+                      <button
+                        type="button"
+                        className="pk-btn"
+                        disabled={busy}
+                        onClick={() => setBerbagiTarget(k)}
+                      >
+                        Bagikan
+                      </button>
+                    )}
                     <button
                       type="button"
                       className="pk-btn pk-btn--bahaya"
@@ -1335,6 +1362,32 @@ export default function KuisPanel({ kelas, mapel }: Props) {
         </ul>
       )}
       {dialogHapus()}
+      <BerbagiKelasDialog
+        open={!!berbagiTarget}
+        judulItem={berbagiTarget?.judul || ''}
+        jenis="kuis"
+        kelasUtama={berbagiTarget?.kelas || kelas}
+        mapel={mapel}
+        kelasListSaatIni={berbagiTarget?.kelasList}
+        profil={profil}
+        busy={busy}
+        onBatal={() => setBerbagiTarget(null)}
+        onSimpan={async (list) => {
+          if (!berbagiTarget) return
+          setBusy(true)
+          setError('')
+          try {
+            await aturBerbagiKuis(berbagiTarget.id, berbagiTarget.kelas, list)
+            setBerbagiTarget(null)
+            await muat()
+          } catch (err) {
+            setError(err instanceof Error ? err.message : 'Gagal mengatur berbagi.')
+          } finally {
+            setBusy(false)
+          }
+        }}
+      />
+
     </div>
   )
 }

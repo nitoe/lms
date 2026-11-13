@@ -67,7 +67,13 @@ export type SoalKuis = Soal & {
 /** Dokumen `lms_kuis/{id}`. */
 export interface KuisLms {
   id: string
+  /** Kelas utama (tempat kuis dibuat). */
   kelas: string
+  /**
+   * Semua kelas yang boleh melihat kuis aktif ini (selalu memuat `kelas`).
+   * Dokumen lama tanpa field = `[kelas]`. Share hanya ke paralel se-tingkat yang diampu.
+   */
+  kelasList?: string[]
   mapel: string
   judul: string
   deskripsi?: string

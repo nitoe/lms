@@ -503,29 +503,29 @@
   padding: 0;
 }
 
-/* Viewer siswa / pratinjau — CSS Grid responsif
-   Shell 3 kolom: gutter | konten (fluid s.d. 72rem) | gutter
-   Isi mengisi kolom tengah; di HP gutter 0 sehingga penuh lebar.
+/* Viewer siswa / pratinjau — lebar penuh parent, responsif zoom & viewport
+   Tidak memakai kolom tengah max 72rem (menyisakan gutter kiri/kanan di PC).
+   Padding horizontal fluid; kartu & teks mengisi lebar yang tersedia.
    ANTIREGRESI §54 / §125. */
 .mh-viewer {
-  display: grid;
-  grid-template-columns:
-    minmax(0, 1fr)
-    minmax(0, min(100%, 72rem))
-    minmax(0, 1fr);
-  grid-template-rows: auto;
-  column-gap: 0;
-  row-gap: 0.85rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
   width: 100%;
   max-width: none;
   margin: 0;
-  padding-bottom: 1.25rem;
+  padding:
+    0
+    clamp(0.35rem, 1.2vw, 0.75rem)
+    1.25rem;
   box-sizing: border-box;
-}
-/* Semua anak langsung mengisi kolom konten (tengah) */
-.mh-viewer > * {
-  grid-column: 2;
   min-width: 0;
+}
+.mh-viewer > * {
+  min-width: 0;
+  width: 100%;
+  max-width: none;
+  box-sizing: border-box;
 }
 
 /* Header: grid judul | pill */
@@ -583,44 +583,53 @@
   white-space: nowrap;
 }
 
-/* Kartu halaman: stack blok dengan gap konsisten */
+/* Kartu halaman: full lebar viewer, padding fluid */
 .mh-page {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   gap: 0.85rem;
+  width: 100%;
+  max-width: none;
   background: #fff;
   border: 1px solid #e5e7eb;
   border-radius: 1rem;
-  padding: 1rem 1.1rem 1.25rem;
+  padding:
+    clamp(0.9rem, 2vw, 1.5rem)
+    clamp(0.85rem, 2.5vw, 2rem)
+    clamp(1.1rem, 2.2vw, 1.85rem);
   min-height: 12rem;
   box-sizing: border-box;
 }
 @media (min-width: 640px) {
   .mh-page {
-    padding: 1.35rem 1.75rem 1.6rem;
     gap: 1rem;
   }
 }
 @media (min-width: 1024px) {
   .mh-page {
-    padding: 1.5rem 2rem 1.85rem;
-    gap: 1.1rem;
+    gap: 1.15rem;
   }
 }
 
-/* Blok teks: ukur lebar baris dengan ch (bukan rem kaku) */
+/* Blok teks: full lebar kartu (bukan 65ch yang menyisakan ruang kosong di PC) */
 .mh-blok--teks {
   font-size: 0.95rem;
   line-height: 1.65;
   color: #1e293b;
-  max-width: 65ch;
+  max-width: none;
   width: 100%;
+  box-sizing: border-box;
 }
-@media (min-width: 1024px) {
+@media (min-width: 768px) {
   .mh-blok--teks {
     font-size: 1rem;
     line-height: 1.7;
-    max-width: 70ch;
+  }
+}
+@media (min-width: 1280px) {
+  .mh-blok--teks {
+    font-size: 1.05rem;
+    line-height: 1.72;
   }
 }
 .mh-blok--teks p {

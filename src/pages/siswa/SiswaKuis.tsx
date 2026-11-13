@@ -185,15 +185,31 @@ export default function SiswaKuis() {
     if (!sesi || !siswaId) return
     setError('')
     try {
-      const q = query(
-        collection(db, 'lms_kuis'),
-        where('kelas', '==', sesi.kelas),
-        where('aktif', '==', true),
+      const kls = String(sesi.kelas).toUpperCase()
+      const map = new Map<string, KuisLms>()
+      const snap1 = await getDocs(
+        query(
+          collection(db, 'lms_kuis'),
+          where('kelas', '==', kls),
+          where('aktif', '==', true),
+        ),
       )
-      const snap = await getDocs(q)
-      const kuisList = snap.docs
-        .map((d) => ({ id: d.id, ...d.data() }) as KuisLms)
-        .filter((k) => kuisUntukSiswa(k))
+      for (const d of snap1.docs) {
+        map.set(d.id, { id: d.id, ...d.data() } as KuisLms)
+      }
+      try {
+        const snap2 = await getDocs(
+          query(collection(db, 'lms_kuis'), where('kelasList', 'array-contains', kls)),
+        )
+        for (const d of snap2.docs) {
+          if (map.has(d.id)) continue
+          const item = { id: d.id, ...d.data() } as KuisLms
+          if (item.aktif) map.set(d.id, item)
+        }
+      } catch (e) {
+        console.warn('SiswaKuis kelasList', e)
+      }
+      const kuisList = [...map.values()].filter((k) => kuisUntukSiswa(k))
       setList(kuisList)
 
       const entries = await Promise.all(

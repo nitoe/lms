@@ -70,8 +70,13 @@ export interface PengaturanPenilaianTugas {
 /** Dokumen `lms_tugas/{id}`. */
 export interface TugasLms {
   id: string
-  /** Rombel, mis. `5A`. Untuk proyek bisa satu kelas utama. */
+  /** Rombel utama, mis. `5A`. Untuk proyek bisa satu kelas utama. */
   kelas: string
+  /**
+   * Semua kelas yang boleh melihat tugas aktif ini (selalu memuat `kelas`).
+   * Dokumen lama tanpa field = `[kelas]`. Share hanya ke paralel se-tingkat yang diampu.
+   */
+  kelasList?: string[]
   /**
    * Mapel utama (selalu ada).
    * Untuk jenis `mapel`: satu mapel.
