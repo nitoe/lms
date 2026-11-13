@@ -1,0 +1,101 @@
+/* ============================================================================
+   Navigasi di dalam panel Kuis — kelas `.kn-*`.
+   Aksen = --rg-a (diset KelasDetail dari warna mapel); fallback ungu sekolah.
+   ============================================================================ */
+
+.kn-kembali {
+  display: inline-flex; align-items: center; gap: 0.4rem; flex: none; min-height: 2.2rem; padding: 0.3rem 0.8rem 0.3rem 0.65rem;
+  border: 1px solid var(--color-border); border-radius: 0.65rem; background: #fff; color: var(--color-muh-700);
+  font-family: inherit; font-size: 0.78rem; font-weight: 750; cursor: pointer; transition: background 0.12s, border-color 0.12s;
+}
+.kn-kembali:hover { background: #f4f5f9; border-color: var(--color-muh-300); }
+.kn-kembali:focus-visible { outline: 2px solid var(--rg-a, var(--color-muh-600)); outline-offset: 2px; }
+.kn-kembali svg { flex: none; }
+
+/* —— Kepala detail kuis —— */
+.kn-kepala {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.7rem 1rem; background: #fff;
+  border: 1px solid var(--color-border); border-radius: 1rem; padding: 0.7rem 0.8rem; box-shadow: 0 1px 3px rgba(23, 23, 57, 0.04);
+}
+.kn-kepala-atas { display: flex; align-items: center; gap: 0.75rem; min-width: 0; flex: 1 1 18rem; }
+.kn-judul-blok { min-width: 0; }
+.kn-judul { margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.95rem; font-weight: 800; letter-spacing: -0.01em; color: #1a1d33; }
+.kn-meta { display: flex; flex-wrap: wrap; gap: 0.3rem; margin-top: 0.3rem; }
+.kn-chip {
+  display: inline-flex; align-items: center; border-radius: 0.45rem; padding: 0.12rem 0.5rem; background: #f1f5f9; color: #334155;
+  font-size: 0.66rem; font-weight: 750; white-space: nowrap;
+}
+.kn-chip--aktif { background: #dcfce7; color: #166534; }
+.kn-chip--nonaktif { background: #fef3c7; color: #92400e; }
+.kn-chip--online { background: #e0f2fe; color: #075985; }
+.kn-chip--offline { background: #fff7ed; color: #9a3412; }
+.kn-chip--jenis { background: #ede9fe; color: #5b21b6; }
+
+/* —— Kontrol segmen —— */
+.kn-seg {
+  display: inline-flex; max-width: 100%; gap: 0.2rem; overflow-x: auto; padding: 0.25rem; border-radius: 0.85rem; background: #f1f3f8;
+  box-shadow: inset 0 0 0 1px #e6e9f2;
+}
+.kn-seg-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 0.4rem; flex: none; min-height: 2.15rem; padding: 0.3rem 0.9rem;
+  border: none; border-radius: 0.62rem; background: transparent; font-family: inherit; font-size: 0.8rem; font-weight: 650;
+  color: #475569; white-space: nowrap; cursor: pointer; transition: background 0.12s, color 0.12s, box-shadow 0.12s;
+}
+.kn-seg-btn:hover { background: rgba(255, 255, 255, 0.75); color: #1a1d33; }
+.kn-seg-btn:focus-visible { outline: 2px solid var(--rg-a, var(--color-muh-600)); outline-offset: 1px; }
+.kn-seg-btn--on, .kn-seg-btn--on:hover {
+  background: #fff; color: var(--rg-a, var(--color-muh-700)); font-weight: 800;
+  box-shadow: 0 1px 3px rgba(23, 23, 57, 0.16), inset 0 0 0 1px color-mix(in srgb, var(--rg-a, #313083) 24%, #fff);
+}
+.kn-seg-n {
+  min-width: 1.25rem; padding: 0.04rem 0.38rem; border-radius: 999px; background: rgba(15, 23, 42, 0.07); text-align: center;
+  font-size: 0.66rem; font-weight: 800; font-variant-numeric: tabular-nums;
+}
+.kn-seg-btn--on .kn-seg-n { background: color-mix(in srgb, var(--rg-a, #313083) 14%, #fff); }
+.kn-seg--kecil .kn-seg-btn { min-height: 1.85rem; padding: 0.2rem 0.75rem; font-size: 0.76rem; }
+
+/* —— Chip saringan —— */
+.kn-chips { display: flex; flex-wrap: wrap; align-items: center; gap: 0.35rem; }
+.kn-chips-label { margin-right: 0.15rem; font-size: 0.66rem; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; color: var(--color-muted); }
+.kn-chip-btn {
+  display: inline-flex; align-items: center; gap: 0.4rem; font-family: inherit; cursor: pointer; font-size: 0.76rem; font-weight: 650;
+  color: #334155; background: #fff; border: 1px solid var(--color-border); border-radius: 999px; padding: 0.26rem 0.75rem;
+  transition: border-color 0.12s, background 0.12s;
+}
+.kn-chip-btn:hover { border-color: var(--color-muh-300); background: #f8f9fd; }
+.kn-chip-btn:focus-visible { outline: 2px solid var(--rg-a, var(--color-muh-600)); outline-offset: 2px; }
+.kn-chip-btn--on, .kn-chip-btn--on:hover { background: var(--rg-a, var(--color-muh-600)); border-color: var(--rg-a, var(--color-muh-600)); color: #fff; }
+.kn-chip-btn--on .kn-seg-n { background: rgba(255, 255, 255, 0.24); }
+
+/* —— Bar alat (filter kelas, dll.) —— */
+.kn-bar {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 1rem; background: #fff; border: 1px solid var(--color-border);
+  border-radius: 1rem; padding: 0.6rem 0.9rem; box-shadow: 0 1px 3px rgba(23, 23, 57, 0.04);
+}
+.kn-bar-note { margin-left: auto; font-size: 0.7rem; color: var(--color-muted); }
+
+/* —— Baris sub-menu hasil —— */
+.kn-subbaris { display: flex; flex-wrap: wrap; align-items: center; gap: 0.6rem 1rem; }
+.kn-toggle {
+  display: inline-flex; align-items: center; gap: 0.45rem; cursor: pointer; font-size: 0.76rem; font-weight: 600; color: #475569;
+  background: #fff; border: 1px solid var(--color-border); border-radius: 999px; padding: 0.3rem 0.8rem;
+}
+.kn-toggle:hover { border-color: var(--color-muh-300); }
+.kn-toggle input { accent-color: var(--rg-a, var(--color-muh-600)); width: 0.95rem; height: 0.95rem; margin: 0; }
+.kn-hitung { font-size: 0.74rem; color: var(--color-muted); }
+
+.kn-aksi {
+  display: inline-flex; align-items: center; gap: 0.35rem; min-height: 2.05rem; padding: 0.25rem 0.75rem; border-radius: 0.6rem;
+  border: 1px solid var(--color-border); background: #fff; color: #374151; font-family: inherit; font-size: 0.76rem; font-weight: 700; cursor: pointer;
+}
+.kn-aksi:hover { background: #f4f5f9; }
+.kn-aksi:focus-visible { outline: 2px solid var(--rg-a, var(--color-muh-600)); outline-offset: 2px; }
+
+@media (max-width: 640px) {
+  .kn-kepala-atas { flex-basis: 100%; flex-direction: column; align-items: flex-start; gap: 0.55rem; }
+  .kn-judul { white-space: normal; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+  .kn-seg { width: 100%; }
+  .kn-seg-btn { flex: 1 1 0; min-width: 0; padding: 0.3rem 0.5rem; gap: 0.3rem; font-size: 0.76rem; }
+  .kn-seg--kecil .kn-seg-btn { padding: 0.2rem 0.5rem; font-size: 0.74rem; }
+  .kn-bar-note { margin-left: 0; flex-basis: 100%; }
+}

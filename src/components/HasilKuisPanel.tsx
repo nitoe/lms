@@ -1,3 +1,5 @@
+import { KnChips, KnKembali, KnSegmen } from './KuisNav'
+import { IkonAnalisis, IkonDaftar, IkonRefresh } from './ikonRuang'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   agregatPerSoal,
@@ -161,31 +163,6 @@ function BadgeStatus({ perluManual, status }: { perluManual: boolean; status: st
     </span>
   )
 }
-
-function TabPill({
-  active,
-  onClick,
-  children,
-}: {
-  active: boolean
-  onClick: () => void
-  children: React.ReactNode
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={
-        active
-          ? 'rounded-lg bg-muh-600 px-3.5 py-1.5 text-xs font-semibold text-white shadow-sm'
-          : 'rounded-lg px-3.5 py-1.5 text-xs font-semibold text-slate-600 hover:bg-white hover:text-slate-900'
-      }
-    >
-      {children}
-    </button>
-  )
-}
-
 
 async function jalankanAnalisisSiswa(
   kuisId: string,
@@ -510,9 +487,7 @@ export default function HasilKuisPanel({ kuis, onUpdated }: Props) {
     return (
       <div className="space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <button
-            type="button"
-            className="inline-flex items-center gap-1 text-sm font-semibold text-muh-700 hover:text-muh-800"
+          <KnKembali
             onClick={() => {
               setPilihId(null)
               setInfo('')
@@ -522,8 +497,8 @@ export default function HasilKuisPanel({ kuis, onUpdated }: Props) {
               setTerapanAi('')
             }}
           >
-            <span aria-hidden>←</span> Kembali ke daftar nilai
-          </button>
+            Daftar nilai
+          </KnKembali>
           {isTka && terpilih.siswaId && (
             <div className="flex flex-wrap items-center gap-2">
               <button
@@ -919,7 +894,8 @@ export default function HasilKuisPanel({ kuis, onUpdated }: Props) {
                   : ' · skor LMS; bisa disinkronkan ke Penilaian')}
           </p>
         </div>
-        <button type="button" className="lms-btn-secondary text-xs" onClick={() => void muat()}>
+        <button type="button" className="kn-aksi" onClick={() => void muat()}>
+          <IkonRefresh size={14} />
           Muat ulang
         </button>
       </div>
@@ -998,38 +974,17 @@ export default function HasilKuisPanel({ kuis, onUpdated }: Props) {
       </div>
 
       {isTka && kelasTkaIzin.length > 1 && (
-        <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
-          <span className="text-xs font-semibold text-slate-600">Filter kelas</span>
-          <div className="flex flex-wrap gap-1.5">
-            <button
-              type="button"
-              className={`rounded-lg px-3 py-1 text-xs font-semibold transition ${
-                filterKelasTka === 'semua'
-                  ? 'bg-muh-600 text-white'
-                  : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-              }`}
-              onClick={() => setFilterKelasTka('semua')}
-            >
-              Semua ({kelasTkaIzin.join(' · ')})
-            </button>
-            {kelasTkaIzin.map((k) => (
-              <button
-                key={k}
-                type="button"
-                className={`rounded-lg px-3 py-1 text-xs font-semibold transition ${
-                  filterKelasTka === k
-                    ? 'bg-muh-600 text-white'
-                    : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-                }`}
-                onClick={() => setFilterKelasTka(k)}
-              >
-                {k}
-              </button>
-            ))}
-          </div>
-          {adminTka && (
-            <span className="ml-auto text-[11px] text-slate-400">Admin TKA · rekap 6A &amp; 6B</span>
-          )}
+        <div className="kn-bar">
+          <KnChips<string>
+            label="Kelas"
+            nilai={filterKelasTka}
+            onPilih={setFilterKelasTka}
+            opsi={[
+              { v: 'semua', teks: `Semua (${kelasTkaIzin.join(' · ')})` },
+              ...kelasTkaIzin.map((k) => ({ v: k, teks: k })),
+            ]}
+          />
+          {adminTka && <span className="kn-bar-note">Admin TKA · rekap 6A &amp; 6B</span>}
         </div>
       )}
 
@@ -1212,27 +1167,28 @@ export default function HasilKuisPanel({ kuis, onUpdated }: Props) {
         </div>
       )}
 
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="flex rounded-xl bg-slate-100/90 p-1">
-          <TabPill active={mode === 'siswa'} onClick={() => setMode('siswa')}>
-            Daftar nilai
-          </TabPill>
-          <TabPill active={mode === 'soal'} onClick={() => setMode('soal')}>
-            Analisis per soal
-          </TabPill>
-        </div>
+      <div className="kn-subbaris">
+        <KnSegmen<'siswa' | 'soal'>
+          label="Tampilan hasil"
+          kecil
+          nilai={mode}
+          onPilih={setMode}
+          opsi={[
+            { v: 'siswa', teks: 'Daftar nilai', ikon: <IkonDaftar size={14} /> },
+            { v: 'soal', teks: 'Analisis per soal', ikon: <IkonAnalisis size={14} /> },
+          ]}
+        />
         {!isTka && (
-          <label className="flex cursor-pointer items-center gap-2 text-xs text-slate-600">
+          <label className="kn-toggle">
             <input
               type="checkbox"
-              className="rounded border-slate-300 text-muh-600 focus:ring-muh-500"
               checked={hanyaTerbaru}
               onChange={(e) => setHanyaTerbaru(e.target.checked)}
             />
             Hanya percobaan terbaru
           </label>
         )}
-        <span className="text-xs text-slate-400">
+        <span className="kn-hitung">
           {isTka
             ? `${ringkas.n} mengerjakan · ${ringkas.nRoster} siswa roster`
             : `${list.length} kiriman · ${ringkasPerSiswa(list).length} siswa`}

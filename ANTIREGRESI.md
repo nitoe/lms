@@ -1,42 +1,16 @@
-## §116. Paket soal TKA lintas kelas 6 / 6A / 6B
+## §113. Navigasi di dalam panel Kuis (`kn-*`)
 
-116.1 Bank soal TKA berkelas kanonik «6», tetapi paket hasil migrasi tka2026 bisa berkelas **6A/6B**. Semua pembaca paket TKA (Bank Soal, wizard kuis, `buatKuisDariPaket`, «Tambah paket» di `KuisDetail`) HARUS lewat `daftarPaket()` yang menggabungkan 6, 6A, 6B untuk mapel TKA. Jangan menulis query `lms_paket_soal` langsung dengan `kelas == '6'` saja.
+113.1 Tombol navigasi di dalam Kuis (kembali, menu Atur/Offline/Hasil, sub-menu hasil, filter kelas) memakai komponen `components/KuisNav.tsx` (`KuisKepala`, `KnSegmen`, `KnChips`, `KnKembali`). Jangan kembali ke tombol Tailwind ad-hoc. Aksen lewat `--rg-a` yang diset wrapper `KelasDetail`; fallback ungu sekolah.
 
-116.2 Query per kelas memakai `Promise.allSettled`: penolakan rules pada satu kelas tidak boleh mengosongkan daftar. Hanya bila SEMUA query gagal, lempar error.
+113.2 Kuis **online** tidak punya tab «Input offline». Bila `detailTab === 'offline'` tetapi kuis online, perilaku lama = jatuh ke Hasil siswa: gunakan `tabEfektif` yang sama untuk sorotan menu **dan** isi panel (jangan hitung terpisah).
 
-116.3 Paket «Siap» dideteksi wizard bila `status === 'siap'` DAN `soal.length > 0`. Bila daftar kosong, tampilkan diagnosis (`ringkasanPaket`) agar penyebab (draf / siap tanpa soal / kelas) terlihat, bukan hanya pesan «belum ada paket».
+113.3 ARIA: menu segmen di `KuisKepala` = `tablist` (`idPrefix` `kuis-detail`, panel `#kuis-detail-panel`, roving tabindex). Sub-menu hasil dan filter kelas = `group` + `aria-pressed` karena kontennya bukan panel terpisah.
 
-116.4 Mapel non-TKA tidak berubah (satu kelas, tanpa penggabungan).
+113.4 Ponsel (≤ 640 px): judul kuis boleh membungkus (clamp 2 baris) — jangan `white-space: nowrap` (judul terpotong «Tah…»); menu segmen memakai `flex: 1 1 0` tanpa scroll horizontal.
 
-## §115. Kuis TKA terpisah per mapel & daftar kuis aktif
+113.5 `.tka-tabs` (TkaRekap) harus `display: flex; width: fit-content`; `inline-flex` di dalam kolom flex membuatnya melebar penuh.
 
-115.1 Mapel TKA berbagi kelas bank «6». Daftar kuis ruang TKA HARUS difilter `mapel` yang sama; jangan menggabung `daftarKuisDibuatOleh()` tanpa memeriksa mapel untuk mapel TKA (penyebab kuis TKA mapel lain muncul). Toleransi mapel beda hanya untuk mapel non-TKA.
-
-115.2 Setiap query `lms_kuis` harus `where kelas + mapel` (rules). Daftar kuis aktif di dashboard TKA melakukan satu query per mapel (`daftarKuis(ruangTka(m).kelas, m)`), bukan query lintas-mapel.
-
-115.3 «Aktif» = `aktif === true` dan `waktuSelesai` kosong/di masa depan; `waktuMulai` di masa depan = «Terjadwal». Waktu bisa berupa string ISO atau Timestamp Firestore — gunakan `keTanggal`.
-
-## §114. Ekspor TKA & konfirmasi hapus kuis
-
-114.1 Ekspor XLSX dibuat tanpa dependensi (`exportTabel.ts`). Jangan menambah paket spreadsheet hanya untuk ekspor; bila diganti, pertahankan: header tebal, kolom nama dibekukan, angka tetap numerik (bukan teks), sheet ≤ 31 karakter.
-
-114.2 CSV: UTF-8 **BOM**, pemisah `;`, desimal `,` (Excel lokal Indonesia membuka koma-pemisah dalam satu kolom). Sel teks berawalan `= + - @` diberi `'` (cegah injeksi rumus).
-
-114.3 Ekspor mengikuti filter tahap/kelas yang tampil — jangan mengekspor kelas di luar `kelasRekapTkaBolehDilihat` (wali 6A tidak boleh membawa 6B).
-
-114.4 Hapus kuis HARUS lewat `KonfirmasiHapusDialog` (ketik **HAPUS**). Jangan kembali ke `confirm()` satu klik. Dialog menyebut dampak ke Rekap TKA untuk kuis Try Out dan menyarankan «Nonaktifkan». `hapusKuis` hanya menghapus dokumen kuis — hasil `lms_jawaban` tertinggal (yatim); jangan menambah penghapusan massal jawaban tanpa konfirmasi terpisah.
-
-## §113. Input sebaran manual
-
-113.1 Sebaran manual disimpan sebagai **poin & maks** per kompetensi (bukan persen), lewat `bangunSebaranManual`. Jumlah poin & maks kompetensi dasar WAJIB sama dengan kompetensi materi (membagi soal yang sama); jika tidak, tolak.
-
-113.2 Grid hanya memuat siswa dengan `sumber !== 'otomatis'`. Jangan menimpa nilai otomatis LMS lewat input manual — sebarannya sudah dari jawaban.
-
-113.3 Menyimpan sebaran manual HARUS lewat `simpanNilaiManualTka({ sebaran })` agar nilai & sebaran tertulis bersamaan. Mengubah nilai manual tanpa `sebaran` membuang sebaran lama mapel itu (§109.3).
-
-113.4 Validasi seluruh baris dulu; jika ada satu salah, jangan menyimpan apa pun. Setelah menyimpan, publikasi portal harus diperbarui manual («Perbarui publikasi»).
-
-113.5 Catatan nomor: entri ini sebelumnya tertulis §112 dan tertimpa oleh §112 UI Beranda; dipulihkan sebagai §113. Sebelum menulis entri, selalu cek nomor terakhir di `main` terbaru.
+113.6 Label tombol kembali di dalam kuis memakai tujuan singkat («Daftar kuis», «Daftar nilai»).
 
 ## §112. UI Beranda / Ruang Kelas (`rg-*`)
 
