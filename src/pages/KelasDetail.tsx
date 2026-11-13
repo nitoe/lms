@@ -107,7 +107,7 @@ export default function KelasDetail() {
   }
 
   return (
-    <div className="rg-halaman" style={{ '--rg-a': a.bar } as CSSProperties}>
+    <div className="rg-halaman">
       {/* Header cover ruang kelas */}
       <section
         className={`kelas-hero${ruangTka ? ' tka-ruang-hero' : ''}${
