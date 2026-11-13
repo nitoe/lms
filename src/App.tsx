@@ -27,9 +27,6 @@ import { bolehAksesTkaStaf, bolehImportRekapTka } from './lib/tkaAkses'
 
 // Dimuat malas: editor teks kaya (TipTap) cukup besar dan hanya dipakai guru (ANTIREGRESI §13).
 const SoalEditor = lazy(() => import('./pages/SoalEditor'))
-// Editor materi halaman (TipTap + tabel + media) juga dimuat malas (ANTIREGRESI §13, §117).
-const MateriEditorPage = lazy(() => import('./pages/MateriEditorPage'))
-const MateriBacaPage = lazy(() => import('./pages/MateriBacaPage'))
 
 function WajibStaf({ children }: { children: ReactNode }) {
   const { user, profil, peran, loading } = useAuth()
@@ -88,14 +85,6 @@ export default function App() {
       >
         <Route index element={<SiswaBeranda />} />
         <Route path="materi" element={<SiswaMateri />} />
-        <Route
-          path="materi/:materiId"
-          element={
-            <Suspense fallback={<div className="lms-empty">Memuat materi…</div>}>
-              <MateriBacaPage peran="siswa" />
-            </Suspense>
-          }
-        />
         <Route
           path="tugas"
           element={
@@ -172,22 +161,6 @@ export default function App() {
                 <TkaImportRekap />
               </WajibImportRekapTka>
             </WajibTkaStaf>
-          }
-        />
-        <Route
-          path="kelas/:ruangId/materi/:materiId"
-          element={
-            <Suspense fallback={<div className="lms-empty">Memuat editor materi…</div>}>
-              <MateriEditorPage />
-            </Suspense>
-          }
-        />
-        <Route
-          path="kelas/:ruangId/materi/:materiId/baca"
-          element={
-            <Suspense fallback={<div className="lms-empty">Memuat materi…</div>}>
-              <MateriBacaPage peran="staf" />
-            </Suspense>
           }
         />
         <Route
