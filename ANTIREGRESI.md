@@ -14,6 +14,9 @@
 
 124.5 Kuis TKA tetap di `/siswa/tka`, tidak dicampur katalog kuis biasa (ANTIREGRESI §77).
 
+124.6 Katalog Kuis/Tugas memakai kelas `sw-kat-*` di `siswa.css` + `aksenMapel` untuk bilah/ikon. Jangan mengembalikan kartu generik `rounded-xl border` tanpa aksen mapel di daftar utama.
+
+
 
 123.1 Kompetensi dasar (L1–L3) dan kompetensi materi (BI/MTK: tipe materi; IPA: domain) SELALU ditampilkan sebagai **dua daftar/tabel/kolom terpisah**. Pada Bahasa Indonesia nilainya kebetulan identik (L1=Tekstual, L2=Inferensial, L3=Evaluasi), tetapi JANGAN digabung, dipasangkan, atau dideduplikasi.
 

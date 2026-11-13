@@ -8,6 +8,8 @@ import { adalahMapelTka } from '../../lib/tkaAkses'
 import { NAMA_JENIS_PENILAIAN_SISWA } from '../../types/kuis'
 import type { JawabanSoal } from '../../types/soal'
 import SoalTampil from '../../components/soal/SoalTampil'
+import SiswaIcon from './SiswaIcon'
+import { aksenMapel } from '../../lib/uiAksen'
 import '../../styles/soal.css'
 
 const PROGRESS_PREFIX = 'lms_kuis_progress_v2_'
@@ -307,58 +309,72 @@ export default function SiswaKuis() {
 
   return (
     <div className="space-y-5">
-      <div className="flex flex-wrap items-center gap-2.5">
-        <h1 className="text-lg font-bold text-slate-900">Kuis</h1>
+      <div className="sw-kat-head">
+        <div>
+          <h1 className="sw-kat-title">Kuis</h1>
+          <p className="sw-kat-sub">Latihan & penilaian dari gurumu</p>
+        </div>
         {list && list.length > 0 && (
-          <span className="lms-count-pill">{list.length} kuis aktif</span>
+          <div className="sw-kat-stats" aria-label="Ringkasan kuis">
+            <div className="sw-kat-stat">
+              <span className="sw-kat-stat-n">{hitungStatus.semua}</span>
+              <span className="sw-kat-stat-l">Aktif</span>
+            </div>
+            <div className="sw-kat-stat">
+              <span className="sw-kat-stat-n">{hitungStatus.belum}</span>
+              <span className="sw-kat-stat-l">Belum</span>
+            </div>
+            <div className="sw-kat-stat">
+              <span className="sw-kat-stat-n">{hitungStatus.sudah}</span>
+              <span className="sw-kat-stat-l">Selesai</span>
+            </div>
+            {hitungStatus.draf > 0 && (
+              <div className="sw-kat-stat">
+                <span className="sw-kat-stat-n">{hitungStatus.draf}</span>
+                <span className="sw-kat-stat-l">Draf</span>
+              </div>
+            )}
+          </div>
         )}
       </div>
 
       {error && <div className="text-sm text-red-600">{error}</div>}
       {list === null && <p className="text-slate-500">Memuat…</p>}
       {list?.length === 0 && (
-        <div className="lms-empty">
-          <p className="font-medium text-slate-700">Belum ada kuis aktif</p>
-          <p className="mt-1 text-sm text-muted">Kuis dari gurumu akan muncul di sini.</p>
+        <div className="sw-kat-empty">
+          <div className="sw-kat-card-icon bg-violet-50 text-violet-700" aria-hidden>
+            <SiswaIcon name="target" size={28} />
+          </div>
+          <p className="sw-kat-empty-title">Belum ada kuis aktif</p>
+          <p className="sw-kat-empty-desc">Kuis dari gurumu akan muncul di sini.</p>
         </div>
       )}
 
       {list && list.length > 0 && (
-        <>
-          {/* Filter status */}
-          <div className="flex flex-wrap gap-1.5" role="group" aria-label="Filter status kuis">
+        <div className="sw-kat-filters">
+          <div className="sw-kat-chip-row" role="group" aria-label="Filter status kuis">
             {(Object.keys(FILTER_STATUS_LABEL) as FilterStatusKuis[]).map((key) => {
-              const aktif = filterStatus === key
-              const n = hitungStatus[key]
+              const on = filterStatus === key
               return (
                 <button
                   key={key}
                   type="button"
-                  className={
-                    aktif
-                      ? 'rounded-full bg-muh-700 px-3 py-1.5 text-xs font-semibold text-white'
-                      : 'rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 hover:border-muh-300'
-                  }
+                  className={`sw-kat-chip${on ? ' sw-kat-chip--on' : ''}`}
                   onClick={() => setFilterStatus(key)}
-                  aria-pressed={aktif}
+                  aria-pressed={on}
                 >
                   {FILTER_STATUS_LABEL[key]}
-                  <span className={aktif ? 'ml-1 opacity-80' : 'ml-1 text-slate-400'}>{n}</span>
+                  <span className="sw-kat-chip-n">{hitungStatus[key]}</span>
                 </button>
               )
             })}
           </div>
 
-          {/* Filter mapel */}
           {daftarMapel.length > 1 && (
-            <div className="flex flex-wrap gap-1.5" role="group" aria-label="Filter mata pelajaran">
+            <div className="sw-kat-chip-row" role="group" aria-label="Filter mata pelajaran">
               <button
                 type="button"
-                className={
-                  filterMapel === 'semua'
-                    ? 'rounded-full bg-slate-800 px-3 py-1.5 text-xs font-semibold text-white'
-                    : 'rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600'
-                }
+                className={`sw-kat-chip sw-kat-chip--mapel${filterMapel === 'semua' ? ' sw-kat-chip--on' : ''}`}
                 onClick={() => setFilterMapel('semua')}
               >
                 Semua mapel
@@ -367,11 +383,7 @@ export default function SiswaKuis() {
                 <button
                   key={m}
                   type="button"
-                  className={
-                    filterMapel === m
-                      ? 'rounded-full bg-slate-800 px-3 py-1.5 text-xs font-semibold text-white'
-                      : 'rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600'
-                  }
+                  className={`sw-kat-chip sw-kat-chip--mapel${filterMapel === m ? ' sw-kat-chip--on' : ''}`}
                   onClick={() => setFilterMapel(m)}
                 >
                   {m}
@@ -379,67 +391,81 @@ export default function SiswaKuis() {
               ))}
             </div>
           )}
+        </div>
+      )}
 
-          {terfilter.length === 0 && (
-            <p className="text-sm text-slate-500">Tidak ada kuis untuk filter ini.</p>
-          )}
+      {list && list.length > 0 && terfilter.length === 0 && (
+        <div className="sw-kat-empty">
+          <p className="sw-kat-empty-title">Tidak ada kuis untuk filter ini</p>
+          <p className="sw-kat-empty-desc">Coba pilih status atau mapel lain.</p>
+        </div>
+      )}
 
-          {perMapel.map((grup) => (
-            <section key={grup.mapel} className="space-y-3">
-              <h2 className="flex items-center gap-2 text-sm font-bold text-slate-800">
-                <span className="inline-block h-2 w-2 rounded-full bg-muh-500" aria-hidden />
-                {grup.mapel}
-                <span className="text-xs font-medium text-slate-400">{grup.items.length}</span>
-              </h2>
-              <ul className="space-y-3">
-                {grup.items.map((k) => {
-                  const saved = siswaId ? loadProgress(siswaId, k.id) : null
-                  const nJawab = saved ? Object.keys(saved.jawaban ?? {}).length : 0
-                  const sisa = saved?.sisaDetik
-                  const riwayat = riwayatMap[k.id] ?? []
-                  const sudahKirim = riwayat.length > 0
-                  const terakhir = riwayat[0]
-                  const isLatihan = (k.jenisPenilaian ?? 'latihan') === 'latihan'
-                  const adaProgresLokal = nJawab > 0 && !sudahKirim
+      {perMapel.map((grup) => {
+        const a = aksenMapel(grup.mapel)
+        return (
+          <section key={grup.mapel} className="sw-kat-section">
+            <div className="sw-kat-section-head">
+              <span className="sw-kat-section-bar" style={{ background: a.bar }} aria-hidden />
+              <h2 className="sw-kat-section-title">{grup.mapel}</h2>
+              <span className="sw-kat-section-count">{grup.items.length}</span>
+            </div>
+            <ul className="sw-kat-grid">
+              {grup.items.map((k) => {
+                const saved = siswaId ? loadProgress(siswaId, k.id) : null
+                const nJawab = saved ? Object.keys(saved.jawaban ?? {}).length : 0
+                const sisa = saved?.sisaDetik
+                const riwayat = riwayatMap[k.id] ?? []
+                const sudahKirim = riwayat.length > 0
+                const terakhir = riwayat[0]
+                const isLatihan = (k.jenisPenilaian ?? 'latihan') === 'latihan'
+                const adaProgresLokal = nJawab > 0 && !sudahKirim
+                const am = aksenMapel(k.mapel || grup.mapel)
 
-                  return (
-                    <li
-                      key={k.id}
-                      className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5"
-                    >
-                      <div className="font-semibold text-slate-800">{k.judul}</div>
-                      <div className="mt-1 text-xs text-slate-500">
-                        {NAMA_JENIS_PENILAIAN_SISWA[k.jenisPenilaian ?? 'latihan']} · {k.jumlahSoal}{' '}
-                        soal
-                        {k.durasiMenit ? ` · ${k.durasiMenit} menit` : ''}
+                return (
+                  <li key={k.id} className="sw-kat-card">
+                    <span className="sw-kat-card-accent" style={{ background: am.bar }} aria-hidden />
+                    <div className="sw-kat-card-top">
+                      <div className="min-w-0 flex-1">
+                        <h3 className="sw-kat-card-title">{k.judul}</h3>
+                        <div className="sw-kat-card-meta">
+                          <span>{NAMA_JENIS_PENILAIAN_SISWA[k.jenisPenilaian ?? 'latihan']}</span>
+                          <span className="sw-kat-card-meta-dot" aria-hidden />
+                          <span>{k.jumlahSoal} soal</span>
+                          {k.durasiMenit ? (
+                            <>
+                              <span className="sw-kat-card-meta-dot" aria-hidden />
+                              <span>{k.durasiMenit} menit</span>
+                            </>
+                          ) : null}
+                        </div>
                       </div>
+                      <div
+                        className="sw-kat-card-icon"
+                        style={{ background: am.soft, color: am.bar }}
+                        aria-hidden
+                      >
+                        <SiswaIcon name="target" size={22} />
+                      </div>
+                    </div>
 
+                    <div className="sw-kat-card-body">
                       {sudahKirim && terakhir && (
-                        <div className="mt-3 rounded-lg border border-emerald-100 bg-emerald-50/80 px-3 py-2 text-xs text-emerald-900">
+                        <div className="sw-kat-card-note sw-kat-card-note--ok">
                           <div className="font-semibold">
-                            Sudah dikerjakan {riwayat.length}×
+                            Selesai {riwayat.length}×
                             {terakhir.totalPoin > 0
-                              ? ` · skor terakhir ${formatSkor100(terakhir.skorOtomatis, terakhir.totalPoin)}`
+                              ? ` · skor ${formatSkor100(terakhir.skorOtomatis, terakhir.totalPoin)}`
                               : ''}
                           </div>
-                          <div className="mt-0.5 text-emerald-800/80">
+                          <div className="mt-0.5 opacity-80">
                             Percobaan ke-{terakhir.percobaan} · {formatWaktu(terakhir.createdAtMs)}
                           </div>
-                          {riwayat.length > 1 && (
-                            <ul className="mt-1.5 space-y-0.5 text-[11px] text-emerald-800/70">
-                              {riwayat.slice(0, 3).map((r) => (
-                                <li key={r.id}>
-                                  #{r.percobaan}: {formatSkor100(r.skorOtomatis, r.totalPoin)} ·{' '}
-                                  {formatWaktu(r.createdAtMs)}
-                                </li>
-                              ))}
-                            </ul>
-                          )}
                         </div>
                       )}
 
                       {adaProgresLokal && (
-                        <div className="mt-2 inline-block rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-800">
+                        <div className="sw-kat-card-note sw-kat-card-note--warn">
                           Draf tersimpan · {nJawab} soal terjawab
                           {typeof sisa === 'number' && k.durasiMenit
                             ? ` · sisa ${Math.floor(sisa / 60)}:${String(sisa % 60).padStart(2, '0')}`
@@ -447,71 +473,74 @@ export default function SiswaKuis() {
                         </div>
                       )}
 
-                      <div className="mt-3 flex flex-wrap gap-2">
-                        {!sudahKirim && (
-                          <button
-                            type="button"
-                            className="lms-btn-primary text-sm"
-                            onClick={() => (adaProgresLokal ? lanjutkan(k) : mulaiBaru(k))}
-                          >
-                            {adaProgresLokal ? 'Lanjutkan' : 'Mulai Kerjakan'}
-                          </button>
-                        )}
-
-                        {sudahKirim && isLatihan && (
-                          <button
-                            type="button"
-                            className="lms-btn-primary text-sm"
-                            onClick={() => setKonfirmUlangId(k.id)}
-                          >
-                            Kerjakan lagi dari awal
-                          </button>
-                        )}
-
-                        {sudahKirim && !isLatihan && (
-                          <span className="self-center text-xs text-slate-500">
-                            Jawaban sudah dikirim. Tidak dapat diubah.
-                          </span>
-                        )}
-                      </div>
-
-                      {konfirmUlangId === k.id && (
-                        <div className="mt-3 rounded-xl border border-violet-200 bg-violet-50 p-3 text-sm text-slate-700">
-                          <p className="font-medium text-slate-800">Mulai dari awal?</p>
-                          <p className="mt-1 text-xs leading-relaxed text-slate-600">
-                            Kamu sudah mengirim jawaban sebelumnya. Jika lanjut, kamu mengerjakan semua
-                            soal dari awal dan mengirim sebagai percobaan baru (ke-
-                            {(riwayat[0]?.percobaan ?? 0) + 1}). Jawaban lama tetap tersimpan di riwayat.
-                          </p>
-                          <div className="mt-2 flex flex-wrap gap-2">
-                            <button
-                              type="button"
-                              className="lms-btn-primary text-sm"
-                              onClick={() => {
-                                setKonfirmUlangId(null)
-                                mulaiBaru(k)
-                              }}
-                            >
-                              Ya, mulai dari awal
-                            </button>
-                            <button
-                              type="button"
-                              className="lms-btn-secondary text-sm"
-                              onClick={() => setKonfirmUlangId(null)}
-                            >
-                              Batal
-                            </button>
-                          </div>
-                        </div>
+                      {!sudahKirim && !adaProgresLokal && (
+                        <span className="sw-kat-badge sw-kat-badge--warn">Belum dikerjakan</span>
                       )}
-                    </li>
-                  )
-                })}
-              </ul>
-            </section>
-          ))}
-        </>
-      )}
+                    </div>
+
+                    <div className="sw-kat-card-actions">
+                      {!sudahKirim && (
+                        <button
+                          type="button"
+                          className="sw-btn-primary"
+                          onClick={() => (adaProgresLokal ? lanjutkan(k) : mulaiBaru(k))}
+                        >
+                          {adaProgresLokal ? 'Lanjutkan' : 'Mulai kerjakan'}
+                        </button>
+                      )}
+
+                      {sudahKirim && isLatihan && (
+                        <button
+                          type="button"
+                          className="sw-btn-primary"
+                          onClick={() => setKonfirmUlangId(k.id)}
+                        >
+                          Kerjakan lagi
+                        </button>
+                      )}
+
+                      {sudahKirim && !isLatihan && (
+                        <span className="self-center text-xs text-slate-500">
+                          Jawaban sudah dikirim
+                        </span>
+                      )}
+                    </div>
+
+                    {konfirmUlangId === k.id && (
+                      <div className="sw-kat-confirm">
+                        <p className="font-semibold text-slate-800">Mulai dari awal?</p>
+                        <p className="mt-1 text-xs text-slate-600">
+                          Jawaban lama tetap di riwayat. Percobaan baru ke-
+                          {(riwayat[0]?.percobaan ?? 0) + 1}.
+                        </p>
+                        <div className="sw-kat-confirm-actions">
+                          <button
+                            type="button"
+                            className="sw-btn-primary"
+                            onClick={() => {
+                              setKonfirmUlangId(null)
+                              mulaiBaru(k)
+                            }}
+                          >
+                            Ya, mulai
+                          </button>
+                          <button
+                            type="button"
+                            className="sw-btn-ghost"
+                            onClick={() => setKonfirmUlangId(null)}
+                          >
+                            Batal
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </li>
+                )
+              })}
+            </ul>
+          </section>
+        )
+      })}
     </div>
   )
 }

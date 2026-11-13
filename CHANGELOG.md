@@ -1,3 +1,11 @@
+## 2026-11-13 — UI katalog Kuis & Tugas siswa (polish)
+
+- Katalog Kuis dan Tugas siswa memakai bahasa visual yang sama: header + ringkasan angka, chip filter, section per mapel dengan bilah aksen warna mapel, grid kartu responsif, badge status, empty state berikon.
+- Kelas CSS baru `sw-kat-*` di `src/styles/siswa.css` (selaras materi/kartu beranda; target sentuh nyaman).
+- Kartu kuis: ikon, meta jenis/soal/durasi, catatan skor/draf, CTA jelas.
+- Kartu tugas: aksen mapel, tenggat relatif, badge status, hero detail + panel nilai/instruksi.
+- File: `src/pages/siswa/SiswaKuis.tsx`, `src/pages/siswa/SiswaTugas.tsx`, `src/styles/siswa.css`.
+
 ## 2026-11-13 — Siswa: kelompok mapel + filter status di Kuis & Tugas
 
 - **Kuis siswa** (`SiswaKuis`): daftar dikelompokkan per mata pelajaran; chip filter status (Semua / Belum dikerjakan / Sudah dikerjakan / Draf tersimpan) dan filter mapel bila lebih dari satu. Kartu & alur kerjakan/ulang tidak berubah.

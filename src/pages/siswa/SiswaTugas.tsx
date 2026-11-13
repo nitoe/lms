@@ -18,6 +18,7 @@ import {
   type TugasLms,
 } from '../../types/tugas'
 import type { NilaiTugasDok } from '../../lib/nilaiTugas'
+import SiswaIcon from './SiswaIcon'
 
 const FILTER_STATUS_LABEL: Record<StatusTugasSiswa | 'semua', string> = {
   semua: 'Semua',
@@ -52,7 +53,6 @@ export default function SiswaTugas() {
       const tugas = await daftarTugasAktifKelas(kelas)
       setList(tugas)
 
-      // Nilai milik siswa (rules: hanya milik sendiri)
       const qn = query(
         collection(db, 'lms_nilai_tugas'),
         where('siswaId', '==', siswaId),
@@ -75,7 +75,6 @@ export default function SiswaTugas() {
     void muat()
   }, [muat])
 
-  // Buka detail dari URL ?id=
   useEffect(() => {
     const id = params.get('id')
     if (!id || !list) return
@@ -154,6 +153,7 @@ export default function SiswaTugas() {
     const st = statusTugasSiswa(detail, nilai)
     const a = aksenMapel(detail.mapel)
     const jenis = (detail.jenisPenilaian ?? 'slm') as JenisPenilaianTugas
+    const tenggatTeks = formatTenggatRelatif(detail.tenggat)
     return (
       <div className="space-y-4">
         <section className="kelas-hero" style={{ background: a.cover }}>
@@ -184,36 +184,32 @@ export default function SiswaTugas() {
           </div>
         </section>
 
-        <div className="flex flex-wrap gap-2 text-xs">
+        <div className="sw-kat-detail-meta">
           <span
             className={
               st === 'dinilai'
-                ? 'rounded-full bg-emerald-50 px-2.5 py-1 font-medium text-emerald-800'
+                ? 'sw-kat-badge sw-kat-badge--ok'
                 : st === 'lewat'
-                  ? 'rounded-full bg-rose-50 px-2.5 py-1 font-medium text-rose-800'
-                  : 'rounded-full bg-amber-50 px-2.5 py-1 font-medium text-amber-800'
+                  ? 'sw-kat-badge sw-kat-badge--danger'
+                  : 'sw-kat-badge sw-kat-badge--warn'
             }
           >
             {st === 'dinilai' ? 'Sudah dinilai' : st === 'lewat' ? 'Lewat tenggat' : 'Belum dinilai'}
           </span>
-          {detail.tenggat != null && (
-            <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-slate-600">
-              Tenggat: {formatTenggatRelatif(detail.tenggat)}
-            </span>
-          )}
+          {tenggatTeks ? (
+            <span className="sw-kat-badge sw-kat-badge--info">Tenggat: {tenggatTeks}</span>
+          ) : null}
         </div>
 
         {nilai && typeof nilai.nilai === 'number' && (
-          <div className="rounded-xl border border-emerald-100 bg-emerald-50/80 p-4">
-            <div className="text-xs font-medium text-emerald-800/80">Nilai</div>
-            <div className="mt-0.5 text-3xl font-bold text-emerald-900">
+          <div className="sw-kat-nilai">
+            <div className="text-xs font-bold uppercase tracking-wide text-emerald-800/70">Nilai</div>
+            <div className="sw-kat-nilai-n">
               {Number.isInteger(nilai.nilai) ? nilai.nilai : nilai.nilai.toLocaleString('id-ID')}
-              <span className="text-base font-semibold text-emerald-700/70"> / 100</span>
+              <span> / 100</span>
             </div>
             {nilai.predikat && (
-              <div className="mt-1 text-sm font-semibold text-emerald-800">
-                Predikat {nilai.predikat}
-              </div>
+              <div className="mt-1 text-sm font-bold text-emerald-800">Predikat {nilai.predikat}</div>
             )}
             {nilai.komentar?.trim() && (
               <p className="mt-2 text-sm leading-relaxed text-emerald-900/90">{nilai.komentar}</p>
@@ -222,31 +218,34 @@ export default function SiswaTugas() {
         )}
 
         {detail.deskripsi?.trim() && (
-          <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-            <h2 className="text-sm font-bold text-slate-800">Deskripsi</h2>
-            <p className="mt-1.5 text-sm leading-relaxed text-slate-700 whitespace-pre-wrap">
+          <section className="sw-kat-panel">
+            <h2>Deskripsi</h2>
+            <p className="m-0 text-sm leading-relaxed text-slate-700 whitespace-pre-wrap">
               {detail.deskripsi}
             </p>
           </section>
         )}
 
         {teksPolos(detail.instruksi) ? (
-          <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-            <h2 className="text-sm font-bold text-slate-800">Instruksi</h2>
+          <section className="sw-kat-panel">
+            <h2>Instruksi</h2>
             <div
-              className="prose prose-sm mt-2 max-w-none text-slate-700"
+              className="prose prose-sm max-w-none text-slate-700"
               dangerouslySetInnerHTML={{ __html: bersihHtml(detail.instruksi) }}
             />
           </section>
         ) : null}
 
         {!detail.deskripsi?.trim() && !teksPolos(detail.instruksi) && (
-          <p className="text-sm text-slate-500">Belum ada deskripsi atau instruksi tambahan.</p>
+          <div className="sw-kat-empty">
+            <p className="sw-kat-empty-title">Belum ada deskripsi</p>
+            <p className="sw-kat-empty-desc">Tanyakan ke gurumu jika ada yang kurang jelas.</p>
+          </div>
         )}
 
-        <p className="text-xs leading-relaxed text-slate-500">
-          Pengumpulan tugas lewat aplikasi (unggah foto/file) akan segera tersedia. Untuk sementara,
-          ikuti petunjuk guru di kelas atau di instruksi di atas.
+        <p className="sw-kat-hint">
+          Pengumpulan lewat aplikasi (unggah foto/file) akan segera tersedia. Untuk sementara, ikuti
+          petunjuk guru di kelas atau di instruksi di atas.
         </p>
       </div>
     )
@@ -254,56 +253,72 @@ export default function SiswaTugas() {
 
   return (
     <div className="space-y-5">
-      <div className="flex flex-wrap items-center gap-2.5">
-        <h1 className="text-lg font-bold text-slate-900">Tugas</h1>
+      <div className="sw-kat-head">
+        <div>
+          <h1 className="sw-kat-title">Tugas</h1>
+          <p className="sw-kat-sub">Kerjakan & kumpulkan dari gurumu</p>
+        </div>
         {list && list.length > 0 && (
-          <span className="lms-count-pill">{list.length} tugas aktif</span>
+          <div className="sw-kat-stats" aria-label="Ringkasan tugas">
+            <div className="sw-kat-stat">
+              <span className="sw-kat-stat-n">{hitungStatus.semua}</span>
+              <span className="sw-kat-stat-l">Aktif</span>
+            </div>
+            <div className="sw-kat-stat">
+              <span className="sw-kat-stat-n">{hitungStatus.belum}</span>
+              <span className="sw-kat-stat-l">Belum</span>
+            </div>
+            <div className="sw-kat-stat">
+              <span className="sw-kat-stat-n">{hitungStatus.dinilai}</span>
+              <span className="sw-kat-stat-l">Dinilai</span>
+            </div>
+            {hitungStatus.lewat > 0 && (
+              <div className="sw-kat-stat">
+                <span className="sw-kat-stat-n">{hitungStatus.lewat}</span>
+                <span className="sw-kat-stat-l">Lewat</span>
+              </div>
+            )}
+          </div>
         )}
       </div>
 
       {error && <div className="text-sm text-red-600">{error}</div>}
       {list === null && <p className="text-slate-500">Memuat…</p>}
       {list?.length === 0 && (
-        <div className="lms-empty">
-          <p className="font-medium text-slate-700">Belum ada tugas aktif</p>
-          <p className="mt-1 text-sm text-muted">Tugas dari gurumu akan muncul di sini.</p>
+        <div className="sw-kat-empty">
+          <div className="sw-kat-card-icon bg-amber-50 text-amber-700" aria-hidden>
+            <SiswaIcon name="pencil" size={28} />
+          </div>
+          <p className="sw-kat-empty-title">Belum ada tugas aktif</p>
+          <p className="sw-kat-empty-desc">Tugas dari gurumu akan muncul di sini.</p>
         </div>
       )}
 
       {list && list.length > 0 && (
-        <>
-          <div className="flex flex-wrap gap-1.5" role="group" aria-label="Filter status tugas">
+        <div className="sw-kat-filters">
+          <div className="sw-kat-chip-row" role="group" aria-label="Filter status tugas">
             {(Object.keys(FILTER_STATUS_LABEL) as FilterStatus[]).map((key) => {
-              const aktif = filterStatus === key
-              const n = hitungStatus[key]
+              const on = filterStatus === key
               return (
                 <button
                   key={key}
                   type="button"
-                  className={
-                    aktif
-                      ? 'rounded-full bg-muh-700 px-3 py-1.5 text-xs font-semibold text-white'
-                      : 'rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 hover:border-muh-300'
-                  }
+                  className={`sw-kat-chip${on ? ' sw-kat-chip--on' : ''}`}
                   onClick={() => setFilterStatus(key)}
-                  aria-pressed={aktif}
+                  aria-pressed={on}
                 >
                   {FILTER_STATUS_LABEL[key]}
-                  <span className={aktif ? 'ml-1 opacity-80' : 'ml-1 text-slate-400'}>{n}</span>
+                  <span className="sw-kat-chip-n">{hitungStatus[key]}</span>
                 </button>
               )
             })}
           </div>
 
           {daftarMapel.length > 1 && (
-            <div className="flex flex-wrap gap-1.5" role="group" aria-label="Filter mata pelajaran">
+            <div className="sw-kat-chip-row" role="group" aria-label="Filter mata pelajaran">
               <button
                 type="button"
-                className={
-                  filterMapel === 'semua'
-                    ? 'rounded-full bg-slate-800 px-3 py-1.5 text-xs font-semibold text-white'
-                    : 'rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600'
-                }
+                className={`sw-kat-chip sw-kat-chip--mapel${filterMapel === 'semua' ? ' sw-kat-chip--on' : ''}`}
                 onClick={() => setFilterMapel('semua')}
               >
                 Semua mapel
@@ -312,11 +327,7 @@ export default function SiswaTugas() {
                 <button
                   key={m}
                   type="button"
-                  className={
-                    filterMapel === m
-                      ? 'rounded-full bg-slate-800 px-3 py-1.5 text-xs font-semibold text-white'
-                      : 'rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600'
-                  }
+                  className={`sw-kat-chip sw-kat-chip--mapel${filterMapel === m ? ' sw-kat-chip--on' : ''}`}
                   onClick={() => setFilterMapel(m)}
                 >
                   {m}
@@ -324,63 +335,93 @@ export default function SiswaTugas() {
               ))}
             </div>
           )}
-
-          {terfilter.length === 0 && (
-            <p className="text-sm text-slate-500">Tidak ada tugas untuk filter ini.</p>
-          )}
-
-          {perMapel.map((grup) => (
-            <section key={grup.mapel} className="space-y-3">
-              <h2 className="flex items-center gap-2 text-sm font-bold text-slate-800">
-                <span className="inline-block h-2 w-2 rounded-full bg-amber-500" aria-hidden />
-                {grup.mapel}
-                <span className="text-xs font-medium text-slate-400">{grup.items.length}</span>
-              </h2>
-              <ul className="space-y-3">
-                {grup.items.map(({ tugas: t, status: st, nilai }) => {
-                  const jenis = (t.jenisPenilaian ?? 'slm') as JenisPenilaianTugas
-                  const tenggatTeks = formatTenggatRelatif(t.tenggat)
-                  return (
-                    <li key={t.id}>
-                      <button
-                        type="button"
-                        className="w-full rounded-xl border border-slate-200 bg-white p-4 text-left shadow-sm transition hover:border-muh-300 sm:p-5"
-                        onClick={() => bukaDetail(t)}
-                      >
-                        <div className="font-semibold text-slate-800">{t.judul}</div>
-                        <div className="mt-1 text-xs text-slate-500">
-                          {NAMA_JENIS_PENILAIAN_TUGAS_SISWA[jenis]}
-                          {t.jenis === 'proyek' ? ' · Proyek' : ''}
-                          {tenggatTeks ? ` · ${tenggatTeks}` : ''}
-                        </div>
-                        <div className="mt-2 flex flex-wrap gap-1.5">
-                          <span
-                            className={
-                              st === 'dinilai'
-                                ? 'rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-800'
-                                : st === 'lewat'
-                                  ? 'rounded-full bg-rose-50 px-2 py-0.5 text-[11px] font-medium text-rose-800'
-                                  : 'rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-800'
-                            }
-                          >
-                            {st === 'dinilai'
-                              ? nilai && typeof nilai.nilai === 'number'
-                                ? `Nilai ${nilai.nilai}`
-                                : 'Sudah dinilai'
-                              : st === 'lewat'
-                                ? 'Lewat tenggat'
-                                : 'Belum dinilai'}
-                          </span>
-                        </div>
-                      </button>
-                    </li>
-                  )
-                })}
-              </ul>
-            </section>
-          ))}
-        </>
+        </div>
       )}
+
+      {list && list.length > 0 && terfilter.length === 0 && (
+        <div className="sw-kat-empty">
+          <p className="sw-kat-empty-title">Tidak ada tugas untuk filter ini</p>
+          <p className="sw-kat-empty-desc">Coba pilih status atau mapel lain.</p>
+        </div>
+      )}
+
+      {perMapel.map((grup) => {
+        const a = aksenMapel(grup.mapel)
+        return (
+          <section key={grup.mapel} className="sw-kat-section">
+            <div className="sw-kat-section-head">
+              <span className="sw-kat-section-bar" style={{ background: a.bar }} aria-hidden />
+              <h2 className="sw-kat-section-title">{grup.mapel}</h2>
+              <span className="sw-kat-section-count">{grup.items.length}</span>
+            </div>
+            <ul className="sw-kat-grid">
+              {grup.items.map(({ tugas: t, status: st, nilai }) => {
+                const jenis = (t.jenisPenilaian ?? 'slm') as JenisPenilaianTugas
+                const tenggatTeks = formatTenggatRelatif(t.tenggat)
+                const am = aksenMapel(t.mapel || grup.mapel)
+                return (
+                  <li key={t.id}>
+                    <button type="button" className="sw-kat-card" onClick={() => bukaDetail(t)}>
+                      <span className="sw-kat-card-accent" style={{ background: am.bar }} aria-hidden />
+                      <div className="sw-kat-card-top">
+                        <div className="min-w-0 flex-1">
+                          <h3 className="sw-kat-card-title">{t.judul}</h3>
+                          <div className="sw-kat-card-meta">
+                            <span>{NAMA_JENIS_PENILAIAN_TUGAS_SISWA[jenis]}</span>
+                            {t.jenis === 'proyek' && (
+                              <>
+                                <span className="sw-kat-card-meta-dot" aria-hidden />
+                                <span>Proyek</span>
+                              </>
+                            )}
+                            {tenggatTeks ? (
+                              <>
+                                <span className="sw-kat-card-meta-dot" aria-hidden />
+                                <span>{tenggatTeks}</span>
+                              </>
+                            ) : null}
+                          </div>
+                        </div>
+                        <div
+                          className="sw-kat-card-icon"
+                          style={{ background: am.soft, color: am.bar }}
+                          aria-hidden
+                        >
+                          <SiswaIcon name="pencil" size={22} />
+                        </div>
+                      </div>
+                      <div className="sw-kat-card-body">
+                        <span
+                          className={
+                            st === 'dinilai'
+                              ? 'sw-kat-badge sw-kat-badge--ok'
+                              : st === 'lewat'
+                                ? 'sw-kat-badge sw-kat-badge--danger'
+                                : 'sw-kat-badge sw-kat-badge--warn'
+                          }
+                        >
+                          {st === 'dinilai'
+                            ? nilai && typeof nilai.nilai === 'number'
+                              ? `Nilai ${nilai.nilai}`
+                              : 'Sudah dinilai'
+                            : st === 'lewat'
+                              ? 'Lewat tenggat'
+                              : 'Belum dinilai'}
+                        </span>
+                      </div>
+                      <div className="sw-kat-card-actions">
+                        <span className="sw-btn-primary" style={{ pointerEvents: 'none' }}>
+                          Lihat detail
+                        </span>
+                      </div>
+                    </button>
+                  </li>
+                )
+              })}
+            </ul>
+          </section>
+        )
+      })}
     </div>
   )
 }
