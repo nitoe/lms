@@ -242,28 +242,6 @@ export function agregatSebaran(list: (SebaranMapelTka | null | undefined)[]): Ag
   }
 }
 
-/**
- * Pada Bahasa Indonesia, kompleksitas (L1–L3) dan tipe materi adalah pembagian soal yang SAMA
- * (L1=Tekstual, L2=Inferensial, L3=Evaluasi). Fungsi ini memasangkan baris yang identik
- * (poin & maks sama) agar UI menampilkannya sebagai satu tabel, bukan dua tabel kembar.
- * @returns null bila bukan pembagian yang sama (mis. Matematika) atau pemasangan ambigu.
- */
-export function pasangkanDimensiSama<T extends { poin: number; maks: number }>(
-  kompleksitas: T[],
-  materi: T[],
-): { kompleksitas: T; materi: T }[] | null {
-  if (!kompleksitas.length || kompleksitas.length !== materi.length) return null
-  const sisa = [...materi]
-  const out: { kompleksitas: T; materi: T }[] = []
-  for (const k of kompleksitas) {
-    const cocok = sisa.filter((m) => m.poin === k.poin && m.maks === k.maks)
-    if (cocok.length !== 1) return null
-    out.push({ kompleksitas: k, materi: cocok[0] })
-    sisa.splice(sisa.indexOf(cocok[0]), 1)
-  }
-  return out
-}
-
 /* ---------------------------------------------------------------- distribusi nilai */
 
 export type BinNilai = { label: string; dari: number; sampai: number; jumlah: number }
@@ -492,34 +470,23 @@ export type KolomSebaran = {
   dim: DimensiSebaran
   key: string
   judul: string
-  /** Padanan tipe materi bila kompleksitas dan materi adalah pembagian yang sama (BI). */
+  /** Keterangan tambahan di bawah judul kolom (opsional). */
   sub?: string
 }
 
 /**
  * Daftar kolom kompetensi untuk tabel per siswa / ekspor, dari agregat kelas.
- * Kompleksitas dan tipe materi yang identik (Bahasa Indonesia) digabung menjadi satu kolom.
+ * Urutan: kompetensi dasar (L1–L3), lalu kompetensi materi (tipe materi atau domain IPA).
+ * Dua daftar SELALU terpisah — termasuk Bahasa Indonesia, walau nilainya kebetulan sama
+ * (ANTIREGRESI §123). Jangan menggabung/memasangkan keduanya.
  */
 export function kolomDariAgregat(ag: AgregatSebaran): KolomSebaran[] {
   const out: KolomSebaran[] = []
-  const pasangan = pasangkanDimensiSama(ag.kompleksitas, ag.materi)
-  if (pasangan) {
-    for (const p of pasangan) {
-      out.push({
-        id: `kompleksitas:${p.kompleksitas.key}`,
-        dim: 'kompleksitas',
-        key: p.kompleksitas.key,
-        judul: p.kompleksitas.nama,
-        sub: p.materi.nama,
-      })
-    }
-  } else {
-    for (const r of ag.kompleksitas) {
-      out.push({ id: `kompleksitas:${r.key}`, dim: 'kompleksitas', key: r.key, judul: r.nama })
-    }
-    for (const r of ag.materi) {
-      out.push({ id: `materi:${r.key}`, dim: 'materi', key: r.key, judul: r.nama })
-    }
+  for (const r of ag.kompleksitas) {
+    out.push({ id: `kompleksitas:${r.key}`, dim: 'kompleksitas', key: r.key, judul: r.nama })
+  }
+  for (const r of ag.materi) {
+    out.push({ id: `materi:${r.key}`, dim: 'materi', key: r.key, judul: r.nama })
   }
   for (const r of ag.domain) {
     out.push({ id: `domain:${r.key}`, dim: 'domain', key: r.key, judul: r.nama })

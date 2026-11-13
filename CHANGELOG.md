@@ -1,3 +1,10 @@
+## 2026-11-13 — Perbaikan: sebaran BI tidak lagi ganda; kompetensi dasar & materi dua daftar terpisah
+
+- **Bug:** pada tab Bahasa Indonesia, tabel «berpasangan» (L1 ↔ Pemahaman Tekstual, dst.) tampil bersama tabel kompleksitas biasa, sehingga L1–L3 muncul **dua kali**.
+- Kini **kompetensi dasar** (L1 Pemahaman, L2 Aplikasi, L3 Penalaran) dan **kompetensi materi** (BI: Pemahaman Tekstual, Pemahaman Inferensial, Evaluasi dan Apresiasi) selalu **dua tabel terpisah**, untuk semua mapel (MTK: L1–L2 + Bilangan / Geometri dan Pengukuran / Data; IPA: L1–L3 + Pengetahuan IPA / Keterampilan Proses Sains). Berlaku juga di tabel per siswa (header «Kompetensi dasar» / «Kompetensi materi»), laporan hasil kuis, dan ekspor Excel/CSV.
+- Fungsi `pasangkanDimensiSama` dihapus; `kolomDariAgregat` tidak lagi menggabung kolom.
+- File: `src/lib/sebaranTka.ts`, `src/pages/tka/TkaRekapMapel.tsx`.
+
 ## 2026-11-13 — Laporan hasil kuis TKA: kolom kompetensi per siswa (L1–L3, materi)
 
 - Tab **Hasil** kuis TKA («Laporan hasil TKA») sebelumnya hanya punya kolom domain IPA (Pengetahuan / Keterampilan Proses), sehingga **Bahasa Indonesia dan Matematika tidak menampilkan L1–L3 maupun kompetensi materi**, dan Nilai Akhir-nya kosong (tidak ada domain).

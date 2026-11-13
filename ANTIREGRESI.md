@@ -1,3 +1,11 @@
+## §123. Kompetensi dasar & materi: dua daftar terpisah
+
+123.1 Kompetensi dasar (L1–L3) dan kompetensi materi (BI/MTK: tipe materi; IPA: domain) SELALU ditampilkan sebagai **dua daftar/tabel/kolom terpisah**. Pada Bahasa Indonesia nilainya kebetulan identik (L1=Tekstual, L2=Inferensial, L3=Evaluasi), tetapi JANGAN digabung, dipasangkan, atau dideduplikasi.
+
+123.2 Aturan §109.5 («BI: satu tabel berpasangan», `pasangkanDimensiSama`) **dicabut** — penyebab data tampil ganda (pasangan + kompleksitas) di tab BI. `kolomDariAgregat` adalah satu-satunya sumber kolom (rekap, laporan hasil kuis, ekspor); jangan menambah logika penggabungan di UI.
+
+123.3 Input manual BI tetap hanya meminta poin L1–L3; tipe materi diturunkan saat menyimpan (`bangunSebaranManual`), sehingga data tersimpan memuat kedua daftar.
+
 ## §122. Laporan hasil kuis TKA: kolom kompetensi
 
 122.1 «Laporan hasil TKA» (HasilKuisPanel) harus menampilkan kompetensi dari **jawaban kuis itu** lewat `hitungSebaranDariJawaban` + `kolomDariAgregat` (berbobot poin). Jangan kembali ke kolom domain saja — domain hanya terisi untuk IPA, sehingga BI/MTK menjadi kosong.

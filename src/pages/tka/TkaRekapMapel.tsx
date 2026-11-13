@@ -12,9 +12,8 @@ import {
   NAMA_DIMENSI,
   agregatSebaran,
   kompetensiTerlemah,
-  pasangkanDimensiSama,
+  kolomDariAgregat,
   type AgregatSebaran,
-  type BarisAgregat,
   type DimensiSebaran,
 } from '../../lib/sebaranTka'
 import { LABEL_MAPEL_TKA, type MapelTkaNama } from '../../lib/tkaAkses'
@@ -120,64 +119,40 @@ export default function TkaRekapMapel({
   const nNilai = dasar?.nilai.length ?? 0
   const nSebaran = dasar?.agregat.n ?? 0
 
-  // Dimensi yang punya data pada cakupan saat ini; BI: kompleksitas & materi dipasangkan.
-  const tampilDimensi = useMemo(() => {
-    const ag = dasar?.agregat
-    if (!ag) return { pasangan: null as null | { kompleksitas: BarisAgregat; materi: BarisAgregat }[], dims: [] as DimensiSebaran[] }
-    const pasangan = pasangkanDimensiSama(ag.kompleksitas, ag.materi)
-    const dims: DimensiSebaran[] = []
-    if (ag.kompleksitas.length) dims.push('kompleksitas')
-    if (ag.materi.length && !pasangan) dims.push('materi')
-    if (ag.domain.length) dims.push('domain')
-    return { pasangan, dims }
-  }, [dasar])
-
-  const kolom = useMemo<Kolom[]>(() => {
+  // Dimensi yang punya data pada cakupan saat ini. Kompetensi dasar (L1–L3) dan kompetensi
+  // materi SELALU tabel terpisah, termasuk Bahasa Indonesia (ANTIREGRESI §123).
+  const dimensiTampil = useMemo<DimensiSebaran[]>(() => {
     const ag = dasar?.agregat
     if (!ag) return []
-    const out: Kolom[] = []
-    if (tampilDimensi.pasangan) {
-      for (const p of tampilDimensi.pasangan) {
-        out.push({
-          id: `kompleksitas:${p.kompleksitas.key}`,
-          judul: p.kompleksitas.nama,
-          sub: p.materi.nama,
-          dim: 'kompleksitas',
-          key: p.kompleksitas.key,
-        })
-      }
-    } else {
-      for (const r of ag.kompleksitas) {
-        out.push({ id: `kompleksitas:${r.key}`, judul: r.nama, dim: 'kompleksitas', key: r.key })
-      }
-      for (const r of ag.materi) {
-        out.push({ id: `materi:${r.key}`, judul: r.nama, dim: 'materi', key: r.key })
-      }
-    }
-    for (const r of ag.domain) {
-      out.push({ id: `domain:${r.key}`, judul: r.nama, dim: 'domain', key: r.key })
-    }
-    return out
-  }, [dasar, tampilDimensi])
+    const dims: DimensiSebaran[] = []
+    if (ag.kompleksitas.length) dims.push('kompleksitas')
+    if (ag.materi.length) dims.push('materi')
+    if (ag.domain.length) dims.push('domain')
+    return dims
+  }, [dasar])
+
+  const kolom = useMemo<Kolom[]>(
+    () => (dasar ? kolomDariAgregat(dasar.agregat) : []),
+    [dasar],
+  )
 
   // Kelompok header: kompetensi dasar (L1–L3) dan kompetensi materi (tipe materi / domain IPA).
   const kelompokKolom = useMemo(() => {
     const out: { id: string; label: string; jumlah: number }[] = []
     for (const c of kolom) {
-      const label = tampilDimensi.pasangan
-        ? 'Kompetensi dasar · materi'
-        : c.dim === 'kompleksitas'
-          ? 'Kompetensi dasar (L1–L3)'
+      const label =
+        c.dim === 'kompleksitas'
+          ? 'Kompetensi dasar'
           : c.dim === 'domain'
             ? 'Kompetensi materi (Pengetahuan IPA & Keterampilan Proses Sains)'
             : 'Kompetensi materi'
-      const id = tampilDimensi.pasangan ? 'pasangan' : c.dim === 'domain' ? 'materi-ipa' : c.dim
+      const id = c.dim === 'domain' ? 'materi-ipa' : c.dim
       const last = out[out.length - 1]
       if (last && last.id === id) last.jumlah += 1
       else out.push({ id, label, jumlah: 1 })
     }
     return out
-  }, [kolom, tampilDimensi.pasangan])
+  }, [kolom])
 
   async function simpan(row: BarisRekapTka, nilai: number | null) {
     const sel = row.perMapel[mapel]
@@ -229,25 +204,12 @@ export default function TkaRekapMapel({
   const sumberKuis = kuis.length ? kuis.map((k) => k.judul).join(', ') : null
   const adaNilaiManual = rowsTabel.some((r) => r.perMapel[mapel]?.sumber === 'manual')
 
-  // Tabel sebaran satu dimensi (atau pasangan kompleksitas↔materi pada BI). Fungsi biasa, bukan komponen.
-  function tabelDimensi(dim: DimensiSebaran | 'pasangan') {
+  // Tabel sebaran satu dimensi. Fungsi biasa, bukan komponen.
+  function tabelDimensi(dim: DimensiSebaran) {
     if (!dasar) return null
     const ag = dasar.agregat
-    let baseRows: { nama: string; sub?: string; key: string; dimLookup: DimensiSebaran; agg: BarisAgregat }[]
-    let judul: string
-    if (dim === 'pasangan') {
-      judul = `${NAMA_DIMENSI.kompleksitas} · ${NAMA_DIMENSI.materi}`
-      baseRows = (tampilDimensi.pasangan ?? []).map((p) => ({
-        nama: p.kompleksitas.nama,
-        sub: p.materi.nama,
-        key: p.kompleksitas.key,
-        dimLookup: 'kompleksitas' as const,
-        agg: p.kompleksitas,
-      }))
-    } else {
-      judul = NAMA_DIMENSI[dim]
-      baseRows = ag[dim].map((r) => ({ nama: r.nama, key: r.key, dimLookup: dim, agg: r }))
-    }
+    const judul = NAMA_DIMENSI[dim]
+    const baseRows = ag[dim].map((r) => ({ nama: r.nama, key: r.key, dimLookup: dim, agg: r }))
     if (baseRows.length === 0) return null
     return (
       <div className="tka-rekap-table-wrap">
@@ -271,7 +233,6 @@ export default function TkaRekapMapel({
               <tr key={`${dim}:${r.key}`}>
                 <td className="tka-rekap-nama">
                   {r.nama}
-                  {r.sub ? <span className="tka-sb-sub">{r.sub}</span> : null}
                 </td>
                 {scopes.map((s) => {
                   const a = s.agregat[r.dimLookup].find((x) => x.key === r.key)
@@ -520,12 +481,8 @@ export default function TkaRekapMapel({
           <p className="text-xs text-slate-500">
             Capaian = gabungan poin diperoleh ÷ poin maksimum (berbobot poin) pada tiap kompetensi.
             Kolom kanan: banyak siswa menurut capaian (rendah / sedang / tuntas).
-            {tampilDimensi.pasangan
-              ? ' Pada Bahasa Indonesia, tingkat kompleksitas dan tipe materi adalah pembagian soal yang sama, sehingga ditampilkan dalam satu tabel.'
-              : ''}
           </p>
-          {tampilDimensi.pasangan ? <div key="pasangan">{tabelDimensi('pasangan')}</div> : null}
-          {tampilDimensi.dims.map((d) => (
+          {dimensiTampil.map((d) => (
             <div key={d}>{tabelDimensi(d)}</div>
           ))}
         </section>
