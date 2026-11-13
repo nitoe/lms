@@ -3,7 +3,6 @@ import {
   collection,
   deleteDoc,
   doc,
-  getDoc,
   getDocs,
   orderBy,
   query,
@@ -18,18 +17,9 @@ import {
   uploadBytes,
 } from 'firebase/storage'
 import { auth, db, storage } from './firebase'
-import type {
-  JenisMateri,
-  MateriBlok,
-  MateriHalaman,
-  MateriLms,
-} from '../types/materi'
-import {
-  BATAS_BLOK_PER_HALAMAN,
-  BATAS_HALAMAN_PER_MATERI,
-  BATAS_UKURAN,
-} from '../types/materi'
-import { bersihHtmlMateri, htmlKosong } from './html'
+import type { JenisMateri, MateriLms } from '../types/materi'
+import { BATAS_UKURAN } from '../types/materi'
+import { hapusIsiMateri } from './materiHalaman'
 
 function koleksi() {
   return collection(db, 'lms_materi')
@@ -57,12 +47,6 @@ export async function daftarMateri(kelas: string, mapel: string): Promise<Materi
     list.sort((a, b) => (a.urutan ?? 0) - (b.urutan ?? 0))
     return list
   }
-}
-
-export async function ambilMateri(id: string): Promise<MateriLms | null> {
-  const snap = await getDoc(doc(db, 'lms_materi', id))
-  if (!snap.exists()) return null
-  return { id: snap.id, ...snap.data() } as MateriLms
 }
 
 export function ekstrakYoutubeId(url: string): string | null {
@@ -93,15 +77,9 @@ function jenisDariFile(file: File): JenisMateri {
   throw new Error('Jenis file tidak didukung. Gunakan PDF, gambar, atau video.')
 }
 
-function cekUkuran(file: File, jenis: JenisMateri | 'gambarHalaman') {
+function cekUkuran(file: File, jenis: JenisMateri) {
   const batas =
-    jenis === 'video'
-      ? BATAS_UKURAN.video
-      : jenis === 'pdf'
-        ? BATAS_UKURAN.pdf
-        : jenis === 'gambarHalaman'
-          ? BATAS_UKURAN.gambarHalaman
-          : BATAS_UKURAN.gambar
+    jenis === 'video' ? BATAS_UKURAN.video : jenis === 'pdf' ? BATAS_UKURAN.pdf : BATAS_UKURAN.gambar
   if (file.size > batas) {
     const mb = Math.round(batas / (1024 * 1024))
     throw new Error(`Ukuran file melebihi batas ${mb} MB.`)
@@ -163,6 +141,7 @@ export async function tambahMateri(input: MateriBaruInput): Promise<string> {
     jenis = 'tautan'
     url = input.url.trim()
     try {
+      // validasi kasar
       new URL(url)
     } catch {
       throw new Error('URL tidak valid.')
@@ -199,247 +178,18 @@ export async function tambahMateri(input: MateriBaruInput): Promise<string> {
   return refDoc.id
 }
 
-/** Buat id stabil untuk halaman / blok (cukup unik di klien). */
-export function idBaru(prefix = 'h'): string {
-  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
-    return `${prefix}_${crypto.randomUUID().slice(0, 8)}`
-  }
-  return `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`
-}
-
-export function halamanKosong(urutan = 0): MateriHalaman {
-  return {
-    id: idBaru('h'),
-    judul: '',
-    urutan,
-    blok: [{ id: idBaru('b'), tipe: 'teks', html: '' }],
-  }
-}
-
-function normalisasiHalaman(list: MateriHalaman[] | undefined): MateriHalaman[] {
-  if (!Array.isArray(list) || list.length === 0) {
-    return [halamanKosong(0)]
-  }
-  if (list.length > BATAS_HALAMAN_PER_MATERI) {
-    throw new Error(`Maksimal ${BATAS_HALAMAN_PER_MATERI} halaman per materi.`)
-  }
-  return list.map((h, i) => {
-    const blok = Array.isArray(h.blok) ? h.blok : []
-    if (blok.length > BATAS_BLOK_PER_HALAMAN) {
-      throw new Error(`Maksimal ${BATAS_BLOK_PER_HALAMAN} blok per halaman.`)
-    }
-    const bersih: MateriBlok[] = []
-    for (const b of blok) {
-      if (!b || typeof b !== 'object') continue
-      if (b.tipe === 'teks') {
-        const html = bersihHtmlMateri(b.html)
-        if (htmlKosong(html) && blok.length > 1) continue
-        bersih.push({ id: b.id || idBaru('b'), tipe: 'teks', html })
-      } else if (b.tipe === 'gambar') {
-        const url = typeof b.url === 'string' ? b.url.trim() : ''
-        const petunjuk =
-          typeof b.petunjukGambar === 'string' ? b.petunjukGambar.trim().slice(0, 2000) : ''
-        if (!url && !petunjuk) continue
-        const item: MateriBlok = {
-          id: b.id || idBaru('b'),
-          tipe: 'gambar',
-          url: url || '',
-          storagePath: b.storagePath,
-          alt: b.alt?.trim() || undefined,
-          caption: b.caption?.trim() || undefined,
-        }
-        if (petunjuk) item.petunjukGambar = petunjuk
-        bersih.push(item)
-      }
-    }
-    if (bersih.length === 0) {
-      bersih.push({ id: idBaru('b'), tipe: 'teks', html: '' })
-    }
-    return {
-      id: h.id || idBaru('h'),
-      judul: (h.judul || '').trim().slice(0, 80) || undefined,
-      urutan: typeof h.urutan === 'number' ? h.urutan : i,
-      blok: bersih,
-    }
-  })
-}
-
-function kumpulkanStoragePath(halaman: MateriHalaman[]): string[] {
-  const out: string[] = []
-  for (const h of halaman) {
-    for (const b of h.blok) {
-      if (b.tipe === 'gambar' && b.storagePath) out.push(b.storagePath)
-    }
-  }
-  return out
-}
-
-export type MateriHalamanInput = {
-  kelas: string
-  mapel: string
-  judul: string
-  deskripsi?: string
-  bab?: string
-  tpId?: string
-  tpNomor?: number
-  tpNama?: string
-  urutan?: number
-  namaGuru?: string
-  halaman: MateriHalaman[]
-}
-
-/** Buat materi jenis halaman (konten multi-halaman). */
-export async function tambahMateriHalaman(input: MateriHalamanInput): Promise<string> {
-  const uid = auth.currentUser?.uid
-  if (!uid) throw new Error('Anda harus masuk terlebih dahulu.')
-
-  const kelas = String(input.kelas).toUpperCase()
-  const mapel = input.mapel.trim()
-  const judul = input.judul.trim()
-  if (!judul) throw new Error('Judul wajib diisi.')
-  if (!input.tpId) throw new Error('Tujuan Pembelajaran wajib dipilih.')
-
-  const halaman = normalisasiHalaman(input.halaman)
-
-  const payload: Record<string, unknown> = {
-    kelas,
-    mapel,
-    judul,
-    jenis: 'halaman' as JenisMateri,
-    halaman,
-    urutan: typeof input.urutan === 'number' ? input.urutan : Date.now(),
-    dibuatOleh: uid,
-    dibuatOlehNama: input.namaGuru || '',
-    tpId: input.tpId,
-    createdAt: serverTimestamp(),
-    updatedAt: serverTimestamp(),
-  }
-  if (input.deskripsi?.trim()) payload.deskripsi = input.deskripsi.trim()
-  if (input.bab?.trim()) payload.bab = input.bab.trim()
-  if (typeof input.tpNomor === 'number') payload.tpNomor = input.tpNomor
-  if (input.tpNama) payload.tpNama = input.tpNama
-
-  const refDoc = await addDoc(koleksi(), payload)
-  return refDoc.id
-}
-
-/** Perbarui metadata + halaman materi jenis halaman. */
-export async function simpanMateriHalaman(
-  id: string,
-  input: Omit<MateriHalamanInput, 'kelas' | 'mapel' | 'namaGuru'> & {
-    kelas?: string
-    mapel?: string
-  },
-): Promise<void> {
-  const uid = auth.currentUser?.uid
-  if (!uid) throw new Error('Anda harus masuk terlebih dahulu.')
-
-  const judul = input.judul.trim()
-  if (!judul) throw new Error('Judul wajib diisi.')
-  if (!input.tpId) throw new Error('Tujuan Pembelajaran wajib dipilih.')
-
-  const halaman = normalisasiHalaman(input.halaman)
-
-  const payload: Record<string, unknown> = {
-    judul,
-    jenis: 'halaman',
-    halaman,
-    tpId: input.tpId,
-    updatedAt: serverTimestamp(),
-  }
-  if (input.deskripsi?.trim()) payload.deskripsi = input.deskripsi.trim()
-  else payload.deskripsi = null
-  if (input.bab?.trim()) payload.bab = input.bab.trim()
-  else payload.bab = null
-  if (typeof input.tpNomor === 'number') payload.tpNomor = input.tpNomor
-  if (input.tpNama) payload.tpNama = input.tpNama
-
-  await updateDoc(doc(db, 'lms_materi', id), payload)
-}
-
-/** Unggah gambar untuk blok halaman. Mengembalikan url + storagePath. */
-export async function unggahGambarHalaman(
-  kelas: string,
-  file: File,
-): Promise<{ url: string; storagePath: string }> {
-  if (!file.type.startsWith('image/')) {
-    throw new Error('Hanya file gambar yang diizinkan.')
-  }
-  cekUkuran(file, 'gambarHalaman')
-  const uid = auth.currentUser?.uid
-  if (!uid) throw new Error('Anda harus masuk terlebih dahulu.')
-
-  const k = String(kelas).toUpperCase()
-  const aman = file.name.replace(/[^\w.\-()+ ]/g, '_').slice(0, 80)
-  const stamp = Date.now()
-  const storagePath = `lms/materi/${k}/halaman_${stamp}_${aman}`
-  const r = ref(storage, storagePath)
-  await uploadBytes(r, file, { contentType: file.type })
-  const url = await getDownloadURL(r)
-  return { url, storagePath }
-}
-
-/** Unggah data URL (hasil generate AI) ke Storage materi halaman. */
-export async function unggahDataUrlHalaman(
-  kelas: string,
-  dataUrl: string,
-  namaFile = 'ilustrasi-ai.webp',
-): Promise<{ url: string; storagePath: string }> {
-  if (!dataUrl.startsWith('data:image/')) {
-    throw new Error('Data gambar AI tidak valid.')
-  }
-  const uid = auth.currentUser?.uid
-  if (!uid) throw new Error('Anda harus masuk terlebih dahulu.')
-
-  const res = await fetch(dataUrl)
-  const blob = await res.blob()
-  if (blob.size > BATAS_UKURAN.gambarHalaman) {
-    throw new Error('Gambar AI terlalu besar setelah generate.')
-  }
-  const k = String(kelas).toUpperCase()
-  const aman = namaFile.replace(/[^\w.\-()+ ]/g, '_').slice(0, 80)
-  const stamp = Date.now()
-  const storagePath = `lms/materi/${k}/halaman_${stamp}_${aman}`
-  const r = ref(storage, storagePath)
-  const contentType = blob.type || 'image/webp'
-  await uploadBytes(r, blob, { contentType })
-  const url = await getDownloadURL(r)
-  return { url, storagePath }
-}
-
-async function hapusStoragePaths(paths: string[]) {
-  await Promise.all(
-    paths.map(async (p) => {
-      try {
-        await deleteObject(ref(storage, p))
-      } catch {
-        /* file mungkin sudah hilang */
-      }
-    }),
-  )
-}
-
 export async function hapusMateri(m: MateriLms): Promise<void> {
-  const paths: string[] = []
-  if (m.storagePath) paths.push(m.storagePath)
-  if (m.jenis === 'halaman' && Array.isArray(m.halaman)) {
-    paths.push(...kumpulkanStoragePath(m.halaman))
+  if (m.jenis === 'halaman') await hapusIsiMateri(m.id)
+  if (m.storagePath) {
+    try {
+      await deleteObject(ref(storage, m.storagePath))
+    } catch {
+      /* file mungkin sudah hilang */
+    }
   }
-  if (paths.length) await hapusStoragePaths(paths)
   await deleteDoc(doc(db, 'lms_materi', m.id))
 }
 
 export async function ubahUrutan(id: string, urutan: number): Promise<void> {
   await updateDoc(doc(db, 'lms_materi', id), { urutan, updatedAt: serverTimestamp() })
-}
-
-/** Hapus file Storage yang tidak lagi dipakai setelah edit (best-effort). */
-export async function bersihkanGambarYatim(
-  sebelumnya: MateriHalaman[] | undefined,
-  sesudah: MateriHalaman[],
-): Promise<void> {
-  const sebelum = new Set(kumpulkanStoragePath(sebelumnya || []))
-  const tetap = new Set(kumpulkanStoragePath(sesudah))
-  const yatim = [...sebelum].filter((p) => !tetap.has(p))
-  if (yatim.length) await hapusStoragePaths(yatim)
 }

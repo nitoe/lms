@@ -1,18 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { useSiswa } from '../../context/SiswaContext'
 import JenisIcon from '../../components/JenisIcon'
-import MateriHalamanViewer from '../../components/materi/MateriHalamanViewer'
 import { daftarMateriKelas, pesanGagalMuatMateri } from '../../lib/materiSiswa'
-import {
-  formatUkuran,
-  jumlahHalaman,
-  kelompokkanMateri,
-  labelJenis,
-  toneJenis,
-} from '../../lib/materiUi'
+import { formatUkuran, kelompokkanMateri, labelJenis, toneJenis } from '../../lib/materiUi'
 import { aksenMapel, inisialMapel } from '../../lib/uiAksen'
 import type { MateriLms } from '../../types/materi'
+import '../../styles/materi.css'
 
 type Muat =
   | { status: 'loading' }
@@ -23,7 +17,7 @@ type PerMapel = { mapel: string; items: MateriLms[] }
 
 /**
  * Materi untuk siswa: pilih pelajaran (kartu bercover) → lihat materi per TP.
- * Materi jenis `halaman` dibuka inline dengan navigasi halaman.
+ * Pelajaran yang tampil = mapel yang sudah punya materi di kelas siswa.
  * Pilihan pelajaran disimpan di URL (`?mapel=`) agar tombol «kembali» HP berfungsi.
  */
 export default function SiswaMateri() {
@@ -32,7 +26,6 @@ export default function SiswaMateri() {
   const [params, setParams] = useSearchParams()
   const [muat, setMuat] = useState<Muat>({ status: 'loading' })
   const [percobaan, setPercobaan] = useState(0)
-  const [baca, setBaca] = useState<MateriLms | null>(null)
 
   useEffect(() => {
     if (!kelas) return
@@ -65,16 +58,6 @@ export default function SiswaMateri() {
   function cobaLagi() {
     setMuat({ status: 'loading' })
     setPercobaan((n) => n + 1)
-  }
-
-  if (baca) {
-    return (
-      <MateriHalamanViewer
-        materi={baca}
-        mode="siswa"
-        onTutup={() => setBaca(null)}
-      />
-    )
   }
 
   if (muat.status === 'loading') {
@@ -149,19 +132,21 @@ export default function SiswaMateri() {
                     {m.deskripsi && <p className="sw-materi-desc">{m.deskripsi}</p>}
                     <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-muted">
                       <span className="materi-jenis-chip">{labelJenis(m.jenis)}</span>
-                      {m.jenis === 'halaman' && <span>{jumlahHalaman(m)} halaman</span>}
                       {m.ukuran ? <span>{formatUkuran(m.ukuran)}</span> : null}
+                      {m.jenis === 'halaman' && <span>{m.jumlahHalaman ?? 1} halaman</span>}
                     </div>
                   </div>
                   {m.jenis === 'halaman' ? (
-                    <button type="button" className="sw-btn-buka" onClick={() => setBaca(m)}>
+                    <Link to={`/siswa/materi/${m.id}`} className="sw-btn-buka">
                       Baca
-                    </button>
-                  ) : m.url ? (
-                    <a href={m.url} target="_blank" rel="noreferrer" className="sw-btn-buka">
-                      Buka
-                    </a>
-                  ) : null}
+                    </Link>
+                  ) : (
+                    m.url && (
+                      <a href={m.url} target="_blank" rel="noreferrer" className="sw-btn-buka">
+                        Buka
+                      </a>
+                    )
+                  )}
                 </li>
               ))}
             </ul>

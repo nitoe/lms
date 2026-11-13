@@ -3,7 +3,7 @@ type Props = {
   size?: number
 }
 
-/** Ikon jenis materi (PDF, gambar, video/YouTube, tautan, halaman). Dipakai area siswa. */
+/** Ikon jenis materi (PDF, gambar, video/YouTube, tautan). Dipakai area siswa. */
 export default function JenisIcon({ jenis, size = 22 }: Props) {
   const common = {
     width: size,
@@ -33,20 +33,20 @@ export default function JenisIcon({ jenis, size = 22 }: Props) {
           <polyline points="21 15 16 10 5 21" />
         </svg>
       )
+    case 'halaman':
+      return (
+        <svg {...common}>
+          <path d="M4 5a2 2 0 0 1 2-2h12v16H6a2 2 0 0 0-2 2z" />
+          <path d="M4 19V5" />
+          <line x1="9" y1="8" x2="15" y2="8" />
+          <line x1="9" y1="12" x2="15" y2="12" />
+        </svg>
+      )
     case 'video':
     case 'youtube':
       return (
         <svg {...common}>
           <polygon points="5 3 19 12 5 21 5 3" />
-        </svg>
-      )
-    case 'halaman':
-      return (
-        <svg {...common}>
-          <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
-          <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
-          <line x1="8" y1="7" x2="16" y2="7" />
-          <line x1="8" y1="11" x2="14" y2="11" />
         </svg>
       )
     default:

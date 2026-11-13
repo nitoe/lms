@@ -13,7 +13,10 @@ export async function daftarMateriKelas(kelas: string): Promise<MateriLms[]> {
     where('kelas', '==', String(kelas).toUpperCase()),
   )
   const snap = await getDocs(q)
-  const list = snap.docs.map((d) => ({ id: d.id, ...d.data() }) as MateriLms)
+  // Materi tulis-sendiri berstatus draf TIDAK tampil untuk siswa (ANTIREGRESI §116).
+  const list = snap.docs
+    .map((d) => ({ id: d.id, ...d.data() }) as MateriLms)
+    .filter((m) => !(m.jenis === 'halaman' && m.status !== 'terbit'))
   list.sort((a, b) => (a.urutan ?? 0) - (b.urutan ?? 0))
   return list
 }
