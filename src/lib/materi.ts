@@ -240,14 +240,19 @@ function normalisasiHalaman(list: MateriHalaman[] | undefined): MateriHalaman[] 
         const petunjuk =
           typeof b.petunjukGambar === 'string' ? b.petunjukGambar.trim().slice(0, 2000) : ''
         if (!url && !petunjuk) continue
-        const item: MateriBlok = {
+        // Jangan kirim field undefined ke Firestore (addDoc/updateDoc menolak).
+        const item: Extract<MateriBlok, { tipe: 'gambar' }> = {
           id: b.id || idBaru('b'),
           tipe: 'gambar',
           url: url || '',
-          storagePath: b.storagePath,
-          alt: b.alt?.trim() || undefined,
-          caption: b.caption?.trim() || undefined,
         }
+        if (typeof b.storagePath === 'string' && b.storagePath.trim()) {
+          item.storagePath = b.storagePath.trim()
+        }
+        const alt = typeof b.alt === 'string' ? b.alt.trim() : ''
+        if (alt) item.alt = alt
+        const caption = typeof b.caption === 'string' ? b.caption.trim() : ''
+        if (caption) item.caption = caption
         if (petunjuk) item.petunjukGambar = petunjuk
         bersih.push(item)
       }
@@ -255,12 +260,14 @@ function normalisasiHalaman(list: MateriHalaman[] | undefined): MateriHalaman[] 
     if (bersih.length === 0) {
       bersih.push({ id: idBaru('b'), tipe: 'teks', html: '' })
     }
-    return {
+    const judulH = (h.judul || '').trim().slice(0, 80)
+    const halamanOut: MateriHalaman = {
       id: h.id || idBaru('h'),
-      judul: (h.judul || '').trim().slice(0, 80) || undefined,
       urutan: typeof h.urutan === 'number' ? h.urutan : i,
       blok: bersih,
     }
+    if (judulH) halamanOut.judul = judulH
+    return halamanOut
   })
 }
 
