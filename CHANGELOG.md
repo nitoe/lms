@@ -1,9 +1,16 @@
-## 2026-11-13 — Paket soal TKA hasil migrasi terdeteksi di penyusunan kuis
+## 2026-11-13 — Penyusunan tugas: kelas & mapel dibatasi sesuai pengampuan
 
-- **Perbaikan:** paket soal TKA **Bahasa Indonesia dan Matematika** (hasil migrasi dari tka2026) yang sudah berstatus Siap terlihat di Bank Soal tetapi tidak muncul di wizard «Susun kuis». Penyebab: sisa migrasi dapat tersimpan di kelas **6A/6B**, sedangkan wizard (dan pembuatan kuis) hanya mencari kelas bank «6»; Bank Soal sudah mencari ketiganya. Mapel IPA tidak terdampak karena dibuat langsung di LMS (kelas «6»).
-- `daftarPaket` kini sadar-TKA: untuk mapel TKA selalu mencari kelas 6, 6A, 6B lalu menggabungkan per id (satu query yang ditolak tidak membatalkan yang lain). Dipakai bersama oleh Bank Soal, wizard kuis, pembuatan kuis, dan «Tambah paket» di detail kuis.
-- Bila tetap tidak ada paket Siap, wizard menampilkan **diagnosis**: jumlah paket di Bank Soal per kelas, berapa yang masih Draf, dan berapa yang berstatus Siap tetapi tidak berisi soal.
-- File: `src/lib/soal.ts`, `src/components/KuisPanel.tsx`, `src/components/BankSoalPanel.tsx`. Tanpa perubahan `firestore.rules`.
+- **Perbaikan:** form tugas baru/edit (`TugasDetail`) sebelumnya menampilkan **semua kelas SD** bila guru tidak punya ruang, dan **semua mapel master** untuk kelas mana pun. Sekarang pilihan dibatasi (`lib/cakupanTugas.ts`, meniru `tulisMapelKelas` di firestore.rules):
+  - **Guru kelas (wali):** hanya kelas yang diwalikan, dengan semua mapel di kelas itu.
+  - **Guru bidang studi:** hanya kelas yang diampu (bila multi kelas) dan hanya mapel yang diampu **pada kelas yang dipilih**.
+  - Guru yang merangkap (wali di satu kelas + pengampu mapel di kelas lain) dihitung per kelas. Admin tetap tanpa batas.
+- Pilihan tunggal dipilih otomatis pada tugas baru (kelas bila hanya satu; mapel bila hanya satu untuk kelas itu).
+- Mapel tambahan pada tugas **proyek** mengikuti batasan yang sama.
+- Validasi saat simpan: kelas/mapel di luar cakupan ditolak dengan pesan jelas (sebelumnya baru gagal sebagai «permission denied» dari server).
+- Akun tanpa penugasan/perwalian melihat peringatan dan tombol simpan tugas baru dinonaktifkan (tidak lagi diberi seluruh kelas).
+- Tugas lama yang sedang diedit tetap menampilkan kelas/mapelnya sendiri meski penugasan guru sudah berubah.
+- Tidak mengubah data model maupun `firestore.rules`.
+- File: `lib/cakupanTugas.ts` (baru), `pages/TugasDetail.tsx`.
 
 ## 2026-11-13 — Kuis TKA per mapel terpisah & daftar kuis aktif di dashboard TKA
 

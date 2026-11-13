@@ -1,12 +1,14 @@
-## §116. Paket soal TKA lintas kelas 6 / 6A / 6B
+## §114. Cakupan kelas & mapel saat menyusun tugas
 
-116.1 Bank soal TKA berkelas kanonik «6», tetapi paket hasil migrasi tka2026 bisa berkelas **6A/6B**. Semua pembaca paket TKA (Bank Soal, wizard kuis, `buatKuisDariPaket`, «Tambah paket» di `KuisDetail`) HARUS lewat `daftarPaket()` yang menggabungkan 6, 6A, 6B untuk mapel TKA. Jangan menulis query `lms_paket_soal` langsung dengan `kelas == '6'` saja.
+114.1 Pilihan kelas/mapel di form tugas **wajib** berasal dari `lib/cakupanTugas.ts` (`cakupanTugas`), bukan dari `DAFTAR_KELAS_SD` atau seluruh master mapel. Jangan menambahkan fallback «semua kelas» bila guru tidak punya penugasan — tampilkan peringatan dan blokir simpan (bug lama: guru bisa memilih kelas yang bukan miliknya).
 
-116.2 Query per kelas memakai `Promise.allSettled`: penolakan rules pada satu kelas tidak boleh mengosongkan daftar. Hanya bila SEMUA query gagal, lempar error.
+114.2 Aturan harus tetap sejajar dengan `tulisMapelKelas` di firestore.rules: (a) kelas ∈ `waliKelas` → semua mapel di kelas itu; (b) `kelas::mapel` ∈ penugasan → hanya pasangan itu. Jika aturan server berubah, ubah `cakupanTugas` bersamaan.
 
-116.3 Paket «Siap» dideteksi wizard bila `status === 'siap'` DAN `soal.length > 0`. Bila daftar kosong, tampilkan diagnosis (`ringkasanPaket`) agar penyebab (draf / siap tanpa soal / kelas) terlihat, bukan hanya pesan «belum ada paket».
+114.3 Mapel dihitung **per kelas** (guru bidang studi multi kelas bisa mengampu mapel berbeda di tiap kelas). Ganti kelas mereset mapel; jangan menampilkan mapel dari kelas lain.
 
-116.4 Mapel non-TKA tidak berubah (satu kelas, tanpa penggabungan).
+114.4 Saat mengedit tugas, kelas/mapel tersimpan harus tetap muncul di pilihan (`opsiKelas`/`opsiMapel` menambahkannya) agar `<select>` tidak tampil kosong; validasi simpan memakai daftar yang sama.
+
+114.5 Master mapel `'Wali kelas'` tidak pernah menjadi pilihan mapel. Admin = tanpa batas (`bebas`).
 
 ## §115. Kuis TKA terpisah per mapel & daftar kuis aktif
 

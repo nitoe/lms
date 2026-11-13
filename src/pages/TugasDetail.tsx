@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
-import { daftarRuangKelas, DAFTAR_KELAS_SD } from '../lib/kelasLms'
+import { cakupanTugas } from '../lib/cakupanTugas'
 import { ambilTugas, buatTugas, updateTugas } from '../lib/tugas'
 import { aksenMapel, inisialMapel } from '../lib/uiAksen'
 import {
@@ -131,8 +131,6 @@ export default function TugasDetail() {
   const [menyimpanSiswaId, setMenyimpanSiswaId] = useState<string | null>(null)
   const [genAiBusy, setGenAiBusy] = useState(false)
 
-  const ruang = useMemo(() => daftarRuangKelas(profil), [profil])
-
   useEffect(() => {
     let batal = false
     setMapelLoading(true)
@@ -151,17 +149,36 @@ export default function TugasDetail() {
     }
   }, [])
 
+  /** Kelas & mapel yang boleh dipilih: guru kelas = kelas walinya; guru bidang studi = penugasannya saja. */
+  const cakupan = useMemo(() => cakupanTugas(profil, masterMapel), [profil, masterMapel])
   const opsiKelas = useMemo(() => {
-    const dariRuang = [...new Set(ruang.map((r) => r.kelas))]
-    return dariRuang.length ? dariRuang : [...DAFTAR_KELAS_SD]
-  }, [ruang])
+    const l = [...cakupan.kelas]
+    // Tugas yang sedang diedit tetap menampilkan kelasnya sendiri meski penugasan berubah.
+    if (tugas?.kelas && !l.includes(tugas.kelas)) l.push(tugas.kelas)
+    return l
+  }, [cakupan, tugas])
   const opsiMapel = useMemo(() => {
-    const dariRuang = kelas
-      ? ruang.filter((r) => r.kelas === kelas).map((r) => r.mapel)
-      : ruang.map((r) => r.mapel)
-    const gabung = [...dariRuang, ...masterMapel].filter(Boolean)
-    return [...new Set(gabung)].sort((a, b) => a.localeCompare(b, 'id'))
-  }, [ruang, kelas, masterMapel])
+    if (!kelas) return []
+    const l = [...cakupan.mapelUntuk(kelas)]
+    if (tugas && tugas.kelas === kelas) {
+      for (const m of [tugas.mapel, ...(Array.isArray(tugas.mapelLain) ? tugas.mapelLain : [])]) {
+        if (m && !l.includes(m)) l.push(m)
+      }
+    }
+    return l.sort((a, b) => a.localeCompare(b, 'id'))
+  }, [cakupan, kelas, tugas])
+
+  // Hanya satu pilihan → pilih otomatis pada tugas baru (mis. guru bidang studi satu kelas).
+  useEffect(() => {
+    if (!isBaru || kelas || opsiKelas.length !== 1) return
+    setKelas(opsiKelas[0])
+  }, [isBaru, kelas, opsiKelas])
+  useEffect(() => {
+    if (!isBaru || !kelas || opsiMapel.length !== 1) return
+    setBlokMapel((prev) =>
+      prev[0] && !prev[0].mapel ? [{ ...prev[0], mapel: opsiMapel[0] }, ...prev.slice(1)] : prev,
+    )
+  }, [isBaru, kelas, opsiMapel])
 
   const mapel = blokMapel[0]?.mapel?.trim() || ''
   const mapelLain = blokMapel
@@ -318,6 +335,13 @@ export default function TugasDetail() {
     setSukses('')
     try {
       const tenggat = tenggatStr ? new Date(tenggatStr) : null
+      if (!opsiKelas.includes(kelas)) {
+        throw new Error(`Anda tidak memiliki penugasan di kelas ${kelas || '—'}. Pilih kelas yang Anda ampu.`)
+      }
+      const luarCakupan = [mapel, ...mapelLain].filter((m) => m && !opsiMapel.includes(m))
+      if (luarCakupan.length > 0) {
+        throw new Error(`Mapel di luar penugasan Anda untuk kelas ${kelas}: ${luarCakupan.join(', ')}.`)
+      }
       if (isBaru) {
         const id = await buatTugas({
           judul,
@@ -848,6 +872,12 @@ export default function TugasDetail() {
                   ))}
                 </select>
               </label>
+              {cakupan.kosong && (
+                <p className="td-hint td-hint--warn td-field--full">
+                  Akun Anda belum memiliki penugasan kelas atau perwalian, sehingga belum dapat menyusun tugas.
+                  Hubungi admin untuk mengisi penugasan di aplikasi Penilaian.
+                </p>
+              )}
               <label className="td-field">
                 <span>Jenis penilaian</span>
                 <select value={jenisPenilaian} onChange={(e) => setJenisPenilaian(e.target.value as JenisPenilaianTugas)}>
@@ -941,9 +971,10 @@ export default function TugasDetail() {
                 )
               })}
 
-              {!mapelLoading && opsiMapel.length === 0 && (
+              {kelas && !mapelLoading && opsiMapel.length === 0 && (
                 <p className="td-hint td-hint--warn">
-                  Daftar mapel kosong. Pastikan koleksi mapel di Penilaian terisi, atau isi penugasan guru.
+                  Belum ada mapel yang dapat Anda pilih untuk kelas {kelas}. Hubungi admin untuk mengisi penugasan
+                  mapel Anda.
                 </p>
               )}
 
@@ -957,7 +988,7 @@ export default function TugasDetail() {
 
           <div className="td-aksi">
             <Link to="/tugas" className="tg-btn">Batal</Link>
-            <button type="submit" className="tg-btn tg-btn--utama tg-btn--besar" disabled={busy}>
+            <button type="submit" className="tg-btn tg-btn--utama tg-btn--besar" disabled={busy || (isBaru && cakupan.kosong)}>
               {busy ? 'Menyimpan…' : isBaru ? 'Buat tugas' : 'Simpan pengaturan'}
             </button>
           </div>
