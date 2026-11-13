@@ -3,6 +3,7 @@ import StarterKit from '@tiptap/starter-kit'
 import Subscript from '@tiptap/extension-subscript'
 import Superscript from '@tiptap/extension-superscript'
 import { Table, TableCell, TableHeader, TableRow } from '@tiptap/extension-table'
+import Underline from '@tiptap/extension-underline'
 import { Placeholder } from '@tiptap/extensions'
 
 /** Semua atribut ber-prefix `data-` agar lolos sanitasi (lib/materiHalaman.ts) dan tidak memakai style inline. */
@@ -245,6 +246,7 @@ export function ekstensiMateri(placeholder?: string): AnyExtension[] {
     }),
     Subscript,
     Superscript,
+    Underline,
     Table.configure({ resizable: false }),
     TableRow,
     TableHeader,
