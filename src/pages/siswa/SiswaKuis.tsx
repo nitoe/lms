@@ -186,7 +186,7 @@ export default function SiswaKuis() {
     setError('')
     try {
       const kls = String(sesi.kelas).toUpperCase()
-      const map = new Map<string, KuisLms>()
+      const byId = new Map<string, KuisLms>()
       const snap1 = await getDocs(
         query(
           collection(db, 'lms_kuis'),
@@ -195,21 +195,23 @@ export default function SiswaKuis() {
         ),
       )
       for (const d of snap1.docs) {
-        map.set(d.id, { id: d.id, ...d.data() } as KuisLms)
+        const data = d.data() as Record<string, unknown>
+        byId.set(d.id, { ...data, id: d.id } as KuisLms)
       }
       try {
         const snap2 = await getDocs(
           query(collection(db, 'lms_kuis'), where('kelasList', 'array-contains', kls)),
         )
         for (const d of snap2.docs) {
-          if (map.has(d.id)) continue
-          const item = { id: d.id, ...d.data() } as KuisLms
-          if (item.aktif) map.set(d.id, item)
+          if (byId.has(d.id)) continue
+          const data = d.data() as Record<string, unknown>
+          const item = { ...data, id: d.id } as KuisLms
+          if (item.aktif) byId.set(d.id, item)
         }
       } catch (e) {
         console.warn('SiswaKuis kelasList', e)
       }
-      const kuisList = [...map.values()].filter((k) => kuisUntukSiswa(k))
+      const kuisList = [...byId.values()].filter((k) => kuisUntukSiswa(k))
       setList(kuisList)
 
       const entries = await Promise.all(
@@ -221,9 +223,9 @@ export default function SiswaKuis() {
           }
         }),
       )
-      const map: Record<string, RiwayatPercobaan[]> = {}
-      for (const [id, r] of entries) map[id] = r
-      setRiwayatMap(map)
+      const riwayat: Record<string, RiwayatPercobaan[]> = {}
+      for (const [id, r] of entries) riwayat[id] = r
+      setRiwayatMap(riwayat)
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Gagal memuat kuis')
     }

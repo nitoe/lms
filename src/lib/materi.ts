@@ -43,7 +43,8 @@ export async function daftarMateri(kelas: string, mapel: string): Promise<Materi
   async function tarik(qRef: ReturnType<typeof query>) {
     const snap = await getDocs(qRef)
     for (const d of snap.docs) {
-      if (!map.has(d.id)) map.set(d.id, { id: d.id, ...d.data() } as MateriLms)
+      const data = d.data() as Record<string, unknown>
+      if (!map.has(d.id)) map.set(d.id, { ...data, id: d.id } as MateriLms)
     }
   }
 
@@ -62,9 +63,9 @@ export async function daftarMateri(kelas: string, mapel: string): Promise<Materi
       query(koleksi(), where('kelasList', 'array-contains', k)),
     )
     for (const d of snap.docs) {
-      const data = d.data() as MateriLms
+      const data = d.data() as Record<string, unknown>
       if (String(data.mapel || '') !== mapel) continue
-      if (!map.has(d.id)) map.set(d.id, { id: d.id, ...data })
+      if (!map.has(d.id)) map.set(d.id, { ...data, id: d.id } as MateriLms)
     }
   } catch (e) {
     console.warn('daftarMateri kelasList', e)
