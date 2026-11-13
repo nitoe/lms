@@ -1,3 +1,13 @@
+## 2026-11-13 — Navigasi di dalam Kuis & tab TKA Rekap: UI v2
+
+- **Kepala detail kuis** (`KuisKepala`): tombol «← Daftar kuis», judul kuis, chip jenis penilaian / tahap try out TKA, Online/Offline, Aktif/Nonaktif, jumlah soal, dan menu segmen berikon **Atur kuis · Input offline · Hasil siswa** (navigasi panah/Home/End, ARIA tablist + tabpanel). Menggantikan tautan polos + tombol ungu generik.
+- **Laporan hasil:** sub-menu **Daftar nilai / Analisis per soal** memakai segmen berikon; «Hanya percobaan terbaru» menjadi toggle chip; **Filter kelas TKA** menjadi chip dalam bar tersendiri; «Muat ulang» berikon; tombol «Kembali ke daftar nilai» seragam.
+- **Aksen mapel:** `KelasDetail` kini menurunkan warna mapel (`--rg-a`) ke seluruh panel, sehingga menu di dalam Kuis ikut beraksen sama dengan tab ruang kelas (ungu sekolah bila tak ada).
+- **Tab TKA Rekap** (`.tka-tab`) diseragamkan menjadi kontrol segmen yang sama.
+- Responsif: judul kuis membungkus 2 baris di ponsel, menu segmen membagi lebar rata tanpa scroll horizontal.
+- Tidak mengubah logika kuis, penilaian, publikasi hasil, sinkronisasi, maupun data.
+- File: `components/KuisNav.tsx` (baru), `components/KuisPanel.tsx`, `components/HasilKuisPanel.tsx`, `components/ikonRuang.tsx`, `pages/KelasDetail.tsx`, `styles/kuis-nav.css` (baru), `styles/tka.css`.
+
 ## 2026-11-12 — Beranda, Ruang Kelas (daftar & detail), kartu ruang: UI v2
 
 - **Beranda:** hero baru (salam sesuai waktu, tanggal, peran, 4 angka: ruang, kelas, tugas aktif, kuis aktif yang bisa diklik). Tata letak dua kolom di layar lebar: ruang kelas di kiri; **Agenda penugasan** (5 tugas/kuis aktif, urut tenggat terdekat, tenggat relatif berwarna) dan **Pintasan** (Tugas baru, Ruang kelas, Rekap nilai, TKA bila berhak) di kanan; di ponsel agenda tampil lebih dulu.

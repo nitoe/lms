@@ -1,3 +1,17 @@
+## §113. Navigasi di dalam panel Kuis (`kn-*`)
+
+113.1 Tombol navigasi di dalam Kuis (kembali, menu Atur/Offline/Hasil, sub-menu hasil, filter kelas) memakai komponen `components/KuisNav.tsx` (`KuisKepala`, `KnSegmen`, `KnChips`, `KnKembali`). Jangan kembali ke tombol Tailwind ad-hoc. Aksen lewat `--rg-a` yang diset wrapper `KelasDetail`; fallback ungu sekolah.
+
+113.2 Kuis **online** tidak punya tab «Input offline». Bila `detailTab === 'offline'` tetapi kuis online, perilaku lama = jatuh ke Hasil siswa: gunakan `tabEfektif` yang sama untuk sorotan menu **dan** isi panel (jangan hitung terpisah).
+
+113.3 ARIA: menu segmen di `KuisKepala` = `tablist` (`idPrefix` `kuis-detail`, panel `#kuis-detail-panel`, roving tabindex). Sub-menu hasil dan filter kelas = `group` + `aria-pressed` karena kontennya bukan panel terpisah.
+
+113.4 Ponsel (≤ 640 px): judul kuis boleh membungkus (clamp 2 baris) — jangan `white-space: nowrap` (judul terpotong «Tah…»); menu segmen memakai `flex: 1 1 0` tanpa scroll horizontal.
+
+113.5 `.tka-tabs` (TkaRekap) harus `display: flex; width: fit-content`; `inline-flex` di dalam kolom flex membuatnya melebar penuh.
+
+113.6 Label tombol kembali di dalam kuis memakai tujuan singkat («Daftar kuis», «Daftar nilai»).
+
 ## §112. UI Beranda / Ruang Kelas (`rg-*`)
 
 112.1 Ringkasan tugas & kuis aktif **hanya** lewat `lib/ringkasanRuang.ts` (`useRingkasanRuang` / `muatRingkasanRuang`). Jangan menyalin query `daftarTugasGuru`/`daftarKuis` ke halaman lain. Hook aman balapan (hanya hasil permintaan terbaru yang dipakai).
