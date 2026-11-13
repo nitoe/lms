@@ -1,15 +1,7 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
-import RuangCard from '../components/RuangCard'
-import {
-  IkonCari,
-  IkonJam,
-  IkonKuis,
-  IkonRefresh,
-  IkonRuang,
-  IkonTugas,
-} from '../components/ikonRuang'
+import RuangCard, { type RingkasRuang } from '../components/RuangCard'
 import {
   daftarRuangKelas,
   kelasWaliTanpaMapel,
@@ -17,11 +9,26 @@ import {
   type RuangKelas,
 } from '../lib/kelasLms'
 import { getDaftarMapel } from '../lib/mapelData'
-import { kunciRuang, urutkanAgenda, useRingkasanRuang } from '../lib/ringkasanRuang'
-import { infoTenggat } from '../lib/tugasUi'
-import '../styles/ruang.css'
+import { daftarTugasGuru, formatTenggat } from '../lib/tugas'
+import { daftarKuis } from '../lib/kuis'
+import type { TugasLms } from '../types/tugas'
+import type { KuisLms } from '../types/kuis'
+import '../styles/kelas.css'
 
-const JUMLAH_AGENDA_AWAL = 6
+type ItemAktif = {
+  id: string
+  jenis: 'tugas' | 'kuis'
+  judul: string
+  kelas: string
+  mapel: string
+  /** Label samping (tenggat / status) */
+  keterangan: string
+  href: string
+}
+
+function kunciRuang(kelas: string, mapel: string): string {
+  return `${String(kelas).toUpperCase()}::${mapel}`
+}
 
 export default function KelasList() {
   const { profil, peran } = useAuth()
@@ -29,7 +36,11 @@ export default function KelasList() {
   const [catatanWali, setCatatanWali] = useState('')
   const [q, setQ] = useState('')
   const [filterKelas, setFilterKelas] = useState('')
-  const [agendaPenuh, setAgendaPenuh] = useState(false)
+
+  const [ringkasPerRuang, setRingkasPerRuang] = useState<Record<string, RingkasRuang>>({})
+  const [itemAktif, setItemAktif] = useState<ItemAktif[] | null>(null)
+  const [muatMonitor, setMuatMonitor] = useState(false)
+  const [errorMonitor, setErrorMonitor] = useState('')
 
   useEffect(() => {
     const dasar = daftarRuangKelas(profil)
@@ -70,15 +81,105 @@ export default function KelasList() {
     }
   }, [profil])
 
-  const sebagaiAdmin = profil?.role === 'admin' || profil?.peranLms === 'admin'
-  const { ringkas, aktif, memuat, error, muat } = useRingkasanRuang(ruang, sebagaiAdmin)
+  const muatRingkasan = useCallback(async () => {
+    if (!ruang.length) {
+      setRingkasPerRuang({})
+      setItemAktif([])
+      return
+    }
+    setMuatMonitor(true)
+    setErrorMonitor('')
+    try {
+      const sebagaiAdmin = profil?.role === 'admin' || profil?.peranLms === 'admin'
+      const tugasList = await daftarTugasGuru(ruang, { sebagaiAdmin }).catch((e) => {
+        console.warn('monitor tugas', e)
+        return [] as TugasLms[]
+      })
 
-  const sekarang = useMemo(() => new Date(), [aktif])
+      // Kuis per pasangan unik (paralel, toleran gagal)
+      const pasangan = new Map<string, { kelas: string; mapel: string }>()
+      for (const r of ruang) {
+        const k = kunciRuang(r.kelas, r.mapel)
+        if (!pasangan.has(k)) pasangan.set(k, { kelas: r.kelas, mapel: r.mapel })
+      }
+      const kuisPerPasangan = await Promise.all(
+        [...pasangan.values()].map(async ({ kelas, mapel }) => {
+          try {
+            const list = await daftarKuis(kelas, mapel)
+            return { kelas, mapel, list }
+          } catch (e) {
+            console.warn('monitor kuis', kelas, mapel, e)
+            return { kelas, mapel, list: [] as KuisLms[] }
+          }
+        }),
+      )
 
-  const daftarKelasUnik = useMemo(
-    () => [...new Set(ruang.map((r) => r.kelas))].sort((a, b) => a.localeCompare(b, 'id', { numeric: true })),
-    [ruang],
-  )
+      const hitung: Record<string, RingkasRuang> = {}
+      for (const r of ruang) {
+        hitung[kunciRuang(r.kelas, r.mapel)] = { tugasAktif: 0, kuisAktif: 0 }
+      }
+
+      const aktif: ItemAktif[] = []
+
+      for (const t of tugasList) {
+        if (!t.aktif) continue
+        const k = kunciRuang(t.kelas, t.mapel)
+        if (!hitung[k]) hitung[k] = { tugasAktif: 0, kuisAktif: 0 }
+        hitung[k].tugasAktif += 1
+        aktif.push({
+          id: `tugas:${t.id}`,
+          jenis: 'tugas',
+          judul: t.judul,
+          kelas: t.kelas,
+          mapel: t.mapel,
+          keterangan: t.tenggat ? `Tenggat ${formatTenggat(t.tenggat)}` : 'Aktif',
+          href: `/tugas/${t.id}`,
+        })
+      }
+
+      for (const { kelas, mapel, list } of kuisPerPasangan) {
+        const k = kunciRuang(kelas, mapel)
+        if (!hitung[k]) hitung[k] = { tugasAktif: 0, kuisAktif: 0 }
+        for (const qz of list) {
+          if (!qz.aktif) continue
+          hitung[k].kuisAktif += 1
+          aktif.push({
+            id: `kuis:${qz.id}`,
+            jenis: 'kuis',
+            judul: qz.judul,
+            kelas: qz.kelas,
+            mapel: qz.mapel,
+            keterangan: qz.modePelaksanaan === 'offline' ? 'Offline · aktif' : 'Online · aktif',
+            href: `/kelas/${encodeURIComponent(`${String(kelas).toUpperCase()}--${mapel.replace(/\s+/g, '_')}`)}?tab=kuis`,
+          })
+        }
+      }
+
+      // Urut: tugas dulu, lalu kuis; di dalam jenis by kelas/mapel
+      aktif.sort((a, b) => {
+        if (a.jenis !== b.jenis) return a.jenis === 'tugas' ? -1 : 1
+        const c = a.kelas.localeCompare(b.kelas, 'id')
+        if (c !== 0) return c
+        return a.mapel.localeCompare(b.mapel, 'id')
+      })
+
+      setRingkasPerRuang(hitung)
+      setItemAktif(aktif)
+    } catch (e) {
+      setErrorMonitor(e instanceof Error ? e.message : 'Gagal memuat ringkasan tugas/kuis.')
+      setItemAktif([])
+    } finally {
+      setMuatMonitor(false)
+    }
+  }, [ruang, profil])
+
+  useEffect(() => {
+    void muatRingkasan()
+  }, [muatRingkasan])
+
+  const daftarKelasUnik = useMemo(() => {
+    return [...new Set(ruang.map((r) => r.kelas))].sort()
+  }, [ruang])
 
   const filtered = useMemo(() => {
     const s = q.trim().toLowerCase()
@@ -89,189 +190,188 @@ export default function KelasList() {
     })
   }, [ruang, q, filterKelas])
 
-  /** Kelompok per kelas mengikuti urutan `ruang` (sudah terurut kelas → mapel). */
-  const kelompok = useMemo(() => {
-    const peta = new Map<string, RuangKelas[]>()
-    for (const r of filtered) {
-      const l = peta.get(r.kelas)
-      if (l) l.push(r)
-      else peta.set(r.kelas, [r])
-    }
-    return [...peta.entries()]
-  }, [filtered])
+  const totalTugasAktif = useMemo(
+    () => Object.values(ringkasPerRuang).reduce((s, x) => s + x.tugasAktif, 0),
+    [ringkasPerRuang],
+  )
+  const totalKuisAktif = useMemo(
+    () => Object.values(ringkasPerRuang).reduce((s, x) => s + x.kuisAktif, 0),
+    [ringkasPerRuang],
+  )
 
-  const totalTugasAktif = aktif ? aktif.filter((i) => i.jenis === 'tugas').length : null
-  const totalKuisAktif = aktif ? aktif.filter((i) => i.jenis === 'kuis').length : null
+  const itemAktifFilter = useMemo(() => {
+    if (!itemAktif) return null
+    if (!filterKelas) return itemAktif
+    return itemAktif.filter((i) => i.kelas === filterKelas)
+  }, [itemAktif, filterKelas])
 
-  const agenda = useMemo(() => {
-    if (!aktif) return null
-    const rows = filterKelas ? aktif.filter((i) => i.kelas === filterKelas) : aktif
-    return urutkanAgenda(rows, sekarang)
-  }, [aktif, filterKelas, sekarang])
-
-  const agendaTampil = agenda ? (agendaPenuh ? agenda : agenda.slice(0, JUMLAH_AGENDA_AWAL)) : []
-  const bergrup = daftarKelasUnik.length > 1
+  const totalRuang = ruang.length
+  const nKelas = daftarKelasUnik.length
 
   return (
-    <div className="rg-halaman">
-      <header className="rg-kepala">
-        <div>
-          <h2 className="rg-judul">Ruang Kelas</h2>
-          <p className="rg-sub">
-            Pilih ruang untuk mengelola materi, kuis, dan bank soal. Tugas dikelola di menu Tugas.
+    <div className="rk-halaman">
+      <header className="rk-kepala">
+        <div className="rk-kepala-teks">
+          <h2 className="rk-judul-halaman">Ruang kelas</h2>
+          <p className="rk-sub">
+            Pilih ruang mapel untuk mengelola materi, kuis, dan bank soal. Pantau tugas serta kuis
+            aktif di strip di bawah.
           </p>
         </div>
-        <Link to="/tugas" className="rg-btn">
-          Buka katalog Tugas
-        </Link>
       </header>
 
-      {/* Penugasan aktif */}
-      <section className="rg-panel" aria-label="Penugasan aktif">
-        <div className="rg-panel-kepala">
+      {totalRuang > 0 && (
+        <section className="rk-ringkas" aria-label="Ringkasan ruang">
+          <div className="rk-ringkas-item">
+            <b>{totalRuang}</b>
+            <span>Ruang</span>
+          </div>
+          <div className="rk-ringkas-item rk-ringkas-item--ungu">
+            <b>{nKelas}</b>
+            <span>Kelas</span>
+          </div>
+          <div className="rk-ringkas-item rk-ringkas-item--kuning">
+            <b>{muatMonitor ? '…' : totalTugasAktif}</b>
+            <span>Tugas aktif</span>
+          </div>
+          <div className="rk-ringkas-item rk-ringkas-item--sky">
+            <b>{muatMonitor ? '…' : totalKuisAktif}</b>
+            <span>Kuis aktif</span>
+          </div>
+        </section>
+      )}
+
+      {/* Monitor penugasan aktif */}
+      <section className="rk-monitor" aria-label="Penugasan aktif">
+        <div className="rk-monitor-kepala">
           <div>
-            <h3 className="rg-panel-judul">Penugasan aktif</h3>
-            <p className="rg-panel-sub">
-              Diurutkan menurut tenggat terdekat{filterKelas ? ` · kelas ${filterKelas}` : ''}.
+            <h3 className="rk-monitor-judul">Penugasan aktif</h3>
+            <p className="rk-monitor-sub">
+              Tugas dan kuis yang masih aktif di ruang Anda
+              {filterKelas ? ` · filter kelas ${filterKelas}` : ''}.
             </p>
           </div>
-          <div className="rg-panel-aksi">
-            <span className="rg-pill rg-pill--tugas">{totalTugasAktif ?? '…'} tugas</span>
-            <span className="rg-pill rg-pill--kuis">{totalKuisAktif ?? '…'} kuis</span>
-            <button
-              type="button"
-              className="rg-btn"
-              disabled={memuat}
-              onClick={() => void muat()}
-              aria-label="Muat ulang penugasan aktif"
-            >
-              <IkonRefresh />
-              {memuat ? 'Memuat…' : 'Muat ulang'}
-            </button>
-          </div>
+          <button
+            type="button"
+            className="rk-btn"
+            disabled={muatMonitor}
+            onClick={() => void muatRingkasan()}
+          >
+            {muatMonitor ? 'Memuat…' : 'Muat ulang'}
+          </button>
         </div>
 
-        {error && (
-          <p className="rg-galat" role="alert">
-            {error}
-          </p>
-        )}
-
-        {agenda === null && (
-          <div aria-busy="true" aria-label="Memuat penugasan aktif">
-            <div className="rg-baris-skel" />
-            <div className="rg-baris-skel" />
+        {errorMonitor && (
+          <div className="rk-galat" role="alert">
+            {errorMonitor}
           </div>
         )}
 
-        {agenda && agenda.length === 0 && (
-          <p className="rg-kosong-baris">
-            Belum ada tugas atau kuis aktif{filterKelas ? ` di kelas ${filterKelas}` : ''}.{' '}
-            <Link to="/tugas/baru">Buat tugas</Link> · buka kartu mapel untuk mengelola kuis.
-          </p>
+        {muatMonitor && itemAktif === null && (
+          <div className="rk-monitor-kosong" aria-busy="true">
+            Memuat daftar penugasan aktif…
+          </div>
         )}
 
-        {agenda && agenda.length > 0 && (
-          <ul className="rg-agenda">
-            {agendaTampil.map((item) => {
-              const info = item.jenis === 'tugas' ? infoTenggat(item.tenggat, sekarang) : null
-              return (
-                <li key={item.id}>
-                  <Link to={item.href} className="rg-agenda-item">
-                    <span className={`rg-jenis rg-jenis--${item.jenis}`} aria-hidden="true">
-                      {item.jenis === 'tugas' ? <IkonTugas size={17} /> : <IkonKuis size={17} />}
-                    </span>
-                    <span className="min-w-0">
-                      <span className="rg-agenda-judul">{item.judul}</span>
-                      <span className="rg-agenda-meta">
-                        {item.jenis === 'tugas' ? 'Tugas' : 'Kuis'} · {item.mapel} · {item.kelas}
-                      </span>
-                    </span>
-                    {info ? (
-                      <span className={`rg-nada rg-nada--${info.nada}`} title={info.tanggal || undefined}>
-                        {info.nada !== 'tanpa' && <IkonJam />}
-                        {info.label}
-                      </span>
-                    ) : (
-                      <span className="rg-nada rg-nada--kuis">{item.mode}</span>
-                    )}
-                  </Link>
-                </li>
-              )
-            })}
+        {!muatMonitor && itemAktifFilter && itemAktifFilter.length === 0 && (
+          <div className="rk-monitor-kosong">
+            Belum ada tugas atau kuis aktif
+            {filterKelas ? ` di kelas ${filterKelas}` : ''}.{' '}
+            <Link to="/tugas" className="rk-tautan">
+              Buat tugas
+            </Link>
+            {' · '}
+            buka kartu mapel untuk mengelola kuis.
+          </div>
+        )}
+
+        {itemAktifFilter && itemAktifFilter.length > 0 && (
+          <ul className="rk-monitor-list">
+            {itemAktifFilter.slice(0, 12).map((item) => (
+              <li key={item.id}>
+                <Link to={item.href} className="rk-monitor-item">
+                  <span
+                    className={
+                      item.jenis === 'tugas' ? 'rk-badge rk-badge--tugas' : 'rk-badge rk-badge--kuis'
+                    }
+                  >
+                    {item.jenis === 'tugas' ? 'Tugas' : 'Kuis'}
+                  </span>
+                  <span className="rk-monitor-judul-item">{item.judul}</span>
+                  <span className="rk-monitor-meta">
+                    {item.mapel} · {item.kelas}
+                  </span>
+                  <span className="rk-monitor-ket">{item.keterangan}</span>
+                </Link>
+              </li>
+            ))}
+            {itemAktifFilter.length > 12 && (
+              <li className="rk-monitor-lebih">
+                +{itemAktifFilter.length - 12} penugasan aktif lainnya — lihat per kartu mapel di
+                bawah.
+              </li>
+            )}
           </ul>
         )}
 
-        {agenda && agenda.length > JUMLAH_AGENDA_AWAL && (
-          <div className="rg-panel-kaki">
-            <button
-              type="button"
-              className="rg-link rg-link--tombol"
-              onClick={() => setAgendaPenuh((v) => !v)}
-              aria-expanded={agendaPenuh}
-            >
-              {agendaPenuh
-                ? 'Ringkas daftar'
-                : `Tampilkan ${agenda.length - JUMLAH_AGENDA_AWAL} penugasan lainnya`}
-            </button>
-          </div>
-        )}
-
-        {catatanWali && <div className="rg-panel-kaki">{catatanWali}</div>}
+        {catatanWali && <div className="rk-catatan">{catatanWali}</div>}
       </section>
 
-      {/* Cari & saring */}
-      <div className="rg-seksi-kepala">
-        <h3 className="rg-seksi-judul">Semua ruang</h3>
-        <span className="rg-jumlah">{filtered.length} ruang</span>
-        {daftarKelasUnik.length > 1 && (
-          <div className="rg-filter" role="group" aria-label="Saring kelas">
-            <button
-              type="button"
-              className={`rg-seg${!filterKelas ? ' rg-seg--on' : ''}`}
-              aria-pressed={!filterKelas}
-              onClick={() => setFilterKelas('')}
-            >
-              Semua
-            </button>
-            {daftarKelasUnik.map((k) => (
-              <button
-                key={k}
-                type="button"
-                className={`rg-seg${filterKelas === k ? ' rg-seg--on' : ''}`}
-                aria-pressed={filterKelas === k}
-                onClick={() => setFilterKelas(k === filterKelas ? '' : k)}
-              >
-                {k}
-              </button>
-            ))}
+      {/* Alat: filter + cari */}
+      {totalRuang > 0 && (
+        <section className="rk-alat" aria-label="Cari dan saring ruang">
+          <div className="rk-cari">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+              <circle cx="11" cy="11" r="7" />
+              <path d="m20 20-3.5-3.5" />
+            </svg>
+            <input
+              type="search"
+              placeholder="Cari mapel atau kelas…"
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              aria-label="Cari ruang kelas"
+            />
           </div>
-        )}
-        <span className="rg-spasi" />
-        <div className="rg-cari">
-          <IkonCari />
-          <input
-            type="search"
-            placeholder="Cari mapel atau kelas…"
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            aria-label="Cari ruang kelas"
-          />
-        </div>
-      </div>
+          {daftarKelasUnik.length > 1 && (
+            <div className="rk-filter" role="group" aria-label="Filter kelas">
+              <span className="rk-filter-label">Kelas</span>
+              <button
+                type="button"
+                className={`rk-seg${!filterKelas ? ' rk-seg--on' : ''}`}
+                aria-pressed={!filterKelas}
+                onClick={() => setFilterKelas('')}
+              >
+                Semua
+              </button>
+              {daftarKelasUnik.map((k) => (
+                <button
+                  key={k}
+                  type="button"
+                  className={`rk-seg${filterKelas === k ? ' rk-seg--on' : ''}`}
+                  aria-pressed={filterKelas === k}
+                  onClick={() => setFilterKelas(k === filterKelas ? '' : k)}
+                >
+                  {k}
+                </button>
+              ))}
+            </div>
+          )}
+          <span className="rk-jumlah" aria-live="polite">
+            {filtered.length} ruang
+          </span>
+        </section>
+      )}
 
       {filtered.length === 0 ? (
-        <div className="rg-kosong">
-          <span className="rg-kosong-ikon">
-            <IkonRuang size={22} />
-          </span>
+        <div className="rk-kosong">
           {q || filterKelas ? (
             <>
               <b>Tidak ada ruang yang cocok</b>
-              <p>Ubah kata kunci atau saringan kelas yang sedang dipakai.</p>
+              <p>Ubah kata kunci atau filter kelas yang sedang dipakai.</p>
               <button
                 type="button"
-                className="rg-btn"
+                className="rk-btn rk-btn--utama"
                 onClick={() => {
                   setQ('')
                   setFilterKelas('')
@@ -282,15 +382,15 @@ export default function KelasList() {
             </>
           ) : peran === 'admin' ? (
             <>
-              <b>Belum ada penugasan</b>
+              <b>Belum ada ruang</b>
               <p>
-                Akun admin belum memiliki penugasan mapel. Daftar diisi dari field{' '}
-                <code>penugasan</code> / <code>waliKelas</code> di profil guru.
+                Akun admin belum memiliki penugasan mapel. Daftar diisi dari field penugasan /
+                waliKelas di profil guru.
               </p>
             </>
           ) : (
             <>
-              <b>Belum ada ruang kelas</b>
+              <b>Belum ada ruang</b>
               <p>
                 Belum ada kelas atau mapel yang terhubung. Pastikan penugasan mapel sudah diisi di
                 aplikasi Penilaian.
@@ -299,32 +399,16 @@ export default function KelasList() {
           )}
         </div>
       ) : (
-        kelompok.map(([kelas, rows]) => (
-          <section key={kelas} className="rg-kelompok" aria-label={`Kelas ${kelas}`}>
-            {bergrup && (
-              <div className="rg-kelompok-kepala">
-                <h4 className="rg-kelompok-judul">Kelas {kelas}</h4>
-                {rows.some((r) => r.sebagaiWali) && <span className="rg-badge-wali">Wali kelas</span>}
-                <span className="rg-kelompok-n">{rows.length} mapel</span>
-                <span className="rg-kelompok-garis" />
-              </div>
-            )}
-            <ul className="rg-grid">
-              {rows.map((r) => (
-                <li key={r.id}>
-                  <RuangCard
-                    ruang={r}
-                    ringkas={
-                      aktif
-                        ? (ringkas[kunciRuang(r.kelas, r.mapel)] ?? { tugasAktif: 0, kuisAktif: 0 })
-                        : undefined
-                    }
-                  />
-                </li>
-              ))}
-            </ul>
-          </section>
-        ))
+        <ul className="rk-grid">
+          {filtered.map((r) => (
+            <li key={r.id}>
+              <RuangCard
+                ruang={r}
+                ringkas={ringkasPerRuang[kunciRuang(r.kelas, r.mapel)]}
+              />
+            </li>
+          ))}
+        </ul>
       )}
     </div>
   )
