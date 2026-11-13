@@ -1,3 +1,10 @@
+## 2026-11-13 — Viewer materi: layout CSS Grid (gutter fluid)
+
+- Shell `.mh-viewer` memakai **CSS Grid 3 kolom**: `1fr | min(100%, 72rem) | 1fr` — konten mengisi kolom tengah, gutter kiri/kanan tumbuh merata di PC (tidak «mengambang» sempit di tengah).
+- Header grid (judul | pill), kartu halaman grid stack blok, nav grid 3 kolom (Sebelumnya | titik | Berikutnya).
+- Lebar baris teks diukur dengan `ch` (65–70ch), bukan rem kaku; gambar tetap full-width kartu.
+- File: `src/styles/materi-halaman.css`.
+
 ## 2026-11-13 — Viewer materi: lebar responsif PC & HP
 
 - `.mh-viewer` tidak lagi terkunci `max-width: 42rem` (menyisakan ruang kosong besar di kiri/kanan PC).

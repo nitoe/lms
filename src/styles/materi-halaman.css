@@ -503,45 +503,41 @@
   padding: 0;
 }
 
-/* Viewer siswa / pratinjau
-   Lebar mengikuti layar: HP penuh, tablet ~48rem, PC hingga ~64rem
-   agar tidak menyisakan ruang kosong besar di kiri/kanan (ANTIREGRESI §54).
-   Teks tetap nyaman dibaca lewat ukuran font + line-height, bukan max-width sempit. */
+/* Viewer siswa / pratinjau — CSS Grid responsif
+   Shell 3 kolom: gutter | konten (fluid s.d. 72rem) | gutter
+   Isi mengisi kolom tengah; di HP gutter 0 sehingga penuh lebar.
+   ANTIREGRESI §54 / §125. */
 .mh-viewer {
-  display: flex;
-  flex-direction: column;
-  gap: 0.85rem;
+  display: grid;
+  grid-template-columns:
+    minmax(0, 1fr)
+    minmax(0, min(100%, 72rem))
+    minmax(0, 1fr);
+  grid-template-rows: auto;
+  column-gap: 0;
+  row-gap: 0.85rem;
   width: 100%;
-  max-width: 100%;
-  margin: 0 auto;
+  max-width: none;
+  margin: 0;
   padding-bottom: 1.25rem;
   box-sizing: border-box;
 }
-@media (min-width: 768px) {
-  .mh-viewer {
-    max-width: 48rem;
-  }
+/* Semua anak langsung mengisi kolom konten (tengah) */
+.mh-viewer > * {
+  grid-column: 2;
+  min-width: 0;
 }
-@media (min-width: 1024px) {
-  .mh-viewer {
-    max-width: 56rem;
-  }
-}
-@media (min-width: 1280px) {
-  .mh-viewer {
-    max-width: 64rem;
-  }
-}
-@media (min-width: 1536px) {
-  .mh-viewer {
-    max-width: 72rem;
-  }
-}
+
+/* Header: grid judul | pill */
 .mh-viewer-head {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 0.75rem;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  column-gap: 0.75rem;
+  row-gap: 0.25rem;
+}
+.mh-viewer-head > .min-w-0 {
+  min-width: 0;
 }
 .mh-viewer-back {
   border: 0;
@@ -571,6 +567,10 @@
   color: #64748b;
   font-weight: 500;
 }
+.mh-viewer-pager {
+  display: grid;
+  place-items: start end;
+}
 .mh-page-pill {
   display: inline-flex;
   align-items: center;
@@ -582,35 +582,45 @@
   padding: 0.25rem 0.65rem;
   white-space: nowrap;
 }
+
+/* Kartu halaman: stack blok dengan gap konsisten */
 .mh-page {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.85rem;
   background: #fff;
   border: 1px solid #e5e7eb;
   border-radius: 1rem;
   padding: 1rem 1.1rem 1.25rem;
   min-height: 12rem;
+  box-sizing: border-box;
 }
 @media (min-width: 640px) {
   .mh-page {
     padding: 1.35rem 1.75rem 1.6rem;
+    gap: 1rem;
   }
 }
 @media (min-width: 1024px) {
   .mh-page {
     padding: 1.5rem 2rem 1.85rem;
+    gap: 1.1rem;
   }
 }
+
+/* Blok teks: ukur lebar baris dengan ch (bukan rem kaku) */
 .mh-blok--teks {
   font-size: 0.95rem;
   line-height: 1.65;
   color: #1e293b;
-  /* Di layar lebar, batasi lebar baris teks agar tetap nyaman dibaca */
-  max-width: 48rem;
+  max-width: 65ch;
+  width: 100%;
 }
 @media (min-width: 1024px) {
   .mh-blok--teks {
     font-size: 1rem;
     line-height: 1.7;
-    max-width: 52rem;
+    max-width: 70ch;
   }
 }
 .mh-blok--teks p {
@@ -631,13 +641,18 @@
 .mh-blok--teks ol {
   margin: 0.35em 0 0.65em 1.25em;
 }
+
+/* Gambar penuh lebar kartu (grid item span penuh) */
 .mh-blok--gambar {
-  margin: 0.75rem 0;
+  margin: 0;
+  width: 100%;
+  max-width: none;
 }
 .mh-blok--gambar img {
   display: block;
   width: 100%;
   max-width: 100%;
+  height: auto;
   max-height: 70vh;
   object-fit: contain;
   border-radius: 0.65rem;
@@ -655,15 +670,16 @@
   color: #64748b;
   text-align: center;
 }
+
+/* Nav: grid 3 kolom — prev | dots | next */
 .mh-viewer-nav {
-  display: flex;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
-  justify-content: space-between;
-  gap: 0.5rem;
+  column-gap: 0.5rem;
   position: sticky;
   bottom: 0.5rem;
   width: 100%;
-  max-width: 100%;
   background: rgba(255, 255, 255, 0.92);
   backdrop-filter: blur(6px);
   border: 1px solid #e5e7eb;
@@ -688,6 +704,7 @@
   padding: 0.45rem 0.7rem;
   border-radius: 999px;
   min-height: 2.4rem;
+  white-space: nowrap;
 }
 .mh-nav-btn:hover:not(:disabled) {
   background: #ecfdf5;
@@ -701,7 +718,9 @@
   flex-wrap: wrap;
   gap: 0.3rem;
   justify-content: center;
-  max-width: 40%;
+  justify-self: center;
+  max-width: 100%;
+  min-width: 0;
 }
 .mh-dot {
   width: 0.55rem;
