@@ -1,11 +1,15 @@
 ## 2026-11-13 — Viewer materi: full-width responsif (tanpa gutter kiri/kanan)
 
-- `.mh-viewer` tidak lagi CSS Grid 3 kolom dengan kolom tengah `min(100%, 72rem)` — pola itu menyisakan ruang kosong kiri/kanan di PC dan saat zoom.
-- Kini flex kolom **lebar penuh parent**, padding horizontal `clamp` (mengikuti viewport/zoom).
-- Kartu `.mh-page` dan blok teks `.mh-blok--teks` **tanpa** `max-width: 65ch/70ch` — teks mengisi lebar kartu; ukuran font sedikit naik di breakpoint lebar.
-- Gambar tetap full-width kartu; nav sticky mengikuti lebar viewer.
-- Berlaku materi baru maupun lama (hanya CSS).
-- File: `src/styles/materi-halaman.css`. ANTIREGRESI §125 diperbarui.
+- `.mh-viewer` flex full parent (bukan grid 72rem). Teks/kartu tanpa max-width ch.
+- File: `src/styles/materi-halaman.css`.
+
+## 2026-11-13 — Gambar materi full-width (editor & viewer)
+
+- Penyebab ruang kosong kiri/kanan pada gambar: `max-height: 70vh` + `object-fit: contain` + `margin-inline: auto` mengecilkan lebar tampilan saat aspek gambar tidak mengisi viewport.
+- Viewer `.mh-blok--gambar img`: `width: 100%`, `height: auto`, **tanpa** `max-height`, margin 0 — mengisi lebar kartu.
+- Editor `.mh-img-preview`: sama, full lebar blok (bukan max 16rem tinggi yang membuat pratinjau kecil di tengah).
+- Gabungan dengan perbaikan viewer full-width (tanpa grid 72rem / 65ch).
+- File: `src/styles/materi-halaman.css`.
 
 ## 2026-11-13 — Viewer materi: layout CSS Grid (gutter fluid)
 

@@ -1,12 +1,12 @@
 ## §123. Kompetensi dasar & materi: dua daftar terpisah
 
-## §125. Viewer materi multi-halaman: full-width responsif
+## §125. Viewer materi multi-halaman: CSS Grid responsif
 
-125.1 `.mh-viewer` **lebar penuh parent** (flex column + padding `clamp`). **Jangan** kembali ke grid 3 kolom dengan kolom tengah `min(100%, 72rem)` atau `max-width: 42rem` + `margin: auto` — keduanya menyisakan gutter kiri/kanan di PC/zoom.
+125.1 `.mh-viewer` memakai **grid 3 kolom** `minmax(0,1fr) | minmax(0, min(100%, 72rem)) | minmax(0,1fr)` — anak langsung `grid-column: 2`. Jangan kembali ke `max-width: 42rem` + `margin: auto` saja (ruang kosong tidak merata / konten terasa sempit).
 
-125.2 `.mh-page` dan `.mh-blok--teks`: `max-width: none`, `width: 100%`. Jangan membatasi teks ke 65–70ch (kartu terlihat kosong di samping). Gambar tetap full-width kartu.
+125.2 Teks: `max-width` berbasis **ch** (≈65–70ch) di `.mh-blok--teks`. Gambar full-width kartu halaman (`max-width: none` pada blok gambar).
 
-125.3 Nav: grid 3 kolom (prev | dots | next), sticky, **lebar 100%** viewer (bukan kolom tengah artifisial).
+125.3 Nav: grid 3 kolom (prev | dots | next), sticky, lebar 100% kolom konten.
 
 
 ## §124. Katalog Kuis & Tugas siswa: kelompok mapel + filter
