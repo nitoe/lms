@@ -1,35 +1,43 @@
-## 2026-11-12 — Dashboard ruang kelas: UI v2
+## 2026-11-13 — Paket soal TKA hasil migrasi terdeteksi di penyusunan kuis
 
-- **Kepala & ringkasan:** judul halaman, strip angka (ruang, kelas, tugas aktif, kuis aktif).
-- **Monitor penugasan aktif:** panel rapi dengan badge Tugas/Kuis, meta mapel·kelas, tautan langsung, catatan wali.
-- **Cari & saring:** pencarian mapel/kelas, segmen filter kelas, hitungan ruang.
-- **Kartu ruang (`.rk-kartu`):** cover gradien per mapel, badge kelas/wali, monogram, pill tugas/kuis aktif, CTA.
-- Empty state dengan aksi reset saringan. Lebar penuh shell.
-- Tidak mengubah logika data (`kelasLms`, monitor tugas/kuis), route, maupun `firestore.rules`.
-- File: `src/pages/KelasList.tsx`, `src/components/RuangCard.tsx`, `src/styles/kelas.css` (baru).
+- **Perbaikan:** paket soal TKA **Bahasa Indonesia dan Matematika** (hasil migrasi dari tka2026) yang sudah berstatus Siap terlihat di Bank Soal tetapi tidak muncul di wizard «Susun kuis». Penyebab: sisa migrasi dapat tersimpan di kelas **6A/6B**, sedangkan wizard (dan pembuatan kuis) hanya mencari kelas bank «6»; Bank Soal sudah mencari ketiganya. Mapel IPA tidak terdampak karena dibuat langsung di LMS (kelas «6»).
+- `daftarPaket` kini sadar-TKA: untuk mapel TKA selalu mencari kelas 6, 6A, 6B lalu menggabungkan per id (satu query yang ditolak tidak membatalkan yang lain). Dipakai bersama oleh Bank Soal, wizard kuis, pembuatan kuis, dan «Tambah paket» di detail kuis.
+- Bila tetap tidak ada paket Siap, wizard menampilkan **diagnosis**: jumlah paket di Bank Soal per kelas, berapa yang masih Draf, dan berapa yang berstatus Siap tetapi tidak berisi soal.
+- File: `src/lib/soal.ts`, `src/components/KuisPanel.tsx`, `src/components/BankSoalPanel.tsx`. Tanpa perubahan `firestore.rules`.
 
-## 2026-11-12 — Detail tugas (guru): UI v2
+## 2026-11-13 — Kuis TKA per mapel terpisah & daftar kuis aktif di dashboard TKA
 
-- **Hero:** aksen mapel (`--tg-a`), monogram, chip jenis/kelas/status/penilaian, tenggat relatif (selaras katalog `tg-*`).
-- **Tab utama:** tiga tab berhint (Pengaturan · Isi tugas · Input nilai) dengan state aktif beraksen.
-- **Form kartu (`.td-*`):** identitas, mapel & TP, instruksi, kategori rubrik, rentang predikat — hierarki jelas; tombol memakai `.tg-btn`.
-- **Daftar nilai:** toolbar, tabel kompak, input skor, tombol AI per baris, empty/skeleton.
-- Build: hapus import/fungsi tak terpakai (`formatTenggat`, helper kategori lama); kolom siswa hanya `siswaNama` (tipe `BarisNilaiTugas` tanpa `nisn`).
-- **Lebar & sub-tab:** `.td-form` tanpa `max-width` (hilangkan ruang kosong kanan); sub-tab nilai (Pengaturan penilaian / Daftar nilai) diperbesar selebar konten dengan hint, setinggi tab utama.
-- **Daftar nilai responsif:** header kategori boleh patah baris tanpa mengubah `display` sel tabel; kolom siswa sticky; scroll horizontal bila perlu. (Perbaikan regresi: jangan `-webkit-line-clamp` pada `<th>`.)
-- Tidak mengubah logika data (`lib/tugas.ts`, `nilaiTugas`, `penilaianTugas`), route, data model, maupun `firestore.rules`.
-- File: `src/pages/TugasDetail.tsx`, `src/styles/tugas.css` (lanjutan katalog).
+- **Perbaikan:** tab Kuis pada ruang TKA (Matematika / Bahasa Indonesia / IPA) tidak lagi menampilkan kuis TKA mata pelajaran lain. Penyebab: tiga mapel TKA berbagi kelas bank «6», dan daftar kuis menggabungkan semua kuis buatan guru di kelas yang sama tanpa memeriksa mapel. Kini untuk mapel TKA hanya kuis bermapel sama yang tampil (Bank Soal sudah terfilter per mapel).
+- **Dashboard utama TKA** (`/tka`): bagian baru **Kuis TKA aktif**, dikelompokkan per mata pelajaran — judul, tahap Try Out, jumlah soal, durasi, jendela waktu, status (Berlangsung / Terjadwal) dan tautan «Buka» ke tab Kuis ruang mapel. Aktif = `aktif` menyala dan `waktuSelesai` belum lewat.
+- File: `src/components/KuisPanel.tsx`, `src/pages/tka/TkaBeranda.tsx`, `src/pages/tka/TkaKuisAktif.tsx` (baru), `src/styles/tka.css`. Tanpa perubahan `firestore.rules`.
+
+## 2026-11-13 — Ekspor hasil TKA (Excel/CSV) & konfirmasi hapus kuis
+
+- **Ekspor Rekap TKA** (`/tka/rekap`): tombol **Unduh Excel** (.xlsx, semua lembar: Rekap Nilai Akhir, tiap mapel yang punya nilai dengan capaian % per kompetensi + skor + kompetensi terlemah + catatan, Keterangan) dan **Unduh CSV** (tab yang sedang dibuka; titik koma, UTF-8 BOM, desimal koma — siap dibuka di Excel Indonesia). Mengikuti filter tahap & kelas; wali 6A/6B hanya mengekspor rombelnya.
+- Tanpa dependensi baru: pembuat XLSX/ZIP sendiri (`src/lib/exportTabel.ts`); sel teks CSV diamankan dari injeksi rumus.
+- **Konfirmasi hapus kuis** (kuis TKA maupun kuis mapel): dialog `KonfirmasiHapusDialog` — harus mengetik **HAPUS**; menampilkan jumlah soal, jumlah hasil pengerjaan siswa yang akan hilang, peringatan dampak ke Rekap Nilai TKA untuk kuis Try Out, dan saran memakai «Nonaktifkan». Menggantikan `confirm()` bawaan browser.
+- File: `src/lib/exportTabel.ts`, `src/lib/exportRekapTka.ts` (baru), `src/lib/sebaranTka.ts`, `src/pages/tka/TkaRekap.tsx`, `src/components/KonfirmasiHapusDialog.tsx` (baru), `src/styles/konfirmasi-hapus.css` (baru), `src/components/KuisPanel.tsx`, `src/styles/tka.css`.
 
 ## 2026-11-12 — Input sebaran kompetensi manual (try out di luar LMS)
 
 - Tab mapel (Matematika / Bahasa Indonesia / IPA) punya tombol **+ Input sebaran kompetensi manual** untuk Try Out tahap mana pun yang dikerjakan di luar LMS.
-- Grid input: **poin maksimum** tiap kompetensi diisi sekali (baris pertama), lalu **poin diperoleh** tiap siswa. Nilai akhir dihitung otomatis (poin ÷ maks × 100, dibulatkan) dan boleh ditimpa; tersimpan sebagai nilai manual beserta `sebaran[mapel]`.
-- Kelompok yang diisi: MTK = L1, L2 + Bilangan, Geometri dan Pengukuran, Data; BI = L1–L3 (tipe materi diturunkan); IPA = L1–L3 + Pengetahuan IPA, Keterampilan Proses Sains.
-- Validasi: semua kompetensi wajib terisi, poin ≤ maks, dan jumlah poin kompetensi dasar harus sama dengan kompetensi materi. Bila ada baris salah, tidak ada yang disimpan.
-- Siswa yang nilainya otomatis dari kuis LMS tidak ditampilkan (sebarannya sudah dari jawaban). Data yang sudah ada (mis. import Try Out I) ter-prefill dan bisa dikoreksi.
-- `simpanNilaiManualTka` menerima `sebaran`; tanpa `sebaran` perilaku lama (sebaran dibuang jika nilai berubah) tetap.
-- File: `src/pages/tka/TkaSebaranManual.tsx` (baru), `src/pages/tka/TkaRekapMapel.tsx`, `src/lib/sebaranTka.ts`, `src/lib/rekapTka.ts`, `src/styles/tka.css`. Tanpa perubahan `firestore.rules`.
+- Grid input: **poin maksimum** tiap kompetensi diisi sekali, lalu **poin diperoleh** tiap siswa. Nilai akhir dihitung otomatis (poin ÷ maks × 100, dibulatkan) dan boleh ditimpa; tersimpan sebagai nilai manual beserta `sebaran[mapel]`.
+- Kelompok: MTK = L1, L2 + Bilangan, Geometri dan Pengukuran, Data; BI = L1–L3 (tipe materi diturunkan); IPA = L1–L3 + Pengetahuan IPA, Keterampilan Proses Sains.
+- Validasi: semua kompetensi wajib terisi, poin ≤ maks, jumlah poin kompetensi dasar = kompetensi materi; bila ada baris salah, tidak ada yang disimpan. Siswa bernilai otomatis LMS tidak ditampilkan; data yang ada (mis. import Try Out I) ter-prefill.
+- `simpanNilaiManualTka` menerima `sebaran`. (Entri ini dipulihkan: kode sudah di repo, catatannya sempat tertimpa.)
+- File: `src/pages/tka/TkaSebaranManual.tsx`, `src/pages/tka/TkaRekapMapel.tsx`, `src/lib/sebaranTka.ts`, `src/lib/rekapTka.ts`, `src/styles/tka.css`. Tanpa perubahan `firestore.rules`.
 
+## 2026-11-12 — Beranda, Ruang Kelas (daftar & detail), kartu ruang: UI v2
+
+- **Beranda:** hero baru (salam sesuai waktu, tanggal, peran, 4 angka: ruang, kelas, tugas aktif, kuis aktif yang bisa diklik). Tata letak dua kolom di layar lebar: ruang kelas di kiri; **Agenda penugasan** (5 tugas/kuis aktif, urut tenggat terdekat, tenggat relatif berwarna) dan **Pintasan** (Tugas baru, Ruang kelas, Rekap nilai, TKA bila berhak) di kanan; di ponsel agenda tampil lebih dulu.
+- **Beranda:** tile «Tugas — Segera» yang sudah usang (Tugas sudah aktif) dan seksi «Modul pembelajaran» diganti Pintasan yang benar-benar berfungsi.
+- **Kartu ruang:** cover lebih ringkas, badge Kelas/Wali, hitungan **tugas aktif** dan **kuis aktif** per ruang (juga di Beranda), skeleton/placeholder saat belum dimuat.
+- **Daftar Kelas:** kepala halaman, panel «Penugasan aktif» (urut tenggat, chip tenggat berwarna, skeleton, «Tampilkan N lainnya», muat ulang), saringan kelas, **kartu dikelompokkan per kelas** bila guru memegang lebih dari satu kelas, empty state + «Reset saringan».
+- **Detail Kelas:** pil «N tugas aktif» dan «N kuis aktif» di hero (pil kuis membuka tab Kuis), tab berikon dengan aksen warna mapel + navigasi keyboard (panah/Home/End) dan atribut ARIA lengkap, empty state Pengumuman. Hero & tab ruang TKA tidak berubah (tetap Kuis + Bank Soal).
+- **Refaktor:** logika ringkasan tugas/kuis aktif dipindah dari `KelasList` ke `lib/ringkasanRuang.ts` (`useRingkasanRuang`) dan dipakai Beranda, Daftar Kelas, Detail Kelas — satu sumber kebenaran.
+- Tidak mengubah route, data model, `firestore.rules`, maupun panel Materi/Kuis/Bank Soal.
+- Catatan: Beranda kini ikut membaca tugas & kuis aktif (sama seperti Daftar Kelas), sehingga ada tambahan baca Firestore per kunjungan Beranda.
+- File: `pages/Beranda.tsx`, `pages/KelasList.tsx`, `pages/KelasDetail.tsx`, `components/RuangCard.tsx`, `components/ikonRuang.tsx` (baru), `lib/ringkasanRuang.ts` (baru), `styles/ruang.css` (baru).
 
 ## 2026-11-12 — Halaman Tugas (katalog guru): UI v2
 

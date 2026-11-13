@@ -1,39 +1,60 @@
-## §114. UI dashboard ruang kelas (`rk-*`)
+## §116. Paket soal TKA lintas kelas 6 / 6A / 6B
 
-114.1 Kelas `.rk-*` untuk katalog `/kelas` (`KelasList` + `RuangCard`). Jangan mencampur dengan `.tg-*` (tugas) atau `.td-*` (detail tugas) kecuali pola visual yang disengaja sama.
+116.1 Bank soal TKA berkelas kanonik «6», tetapi paket hasil migrasi tka2026 bisa berkelas **6A/6B**. Semua pembaca paket TKA (Bank Soal, wizard kuis, `buatKuisDariPaket`, «Tambah paket» di `KuisDetail`) HARUS lewat `daftarPaket()` yang menggabungkan 6, 6A, 6B untuk mapel TKA. Jangan menulis query `lms_paket_soal` langsung dengan `kelas == '6'` saja.
 
-114.2 Aksen kartu: set `--rk-a`, `--rk-cover`, `--rk-fg` **inline per kartu** dari `aksenMapel` — sama deterministik dengan cover hero detail ruang. Jangan hash warna terpisah.
+116.2 Query per kelas memakai `Promise.allSettled`: penolakan rules pada satu kelas tidak boleh mengosongkan daftar. Hanya bila SEMUA query gagal, lempar error.
 
-114.3 Monitor penugasan aktif memuat tugas (`daftarTugasGuru`) + kuis per pasangan kelas×mapel; gagal parsial **tidak** boleh menggagalkan seluruh halaman (tetap `catch` per sumber).
+116.3 Paket «Siap» dideteksi wizard bila `status === 'siap'` DAN `soal.length > 0`. Bila daftar kosong, tampilkan diagnosis (`ringkasanPaket`) agar penyebab (draf / siap tanpa soal / kelas) terlihat, bukan hanya pesan «belum ada paket».
 
-114.4 Grid `.rk-grid` memakai `<ul>/<li>`; jangan `display: contents` pada `<li>` (selaras §111.5).
+116.4 Mapel non-TKA tidak berubah (satu kelas, tanpa penggabungan).
 
-114.5 Jangan menambah `max-width` pada `.rk-halaman` / `.rk-grid` — lebar penuh shell.
+## §115. Kuis TKA terpisah per mapel & daftar kuis aktif
 
-## §113. UI detail tugas (`td-*`)
+115.1 Mapel TKA berbagi kelas bank «6». Daftar kuis ruang TKA HARUS difilter `mapel` yang sama; jangan menggabung `daftarKuisDibuatOleh()` tanpa memeriksa mapel untuk mapel TKA (penyebab kuis TKA mapel lain muncul). Toleransi mapel beda hanya untuk mapel non-TKA.
 
-113.1 Kelas `.td-*` hanya untuk halaman detail (`TugasDetail`); katalog tetap `.tg-*`. Keduanya berbagi `--tg-a` (diset di root detail dari `aksenMapel`) dan tombol `.tg-btn`.
+115.2 Setiap query `lms_kuis` harus `where kelas + mapel` (rules). Daftar kuis aktif di dashboard TKA melakukan satu query per mapel (`daftarKuis(ruangTka(m).kelas, m)`), bukan query lintas-mapel.
 
-113.2 Jangan menambah `max-width` pada `.tg-halaman` maupun `.td-form` — konten detail mengikuti lebar shell penuh (sama katalog). Sub-tab nilai (`.td-subtabs`) harus selebar konten dan setinggi tab utama, bukan pill kecil di pojok.
+115.3 «Aktif» = `aktif === true` dan `waktuSelesai` kosong/di masa depan; `waktuMulai` di masa depan = «Terjadwal». Waktu bisa berupa string ISO atau Timestamp Firestore — gunakan `keTanggal`.
 
-113.3 Tenggat di hero memakai `infoTenggat` yang sama dengan katalog (`lib/tugasUi.ts`). Nada alarm hanya bermakna bila tugas aktif; draf tidak dipaksa warna «lewat».
+## §114. Ekspor TKA & konfirmasi hapus kuis
 
-113.4 Tab utama & sub-tab nilai harus tetap tiga / dua seperti sekarang. Jangan menggabungkan «Pengaturan penilaian» ke tab Pengaturan tanpa menyamakan alur simpan (`simpanPengaturanNilai` vs `simpanPengaturan`).
+114.1 Ekspor XLSX dibuat tanpa dependensi (`exportTabel.ts`). Jangan menambah paket spreadsheet hanya untuk ekspor; bila diganti, pertahankan: header tebal, kolom nama dibekukan, angka tetap numerik (bukan teks), sheet ≤ 31 karakter.
 
-113.5 Logika skor, predikat, AI kategori/isi, dan simpan nilai per siswa **tidak** boleh diubah hanya demi gaya CSS. UI v2 adalah presentasi saja (selaras §111 katalog).
+114.2 CSV: UTF-8 **BOM**, pemisah `;`, desimal `,` (Excel lokal Indonesia membuka koma-pemisah dalam satu kolom). Sel teks berawalan `= + - @` diberi `'` (cegah injeksi rumus).
 
-113.6 Tabel daftar nilai (`.td-tabel--nilai`): header kategori (`.td-th-kat`) boleh patah baris (`white-space: normal`). **Jangan** memakai `display: -webkit-box` / `-webkit-line-clamp` pada `<th>` atau `<td>` — itu merusak model kolom tabel (header menumpuk, skor kategori hilang dari kolomnya). Kolom siswa boleh sticky. Scroll horizontal pada `.td-tabel-wrap` bila kolom tidak muat.
+114.3 Ekspor mengikuti filter tahap/kelas yang tampil — jangan mengekspor kelas di luar `kelasRekapTkaBolehDilihat` (wali 6A tidak boleh membawa 6B).
 
-## §112. Input sebaran manual
+114.4 Hapus kuis HARUS lewat `KonfirmasiHapusDialog` (ketik **HAPUS**). Jangan kembali ke `confirm()` satu klik. Dialog menyebut dampak ke Rekap TKA untuk kuis Try Out dan menyarankan «Nonaktifkan». `hapusKuis` hanya menghapus dokumen kuis — hasil `lms_jawaban` tertinggal (yatim); jangan menambah penghapusan massal jawaban tanpa konfirmasi terpisah.
 
-112.1 Sebaran manual disimpan sebagai **poin & maks** per kompetensi (bukan persen), lewat `bangunSebaranManual`. Jumlah poin & maks kompetensi dasar WAJIB sama dengan kompetensi materi (membagi soal yang sama); jika tidak, tolak.
+## §113. Input sebaran manual
 
-112.2 Grid hanya memuat siswa dengan `sumber !== 'otomatis'`. Jangan menimpa nilai otomatis LMS lewat input manual — sebarannya sudah dari jawaban.
+113.1 Sebaran manual disimpan sebagai **poin & maks** per kompetensi (bukan persen), lewat `bangunSebaranManual`. Jumlah poin & maks kompetensi dasar WAJIB sama dengan kompetensi materi (membagi soal yang sama); jika tidak, tolak.
 
-112.3 Menyimpan sebaran manual HARUS lewat `simpanNilaiManualTka({ sebaran })` agar nilai & sebaran tertulis bersamaan. Mengubah nilai manual tanpa `sebaran` membuang sebaran lama mapel itu (§109.3).
+113.2 Grid hanya memuat siswa dengan `sumber !== 'otomatis'`. Jangan menimpa nilai otomatis LMS lewat input manual — sebarannya sudah dari jawaban.
 
-112.4 Validasi seluruh baris dulu; jika ada satu salah, jangan menyimpan apa pun (hindari data setengah jadi). Setelah menyimpan, publikasi portal harus diperbarui manual («Perbarui publikasi»).
+113.3 Menyimpan sebaran manual HARUS lewat `simpanNilaiManualTka({ sebaran })` agar nilai & sebaran tertulis bersamaan. Mengubah nilai manual tanpa `sebaran` membuang sebaran lama mapel itu (§109.3).
 
+113.4 Validasi seluruh baris dulu; jika ada satu salah, jangan menyimpan apa pun. Setelah menyimpan, publikasi portal harus diperbarui manual («Perbarui publikasi»).
+
+113.5 Catatan nomor: entri ini sebelumnya tertulis §112 dan tertimpa oleh §112 UI Beranda; dipulihkan sebagai §113. Sebelum menulis entri, selalu cek nomor terakhir di `main` terbaru.
+
+## §112. UI Beranda / Ruang Kelas (`rg-*`)
+
+112.1 Ringkasan tugas & kuis aktif **hanya** lewat `lib/ringkasanRuang.ts` (`useRingkasanRuang` / `muatRingkasanRuang`). Jangan menyalin query `daftarTugasGuru`/`daftarKuis` ke halaman lain. Hook aman balapan (hanya hasil permintaan terbaru yang dipakai).
+
+112.2 `useRingkasanRuang(ruang, …)` memuat ulang setiap **identitas array `ruang`** berubah. Di Beranda/KelasList `ruang` hanya di-set dari efek `[profil]`; di KelasDetail dibungkus `useMemo`. Jangan meneruskan array yang dibuat baru tiap render (akibatnya «Maximum update depth exceeded»).
+
+112.3 `KelasDetail`: semua hook baru wajib di atas early return `!parsed` (sama dengan aturan KuisPanel §108.4). Ruang TKA **tidak** memuat ringkasan (`ruangSatu` kosong) dan **tidak** menampilkan pil tugas/kuis; tab TKA tetap hanya Kuis + Bank Soal (§77).
+
+112.4 `.kelas-hero*` dan `.tka-ruang-*` dipakai bersama hero TKA — jangan diubah untuk mempercantik hero non-TKA (tambahan non-TKA lewat `.rg-hero-pills`). `.lms-hero`, `.lms-card*`, `.lms-tab*` masih dipakai halaman siswa dan panel; **jangan dihapus** walau Beranda/KelasList tidak lagi memakainya.
+
+112.5 Tab ruang memakai pola ARIA: `role=tablist/tab/tabpanel`, id `tab-<id>` / `panel-<id>`, roving `tabIndex`, panah kiri/kanan/Home/End. Jangan kembali ke tab tanpa atribut ini.
+
+112.6 Label hitungan di kartu ruang («tugas aktif», «kuis aktif») huruf biasa, **bukan** uppercase ber-letter-spacing — versi uppercase terpotong («TUGAS AK…») pada kartu ±215 px. Hitungan nol berwarna `#64748b` (bukan `#94a3b8`, kontras kurang).
+
+112.7 Item grid ruang adalah `<li>` `display: flex` berisi kartu (`<a class="rg-ruang">`); jangan `display: contents` pada `<li>`. Lebar halaman penuh — tanpa `max-width` pada `.rg-halaman` / `.rg-grid` (§111.2).
+
+112.8 Urutan agenda (`urutkanAgenda`): tugas bertenggat mendatang (terdekat dulu) → tugas lewat tenggat (terbaru dulu) → tugas tanpa tenggat → kuis; selaras «Tenggat terdekat» di katalog Tugas. Nada tenggat memakai `infoTenggat` (§111.3).
 
 ## §111. UI katalog Tugas (`tg-*`)
 
