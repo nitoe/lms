@@ -1,5 +1,14 @@
 ## §123. Kompetensi dasar & materi: dua daftar terpisah
 
+## §125. Viewer materi multi-halaman: lebar responsif
+
+125.1 Jangan mengunci `.mh-viewer` ke `max-width: 42rem` saja — di PC menyisakan ruang kosong kiri/kanan. Pakai tangga: 100% → 48rem → 56rem → 64rem → 72rem (breakpoint 768 / 1024 / 1280 / 1536).
+
+125.2 Teks boleh punya `max-width` sendiri di `.mh-blok--teks` agar baris tetap nyaman; gambar mengikuti lebar kartu halaman.
+
+125.3 Nav sticky (`.mh-viewer-nav`) lebar 100% viewer, bukan tetap sempit.
+
+
 ## §124. Katalog Kuis & Tugas siswa: kelompok mapel + filter
 
 124.1 Daftar kuis/tugas siswa **dikelompokkan per `mapel`**. Jangan kembali ke daftar datar tanpa section mapel jika jumlah item bisa banyak.

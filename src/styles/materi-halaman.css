@@ -503,14 +503,39 @@
   padding: 0;
 }
 
-/* Viewer siswa / pratinjau */
+/* Viewer siswa / pratinjau
+   Lebar mengikuti layar: HP penuh, tablet ~48rem, PC hingga ~64rem
+   agar tidak menyisakan ruang kosong besar di kiri/kanan (ANTIREGRESI §54).
+   Teks tetap nyaman dibaca lewat ukuran font + line-height, bukan max-width sempit. */
 .mh-viewer {
   display: flex;
   flex-direction: column;
   gap: 0.85rem;
-  max-width: 42rem;
+  width: 100%;
+  max-width: 100%;
   margin: 0 auto;
   padding-bottom: 1.25rem;
+  box-sizing: border-box;
+}
+@media (min-width: 768px) {
+  .mh-viewer {
+    max-width: 48rem;
+  }
+}
+@media (min-width: 1024px) {
+  .mh-viewer {
+    max-width: 56rem;
+  }
+}
+@media (min-width: 1280px) {
+  .mh-viewer {
+    max-width: 64rem;
+  }
+}
+@media (min-width: 1536px) {
+  .mh-viewer {
+    max-width: 72rem;
+  }
 }
 .mh-viewer-head {
   display: flex;
@@ -534,6 +559,11 @@
   color: #0f172a;
   line-height: 1.3;
   margin: 0;
+}
+@media (min-width: 768px) {
+  .mh-viewer-title {
+    font-size: 1.35rem;
+  }
 }
 .mh-viewer-subtitle {
   margin: 0.2rem 0 0;
@@ -561,13 +591,27 @@
 }
 @media (min-width: 640px) {
   .mh-page {
-    padding: 1.25rem 1.5rem 1.5rem;
+    padding: 1.35rem 1.75rem 1.6rem;
+  }
+}
+@media (min-width: 1024px) {
+  .mh-page {
+    padding: 1.5rem 2rem 1.85rem;
   }
 }
 .mh-blok--teks {
   font-size: 0.95rem;
-  line-height: 1.6;
+  line-height: 1.65;
   color: #1e293b;
+  /* Di layar lebar, batasi lebar baris teks agar tetap nyaman dibaca */
+  max-width: 48rem;
+}
+@media (min-width: 1024px) {
+  .mh-blok--teks {
+    font-size: 1rem;
+    line-height: 1.7;
+    max-width: 52rem;
+  }
 }
 .mh-blok--teks p {
   margin: 0 0 0.65em;
@@ -593,10 +637,17 @@
 .mh-blok--gambar img {
   display: block;
   width: 100%;
+  max-width: 100%;
   max-height: 70vh;
   object-fit: contain;
   border-radius: 0.65rem;
   background: #f8fafc;
+  margin-inline: auto;
+}
+@media (min-width: 1024px) {
+  .mh-blok--gambar img {
+    max-height: 75vh;
+  }
 }
 .mh-blok--gambar figcaption {
   margin-top: 0.4rem;
@@ -611,12 +662,21 @@
   gap: 0.5rem;
   position: sticky;
   bottom: 0.5rem;
+  width: 100%;
+  max-width: 100%;
   background: rgba(255, 255, 255, 0.92);
   backdrop-filter: blur(6px);
   border: 1px solid #e5e7eb;
   border-radius: 999px;
   padding: 0.35rem 0.45rem;
   box-shadow: 0 4px 16px rgba(15, 23, 42, 0.06);
+  box-sizing: border-box;
+}
+@media (min-width: 768px) {
+  .mh-viewer-nav {
+    bottom: 0.75rem;
+    padding: 0.4rem 0.55rem;
+  }
 }
 .mh-nav-btn {
   border: 0;

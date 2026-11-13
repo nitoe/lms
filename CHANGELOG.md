@@ -1,3 +1,10 @@
+## 2026-11-13 — Viewer materi: lebar responsif PC & HP
+
+- `.mh-viewer` tidak lagi terkunci `max-width: 42rem` (menyisakan ruang kosong besar di kiri/kanan PC).
+- Lebar mengikuti viewport: penuh di HP → 48rem (≥768px) → 56rem (≥1024px) → 64rem (≥1280px) → 72rem (≥1536px).
+- Padding kartu halaman dan ukuran judul/teks sedikit diperbesar di layar lebar; gambar tetap full-width kartu; navigasi halaman mengikuti lebar viewer.
+- File: `src/styles/materi-halaman.css`.
+
 ## 2026-11-13 — UI katalog Kuis & Tugas siswa (polish)
 
 - Katalog Kuis dan Tugas siswa memakai bahasa visual yang sama: header + ringkasan angka, chip filter, section per mapel dengan bilah aksen warna mapel, grid kartu responsif, badge status, empty state berikon.
