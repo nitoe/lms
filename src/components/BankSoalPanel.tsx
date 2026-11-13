@@ -103,7 +103,7 @@ export default function BankSoalPanel({ kelas, mapel, ruangId }: Props) {
     setError('')
     try {
       if (isTka) {
-        // Bank bersama TKA: daftarPaket sudah menggabungkan kelas «6» + sisa migrasi 6A/6B (ANTIREGRESI §116).
+        // Bank bersama TKA: daftarPaket sudah menggabungkan kelas «6» + sisa migrasi 6A/6B (ANTIREGRESI §121).
         const merged = await daftarPaket(kelas, mapel)
         setList(merged)
         setTpList([])

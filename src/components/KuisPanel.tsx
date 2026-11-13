@@ -17,6 +17,8 @@ import {
   susunOtomatis,
 } from '../lib/susunKuis'
 import { teksPolos } from '../lib/html'
+import { daftarJawabanKuis } from '../lib/jawabanKuis'
+import { ringkasanPaket } from '../lib/soal'
 import type { FilterSusunKuis, KuisLms, ModeSusunKuis, SoalKuis, TahapTryOutTka } from '../types/kuis'
 import {
   DAFTAR_TAHAP_TRYOUT_TKA,
@@ -34,6 +36,7 @@ import {
 } from '../types/soal'
 import { adalahMapelTka, LABEL_MAPEL_TKA, materiTkaUntuk, TIPE_SOAL_TKA } from '../lib/tkaAkses'
 import { kelasAksenMapel, LABEL_TIPE_PENDEK, materiPaket, paketMemuatMateri } from '../lib/aksenTka'
+import KonfirmasiHapusDialog from './KonfirmasiHapusDialog'
 import KuisDetail, { INSTRUKSI_TIPE } from './KuisDetail'
 import HasilKuisPanel from './HasilKuisPanel'
 import OfflineKuisPanel from './OfflineKuisPanel'
@@ -104,6 +107,10 @@ export default function KuisPanel({ kelas, mapel }: Props) {
 
   const [list, setList] = useState<KuisLms[] | null>(null)
   const [paketSiap, setPaketSiap] = useState<PaketSoal[]>([])
+  /** Diagnosis bila tidak ada paket Siap padahal Bank Soal TKA berisi paket (ANTIREGRESI §121). */
+  const [diagnosaPaket, setDiagnosaPaket] = useState('')
+  /** Kuis yang sedang dikonfirmasi untuk dihapus (jumlahJawaban null = sedang dihitung). */
+  const [hapusTarget, setHapusTarget] = useState<{ kuis: KuisLms; jumlahJawaban: number | null } | null>(null)
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
   const [langkah, setLangkah] = useState<Langkah>('daftar')
@@ -141,8 +148,12 @@ export default function KuisPanel({ kelas, mapel }: Props) {
       // mapel beda sedikit — tetap ditampilkan agar data lama tidak hilang dari UI).
       const map = new Map<string, KuisLms>()
       for (const item of k) map.set(item.id, item)
+      // TKA: tiga mapel berbagi kelas bank «6» — kuis mapel TKA lain JANGAN ikut tampil
+      // (ANTIREGRESI §120). Mapel biasa tetap toleran terhadap data lama.
+      const ketatMapel = adalahMapelTka(mapel)
       for (const item of milikSaya) {
         if (String(item.kelas || '').toUpperCase() !== kelasU) continue
+        if (ketatMapel && String(item.mapel || '').trim() !== String(mapel).trim()) continue
         // prioritaskan mapel yang sama; tetap sertakan mapel lain di kelas ini milik saya
         if (!map.has(item.id)) map.set(item.id, item)
       }
@@ -153,6 +164,21 @@ export default function KuisPanel({ kelas, mapel }: Props) {
       })
       setList(gabung)
       setPaketSiap(p)
+      setDiagnosaPaket('')
+      if (p.length === 0 && adalahMapelTka(mapel)) {
+        void ringkasanPaket(kelas, mapel)
+          .then((r) => {
+            if (r.total === 0) return
+            const kelasTeks = Object.entries(r.perKelas)
+              .map(([kl, n]) => `${kl}: ${n}`)
+              .join(', ')
+            const bagian = [`Bank Soal memuat ${r.total} paket (${kelasTeks})`]
+            if (r.draf > 0) bagian.push(`${r.draf} masih Draf`)
+            if (r.siapKosong > 0) bagian.push(`${r.siapKosong} berstatus Siap tetapi tidak berisi soal`)
+            setDiagnosaPaket(bagian.join(' · ') + '.')
+          })
+          .catch(() => {})
+      }
       if (gabung.length === 0 && k.length === 0) {
         // biarkan empty state; error hanya jika keduanya gagal total sudah di-catch di atas
       }
@@ -397,22 +423,75 @@ export default function KuisPanel({ kelas, mapel }: Props) {
     setMateriPaketAktif('')
   }
 
-  async function onHapus(k: KuisLms) {
-    if (!confirm(`Hapus kuis «${k.judul}» beserta ${k.jumlahSoal} soalnya?`)) return
+  /** Langkah 1: buka dialog konfirmasi (hitung dulu hasil siswa yang akan kehilangan kuis). */
+  function onHapus(k: KuisLms) {
+    setHapusTarget({ kuis: k, jumlahJawaban: null })
+    void daftarJawabanKuis(k.id, k.kelas, k.mapel)
+      .then((list) => {
+        setHapusTarget((cur) => (cur && cur.kuis.id === k.id ? { kuis: k, jumlahJawaban: list.length } : cur))
+      })
+      .catch(() => {
+        /* jumlah tetap tidak diketahui; konfirmasi tetap berlaku */
+      })
+  }
+
+  /** Langkah 2: hapus setelah pengguna mengetik kata kunci di dialog. */
+  async function konfirmasiHapus() {
+    if (!hapusTarget) return
+    const k = hapusTarget.kuis
     setBusy(true)
     setError('')
     try {
       await hapusKuis(k.id)
+      setHapusTarget(null)
       if (selectedId === k.id) {
         setSelectedId(null)
         setLangkah('daftar')
       }
       await muat()
     } catch (err) {
+      setHapusTarget(null)
       setError(err instanceof Error ? err.message : 'Gagal menghapus.')
     } finally {
       setBusy(false)
     }
+  }
+
+  function dialogHapus() {
+    if (!hapusTarget) return null
+    const { kuis: k, jumlahJawaban } = hapusTarget
+    const tka = Boolean(k.tahapTryOutTka) || adalahMapelTka(k.mapel)
+    const rincian = [
+      `${k.jumlahSoal} soal ikut terhapus.`,
+      jumlahJawaban == null
+        ? 'Memeriksa hasil pengerjaan siswa…'
+        : jumlahJawaban > 0
+          ? `${jumlahJawaban} hasil pengerjaan siswa tidak dapat ditampilkan lagi (nilai & analisis soal hilang dari rekap kuis).`
+          : 'Belum ada hasil pengerjaan siswa.',
+    ]
+    const peringatan: string[] = []
+    if (tka) {
+      peringatan.push(
+        k.tahapTryOutTka
+          ? `Kuis Try Out TKA ${NAMA_TAHAP_TRYOUT_TKA[k.tahapTryOutTka]}: nilai otomatis dan sebaran kompetensi dari kuis ini akan hilang dari Rekap Nilai TKA. Nilai manual tidak terpengaruh.`
+          : 'Kuis TKA: nilai & sebaran dari kuis ini dapat hilang dari Rekap Nilai TKA.',
+      )
+    }
+    if (jumlahJawaban != null && jumlahJawaban > 0) {
+      peringatan.push('Siswa sudah mengerjakan kuis ini.')
+    }
+    return (
+      <KonfirmasiHapusDialog
+        judul="Hapus kuis ini?"
+        nama={k.judul}
+        rincian={rincian}
+        peringatan={peringatan}
+        saran="Hanya ingin menyembunyikan dari siswa? Pakai «Nonaktifkan» — data tetap aman."
+        busy={busy}
+        onBatal={() => setHapusTarget(null)}
+        onKonfirmasi={() => void konfirmasiHapus()}
+      />
+    )
   }
 
   async function onToggleAktif(k: KuisLms) {
@@ -669,6 +748,7 @@ export default function KuisPanel({ kelas, mapel }: Props) {
                 <div className="wz-kosong-paket">
                   Belum ada paket berstatus <strong>Siap</strong>. Buka tab <strong>Bank Soal</strong>, lengkapi
                   paket, lalu ubah statusnya menjadi Siap.
+                  {diagnosaPaket && <span className="block mt-1 text-xs opacity-80">{diagnosaPaket}</span>}
                 </div>
               ) : (
                 <>
@@ -1236,7 +1316,7 @@ export default function KuisPanel({ kelas, mapel }: Props) {
                       type="button"
                       className="pk-btn pk-btn--bahaya"
                       disabled={busy}
-                      onClick={() => void onHapus(k)}
+                      onClick={() => onHapus(k)}
                       aria-label={`Hapus kuis ${k.judul}`}
                     >
                       Hapus
@@ -1254,6 +1334,7 @@ export default function KuisPanel({ kelas, mapel }: Props) {
           })}
         </ul>
       )}
+      {dialogHapus()}
     </div>
   )
 }

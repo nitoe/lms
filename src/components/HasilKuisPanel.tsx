@@ -31,9 +31,17 @@ import {
 import { sinkronNilaiKuisKePenilaian } from '../lib/sinkronNilaiKuis'
 import { updateKuis } from '../lib/kuis'
 import {
+  agregatSebaran,
+  hitungSebaranDariJawaban,
+  kolomDariAgregat,
+  BATAS_RENDAH_TKA,
+  KKM_TKA,
+} from '../lib/sebaranTka'
+import {
   adalahAdminTka,
   adalahMapelTka,
   kelasHasilTkaBolehDilihat,
+  type MapelTkaNama,
 } from '../lib/tkaAkses'
 import { muatSiswaKelas, type SiswaDasar } from '../lib/siswaAuth'
 
@@ -374,6 +382,35 @@ export default function HasilKuisPanel({ kuis, onUpdated }: Props) {
   }, [isTka, rosterTka, tampil, filterKelasTka])
 
   const soalIds = useMemo(() => (kuis.soal ?? []).map((s) => s.id), [kuis.soal])
+
+  /**
+   * TKA: kolom kompetensi per siswa, dihitung dari jawaban kuis ini (poin berbobot).
+   * - IPA: domain (Pengetahuan / Keterampilan Proses) tetap seperti semula + kolom L1–L3.
+   * - Bahasa Indonesia / Matematika: L1–L3 dan kompetensi materi (BI: satu kolom berpasangan).
+   * ANTIREGRESI §122.
+   */
+  const tkaIpa = kuis.mapel === 'TKA IPA'
+  const sebaranSiswa = useMemo(() => {
+    const peta = new Map<string, ReturnType<typeof hitungSebaranDariJawaban>>()
+    if (!isTka) return peta
+    for (const b of barisTka) {
+      if (b.jawaban) {
+        peta.set(
+          b.siswaId,
+          hitungSebaranDariJawaban(kuis.soal, b.jawaban.detail, kuis.mapel as MapelTkaNama),
+        )
+      }
+    }
+    return peta
+  }, [isTka, barisTka, kuis.soal, kuis.mapel])
+
+  const kolomTka = useMemo(() => {
+    if (!isTka) return []
+    const kol = kolomDariAgregat(agregatSebaran([...sebaranSiswa.values()]))
+    return tkaIpa ? kol.filter((c) => c.dim === 'kompleksitas') : kol
+  }, [isTka, sebaranSiswa, tkaIpa])
+
+  /** TKA: selalu siapkan kedua domain (kolom tetap), meski belum ada soal berlabel. */
 
   /** TKA: selalu siapkan kedua domain (kolom tetap), meski belum ada soal berlabel. */
 
@@ -1214,13 +1251,34 @@ export default function HasilKuisPanel({ kuis, onUpdated }: Props) {
                 <tr className="border-b border-slate-200 bg-slate-50/80 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
                   <th className="px-4 py-3">Siswa</th>
                   <th className="px-3 py-3">Kelas</th>
-                  <th className="px-3 py-3" title="Pengetahuan IPA">
-                    Pengetahuan
-                  </th>
-                  <th className="px-3 py-3" title="Keterampilan Proses Sains">
-                    Keterampilan Proses
-                  </th>
-                  <th className="px-3 py-3" title="Rata-rata kedua domain">
+                  {tkaIpa && (
+                    <>
+                      <th className="px-3 py-3" title="Pengetahuan IPA">
+                        Pengetahuan
+                      </th>
+                      <th className="px-3 py-3" title="Keterampilan Proses Sains">
+                        Keterampilan Proses
+                      </th>
+                    </>
+                  )}
+                  {kolomTka.map((c) => (
+                    <th
+                      key={c.id}
+                      className="px-3 py-3"
+                      title={c.sub ? `${c.judul} / ${c.sub}` : c.judul}
+                    >
+                      {c.judul}
+                      {c.sub ? (
+                        <span className="block text-[9px] font-medium normal-case tracking-normal text-slate-400">
+                          {c.sub}
+                        </span>
+                      ) : null}
+                    </th>
+                  ))}
+                  <th
+                    className="px-3 py-3"
+                    title={tkaIpa ? 'Rata-rata kedua domain' : 'Skor ÷ poin maksimum × 100'}
+                  >
                     Nilai Akhir
                   </th>
                   <th className="px-3 py-3">Status</th>
@@ -1246,9 +1304,11 @@ export default function HasilKuisPanel({ kuis, onUpdated }: Props) {
                           </div>
                         </td>
                         <td className="px-3 py-3 text-xs font-medium text-slate-600">{row.kelas}</td>
-                        <td className="px-3 py-3 text-sm font-semibold text-slate-300">—</td>
-                        <td className="px-3 py-3 text-sm font-semibold text-slate-300">—</td>
-                        <td className="px-3 py-3 text-sm font-semibold text-slate-300">—</td>
+                        {Array.from({ length: (tkaIpa ? 2 : 0) + kolomTka.length + 1 }, (_, i) => (
+                          <td key={i} className="px-3 py-3 text-sm font-semibold text-slate-300">
+                            —
+                          </td>
+                        ))}
                         <td className="px-3 py-3">
                           <span className="inline-flex rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-500">
                             Belum mengerjakan
@@ -1280,17 +1340,47 @@ export default function HasilKuisPanel({ kuis, onUpdated }: Props) {
                         const dom = skorPerDomain(j, kuis.soal ?? [])
                         const p = pctDomain(dom.pengetahuan)
                         const k = pctDomain(dom.keterampilan_proses)
-                        const akhir = nilaiAkhirTka(dom)
+                        // IPA: rata-rata domain (rancangan semula). Mapel lain: skor ÷ poin maks.
+                        const akhir = tkaIpa
+                          ? nilaiAkhirTka(dom)
+                          : j.totalPoin > 0
+                            ? skorKe100(j.skorOtomatis, j.totalPoin)
+                            : null
+                        const sb = sebaranSiswa.get(row.siswaId) ?? null
                         return (
                           <>
-                            <td className="px-3 py-3 tabular-nums text-sm text-slate-700">
-                              {formatPct(p)}
-                              {p != null ? <span className="text-[10px] text-slate-400"> /100</span> : null}
-                            </td>
-                            <td className="px-3 py-3 tabular-nums text-sm text-slate-700">
-                              {formatPct(k)}
-                              {k != null ? <span className="text-[10px] text-slate-400"> /100</span> : null}
-                            </td>
+                            {tkaIpa && (
+                              <>
+                                <td className="px-3 py-3 tabular-nums text-sm text-slate-700">
+                                  {formatPct(p)}
+                                  {p != null ? <span className="text-[10px] text-slate-400"> /100</span> : null}
+                                </td>
+                                <td className="px-3 py-3 tabular-nums text-sm text-slate-700">
+                                  {formatPct(k)}
+                                  {k != null ? <span className="text-[10px] text-slate-400"> /100</span> : null}
+                                </td>
+                              </>
+                            )}
+                            {kolomTka.map((c) => {
+                              const b = sb?.[c.dim]?.find((x) => x.key === c.key)
+                              const warna = !b
+                                ? 'text-slate-300'
+                                : b.persen < BATAS_RENDAH_TKA
+                                  ? 'bg-red-50 text-red-700'
+                                  : b.persen < KKM_TKA
+                                    ? 'bg-amber-50 text-amber-700'
+                                    : 'bg-emerald-50 text-emerald-700'
+                              return (
+                                <td key={c.id} className="px-3 py-3">
+                                  <span
+                                    className={`inline-block min-w-[2.6rem] rounded-md px-1.5 py-0.5 text-center text-xs font-bold tabular-nums ${warna}`}
+                                    title={b ? `${b.poin} / ${b.maks} poin` : undefined}
+                                  >
+                                    {b ? formatPct(b.persen) : '—'}
+                                  </span>
+                                </td>
+                              )
+                            })}
                             <td className="px-3 py-3">
                               <span className="text-base font-bold tabular-nums text-muh-700">
                                 {formatPct(akhir)}

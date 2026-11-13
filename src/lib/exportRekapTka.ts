@@ -1,6 +1,6 @@
 /**
  * Menyusun lembar ekspor Rekap Try Out TKA (nilai akhir + sebaran kompetensi per siswa).
- * Murni (tanpa Firebase) agar mudah diuji. ANTIREGRESI §114.
+ * Murni (tanpa Firebase) agar mudah diuji. ANTIREGRESI §119.
  */
 import type { LembarEks, SelEks } from './exportTabel'
 import {

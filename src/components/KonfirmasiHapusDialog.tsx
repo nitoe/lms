@@ -1,7 +1,7 @@
 /**
  * Dialog konfirmasi penghapusan data penting (kuis TKA / kuis mapel).
  * Mencegah hapus tak sengaja: pengguna harus mengetik kata kunci (bawaan «HAPUS»).
- * ANTIREGRESI §114.
+ * ANTIREGRESI §119.
  */
 import { useEffect, useId, useRef, useState } from 'react'
 import '../styles/konfirmasi-hapus.css'

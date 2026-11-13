@@ -215,7 +215,7 @@ async function daftarPaketSatuKelas(kelas: string, mapel: string): Promise<Paket
  * Mapel TKA: bank bersama berkas di kelas kanonik «6», tetapi soal hasil migrasi dari tka2026 dapat
  * tersimpan di kelas 6A / 6B. Karena itu mapel TKA SELALU mencari ketiga kelas (6, 6A, 6B) lalu
  * menggabungkannya per id — sama seperti Bank Soal — agar paket yang terlihat di Bank Soal juga
- * terdeteksi di penyusunan kuis (ANTIREGRESI §116). Satu query yang ditolak tidak membatalkan yang lain.
+ * terdeteksi di penyusunan kuis (ANTIREGRESI §121). Satu query yang ditolak tidak membatalkan yang lain.
  */
 export async function daftarPaket(kelas: string, mapel: string): Promise<PaketSoal[]> {
   const kelasU = String(kelas).toUpperCase()

@@ -1,3 +1,33 @@
+## 2026-11-13 — Laporan hasil kuis TKA: kolom kompetensi per siswa (L1–L3, materi)
+
+- Tab **Hasil** kuis TKA («Laporan hasil TKA») sebelumnya hanya punya kolom domain IPA (Pengetahuan / Keterampilan Proses), sehingga **Bahasa Indonesia dan Matematika tidak menampilkan L1–L3 maupun kompetensi materi**, dan Nilai Akhir-nya kosong (tidak ada domain).
+- Kini kolom kompetensi per siswa dihitung dari jawaban kuis (berbobot poin, `hitungSebaranDariJawaban`): BI = L1–L3 sekaligus tipe materi (satu kolom berpasangan); MTK = L1, L2 + Bilangan / Geometri dan Pengukuran / Data; IPA = domain seperti semula + kolom L1–L3. Sel berwarna (merah < 50, kuning < 70, hijau ≥ 70), poin tampil saat kursor diarahkan.
+- Nilai Akhir BI/MTK = skor ÷ poin maksimum × 100 (selaras Rekap TKA); IPA tetap rata-rata domain (rancangan semula).
+- File: `src/components/HasilKuisPanel.tsx`.
+
+## 2026-11-13 — Paket soal TKA hasil migrasi terdeteksi di penyusunan kuis
+
+- Paket soal TKA **Bahasa Indonesia dan Matematika** (migrasi tka2026) berstatus Siap terlihat di Bank Soal tetapi tidak muncul di wizard «Susun kuis»: sisa migrasi dapat berkelas **6A/6B**, sedangkan wizard & pembuatan kuis hanya mencari kelas «6». IPA tidak terdampak (dibuat di LMS).
+- `daftarPaket` sadar-TKA: mencari kelas 6, 6A, 6B lalu menggabungkan per id (satu query ditolak tidak membatalkan yang lain); dipakai Bank Soal, wizard, pembuatan kuis, «Tambah paket». Bila tetap tidak ada paket Siap, wizard menampilkan diagnosis (jumlah per kelas, Draf, Siap tanpa soal).
+- File: `src/lib/soal.ts`, `src/components/KuisPanel.tsx`, `src/components/BankSoalPanel.tsx`.
+
+## 2026-11-13 — Kuis TKA per mapel terpisah & daftar kuis aktif di dashboard TKA
+
+- Tab Kuis ruang TKA tidak lagi menampilkan kuis TKA mapel lain (tiga mapel berbagi kelas bank «6»; daftar menggabung semua kuis buatan guru tanpa memeriksa mapel).
+- Dashboard `/tka`: bagian **Kuis TKA aktif** per mapel (judul, tahap, jumlah soal, durasi, jendela waktu, status, tautan Buka). Aktif = `aktif` menyala dan `waktuSelesai` belum lewat.
+- File: `src/components/KuisPanel.tsx`, `src/pages/tka/TkaKuisAktif.tsx`, `src/pages/tka/TkaBeranda.tsx`, `src/styles/tka.css`.
+
+## 2026-11-13 — Ekspor hasil TKA (Excel/CSV) & konfirmasi hapus kuis
+
+- `/tka/rekap`: **Unduh Excel** (.xlsx: Rekap Nilai Akhir, tiap mapel dengan capaian % per kompetensi, Keterangan) dan **Unduh CSV** (tab yang dibuka; `;`, UTF-8 BOM, desimal koma). Mengikuti filter tahap & kelas. Tanpa dependensi baru (`src/lib/exportTabel.ts`).
+- **Konfirmasi hapus kuis** (TKA & mapel): dialog `KonfirmasiHapusDialog`, harus mengetik HAPUS; menampilkan jumlah soal, jumlah hasil siswa yang hilang, dampak ke Rekap TKA, dan saran «Nonaktifkan».
+- File: `src/lib/exportTabel.ts`, `src/lib/exportRekapTka.ts`, `src/lib/sebaranTka.ts`, `src/pages/tka/TkaRekap.tsx`, `src/components/KonfirmasiHapusDialog.tsx`, `src/styles/konfirmasi-hapus.css`, `src/components/KuisPanel.tsx`.
+
+## 2026-11-12 — Input sebaran kompetensi manual (try out di luar LMS)
+
+- Tab mapel punya tombol **+ Input sebaran kompetensi manual**: poin maksimum per kompetensi sekali, poin tiap siswa; nilai akhir dihitung otomatis (boleh ditimpa); tersimpan sebagai nilai manual + `sebaran[mapel]`. MTK = L1, L2 + 3 materi; BI = L1–L3; IPA = L1–L3 + 2 domain. Validasi lengkap; satu baris salah → tidak ada yang disimpan. Siswa bernilai otomatis LMS tidak ditampilkan.
+- File: `src/pages/tka/TkaSebaranManual.tsx`, `src/pages/tka/TkaRekapMapel.tsx`, `src/lib/sebaranTka.ts`, `src/lib/rekapTka.ts`.
+
 ## 2026-11-13 — Fix regresi UI TKA: daftar kuis aktif + filter rekap
 
 - **Dashboard TKA (`TkaKuisAktif`)**: class `.tka-ka*` dipakai sejak commit «Pisahkan kuis TKA per mapel» tetapi **CSS tidak pernah ditulis** → chip mapel, judul, status, dan tautan «Buka» saling menempel (`IPAIPA1 kuis`, `BerlangsungBuka →`). Style lengkap ditambahkan (grup per mapel, chip aksen, status Berlangsung/Terjadwal, tombol Buka).

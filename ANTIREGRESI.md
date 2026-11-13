@@ -1,3 +1,37 @@
+## §122. Laporan hasil kuis TKA: kolom kompetensi
+
+122.1 «Laporan hasil TKA» (HasilKuisPanel) harus menampilkan kompetensi dari **jawaban kuis itu** lewat `hitungSebaranDariJawaban` + `kolomDariAgregat` (berbobot poin). Jangan kembali ke kolom domain saja — domain hanya terisi untuk IPA, sehingga BI/MTK menjadi kosong.
+
+122.2 Nilai Akhir mapel tanpa domain (BI, MTK) = `skorKe100(skorOtomatis, totalPoin)`, selaras Rekap TKA. IPA mempertahankan rata-rata domain (`nilaiAkhirTka`); jangan menyatukan tanpa keputusan eksplisit.
+
+## §121. Paket soal TKA lintas kelas 6 / 6A / 6B
+
+121.1 Paket hasil migrasi tka2026 bisa berkelas **6A/6B**, bukan hanya «6». Semua pembaca paket TKA (Bank Soal, wizard kuis, `buatKuisDariPaket`, «Tambah paket») HARUS lewat `daftarPaket()` yang menggabungkan 6, 6A, 6B untuk mapel TKA. Jangan query `lms_paket_soal` dengan `kelas == '6'` saja.
+
+121.2 Query per kelas memakai `Promise.allSettled`; hanya bila SEMUA gagal, lempar error. Wizard menampilkan diagnosis (`ringkasanPaket`) bila tak ada paket Siap.
+
+## §120. Kuis TKA terpisah per mapel & daftar kuis aktif
+
+120.1 Mapel TKA berbagi kelas bank «6». Daftar kuis ruang TKA HARUS difilter `mapel` yang sama; jangan menggabung `daftarKuisDibuatOleh()` tanpa memeriksa mapel untuk mapel TKA.
+
+120.2 Setiap query `lms_kuis` `where kelas + mapel` (rules); daftar kuis aktif di `/tka` = satu query per mapel. «Aktif» = `aktif === true` dan `waktuSelesai` kosong/di masa depan; waktu bisa string ISO atau Timestamp (`keTanggal`).
+
+## §119. Ekspor TKA & konfirmasi hapus kuis
+
+119.1 Ekspor XLSX tanpa dependensi (`exportTabel.ts`): header tebal, kolom nama dibekukan, angka tetap numerik, nama sheet ≤ 31 karakter. CSV: UTF-8 **BOM**, `;`, desimal `,`, sel berawalan `= + - @` diberi `'`.
+
+119.2 Ekspor mengikuti filter tahap/kelas yang tampil; jangan mengekspor kelas di luar `kelasRekapTkaBolehDilihat`.
+
+119.3 Hapus kuis HARUS lewat `KonfirmasiHapusDialog` (ketik **HAPUS**), bukan `confirm()` satu klik. `hapusKuis` hanya menghapus dokumen kuis; hasil `lms_jawaban` tertinggal (yatim).
+
+## §118. Input sebaran manual
+
+118.1 Sebaran manual disimpan sebagai **poin & maks** per kompetensi (bukan persen) lewat `bangunSebaranManual`; jumlah poin & maks kompetensi dasar WAJIB sama dengan kompetensi materi.
+
+118.2 Grid hanya memuat siswa `sumber !== 'otomatis'`. Menyimpan lewat `simpanNilaiManualTka({ sebaran })` agar nilai & sebaran tertulis bersamaan; mengubah nilai manual tanpa `sebaran` membuang sebaran lama (§109.3). Validasi semua baris dulu; satu salah → jangan simpan apa pun. Setelah menyimpan, «Perbarui publikasi».
+
+118.3 Catatan nomor: entri §113–§117 yang pernah saya tulis bentrok dengan §113 Navigasi, §114 CSS `tka-ka-*`, dan rujukan kode §115.x (materi AI); dinomori ulang menjadi §118–§122. Sebelum menulis entri baru, cek nomor tertinggi yang dirujuk di `src/` (`grep -rhoE "§1[0-9]{2}" src`), bukan hanya heading di ANTIREGRESI.md.
+
 ## §113. Navigasi di dalam panel Kuis (`kn-*`)
 
 113.1 Tombol navigasi di dalam Kuis (kembali, menu Atur/Offline/Hasil, sub-menu hasil, filter kelas) memakai komponen `components/KuisNav.tsx` (`KuisKepala`, `KnSegmen`, `KnChips`, `KnKembali`). Jangan kembali ke tombol Tailwind ad-hoc. Aksen lewat `--rg-a` yang diset wrapper `KelasDetail`; fallback ungu sekolah.

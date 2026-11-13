@@ -1,7 +1,7 @@
 /**
  * Input sebaran kompetensi manual untuk Try Out TKA di luar LMS (tahap II dst.).
  * Satu grid: poin maksimum per kompetensi (sekali), lalu poin diperoleh per siswa.
- * Nilai akhir dihitung dari poin (boleh ditimpa). ANTIREGRESI §113.
+ * Nilai akhir dihitung dari poin (boleh ditimpa). ANTIREGRESI §118.
  */
 import { useMemo, useState } from 'react'
 import { simpanNilaiManualTka } from '../../lib/rekapTka'

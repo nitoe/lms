@@ -2,7 +2,7 @@
  * Ekspor tabel ke CSV dan XLSX tanpa dependensi tambahan.
  * - CSV: UTF-8 + BOM, pemisah titik koma, desimal koma (terbuka rapi di Excel lokal Indonesia).
  * - XLSX: OOXML minimal (ZIP tanpa kompresi), header tebal, kolom dibekukan, filter otomatis.
- * ANTIREGRESI §114.
+ * ANTIREGRESI §119.
  */
 
 export type SelEks = string | number | null

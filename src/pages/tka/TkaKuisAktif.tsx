@@ -1,7 +1,7 @@
 /**
  * Daftar kuis TKA yang masih aktif (semua mata pelajaran) untuk dashboard utama TKA.
  * Aktif = `aktif === true` dan jendela waktu belum berakhir (waktuSelesai kosong / di masa depan).
- * Tiap mapel diquery sendiri (where kelas + mapel) — sesuai rules lms_kuis. ANTIREGRESI §115.
+ * Tiap mapel diquery sendiri (where kelas + mapel) — sesuai rules lms_kuis. ANTIREGRESI §120.
  */
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
