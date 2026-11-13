@@ -159,3 +159,12 @@
 102.4 `sumberPaketIds` diperbarui saat simpan bila paket baru dipakai; jangan melebihi `BATAS_PAKET_SUMBER`.
 
 102.5 Jangan mengubah bank soal dari Atur kuis — hanya snapshot ke dokumen kuis.
+
+## §114. CSS wajib untuk class `tka-ka-*` (dashboard kuis aktif)
+
+114.1 Komponen `src/pages/tka/TkaKuisAktif.tsx` memakai class `tka-ka`, `tka-ka-grup`, `tka-ka-chip`, `tka-ka-item`, `tka-ka-status`, `tka-ka-buka`, dll. **Semua harus punya rule di `src/styles/tka.css`.** Tanpa CSS, teks chip + nama mapel + «N kuis» dan «Berlangsung» + «Buka →» menempel jadi satu kata.
+
+114.2 Saat menambah class `tka-ka-*` baru di TSX, tulis style di `tka.css` dalam blok yang sama (cari «Kuis TKA aktif di dashboard»). Jangan mengandalkan utility Tailwind saja untuk elemen yang sudah memakai class khusus ini.
+
+114.3 `.tka-rekap-controls`: panel portal sudah tab; jangan memaksa `grid-template-columns: … 1fr` dua kolom jika hanya ada toolbar filter (pakai `:has(> :only-child)` / `:has(> :nth-child(2))`).
+

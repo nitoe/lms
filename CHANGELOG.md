@@ -1,3 +1,10 @@
+## 2026-11-13 — Fix regresi UI TKA: daftar kuis aktif + filter rekap
+
+- **Dashboard TKA (`TkaKuisAktif`)**: class `.tka-ka*` dipakai sejak commit «Pisahkan kuis TKA per mapel» tetapi **CSS tidak pernah ditulis** → chip mapel, judul, status, dan tautan «Buka» saling menempel (`IPAIPA1 kuis`, `BerlangsungBuka →`). Style lengkap ditambahkan (grup per mapel, chip aksen, status Berlangsung/Terjadwal, tombol Buka).
+- **Rekap TKA**: `.tka-rekap-controls` masih 2 kolom (filter | panel portal) padahal panel portal sudah pindah ke tab «Publikasi ke portal» → kolom kanan kosong lebar. Sekarang full-width bila hanya ada satu anak; 2 kolom hanya jika ada anak kedua (legacy).
+- Tidak mengubah logika data, query, rules, atau komponen TSX (hanya `src/styles/tka.css`).
+- File: `src/styles/tka.css`, `CHANGELOG.md`, `ANTIREGRESI.md`.
+
 ## 2026-11-13 — Navigasi di dalam Kuis & tab TKA Rekap: UI v2
 
 - **Kepala detail kuis** (`KuisKepala`): tombol «← Daftar kuis», judul kuis, chip jenis penilaian / tahap try out TKA, Online/Offline, Aktif/Nonaktif, jumlah soal, dan menu segmen berikon **Atur kuis · Input offline · Hasil siswa** (navigasi panah/Home/End, ARIA tablist + tabpanel). Menggantikan tautan polos + tombol ungu generik.
