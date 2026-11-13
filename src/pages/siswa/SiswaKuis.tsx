@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { collection, query, where, getDocs } from 'firebase/firestore'
 import { httpsCallable } from 'firebase/functions'
 import { db, functions } from '../../lib/firebase'
@@ -27,6 +27,28 @@ export type RiwayatPercobaan = {
   percobaan: number
   status: string
   createdAtMs: number
+}
+
+/** Filter status di daftar kuis siswa. */
+export type FilterStatusKuis = 'semua' | 'belum' | 'sudah' | 'draf'
+
+const FILTER_STATUS_LABEL: Record<FilterStatusKuis, string> = {
+  semua: 'Semua',
+  belum: 'Belum dikerjakan',
+  sudah: 'Sudah dikerjakan',
+  draf: 'Draf tersimpan',
+}
+
+function statusKuisSiswa(
+  k: KuisLms,
+  siswaId: string,
+  riwayat: RiwayatPercobaan[],
+): FilterStatusKuis {
+  if (riwayat.length > 0) return 'sudah'
+  const saved = siswaId ? loadProgress(siswaId, k.id) : null
+  const nJawab = saved ? Object.keys(saved.jawaban ?? {}).length : 0
+  if (nJawab > 0) return 'draf'
+  return 'belum'
 }
 
 function progressKey(siswaId: string, kuisId: string) {
@@ -154,6 +176,8 @@ export default function SiswaKuis() {
   const [hasil, setHasil] = useState<HasilKirim | null>(null)
   const [error, setError] = useState('')
   const [konfirmUlangId, setKonfirmUlangId] = useState<string | null>(null)
+  const [filterStatus, setFilterStatus] = useState<FilterStatusKuis>('semua')
+  const [filterMapel, setFilterMapel] = useState<string>('semua')
 
   const muatSemua = useCallback(async () => {
     if (!sesi || !siswaId) return
@@ -190,6 +214,52 @@ export default function SiswaKuis() {
   useEffect(() => {
     void muatSemua()
   }, [muatSemua])
+
+  const daftarMapel = useMemo(() => {
+    if (!list) return [] as string[]
+    const set = new Set<string>()
+    for (const k of list) if (k.mapel) set.add(k.mapel)
+    return [...set].sort((a, b) => a.localeCompare(b, 'id'))
+  }, [list])
+
+  const terfilter = useMemo(() => {
+    if (!list) return [] as KuisLms[]
+    return list.filter((k) => {
+      if (filterMapel !== 'semua' && k.mapel !== filterMapel) return false
+      const st = statusKuisSiswa(k, siswaId, riwayatMap[k.id] ?? [])
+      if (filterStatus === 'semua') return true
+      return st === filterStatus
+    })
+  }, [list, filterMapel, filterStatus, siswaId, riwayatMap])
+
+  const perMapel = useMemo(() => {
+    const map = new Map<string, KuisLms[]>()
+    for (const k of terfilter) {
+      const m = k.mapel || 'Lainnya'
+      const arr = map.get(m) ?? []
+      arr.push(k)
+      map.set(m, arr)
+    }
+    // Urut tenggat / judul di dalam mapel
+    for (const arr of map.values()) {
+      arr.sort((a, b) => (a.judul || '').localeCompare(b.judul || '', 'id'))
+    }
+    return [...map.entries()]
+      .sort(([a], [b]) => a.localeCompare(b, 'id'))
+      .map(([mapel, items]) => ({ mapel, items }))
+  }, [terfilter])
+
+  const hitungStatus = useMemo(() => {
+    const c = { semua: 0, belum: 0, sudah: 0, draf: 0 }
+    if (!list) return c
+    for (const k of list) {
+      if (filterMapel !== 'semua' && k.mapel !== filterMapel) continue
+      c.semua++
+      const st = statusKuisSiswa(k, siswaId, riwayatMap[k.id] ?? [])
+      c[st]++
+    }
+    return c
+  }, [list, filterMapel, siswaId, riwayatMap])
 
   function mulaiBaru(kuis: KuisLms) {
     clearProgress(siswaId, kuis.id)
@@ -237,127 +307,215 @@ export default function SiswaKuis() {
 
   return (
     <div className="space-y-5">
-      <h1 className="text-xl font-bold text-slate-800">Kuis</h1>
+      <div className="flex flex-wrap items-center gap-2.5">
+        <h1 className="text-lg font-bold text-slate-900">Kuis</h1>
+        {list && list.length > 0 && (
+          <span className="lms-count-pill">{list.length} kuis aktif</span>
+        )}
+      </div>
+
       {error && <div className="text-sm text-red-600">{error}</div>}
       {list === null && <p className="text-slate-500">Memuat…</p>}
-      {list?.length === 0 && <p className="text-slate-500">Belum ada kuis aktif.</p>}
-      <ul className="space-y-3">
-        {list?.map((k) => {
-          const saved = siswaId ? loadProgress(siswaId, k.id) : null
-          const nJawab = saved ? Object.keys(saved.jawaban ?? {}).length : 0
-          const sisa = saved?.sisaDetik
-          const riwayat = riwayatMap[k.id] ?? []
-          const sudahKirim = riwayat.length > 0
-          const terakhir = riwayat[0]
-          const isLatihan = (k.jenisPenilaian ?? 'latihan') === 'latihan'
-          const adaProgresLokal = nJawab > 0 && !sudahKirim
+      {list?.length === 0 && (
+        <div className="lms-empty">
+          <p className="font-medium text-slate-700">Belum ada kuis aktif</p>
+          <p className="mt-1 text-sm text-muted">Kuis dari gurumu akan muncul di sini.</p>
+        </div>
+      )}
 
-          return (
-            <li key={k.id} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
-              <div className="font-semibold text-slate-800">{k.judul}</div>
-              <div className="mt-1 text-xs text-slate-500">
-                {k.mapel} · {NAMA_JENIS_PENILAIAN_SISWA[k.jenisPenilaian ?? 'latihan']} · {k.jumlahSoal} soal
-                {k.durasiMenit ? ` · ${k.durasiMenit} menit` : ''}
-              </div>
+      {list && list.length > 0 && (
+        <>
+          {/* Filter status */}
+          <div className="flex flex-wrap gap-1.5" role="group" aria-label="Filter status kuis">
+            {(Object.keys(FILTER_STATUS_LABEL) as FilterStatusKuis[]).map((key) => {
+              const aktif = filterStatus === key
+              const n = hitungStatus[key]
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  className={
+                    aktif
+                      ? 'rounded-full bg-muh-700 px-3 py-1.5 text-xs font-semibold text-white'
+                      : 'rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 hover:border-muh-300'
+                  }
+                  onClick={() => setFilterStatus(key)}
+                  aria-pressed={aktif}
+                >
+                  {FILTER_STATUS_LABEL[key]}
+                  <span className={aktif ? 'ml-1 opacity-80' : 'ml-1 text-slate-400'}>{n}</span>
+                </button>
+              )
+            })}
+          </div>
 
-              {sudahKirim && terakhir && (
-                <div className="mt-3 rounded-lg border border-emerald-100 bg-emerald-50/80 px-3 py-2 text-xs text-emerald-900">
-                  <div className="font-semibold">
-                    Sudah dikerjakan {riwayat.length}×
-                    {terakhir.totalPoin > 0
-                      ? ` · skor terakhir ${formatSkor100(terakhir.skorOtomatis, terakhir.totalPoin)}`
-                      : ''}
-                  </div>
-                  <div className="mt-0.5 text-emerald-800/80">
-                    Percobaan ke-{terakhir.percobaan} · {formatWaktu(terakhir.createdAtMs)}
-                  </div>
-                  {riwayat.length > 1 && (
-                    <ul className="mt-1.5 space-y-0.5 text-[11px] text-emerald-800/70">
-                      {riwayat.slice(0, 3).map((r) => (
-                        <li key={r.id}>
-                          #{r.percobaan}: {formatSkor100(r.skorOtomatis, r.totalPoin)} · {formatWaktu(r.createdAtMs)}
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
-              )}
+          {/* Filter mapel */}
+          {daftarMapel.length > 1 && (
+            <div className="flex flex-wrap gap-1.5" role="group" aria-label="Filter mata pelajaran">
+              <button
+                type="button"
+                className={
+                  filterMapel === 'semua'
+                    ? 'rounded-full bg-slate-800 px-3 py-1.5 text-xs font-semibold text-white'
+                    : 'rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600'
+                }
+                onClick={() => setFilterMapel('semua')}
+              >
+                Semua mapel
+              </button>
+              {daftarMapel.map((m) => (
+                <button
+                  key={m}
+                  type="button"
+                  className={
+                    filterMapel === m
+                      ? 'rounded-full bg-slate-800 px-3 py-1.5 text-xs font-semibold text-white'
+                      : 'rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600'
+                  }
+                  onClick={() => setFilterMapel(m)}
+                >
+                  {m}
+                </button>
+              ))}
+            </div>
+          )}
 
-              {adaProgresLokal && (
-                <div className="mt-2 inline-block rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-800">
-                  Draf tersimpan · {nJawab} soal terjawab
-                  {typeof sisa === 'number' && k.durasiMenit
-                    ? ` · sisa ${Math.floor(sisa / 60)}:${String(sisa % 60).padStart(2, '0')}`
-                    : ''}
-                </div>
-              )}
+          {terfilter.length === 0 && (
+            <p className="text-sm text-slate-500">Tidak ada kuis untuk filter ini.</p>
+          )}
 
-              <div className="mt-3 flex flex-wrap gap-2">
-                {!sudahKirim && (
-                  <button
-                    type="button"
-                    className="lms-btn-primary text-sm"
-                    onClick={() => (adaProgresLokal ? lanjutkan(k) : mulaiBaru(k))}
-                  >
-                    {adaProgresLokal ? 'Lanjutkan' : 'Mulai Kerjakan'}
-                  </button>
-                )}
+          {perMapel.map((grup) => (
+            <section key={grup.mapel} className="space-y-3">
+              <h2 className="flex items-center gap-2 text-sm font-bold text-slate-800">
+                <span className="inline-block h-2 w-2 rounded-full bg-muh-500" aria-hidden />
+                {grup.mapel}
+                <span className="text-xs font-medium text-slate-400">{grup.items.length}</span>
+              </h2>
+              <ul className="space-y-3">
+                {grup.items.map((k) => {
+                  const saved = siswaId ? loadProgress(siswaId, k.id) : null
+                  const nJawab = saved ? Object.keys(saved.jawaban ?? {}).length : 0
+                  const sisa = saved?.sisaDetik
+                  const riwayat = riwayatMap[k.id] ?? []
+                  const sudahKirim = riwayat.length > 0
+                  const terakhir = riwayat[0]
+                  const isLatihan = (k.jenisPenilaian ?? 'latihan') === 'latihan'
+                  const adaProgresLokal = nJawab > 0 && !sudahKirim
 
-                {sudahKirim && isLatihan && (
-                  <>
-                    <button
-                      type="button"
-                      className="lms-btn-primary text-sm"
-                      onClick={() => setKonfirmUlangId(k.id)}
+                  return (
+                    <li
+                      key={k.id}
+                      className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5"
                     >
-                      Kerjakan lagi dari awal
-                    </button>
-                  </>
-                )}
+                      <div className="font-semibold text-slate-800">{k.judul}</div>
+                      <div className="mt-1 text-xs text-slate-500">
+                        {NAMA_JENIS_PENILAIAN_SISWA[k.jenisPenilaian ?? 'latihan']} · {k.jumlahSoal}{' '}
+                        soal
+                        {k.durasiMenit ? ` · ${k.durasiMenit} menit` : ''}
+                      </div>
 
-                {sudahKirim && !isLatihan && (
-                  <span className="self-center text-xs text-slate-500">
-                    Jawaban sudah dikirim. Tidak dapat diubah.
-                  </span>
-                )}
-              </div>
+                      {sudahKirim && terakhir && (
+                        <div className="mt-3 rounded-lg border border-emerald-100 bg-emerald-50/80 px-3 py-2 text-xs text-emerald-900">
+                          <div className="font-semibold">
+                            Sudah dikerjakan {riwayat.length}×
+                            {terakhir.totalPoin > 0
+                              ? ` · skor terakhir ${formatSkor100(terakhir.skorOtomatis, terakhir.totalPoin)}`
+                              : ''}
+                          </div>
+                          <div className="mt-0.5 text-emerald-800/80">
+                            Percobaan ke-{terakhir.percobaan} · {formatWaktu(terakhir.createdAtMs)}
+                          </div>
+                          {riwayat.length > 1 && (
+                            <ul className="mt-1.5 space-y-0.5 text-[11px] text-emerald-800/70">
+                              {riwayat.slice(0, 3).map((r) => (
+                                <li key={r.id}>
+                                  #{r.percobaan}: {formatSkor100(r.skorOtomatis, r.totalPoin)} ·{' '}
+                                  {formatWaktu(r.createdAtMs)}
+                                </li>
+                              ))}
+                            </ul>
+                          )}
+                        </div>
+                      )}
 
-              {konfirmUlangId === k.id && (
-                <div className="mt-3 rounded-xl border border-violet-200 bg-violet-50 p-3 text-sm text-slate-700">
-                  <p className="font-medium text-slate-800">Mulai dari awal?</p>
-                  <p className="mt-1 text-xs leading-relaxed text-slate-600">
-                    Kamu sudah mengirim jawaban sebelumnya. Jika lanjut, kamu mengerjakan semua soal dari
-                    awal dan mengirim sebagai percobaan baru (ke-{(riwayat[0]?.percobaan ?? 0) + 1}).
-                    Jawaban lama tetap tersimpan di riwayat.
-                  </p>
-                  <div className="mt-2 flex flex-wrap gap-2">
-                    <button
-                      type="button"
-                      className="lms-btn-primary text-sm"
-                      onClick={() => {
-                        setKonfirmUlangId(null)
-                        mulaiBaru(k)
-                      }}
-                    >
-                      Ya, mulai dari awal
-                    </button>
-                    <button
-                      type="button"
-                      className="lms-btn-secondary text-sm"
-                      onClick={() => setKonfirmUlangId(null)}
-                    >
-                      Batal
-                    </button>
-                  </div>
-                </div>
-              )}
-            </li>
-          )
-        })}
-      </ul>
+                      {adaProgresLokal && (
+                        <div className="mt-2 inline-block rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-800">
+                          Draf tersimpan · {nJawab} soal terjawab
+                          {typeof sisa === 'number' && k.durasiMenit
+                            ? ` · sisa ${Math.floor(sisa / 60)}:${String(sisa % 60).padStart(2, '0')}`
+                            : ''}
+                        </div>
+                      )}
+
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {!sudahKirim && (
+                          <button
+                            type="button"
+                            className="lms-btn-primary text-sm"
+                            onClick={() => (adaProgresLokal ? lanjutkan(k) : mulaiBaru(k))}
+                          >
+                            {adaProgresLokal ? 'Lanjutkan' : 'Mulai Kerjakan'}
+                          </button>
+                        )}
+
+                        {sudahKirim && isLatihan && (
+                          <button
+                            type="button"
+                            className="lms-btn-primary text-sm"
+                            onClick={() => setKonfirmUlangId(k.id)}
+                          >
+                            Kerjakan lagi dari awal
+                          </button>
+                        )}
+
+                        {sudahKirim && !isLatihan && (
+                          <span className="self-center text-xs text-slate-500">
+                            Jawaban sudah dikirim. Tidak dapat diubah.
+                          </span>
+                        )}
+                      </div>
+
+                      {konfirmUlangId === k.id && (
+                        <div className="mt-3 rounded-xl border border-violet-200 bg-violet-50 p-3 text-sm text-slate-700">
+                          <p className="font-medium text-slate-800">Mulai dari awal?</p>
+                          <p className="mt-1 text-xs leading-relaxed text-slate-600">
+                            Kamu sudah mengirim jawaban sebelumnya. Jika lanjut, kamu mengerjakan semua
+                            soal dari awal dan mengirim sebagai percobaan baru (ke-
+                            {(riwayat[0]?.percobaan ?? 0) + 1}). Jawaban lama tetap tersimpan di riwayat.
+                          </p>
+                          <div className="mt-2 flex flex-wrap gap-2">
+                            <button
+                              type="button"
+                              className="lms-btn-primary text-sm"
+                              onClick={() => {
+                                setKonfirmUlangId(null)
+                                mulaiBaru(k)
+                              }}
+                            >
+                              Ya, mulai dari awal
+                            </button>
+                            <button
+                              type="button"
+                              className="lms-btn-secondary text-sm"
+                              onClick={() => setKonfirmUlangId(null)}
+                            >
+                              Batal
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </li>
+                  )
+                })}
+              </ul>
+            </section>
+          ))}
+        </>
+      )}
     </div>
   )
 }
+
 
 function HasilLatihan({
   hasil,

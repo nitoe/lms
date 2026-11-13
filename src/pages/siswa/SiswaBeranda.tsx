@@ -29,7 +29,7 @@ const MENU: MenuItem[] = [
     deskripsi: 'Kerjakan & kumpulkan',
     icon: 'pencil',
     tone: 'bg-amber-50 text-amber-700',
-    segera: true,
+    segera: false,
   },
   {
     to: '/siswa/kuis',
@@ -37,7 +37,7 @@ const MENU: MenuItem[] = [
     deskripsi: 'Latihan soal seru',
     icon: 'target',
     tone: 'bg-violet-50 text-violet-700',
-    segera: true,
+    segera: false,
   },
   {
     to: '/siswa/pencapaian',

@@ -1,5 +1,20 @@
 ## §123. Kompetensi dasar & materi: dua daftar terpisah
 
+## §124. Katalog Kuis & Tugas siswa: kelompok mapel + filter
+
+124.1 Daftar kuis/tugas siswa **dikelompokkan per `mapel`**. Jangan kembali ke daftar datar tanpa section mapel jika jumlah item bisa banyak.
+
+124.2 Filter status wajib:
+- Kuis: Semua | Belum dikerjakan | Sudah dikerjakan | Draf tersimpan (draf = progress localStorage, belum ada `lms_jawaban`).
+- Tugas: Semua | Belum dinilai | Sudah dinilai | Lewat tenggat. «Sudah dinilai» = ada `lms_nilai_tugas` milik siswa; pengumpulan file belum menjadi sumber status sampai `lms_pengumpulan` aktif.
+
+124.3 Query tugas siswa: `kelas` + `aktif == true` saja (selaras rules `isSiswaLms`). Jangan compound index tambahan tanpa deploy.
+
+124.4 Instruksi tugas (HTML) wajib lewat `bersihHtml` sebelum `dangerouslySetInnerHTML` (ANTIREGRESI §9).
+
+124.5 Kuis TKA tetap di `/siswa/tka`, tidak dicampur katalog kuis biasa (ANTIREGRESI §77).
+
+
 123.1 Kompetensi dasar (L1–L3) dan kompetensi materi (BI/MTK: tipe materi; IPA: domain) SELALU ditampilkan sebagai **dua daftar/tabel/kolom terpisah**. Pada Bahasa Indonesia nilainya kebetulan identik (L1=Tekstual, L2=Inferensial, L3=Evaluasi), tetapi JANGAN digabung, dipasangkan, atau dideduplikasi.
 
 123.2 Aturan §109.5 («BI: satu tabel berpasangan», `pasangkanDimensiSama`) **dicabut** — penyebab data tampil ganda (pasangan + kompleksitas) di tab BI. `kolomDariAgregat` adalah satu-satunya sumber kolom (rekap, laporan hasil kuis, ekspor); jangan menambah logika penggabungan di UI.

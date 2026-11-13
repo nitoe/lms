@@ -1,3 +1,12 @@
+## 2026-11-13 — Siswa: kelompok mapel + filter status di Kuis & Tugas
+
+- **Kuis siswa** (`SiswaKuis`): daftar dikelompokkan per mata pelajaran; chip filter status (Semua / Belum dikerjakan / Sudah dikerjakan / Draf tersimpan) dan filter mapel bila lebih dari satu. Kartu & alur kerjakan/ulang tidak berubah.
+- **Tugas siswa** (`SiswaTugas`): halaman baru menggantikan placeholder. Daftar tugas aktif kelas siswa, kelompok per mapel, filter status (Belum dinilai / Sudah dinilai / Lewat tenggat) + filter mapel. Detail tugas menampilkan deskripsi, instruksi (HTML dibersihkan), tenggat relatif, dan nilai/predikat/komentar dari `lms_nilai_tugas` jika sudah ada.
+- Pengumpulan file siswa (unggah) **belum** diaktifkan — menunggu koleksi `lms_pengumpulan`; UI memberi catatan sementara.
+- Helper `src/lib/tugasSiswa.ts`; label ringkas `NAMA_JENIS_PENILAIAN_TUGAS_SISWA`.
+- Beranda siswa: badge «Segera» dihapus dari menu Tugas dan Kuis.
+- File: `src/pages/siswa/SiswaKuis.tsx`, `src/pages/siswa/SiswaTugas.tsx`, `src/lib/tugasSiswa.ts`, `src/types/tugas.ts`, `src/App.tsx`, `src/pages/siswa/SiswaBeranda.tsx`.
+
 ## 2026-11-13 — Perbaikan: sebaran BI tidak lagi ganda; kompetensi dasar & materi dua daftar terpisah
 
 - **Bug:** pada tab Bahasa Indonesia, tabel «berpasangan» (L1 ↔ Pemahaman Tekstual, dst.) tampil bersama tabel kompleksitas biasa, sehingga L1–L3 muncul **dua kali**.

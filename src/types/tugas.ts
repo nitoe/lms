@@ -13,6 +13,14 @@ export const NAMA_JENIS_PENILAIAN_TUGAS: Record<JenisPenilaianTugas, string> = {
   sas: 'SAS (masuk nilai SAS)',
 }
 
+/** Label ringkas untuk UI siswa — tanpa frasa «tidak masuk nilai». */
+export const NAMA_JENIS_PENILAIAN_TUGAS_SISWA: Record<JenisPenilaianTugas, string> = {
+  latihan: 'Latihan',
+  slm: 'SLM',
+  sts: 'STS',
+  sas: 'SAS',
+}
+
 /** Satu Tujuan Pembelajaran yang dilampirkan ke tugas (bisa banyak). */
 export interface TpTugas {
   id: string

@@ -16,6 +16,7 @@ import SiswaLayout from './pages/siswa/SiswaLayout'
 import SiswaBeranda from './pages/siswa/SiswaBeranda'
 import SiswaMateri from './pages/siswa/SiswaMateri'
 import SiswaPlaceholder from './pages/siswa/SiswaPlaceholder'
+import SiswaTugas from './pages/siswa/SiswaTugas'
 import SiswaKuis from './pages/siswa/SiswaKuis'
 import SiswaTka from './pages/siswa/SiswaTka'
 import TkaBeranda from './pages/tka/TkaBeranda'
@@ -85,17 +86,7 @@ export default function App() {
       >
         <Route index element={<SiswaBeranda />} />
         <Route path="materi" element={<SiswaMateri />} />
-        <Route
-          path="tugas"
-          element={
-            <SiswaPlaceholder
-              judul="Tugas"
-              icon="pencil"
-              deskripsi="Tugas dari guru akan tampil di sini. Kamu bisa mengerjakan, mengunggah foto atau file, lalu mengirimnya."
-              tone="bg-amber-50 text-amber-700"
-            />
-          }
-        />
+        <Route path="tugas" element={<SiswaTugas />} />
         <Route path="kuis" element={<SiswaKuis />} />
         <Route path="tka" element={<SiswaTka />} />
         <Route
