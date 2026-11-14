@@ -1,3 +1,10 @@
+## 2026-11-14 — Gambar materi: ukuran tampilan proporsional + kompres unggah
+
+- **Tampilan:** gambar tidak lagi dipaksa `width: 100%` tanpa batas (terlalu besar/berat di PC). Kini `width: auto`, `max-width: 100%`, `max-height: min(70vh, 26–36rem)` + `object-fit: contain`, rata tengah. Di HP tetap memenuhi lebar kartu bila gambar cukup lebar.
+- **Unggah:** `siapkanGambarHalaman` — resize sisi terpanjang maks. 1600px + JPEG ~82% bila file besar; dipakai di `unggahGambarHalaman` dan unggah hasil AI.
+- Gambar yang sudah tersimpan tidak diubah; hanya unggahan baru yang dikompres. Ganti file di editor bila ingin file lama lebih ringan.
+- File: `src/styles/materi-halaman.css`, `src/lib/materi.ts`. ANTIREGRESI §125.4 diperbarui.
+
 ## 2026-11-13 — Tabel materi lebar: scroll horizontal di HP
 
 - Tabel multi-kolom di viewer materi tidak lagi terpotong di smartphone.

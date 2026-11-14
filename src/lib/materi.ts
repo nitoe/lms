@@ -383,6 +383,63 @@ export async function simpanMateriHalaman(
   await updateDoc(doc(db, 'lms_materi', id), payload)
 }
 
+
+/** Sisi terpanjang maks. untuk gambar blok halaman (pixel). */
+const MAKS_SISI_GAMBAR_HALAMAN = 1600
+/** Lewati kompresi jika file sudah kecil (byte). */
+const LEWATI_KOMPRES_BAWAH = 350 * 1024
+
+/**
+ * Perkecil & kompres gambar sebelum unggah (mengurangi «berat» di HP/PC).
+ * Gagal kompresi → kembalikan file asli. PNG transparan → JPEG putih bg.
+ */
+async function siapkanGambarHalaman(file: File): Promise<Blob> {
+  if (!file.type.startsWith('image/')) return file
+  if (file.size <= LEWATI_KOMPRES_BAWAH && !file.type.includes('png')) {
+    // tetap coba resize bila dimensi besar — cek lewat Image
+  }
+  try {
+    const bitmap = await createImageBitmap(file)
+    const w0 = bitmap.width
+    const h0 = bitmap.height
+    if (w0 < 1 || h0 < 1) {
+      bitmap.close()
+      return file
+    }
+    const sisi = Math.max(w0, h0)
+    const perluResize = sisi > MAKS_SISI_GAMBAR_HALAMAN
+    const perluKompres = file.size > LEWATI_KOMPRES_BAWAH
+    if (!perluResize && !perluKompres) {
+      bitmap.close()
+      return file
+    }
+    const scale = perluResize ? MAKS_SISI_GAMBAR_HALAMAN / sisi : 1
+    const w = Math.max(1, Math.round(w0 * scale))
+    const h = Math.max(1, Math.round(h0 * scale))
+    const canvas = document.createElement('canvas')
+    canvas.width = w
+    canvas.height = h
+    const ctx = canvas.getContext('2d')
+    if (!ctx) {
+      bitmap.close()
+      return file
+    }
+    ctx.fillStyle = '#ffffff'
+    ctx.fillRect(0, 0, w, h)
+    ctx.drawImage(bitmap, 0, 0, w, h)
+    bitmap.close()
+    const blob: Blob | null = await new Promise((resolve) =>
+      canvas.toBlob((b) => resolve(b), 'image/jpeg', 0.82),
+    )
+    if (!blob || blob.size === 0) return file
+    // Jangan ganti bila hasil malah lebih besar
+    if (blob.size >= file.size && !perluResize) return file
+    return blob
+  } catch {
+    return file
+  }
+}
+
 /** Unggah gambar untuk blok halaman. Mengembalikan url + storagePath. */
 export async function unggahGambarHalaman(
   kelas: string,
@@ -395,12 +452,20 @@ export async function unggahGambarHalaman(
   const uid = auth.currentUser?.uid
   if (!uid) throw new Error('Anda harus masuk terlebih dahulu.')
 
+  const siap = await siapkanGambarHalaman(file)
+  cekUkuran(
+    new File([siap], file.name, { type: siap.type || 'image/jpeg' }),
+    'gambarHalaman',
+  )
+
   const k = String(kelas).toUpperCase()
-  const aman = file.name.replace(/[^\w.\-()+ ]/g, '_').slice(0, 80)
+  const base = file.name.replace(/\.[^.]+$/, '') || 'gambar'
+  const aman = base.replace(/[^\w.\-()+ ]/g, '_').slice(0, 80)
   const stamp = Date.now()
-  const storagePath = `lms/materi/${k}/halaman_${stamp}_${aman}`
+  const ext = siap.type === 'image/jpeg' ? 'jpg' : siap.type === 'image/webp' ? 'webp' : 'img'
+  const storagePath = `lms/materi/${k}/halaman_${stamp}_${aman}.${ext}`
   const r = ref(storage, storagePath)
-  await uploadBytes(r, file, { contentType: file.type })
+  await uploadBytes(r, siap, { contentType: siap.type || 'image/jpeg' })
   const url = await getDownloadURL(r)
   return { url, storagePath }
 }
@@ -418,7 +483,11 @@ export async function unggahDataUrlHalaman(
   if (!uid) throw new Error('Anda harus masuk terlebih dahulu.')
 
   const res = await fetch(dataUrl)
-  const blob = await res.blob()
+  let blob = await res.blob()
+  if (blob.size > BATAS_UKURAN.gambarHalaman || Math.max(0, blob.size) > LEWATI_KOMPRES_BAWAH) {
+    const asFile = new File([blob], namaFile, { type: blob.type || 'image/webp' })
+    blob = await siapkanGambarHalaman(asFile)
+  }
   if (blob.size > BATAS_UKURAN.gambarHalaman) {
     throw new Error('Gambar AI terlalu besar setelah generate.')
   }

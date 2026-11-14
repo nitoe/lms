@@ -415,14 +415,14 @@
 }
 .mh-img-preview {
   display: block;
-  width: 100%;
+  width: auto;
   max-width: 100%;
   height: auto;
-  max-height: none;
+  max-height: 18rem;
   object-fit: contain;
   border-radius: 0.55rem;
   background: #f3f4f6;
-  margin-inline: 0;
+  margin-inline: auto;
 }
 .mh-img-empty {
   border: 1px dashed #d1d5db;
@@ -661,9 +661,13 @@
   margin: 0.35em 0 0.65em 1.25em;
 }
 
-/* Gambar penuh lebar kartu — jangan max-height + object-fit contain
-   (itu mengecilkan lebar dan menyisakan ruang kosong kiri/kanan). */
+/* Gambar proporsional: full di HP (max-width 100%), di PC dibatasi tinggi
+   agar tidak membengkak. width:auto + max-width:100% + max-height + contain
+   — tidak memaksa width:100% (berat & terlalu besar di layar lebar). */
 .mh-blok--gambar {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   margin: 0;
   width: 100%;
   max-width: none;
@@ -671,19 +675,31 @@
 }
 .mh-blok--gambar img {
   display: block;
-  width: 100%;
+  width: auto;
   max-width: 100%;
   height: auto;
-  max-height: none;
+  max-height: min(70vh, 26rem);
+  object-fit: contain;
   border-radius: 0.65rem;
   background: #f8fafc;
-  margin-inline: 0;
+  margin-inline: auto;
+}
+@media (min-width: 768px) {
+  .mh-blok--gambar img {
+    max-height: min(65vh, 32rem);
+  }
+}
+@media (min-width: 1280px) {
+  .mh-blok--gambar img {
+    max-height: min(60vh, 36rem);
+  }
 }
 .mh-blok--gambar figcaption {
   margin-top: 0.4rem;
   font-size: 0.78rem;
   color: #64748b;
   text-align: center;
+  width: 100%;
 }
 
 /* Nav: grid 3 kolom — prev | dots | next */
