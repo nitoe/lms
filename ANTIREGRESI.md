@@ -1,3 +1,5 @@
+## §125.4 Gambar HP-first: 1200px + ~180KB WebP
+
 ## §125. Viewer materi
 
 125.5 Tabel lebar: `.mh-blok--teks { overflow-x: auto }`, tabel `width: max-content; min-width: 100%`.

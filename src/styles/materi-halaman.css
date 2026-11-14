@@ -415,10 +415,10 @@
 }
 .mh-img-preview {
   display: block;
-  width: auto;
+  width: 100%;
   max-width: 100%;
   height: auto;
-  max-height: 18rem;
+  max-height: 14rem;
   object-fit: contain;
   border-radius: 0.55rem;
   background: #f3f4f6;
@@ -661,9 +661,8 @@
   margin: 0.35em 0 0.65em 1.25em;
 }
 
-/* Gambar proporsional: full di HP (max-width 100%), di PC dibatasi tinggi
-   agar tidak membengkak. width:auto + max-width:100% + max-height + contain
-   — tidak memaksa width:100% (berat & terlalu besar di layar lebar). */
+/* Gambar materi — mobile-first: memenuhi lebar kartu di HP agar label terbaca,
+   tinggi dibatasi agar tidak mendominasi gulir; di PC sedikit longgar. */
 .mh-blok--gambar {
   display: flex;
   flex-direction: column;
@@ -675,23 +674,24 @@
 }
 .mh-blok--gambar img {
   display: block;
-  width: auto;
+  width: 100%;
   max-width: 100%;
   height: auto;
-  max-height: min(70vh, 26rem);
+  max-height: min(62vh, 22rem);
   object-fit: contain;
   border-radius: 0.65rem;
   background: #f8fafc;
   margin-inline: auto;
 }
-@media (min-width: 768px) {
+@media (min-width: 640px) {
   .mh-blok--gambar img {
-    max-height: min(65vh, 32rem);
+    max-height: min(58vh, 26rem);
   }
 }
-@media (min-width: 1280px) {
+@media (min-width: 1024px) {
   .mh-blok--gambar img {
-    max-height: min(60vh, 36rem);
+    width: auto;
+    max-height: min(55vh, 30rem);
   }
 }
 .mh-blok--gambar figcaption {

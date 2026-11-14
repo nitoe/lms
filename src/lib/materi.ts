@@ -384,20 +384,24 @@ export async function simpanMateriHalaman(
 }
 
 
-/** Sisi terpanjang maks. untuk gambar blok halaman (pixel). */
-const MAKS_SISI_GAMBAR_HALAMAN = 1600
-/** Lewati kompresi jika file sudah kecil (byte). */
-const LEWATI_KOMPRES_BAWAH = 350 * 1024
-
 /**
- * Perkecil & kompres gambar sebelum unggah (mengurangi «berat» di HP/PC).
- * Gagal kompresi → kembalikan file asli. PNG transparan → JPEG putih bg.
+ * Optimasi gambar materi untuk smartphone (prioritas ukuran file kecil, tetap terbaca).
+ * - Sisi terpanjang maks. 1200px (cukup tajam di HP retina ~2× layar 360–430 CSS px)
+ * - WebP q≈0.72, fallback JPEG q≈0.78; turunkan kualitas bertahap bila > target byte
+ * - PNG/transparan → canvas putih (materi sekolah jarang butuh alpha)
  */
+const MAKS_SISI_GAMBAR_HALAMAN = 1200
+/** Sudah di bawah ini + dimensi kecil → tidak diproses ulang. */
+const LEWATI_KOMPRES_BAWAH = 120 * 1024
+/** Target ukuran setelah kompres (byte); kualitas diturunkan bertahap bila melebihi. */
+const TARGET_BYTE_GAMBAR_HALAMAN = 180 * 1024
+
+function canvasToBlob(canvas: HTMLCanvasElement, type: string, quality: number): Promise<Blob | null> {
+  return new Promise((resolve) => canvas.toBlob((b) => resolve(b), type, quality))
+}
+
 async function siapkanGambarHalaman(file: File): Promise<Blob> {
   if (!file.type.startsWith('image/')) return file
-  if (file.size <= LEWATI_KOMPRES_BAWAH && !file.type.includes('png')) {
-    // tetap coba resize bila dimensi besar — cek lewat Image
-  }
   try {
     const bitmap = await createImageBitmap(file)
     const w0 = bitmap.width
@@ -408,11 +412,13 @@ async function siapkanGambarHalaman(file: File): Promise<Blob> {
     }
     const sisi = Math.max(w0, h0)
     const perluResize = sisi > MAKS_SISI_GAMBAR_HALAMAN
-    const perluKompres = file.size > LEWATI_KOMPRES_BAWAH
-    if (!perluResize && !perluKompres) {
+    const sudahKecil =
+      file.size <= LEWATI_KOMPRES_BAWAH && !perluResize && file.type !== 'image/png'
+    if (sudahKecil) {
       bitmap.close()
       return file
     }
+
     const scale = perluResize ? MAKS_SISI_GAMBAR_HALAMAN / sisi : 1
     const w = Math.max(1, Math.round(w0 * scale))
     const h = Math.max(1, Math.round(h0 * scale))
@@ -428,13 +434,33 @@ async function siapkanGambarHalaman(file: File): Promise<Blob> {
     ctx.fillRect(0, 0, w, h)
     ctx.drawImage(bitmap, 0, 0, w, h)
     bitmap.close()
-    const blob: Blob | null = await new Promise((resolve) =>
-      canvas.toBlob((b) => resolve(b), 'image/jpeg', 0.82),
-    )
-    if (!blob || blob.size === 0) return file
-    // Jangan ganti bila hasil malah lebih besar
-    if (blob.size >= file.size && !perluResize) return file
-    return blob
+
+    // WebP dulu (lebih hemat), lalu JPEG; turunkan q bila masih besar
+    const percobaan: { type: string; qualities: number[] }[] = [
+      { type: 'image/webp', qualities: [0.72, 0.64, 0.55] },
+      { type: 'image/jpeg', qualities: [0.78, 0.7, 0.62] },
+    ]
+
+    let terbaik: Blob | null = null
+    for (const { type, qualities } of percobaan) {
+      for (const q of qualities) {
+        const blob = await canvasToBlob(canvas, type, q)
+        if (!blob || blob.size === 0) continue
+        if (!terbaik || blob.size < terbaik.size) terbaik = blob
+        if (blob.size <= TARGET_BYTE_GAMBAR_HALAMAN) {
+          return blob
+        }
+      }
+      if (terbaik && terbaik.type === type && terbaik.size < file.size) {
+        // WebP sudah cukup baik meski di atas target — pakai, jangan buang waktu JPEG lebih besar
+        if (type === 'image/webp' && terbaik.size <= TARGET_BYTE_GAMBAR_HALAMAN * 1.35) {
+          return terbaik
+        }
+      }
+    }
+
+    if (terbaik && (terbaik.size < file.size || perluResize)) return terbaik
+    return file
   } catch {
     return file
   }

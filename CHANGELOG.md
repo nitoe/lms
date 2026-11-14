@@ -1,3 +1,12 @@
+## 2026-11-14 — Optimasi gambar materi untuk smartphone
+
+- **Prioritas:** ukuran file kecil + tetap terbaca di HP (akses utama siswa).
+- Kompres unggah `siapkanGambarHalaman`: sisi maks. **1200px**, WebP q≈0.72 (fallback JPEG), turunkan kualitas bertahap hingga mendekati **~180 KB**.
+- Batas unggah sumber blok halaman: **4 MB** (setelah kompres biasanya 100–250 KB).
+- Tampilan mobile-first: gambar `width: 100%` di HP (label diagram terbaca), `max-height` dibatasi agar tidak mendominasi gulir; di PC `width: auto`.
+- File lama di Storage tidak berubah otomatis — unggah ulang di editor bila ingin file lebih ringan.
+- File: `src/lib/materi.ts`, `src/types/materi.ts`, `src/styles/materi-halaman.css`.
+
 ## 2026-11-14 — Gambar materi: ukuran tampilan proporsional + kompres unggah
 
 - **Tampilan:** gambar tidak lagi dipaksa `width: 100%` tanpa batas (terlalu besar/berat di PC). Kini `width: auto`, `max-width: 100%`, `max-height: min(70vh, 26–36rem)` + `object-fit: contain`, rata tengah. Di HP tetap memenuhi lebar kartu bila gambar cukup lebar.

@@ -87,8 +87,11 @@ export interface TpRingkas {
 export const BATAS_UKURAN = {
   pdf: 10 * 1024 * 1024,
   gambar: 10 * 1024 * 1024,
-  /** Gambar di dalam blok halaman (sedikit lebih ketat untuk mobile). */
-  gambarHalaman: 8 * 1024 * 1024,
+  /**
+   * Gambar blok halaman — dioptimasi untuk HP.
+   * Setelah kompres target ~100–200 KB; batas unggah sumber 4 MB.
+   */
+  gambarHalaman: 4 * 1024 * 1024,
   video: 50 * 1024 * 1024,
 } as const
 
