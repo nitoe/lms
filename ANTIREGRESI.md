@@ -47,7 +47,26 @@ Bila error tetap permission setelah rules 300 ter-deploy: cek penugasan `penugas
 
 
 
+## §127.26–§127.32 Export PDF v4: paginasi sendiri (2026-11-15)
+
+127.26 **Jalur PDF tidak boleh mengandalkan pemecah halaman browser** (`break-inside`, `break-after`, `column-count`, `column-span`, `@page @bottom-*`). Terbukti di Chromium: halaman 1 hanya kop (soal mulai hal. 2), opsi terpisah dari soal, meta tercecer. Pembagian halaman dihitung di `susunHalaman()` (ukur tinggi blok → tempatkan pada `.halaman` A4 tetap, posisi `absolute`). Jangan mengembalikan CSS kolom/pemecah halaman untuk jalur PDF.
+
+127.27 **Satu soal = satu blok utuh** (`htmlSatuSoal`): nomor, teks, gambar, stimulus, opsi/tabel tidak dipisah. `potongan` hanya cadangan bila satu soal lebih tinggi dari satu halaman penuh. Judul bagian `jaga: true` (selalu bersama blok sesudahnya). Kop+identitas+judul+soal pertama harus di halaman 1 selama muat.
+
+127.28 **Footer**: elemen `.footer-halaman` per halaman — `border-top` tipis (0.5pt), nomor halaman `.footer-no` di **kanan bawah**, keterangan kuis di kiri. Batas isi (`geometriCetak().bawah`) ≥ 3 mm di atas garis footer. Jangan memakai `@page { @bottom-center }` (tak bisa bergaris penuh & tak konsisten).
+
+127.29 **Mode 2 kolom**: hanya `jenis === 'uraian'` yang `mode: 'penuh'` (1 kolom selebar halaman); semua bentuk lain `mode: 'kolom'`. Judul bagian di awal wilayah kolom selebar halaman (`penuhBilaAwal`). Kolom di halaman terakhir wilayah diseimbangkan (`seimbangkan`) tanpa mengubah urutan soal. Font ≥ 11pt (BS 11pt di `body.dua`).
+
+127.30 Ukuran halaman `.halaman` = 210mm × **296.5mm** (bukan 297) + `@page { margin: 0 }` agar pembulatan tidak melahirkan halaman kosong. Posisi/lebar dalam px dari `geometriCetak()`; jangan memakai satuan relatif viewport.
+
+127.31 Pengukuran harus menunggu gambar didekode (`tungguGambar`) dan font siap sebelum `print()`; gambar tetap JPEG (§127.17). Garis jawaban isian pakai `.garis-isi` ber-border (jangan deretan `_` — melebihi lebar kolom).
+
+127.32 `window.open` dipanggil **sinkron di awal** `cetakKuisPdf` (dalam klik pengguna), baru diisi setelah proses async; bila gagal, jendela ditutup dan error dilempar (UI menampilkan `alert`). Jalur Word memakai `STYLE_WORD` terpisah — mengubah CSS PDF tidak boleh mengubah Word dan sebaliknya.
+
 ## §127.23–§127.25 Export PDF v3: alur, uraian, footer halaman (2026-11-15)
+
+> **DIGANTIKAN untuk jalur PDF oleh §127.26–§127.32** (paginasi dihitung sendiri; aturan CSS di bawah tetap berlaku hanya untuk jalur Word bila relevan).
+
 
 127.23 Jangan membiarkan halaman 1 hanya berisi kop/identitas. Margin identitas & garis ganda diperketat; `max-height` ilustrasi dibatasi agar blok soal muat mulai di halaman pertama.
 
@@ -56,6 +75,9 @@ Bila error tetap permission setelah rules 300 ter-deploy: cek penugasan `penugas
 127.25 Nomor halaman hanya di **bottom margin** via `@page { @bottom-center { content: counter(page) } }`. Margin bawah ≥ 1.6 cm. Jangan menaruh nomor halaman menempel konten soal.
 
 ## §127.20–§127.22 Export PDF: anti-potong, rata kiri, dua kolom (2026-11-15)
+
+> **DIGANTIKAN untuk jalur PDF oleh §127.26–§127.32** (paginasi dihitung sendiri; aturan CSS di bawah tetap berlaku hanya untuk jalur Word bila relevan).
+
 
 127.20 Setiap blok soal (`table.soal-wrap`) dan ilustrasi (`.soal-gambar` / `.opsi-gambar`) **wajib** `break-inside: avoid` + `page-break-inside: avoid` pada `@media print` agar narasi, opsi, dan gambar tidak terpotong pergantian halaman.
 

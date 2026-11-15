@@ -1,3 +1,16 @@
+## 2026-11-15 — Export PDF v4: paginasi sendiri (kop+soal satu halaman, anti-potong, footer)
+
+- **Penyebab (direproduksi di Chromium):** CSS v3 mengandalkan pemecah halaman browser (`break-inside: avoid`, `column-count`). Hasilnya: halaman 1 hanya berisi kop/identitas (soal mulai di hal. 2), opsi jawaban terpisah dari soalnya, dan baris meta tercecer sendirian di halaman terakhir.
+- **Perbaikan:** jalur PDF kini **menghitung sendiri** pembagian halaman — tinggi tiap soal diukur, lalu ditempatkan pada halaman A4 berukuran tetap. Satu soal (nomor, teks, gambar, stimulus, opsi) = satu blok utuh yang tidak pernah terpotong; bila tak muat, pindah ke kolom/halaman berikutnya.
+- **Halaman 1:** kop + identitas + judul bagian + soal pertama dalam halaman yang sama selama muat. Judul bagian selalu bersama soal sesudahnya.
+- **Footer:** garis tipis di atas, **nomor halaman di kanan bawah**; keterangan kuis (judul · jumlah soal · poin · menit) di kiri footer setiap halaman (tidak lagi tercecer di akhir).
+- **PDF 2 kolom:** hanya soal **uraian** 1 kolom selebar halaman; PG, PGK, B/S, jodoh, isian = 2 kolom (garis pemisah kolom). Kolom di halaman terakhir diseimbangkan agar uraian muat lebih rapat. Font tetap ≥ 11pt.
+- Garis jawaban isian digambar dengan border (tidak lagi deretan garis-bawah yang melebihi lebar kolom). Tabel Benar/Salah di 2 kolom dipadatkan.
+- Jendela cetak dibuka **segera** saat klik (sebelumnya setelah proses async → rawan diblokir popup-blocker); judul jendela = nama berkas sehingga nama default «Save as PDF» informatif.
+- Word (.doc) tidak berubah tampilannya. Tombol & tanda tangan fungsi tidak berubah (`cetakKuisPdf`, `unduhKuisCetak`, `htmlKuisCetak`).
+- File: `src/lib/exportKuisCetak.ts`, `CHANGELOG.md`, `ANTIREGRESI.md`.
+- ANTIREGRESI §127.26–§127.32.
+
 ## 2026-11-15 — Rules paket soal: naikkan batas soal 100 → 300 (permission >100 soal)
 
 - **Regresi berulang:** menyimpan/import paket dengan **lebih dari 100 soal** gagal `Missing or insufficient permissions`.
