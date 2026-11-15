@@ -1,3 +1,32 @@
+## §0. PRIORITAS — Batas klien vs rules (permission denied berulang)
+
+**Ini sudah berulang.** Gejala: simpan/import paket soal (atau write lain) gagal dengan `Missing or insufficient permissions` padahal user berhak menulis kelas×mapel.
+
+### Akar yang sering terlupa
+1. **Rules `soal.size() <= N` tidak ikut dinaikkan** saat `BATAS_SOAL_PER_PAKET` di klien dinaikkan.  
+   - Klien: `src/types/soal.ts` → `BATAS_SOAL_PER_PAKET = 300`  
+   - Rules (lama): `lms_paket_soal` create/update → `request.resource.data.soal.size() <= 100`  
+   - Akibat: paket >100 soal selalu ditolak rules → permission denied (bukan error validasi klien).
+2. **Rules belum di-deploy** setelah diubah di repo (`npm run deploy:rules` dari SDM01Penilaian). UI Hosting baru ≠ rules baru.
+3. **firestore.indexes.json parsial** (lihat §128.7) — deploy index minimal menawarkan hapus index production.
+
+### Wajib sebelum merge/deploy fitur yang menyentuh jumlah soal / ukuran array
+- [ ] `BATAS_*` di `src/types/*` **sama** dengan `*.size() <= N` di `firestore.rules` untuk field yang sama.
+- [ ] Setelah ubah rules: salin **file utuh** ke SDM01Penilaian → `npm run deploy:rules`.
+- [ ] Uji simpan paket dengan jumlah soal **di atas** batas lama (mis. 101, 150) dengan akun guru biasa (bukan hanya admin).
+- [ ] Jangan menaikkan hanya klien. Jangan menaikkan hanya rules tanpa update konstanta klien (pesan error UI akan salah).
+
+### Batas resmi saat ini (sinkronkan bila diubah lagi)
+| Field / koleksi | Klien | Rules |
+|-----------------|-------|-------|
+| `lms_paket_soal.soal` | `BATAS_SOAL_PER_PAKET = 300` | `soal.size() <= 300` |
+| `lms_kuis.jumlahSoal` | `BATAS_SOAL_PER_KUIS = 100` | `jumlahSoal <= 200` (rules lebih longgar) |
+| Ukuran dokumen paket | `BATAS_UKURAN_PAKET = 900_000` (peringatan klien) | Batas Firestore 1 MiB (bukan permission) |
+
+Bila error tetap permission setelah rules 300 ter-deploy: cek penugasan `penugasanKelasMapel` / `lmsTulisMapelKelas`, bukan jumlah soal.
+
+---
+
 ## §128. Query kelasList array-contains (berbagi paralel) — permission list
 
 128.1 Query sekunder `where('kelasList','array-contains', kelas)` di `daftarTugas`, `daftarKuis`, `daftarMateri` **wajib** didukung rules **dan** menyertakan constraint `mapel`.

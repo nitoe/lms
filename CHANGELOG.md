@@ -1,3 +1,11 @@
+## 2026-11-15 — Rules paket soal: naikkan batas soal 100 → 300 (permission >100 soal)
+
+- **Regresi berulang:** menyimpan/import paket dengan **lebih dari 100 soal** gagal `Missing or insufficient permissions`.
+- **Akar:** klien `BATAS_SOAL_PER_PAKET = 300`, tetapi `firestore.rules` `lms_paket_soal` create/update masih `soal.size() <= 100`.
+- **Perbaikan:** rules dinaikkan ke `soal.size() <= 300` (create + update), selaras konstanta klien.
+- **ANTIREGRESI §0 (PRIORITAS):** checklist wajib sinkron `BATAS_*` klien ↔ `size() <= N` rules; deploy rules dari SDM01Penilaian; uji dengan >100 soal.
+- File: `firestore.rules` (full). Deploy: salin ke SDM01Penilaian → `npm run deploy:rules`.
+
 ## 2026-11-15 — Query kelasList wajib sertakan mapel (permission list)
 
 - **Masih permission denied** meski helper `lmsLihatViaKelasList` sudah di rules: query klien hanya `where('kelasList','array-contains', kelas)` **tanpa** `mapel`. Evaluasi list Firestore konservatif — tanpa constraint mapel, dokumen hipotetis dengan mapel lain membuat rule gagal → seluruh query ditolak.
