@@ -1,3 +1,15 @@
+## §128. Query kelasList array-contains (berbagi paralel) — permission list
+
+128.1 Query sekunder `where('kelasList','array-contains', kelas)` di `daftarTugas`, `daftarKuis` (dan pola serupa di materi) **wajib** didukung rules. Jangan mengandalkan hanya `lmsLihatMapelKelas(mapel, resource.data.kelas)` (kelas primary): dokumen share punya `kelas` = rombel pemilik, `kelasList` memuat penerima → list evaluation menolak.
+
+128.2 Helper `lmsLihatViaKelasList(mapel, list)`: OR `lmsLihatMapelKelas` untuk tiap elemen list (maks 6). Dipakai di `allow read` `lms_kuis` dan `lms_tugas` (cabang `isGuru() && 'kelasList' in resource.data && …`). Selama guru ampu kelas yang di-query untuk mapel itu, setiap dokumen yang match punya kelas tersebut di list → rule benar.
+
+128.3 `lms_materi` sudah `allow read: if isGuru() || …` sehingga query kelasList-nya tidak kena masalah yang sama; jangan menyempitkan baca materi tanpa pertimbangan share.
+
+128.4 Client tetap membungkus query kelasList dalam try/catch (best-effort). Setelah deploy rules ini, warn permission seharusnya hilang untuk guru yang ampu kelas yang di-query.
+
+128.5 Tulis/update `kelasList` tetap lewat `lmsKelasListBoleh` (semua kelas dalam list wajib `lmsTulisMapelKelas`) — jangan longgarkan write.
+
 ## §127.23–§127.25 Export PDF v3: alur, uraian, footer halaman (2026-11-15)
 
 127.23 Jangan membiarkan halaman 1 hanya berisi kop/identitas. Margin identitas & garis ganda diperketat; `max-height` ilustrasi dibatasi agar blok soal muat mulai di halaman pertama.

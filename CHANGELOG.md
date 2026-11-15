@@ -1,3 +1,12 @@
+## 2026-11-15 — Perbaiki permission query kelasList (daftarTugas / daftarKuis)
+
+- **Gejala:** di console guru (contoh akun arif.azwar79@gmail.com / wali 5A) muncul berulang:
+  `daftarTugas kelasList FirebaseError: Missing or insufficient permissions`
+  dan `daftarKuis kelasList …` saat membuka Beranda / Daftar Kelas / Detail Kelas (termasuk tab Bank Soal).
+- **Akar:** query sekunder `where('kelasList','array-contains', kelas)` ditolak rules. Baca `lms_kuis` / `lms_tugas` hanya lewat `lmsLihatMapelKelas(mapel, kelas_utama)`; dokumen hasil share punya `kelas` = rombel pemilik, sehingga evaluasi list konservatif menolak seluruh query.
+- **Perbaikan rules:** helper `lmsLihatViaKelasList(mapel, list)` — guru boleh baca jika punya akses lihat ke *salah satu* kelas dalam `kelasList` untuk mapel itu. Cabang ini ditambahkan ke `allow read` `lms_kuis` dan `lms_tugas`. Query array-contains kelas yang diampu kini lolos; fitur berbagi ke paralel berfungsi penuh bagi penerima.
+- File: `firestore.rules` (full). Deploy rules dari SDM01Penilaian setelah salin. ANTIREGRESI §128.
+
 ## 2026-11-15 — Export PDF v3: alur halaman, uraian penuh, nomor halaman
 
 - **Halaman 1 tidak kosong:** margin identitas/garis diperketat; tinggi ilustrasi dibatasi (≤130pt) agar soal mulai di halaman yang sama dengan kop.
