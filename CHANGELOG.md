@@ -1,3 +1,13 @@
+## 2026-11-15 — Export kuis: logo, spasi, pratinjau, unduh tunggal
+
+- **Logo kop:** logo sekolah (SDM) + logo Kota Depok (bukan bintang placeholder); disematkan data-URI PNG di `exportKuisCetak.ts`.
+- **Tipografi opsi:** huruf A–D tidak lagi tebal (`font-weight: normal` pada `.opsi-huruf`); hanya nomor soal yang tebal.
+- **Spasi antar soal:** margin bawah `.soal-wrap` 9pt → **16pt** agar tidak berdempet saat dicetak.
+- **Menu unduh tunggal:** tombol «Unduh soal» / «Unduh + kunci» **hanya** di kepala detail kuis (`KuisKepala`); dihapus dari bilah sticky tab Atur kuis (sebelumnya ganda dengan kepala).
+- **Pratinjau soal:** tombol «Pratinjau» di kepala detail — membuka modal `PratinjauSoal` (SoalTampil + GambarSoal) sehingga ilustrasi terlihat sebelum unduh Word.
+- File: `src/lib/exportKuisCetak.ts`, `src/components/KuisDetail.tsx`, `src/components/KuisPanel.tsx`.
+- ANTIREGRESI §127.10–§127.13.
+
 ## 2026-11-15 — Tombol unduh soal di kepala detail kuis
 
 - **Masalah:** tombol «Unduh soal» / «Unduh + kunci» hanya di bilah dalam tab Atur kuis, mudah terlewat.

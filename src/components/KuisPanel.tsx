@@ -47,6 +47,7 @@ import { unduhKuisCetak } from '../lib/exportKuisCetak'
 import { KnKembali, KuisKepala, type ChipKepala } from './KuisNav'
 import { IkonAtur, IkonGrafik, IkonInput } from './ikonRuang'
 import PilihSoalManual from './soal/PilihSoalManual'
+import PratinjauSoal from './soal/PratinjauSoal'
 import '../styles/tka-bank.css'
 
 type Props = {
@@ -121,6 +122,7 @@ export default function KuisPanel({ kelas, mapel }: Props) {
   const [langkah, setLangkah] = useState<Langkah>('daftar')
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [detailTab, setDetailTab] = useState<'atur' | 'hasil' | 'offline'>('atur')
+  const [showPratinjauKuis, setShowPratinjauKuis] = useState(false)
 
   const [judul, setJudul] = useState('')
   const [deskripsi, setDeskripsi] = useState('')
@@ -564,6 +566,14 @@ export default function KuisPanel({ kelas, mapel }: Props) {
                 <button
                   type="button"
                   className="kn-aksi-unduh"
+                  title="Pratinjau soal lengkap (termasuk ilustrasi)"
+                  onClick={() => setShowPratinjauKuis(true)}
+                >
+                  Pratinjau
+                </button>
+                <button
+                  type="button"
+                  className="kn-aksi-unduh"
                   title="Unduh lembar soal siap cetak (Word)"
                   onClick={() => unduhKuisCetak(kuis, { sertakanKunci: false })}
                 >
@@ -606,6 +616,24 @@ export default function KuisPanel({ kelas, mapel }: Props) {
             <HasilKuisPanel kuis={kuis} onUpdated={async () => { await muat() }} />
           )}
         </div>
+
+        {showPratinjauKuis && kuis.soal && kuis.soal.length > 0 && (
+          <PratinjauSoal
+            paket={{
+              id: kuis.id,
+              kelas: kuis.kelas,
+              mapel: kuis.mapel,
+              judul: kuis.judul,
+              status: 'siap',
+              acakSoal: false,
+              soal: kuis.soal,
+              jumlahSoal: kuis.soal.length,
+              totalPoin: kuis.totalPoin ?? 0,
+              dibuatOleh: kuis.dibuatOleh,
+            }}
+            onTutup={() => setShowPratinjauKuis(false)}
+          />
+        )}
       </div>
     )
   }

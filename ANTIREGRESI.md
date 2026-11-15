@@ -1,6 +1,16 @@
+## §127.10–§127.13 Export cetak: logo, spasi, unduh tunggal, pratinjau (2026-11-15)
+
+127.10 Kop cetak memakai **logo SDM** (kiri) dan **logo Kota Depok** (kanan) sebagai `<img>` data-URI, bukan karakter bintang/placeholder. Jangan mengembalikan `&#9733;` di `.kop-logo`.
+
+127.11 Huruf opsi A–D: `td.opsi-huruf { font-weight: normal }` — jangan tebal (hanya nomor soal yang tebal). Spasi antar soal: `table.soal-wrap { margin: 0 0 16pt }` (bukan ≤ 9pt).
+
+127.12 Tombol unduh Word **hanya** di `KuisKepala` (prop `aksi`). Jangan mengembalikan pasangan «Unduh soal» / «Unduh + kunci» di bilah sticky tab Atur kuis (`KuisDetail`) — menyebabkan menu ganda.
+
+127.13 Pratinjau isi kuis (termasuk ilustrasi `gambarId`) lewat tombol «Pratinjau» di kepala detail → modal `PratinjauSoal` dengan `soal` dari kuis. Jangan mengandalkan unduh Word untuk mengecek apakah soal punya gambar (gambar belum di-embed di .doc).
+
 ## §127.9 Tombol unduh di kepala kuis
 
-Tombol unduh Word wajib juga di `KuisKepala` (prop `aksi`), bukan hanya di dalam tab Atur kuis, agar mudah ditemukan dari tab Hasil / Offline.
+Tombol unduh Word wajib di `KuisKepala` (prop `aksi`) agar mudah ditemukan dari semua tab. Sejak §127.12 tombol **tidak** lagi di bilah sticky tab Atur (`KuisDetail`) — hanya di kepala (satu tempat).
 
 ## §127.1 Optimasi cetak Word (2026-11-15)
 
@@ -12,7 +22,7 @@ Tombol unduh Word wajib juga di `KuisKepala` (prop `aksi`), bukan hanya di dalam
 
 127.1 Unduh lembar soal lewat `unduhKuisCetak` / `htmlKuisCetak` di `lib/exportKuisCetak.ts`. Format HTML + MIME `application/msword` (sama pola `unduhLaporanDoc`) — **jangan** menambah dependency `docx` tanpa keputusan eksplisit.
 
-127.2 Tombol di **Atur kuis** (`KuisDetail`): «Unduh soal» (tanpa kunci) dan «Unduh + kunci» (versi guru). Jangan sembunyikan untuk kuis offline.
+127.2 Tombol «Unduh soal» / «Unduh + kunci» di **kepala detail** (`KuisKepala` prop `aksi`). Jangan mengembalikan ke bilah sticky tab Atur (`KuisDetail`) — lihat §127.12. Jangan sembunyikan untuk kuis offline.
 
 127.3 Pengelompokan cetak: objektif (pg/pgk/bs/jodoh) → isian → uraian, dengan nomor soal global berurutan. Instruksi bagian menyesuaikan template sumatif sekolah.
 
