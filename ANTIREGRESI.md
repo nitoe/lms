@@ -12,6 +12,11 @@
 
 128.6 Tulis/update `kelasList` tetap lewat `lmsKelasListBoleh` (semua kelas dalam list wajib `lmsTulisMapelKelas`) — jangan longgarkan write. Deploy rules **dan** index; push kode klien saja tidak cukup jika rules lama masih aktif di Firebase.
 
+## §128.7 firestore.indexes.json — JANGAN file parsial
+
+128.7 `firestore.indexes.json` adalah **sumber kebenaran penuh**. Deploy file yang hanya memuat index baru akan membuat CLI menawarkan **hapus** semua index yang tidak tercantum (nilai_*, perpus_*, tp_kktp, siswa, notifikasi, …). Selalu: ambil file lengkap dari SDM01Penilaian (atau `firebase firestore:indexes`), **tambah** index baru, baru deploy. Jangan pernah menimpa dengan daftar minimal.
+
+
 
 ## §127.23–§127.25 Export PDF v3: alur, uraian, footer halaman (2026-11-15)
 
