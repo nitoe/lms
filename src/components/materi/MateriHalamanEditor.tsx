@@ -18,7 +18,7 @@ import {
 } from '../../lib/generateMateriAi'
 import {
   buatTemplateMateriHalamanJson,
-  eksporMateriHalamanKeJson,
+  eksporSatuHalamanKeJson,
   parseJsonMateriHalaman,
   peringatanMetadataMateri,
   unduhTeksSebagaiFile,
@@ -133,7 +133,7 @@ export default function MateriHalamanEditor({
   const [panelMeta, setPanelMeta] = useState(!metaAwalLengkap)
   /** Panel unduh template / impor JSON halaman. */
   const [panelImpor, setPanelImpor] = useState(false)
-  const [modeImpor, setModeImpor] = useState<'ganti' | 'tambah'>('ganti')
+  const [modeImpor, setModeImpor] = useState<'ganti-aktif' | 'tambah'>('tambah')
   const [infoImpor, setInfoImpor] = useState('')
   const importRef = useRef<HTMLInputElement>(null)
 
@@ -411,15 +411,19 @@ export default function MateriHalamanEditor({
   function unduhTemplateHalaman() {
     const isi = buatTemplateMateriHalamanJson(mapel, tpTerpilih || null, {
       judul: meta.judul.trim() || undefined,
+      judulHalaman: aktif?.judul?.trim() || undefined,
     })
     const slugTp = tpTerpilih ? `TP${tpTerpilih.nomorTp}` : 'tanpa-tp'
-    const nama = `template-materi-halaman-${mapel.replace(/\s+/g, '-')}-${slugTp}.json`
+    const nama = `template-satu-halaman-${mapel.replace(/\s+/g, '-')}-${slugTp}.json`
     unduhTeksSebagaiFile(nama, isi, 'application/json')
-    setInfoImpor('Template diunduh. Isi array halaman, lalu impor kembali ke editor.')
+    setInfoImpor(
+      'Template satu halaman diunduh (beberapa blok teks + gambar). Isi sesuai kompleksitas materi, lalu impor. Untuk halaman berikutnya, unduh/salin template lagi.',
+    )
   }
 
-  function eksporDrafHalaman() {
-    const isi = eksporMateriHalamanKeJson(
+  function eksporHalamanAktif() {
+    if (!aktif) return
+    const isi = eksporSatuHalamanKeJson(
       {
         mapel,
         judul: meta.judul,
@@ -429,15 +433,19 @@ export default function MateriHalamanEditor({
         tpNomor: tpTerpilih?.nomorTp,
         tpNama: tpTerpilih?.namaTp,
       },
-      halaman,
+      aktif,
+      { indeks: aktifIdx },
     )
-    const slug = (meta.judul.trim() || 'draf').replace(/\s+/g, '-').slice(0, 40)
+    const slug = (aktif.judul || meta.judul || `halaman-${aktifIdx + 1}`)
+      .trim()
+      .replace(/\s+/g, '-')
+      .slice(0, 40)
     unduhTeksSebagaiFile(
-      `materi-halaman-${mapel.replace(/\s+/g, '-')}-${slug}.json`,
+      `halaman-${mapel.replace(/\s+/g, '-')}-${slug || aktifIdx + 1}.json`,
       isi,
       'application/json',
     )
-    setInfoImpor('Draf halaman diekspor ke JSON.')
+    setInfoImpor(`Halaman ${aktifIdx + 1} diekspor (satu halaman).`)
   }
 
   async function onFileImporHalaman(file: File | null) {
@@ -451,11 +459,16 @@ export default function MateriHalamanEditor({
         ...hasil.peringatan,
         ...peringatanMetadataMateri(hasil.metadata, mapel, tpTerpilih || null),
       ]
-      if (hasil.halaman.length === 0) {
+      if (!hasil.halaman) {
         setError(hasil.galat.length ? hasil.galat.join(' ') : 'Tidak ada halaman valid di file.')
         return
       }
+      if (hasil.galat.length) {
+        // Galat parsial blok: tetap boleh impor jika halaman ada, tapi tampilkan
+        peringatan.push(...hasil.galat.slice(0, 3))
+      }
 
+      // Meta kosong saja yang diisi dari file
       setMeta((m) => {
         let tpId = m.tpId
         if (!tpId) {
@@ -478,39 +491,38 @@ export default function MateriHalamanEditor({
         }
       })
 
-      if (modeImpor === 'ganti') {
-        setHalaman(hasil.halaman.map((h, i) => ({ ...h, urutan: i })))
-        setAktifIdx(0)
+      const baru = { ...hasil.halaman, urutan: 0 }
+
+      if (modeImpor === 'ganti-aktif') {
+        setHalaman((prev) =>
+          prev.map((h, i) =>
+            i === aktifIdx ? { ...baru, id: h.id || baru.id, urutan: i } : h,
+          ),
+        )
         setInfoImpor(
           [
-            `Berhasil impor ${hasil.halaman.length} halaman (mengganti isi sebelumnya).`,
-            hasil.galat.length ? hasil.galat.slice(0, 2).join(' ') : '',
+            `Halaman ${aktifIdx + 1} diganti (${baru.blok.length} blok).`,
             peringatan.slice(0, 2).join(' '),
           ]
             .filter(Boolean)
             .join(' '),
         )
       } else {
-        const sisa = BATAS_HALAMAN_PER_MATERI - halaman.length
-        if (sisa <= 0) {
+        if (halaman.length >= BATAS_HALAMAN_PER_MATERI) {
           setError(`Sudah mencapai batas ${BATAS_HALAMAN_PER_MATERI} halaman.`)
           return
         }
-        const n = Math.min(hasil.halaman.length, sisa)
-        const tambah = hasil.halaman.slice(0, n).map((h, i) => ({
-          ...h,
-          urutan: halaman.length + i,
-        }))
         const idxBaru = halaman.length
-        setHalaman((prev) => [...prev, ...tambah])
+        setHalaman((prev) => [...prev, { ...baru, urutan: prev.length }])
         setAktifIdx(idxBaru)
-        const extra = [
-          `Berhasil menambah ${n} halaman.`,
-          hasil.halaman.length > n ? `Batas ${BATAS_HALAMAN_PER_MATERI} halaman — sisa file diabaikan.` : '',
-          hasil.galat.length ? hasil.galat.slice(0, 2).join(' ') : '',
-          peringatan.slice(0, 2).join(' '),
-        ]
-        setInfoImpor(extra.filter(Boolean).join(' '))
+        setInfoImpor(
+          [
+            `Halaman baru ditambahkan sebagai halaman ${idxBaru + 1} (${baru.blok.length} blok).`,
+            peringatan.slice(0, 2).join(' '),
+          ]
+            .filter(Boolean)
+            .join(' '),
+        )
       }
       setPanelHalaman(true)
     } catch (e) {
@@ -706,15 +718,16 @@ export default function MateriHalamanEditor({
             </button>
           </div>
           <p className="mh-impor-lead">
-            Unduh template JSON, tulis teks (dan petunjuk gambar) per halaman di luar LMS, lalu impor
-            kembali. Gambar tanpa URL bisa diunggah atau digenerate AI setelah impor.
+            Satu file JSON = <strong>satu halaman</strong> dengan beberapa blok teks/gambar sesuai
+            kompleksitas materi. Halaman berikutnya: unduh template lagi, isi, impor satu per satu.
+            Isi <code>petunjukGambar</code> panjang (3–6 kalimat) agar ilustrasi AI konsisten.
           </p>
           <div className="mh-impor-actions">
             <button type="button" className="lms-btn-secondary" onClick={unduhTemplateHalaman} disabled={busy}>
-              Unduh template
+              Unduh template 1 halaman
             </button>
-            <button type="button" className="lms-btn-secondary" onClick={eksporDrafHalaman} disabled={busy}>
-              Ekspor draf saat ini
+            <button type="button" className="lms-btn-secondary" onClick={eksporHalamanAktif} disabled={busy}>
+              Ekspor halaman aktif
             </button>
           </div>
           <div className="mh-impor-mode">
@@ -723,19 +736,19 @@ export default function MateriHalamanEditor({
               <input
                 type="radio"
                 name="mode-impor-halaman"
-                checked={modeImpor === 'ganti'}
-                onChange={() => setModeImpor('ganti')}
+                checked={modeImpor === 'tambah'}
+                onChange={() => setModeImpor('tambah')}
               />
-              Ganti semua halaman
+              Tambah sebagai halaman baru
             </label>
             <label className="mh-impor-radio">
               <input
                 type="radio"
                 name="mode-impor-halaman"
-                checked={modeImpor === 'tambah'}
-                onChange={() => setModeImpor('tambah')}
+                checked={modeImpor === 'ganti-aktif'}
+                onChange={() => setModeImpor('ganti-aktif')}
               />
-              Tambah di akhir
+              Ganti halaman aktif
             </label>
           </div>
           <div className="mh-impor-file">
@@ -747,7 +760,7 @@ export default function MateriHalamanEditor({
             >
               Pilih file JSON…
             </button>
-            <span className="mh-hint">.json · maks. {BATAS_HALAMAN_PER_MATERI} halaman</span>
+            <span className="mh-hint">.json · tepat 1 halaman · multi-halaman ditolak</span>
           </div>
         </section>
       )}

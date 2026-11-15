@@ -1,28 +1,40 @@
 /**
- * Template & impor materi multi-halaman (JSON).
- * Selaras pola importSoal: unduh template → isi → impor ke editor.
+ * Template & impor **satu halaman** materi (JSON).
  *
- * Format (versi 1):
+ * Alur: unduh template satu halaman → isi banyak blok teks/gambar sesuai
+ * kompleksitas → impor (ganti halaman aktif ATAU tambah halaman baru).
+ * Satu file = satu halaman saja, agar kualitas konten terjaga.
+ *
+ * Format (versi 2):
  * {
- *   versi: 1,
+ *   versi: 2,
  *   jenis: "materi-halaman",
- *   mapel?, judul?, deskripsi?, bab?, tpNomor?, tpNama?,
- *   halaman: [{ judul?, blok: [{ tipe:"teks", html|teks }, { tipe:"gambar", url?, alt?, caption?, petunjukGambar? }] }]
+ *   mapel?, judulMateri?, …
+ *   halaman: { judul?, blok: [ … ] }   // objek satu halaman
  * }
- *
- * Gambar: url publik opsional; tanpa url isi petunjukGambar agar bisa digenerate AI / diunggah di editor.
- * Field `teks` (polos) otomatis diubah ke paragraf HTML.
+ * Kompatibilitas: array «halaman» dengan tepat 1 elemen masih diterima.
  */
 import { bersihHtmlMateri, htmlKosong } from './html'
 import { idBaru } from './materi'
 import type { MateriBlok, MateriHalaman, TpRingkas } from '../types/materi'
-import { BATAS_BLOK_PER_HALAMAN, BATAS_HALAMAN_PER_MATERI } from '../types/materi'
+import { BATAS_BLOK_PER_HALAMAN } from '../types/materi'
 
-export const VERSI_IMPORT_MATERI_HALAMAN = 1
+export const VERSI_IMPORT_MATERI_HALAMAN = 2
 export const JENIS_IMPORT_MATERI_HALAMAN = 'materi-halaman'
+
+/** Panduan petunjuk gambar — disalin ke field catatan template. */
+export const PANDUAN_PETUNJUK_GAMBAR = [
+  'Tulis petunjukGambar panjang (3–6 kalimat), bahasa Indonesia, spesifik untuk satu ilustrasi.',
+  'Wajib sebutkan: (1) subjek utama & usia/penampilan, (2) kegiatan/objek, (3) latar, (4) gaya gambar, (5) suasana warna.',
+  'Gaya default SD: ilustrasi flat / semi-realistis cerah, proporsi ramah anak, tanpa kekerasan.',
+  'LARANGAN: jangan minta teks, angka, rumus, label, watermark, atau logo di dalam gambar (teks di gambar sering salah eja).',
+  'Konsistensi: sebutkan gaya yang sama di semua blok gambar satu materi (mis. «gaya ilustrasi buku pelajaran SD Indonesia, flat, outline halus»).',
+  'Hindari: fotorealistik berlebih, karakter bermerek, konten dewasa, latar ramai yang mengalihkan fokus materi.',
+].join(' ')
 
 export type MetadataImportMateriHalaman = {
   mapel?: string
+  /** Judul materi (bukan judul halaman). */
   judul?: string
   deskripsi?: string
   bab?: string
@@ -33,7 +45,8 @@ export type MetadataImportMateriHalaman = {
 
 export type HasilParseMateriHalaman = {
   metadata: MetadataImportMateriHalaman
-  halaman: MateriHalaman[]
+  /** Selalu 0 atau 1 halaman setelah validasi. */
+  halaman: MateriHalaman | null
   galat: string[]
   peringatan: string[]
 }
@@ -41,7 +54,6 @@ export type HasilParseMateriHalaman = {
 function teksPolosKeHtml(teks: string): string {
   const t = teks.replace(/\r\n/g, '\n').trim()
   if (!t) return ''
-  // Sudah HTML kasar?
   if (/<[a-z][\s\S]*>/i.test(t)) return bersihHtmlMateri(t)
   const paragraf = t
     .split(/\n{2,}/)
@@ -58,9 +70,12 @@ function escapeMinimal(s: string): string {
     .replace(/>/g, '&gt;')
 }
 
-function normalisasiBlok(raw: unknown, indexHalaman: number, indexBlok: number): { blok?: MateriBlok; galat?: string } {
+function normalisasiBlok(
+  raw: unknown,
+  indexBlok: number,
+): { blok?: MateriBlok; galat?: string } {
   if (!raw || typeof raw !== 'object') {
-    return { galat: `Halaman ${indexHalaman + 1}, blok ${indexBlok + 1}: format tidak valid.` }
+    return { galat: `Blok ${indexBlok + 1}: format tidak valid.` }
   }
   const o = raw as Record<string, unknown>
   const tipe = String(o.tipe || o.jenis || '').toLowerCase().trim()
@@ -96,18 +111,17 @@ function normalisasiBlok(raw: unknown, indexHalaman: number, indexBlok: number):
             : ''
     if (!url && !petunjuk) {
       return {
-        galat: `Halaman ${indexHalaman + 1}, blok ${indexBlok + 1}: gambar wajib punya url atau petunjukGambar.`,
+        galat: `Blok ${indexBlok + 1}: gambar wajib punya url atau petunjukGambar (disarankan petunjuk panjang 3–6 kalimat).`,
       }
     }
     if (url) {
       try {
-        // Izinkan http(s) saja
         const u = new URL(url)
         if (u.protocol !== 'http:' && u.protocol !== 'https:') {
-          return { galat: `Halaman ${indexHalaman + 1}, blok ${indexBlok + 1}: url gambar harus http(s).` }
+          return { galat: `Blok ${indexBlok + 1}: url gambar harus http(s).` }
         }
       } catch {
-        return { galat: `Halaman ${indexHalaman + 1}, blok ${indexBlok + 1}: url gambar tidak valid.` }
+        return { galat: `Blok ${indexBlok + 1}: url gambar tidak valid.` }
       }
     }
     const item: Extract<MateriBlok, { tipe: 'gambar' }> = {
@@ -124,14 +138,19 @@ function normalisasiBlok(raw: unknown, indexHalaman: number, indexBlok: number):
   }
 
   return {
-    galat: `Halaman ${indexHalaman + 1}, blok ${indexBlok + 1}: tipe «${tipe || 'kosong'}» tidak dikenali (teks|gambar).`,
+    galat: `Blok ${indexBlok + 1}: tipe «${tipe || 'kosong'}» tidak dikenali (teks|gambar).`,
   }
 }
 
-function normalisasiSatuHalaman(raw: unknown, index: number): { halaman?: MateriHalaman; galat: string[] } {
+function normalisasiSatuHalaman(raw: unknown): {
+  halaman?: MateriHalaman
+  galat: string[]
+  peringatan: string[]
+} {
   const galat: string[] = []
+  const peringatan: string[] = []
   if (!raw || typeof raw !== 'object') {
-    return { galat: [`Halaman ${index + 1}: format tidak valid.`] }
+    return { galat: ['Objek halaman tidak valid.'], peringatan }
   }
   const o = raw as Record<string, unknown>
   const judul =
@@ -145,43 +164,57 @@ function normalisasiSatuHalaman(raw: unknown, index: number): { halaman?: Materi
   if (Array.isArray(o.blok)) daftarBlok = o.blok
   else if (Array.isArray(o.blocks)) daftarBlok = o.blocks
   else if (typeof o.html === 'string' || typeof o.teks === 'string' || typeof o.text === 'string') {
-    // Pintasan: satu halaman = satu blok teks
     daftarBlok = [{ tipe: 'teks', html: o.html, teks: o.teks ?? o.text }]
   }
 
   if (daftarBlok.length === 0) {
-    galat.push(`Halaman ${index + 1}: tidak ada blok konten.`)
-    return { galat }
+    galat.push('Halaman tidak memuat blok konten.')
+    return { galat, peringatan }
   }
   if (daftarBlok.length > BATAS_BLOK_PER_HALAMAN) {
-    galat.push(`Halaman ${index + 1}: maksimal ${BATAS_BLOK_PER_HALAMAN} blok (ada ${daftarBlok.length}).`)
+    galat.push(`Maksimal ${BATAS_BLOK_PER_HALAMAN} blok per halaman (ada ${daftarBlok.length}).`)
     daftarBlok = daftarBlok.slice(0, BATAS_BLOK_PER_HALAMAN)
   }
 
   const blok: MateriBlok[] = []
   for (let i = 0; i < daftarBlok.length; i++) {
-    const r = normalisasiBlok(daftarBlok[i], index, i)
+    const r = normalisasiBlok(daftarBlok[i], i)
     if (r.galat) galat.push(r.galat)
     if (r.blok) {
       if (r.blok.tipe === 'teks' && htmlKosong(r.blok.html) && daftarBlok.length > 1) continue
+      if (r.blok.tipe === 'gambar' && r.blok.petunjukGambar && r.blok.petunjukGambar.length < 40) {
+        peringatan.push(
+          `Blok gambar ${i + 1}: petunjukGambar terlalu singkat (${r.blok.petunjukGambar.length} karakter). Disarankan 3–6 kalimat agar AI konsisten.`,
+        )
+      }
       blok.push(r.blok)
     }
   }
   if (blok.length === 0) {
-    galat.push(`Halaman ${index + 1}: tidak ada blok valid.`)
-    return { galat }
+    galat.push('Tidak ada blok valid di halaman.')
+    return { galat, peringatan }
+  }
+
+  const jumlahTeks = blok.filter((b) => b.tipe === 'teks').length
+  if (jumlahTeks < 2) {
+    peringatan.push(
+      `Hanya ${jumlahTeks} blok teks. Untuk materi yang kompleks, pecah menjadi beberapa blok teks (pembuka, penjelasan, contoh, latihan) agar lebih rapi di editor.`,
+    )
   }
 
   const h: MateriHalaman = {
     id: idBaru('h'),
-    urutan: index,
+    urutan: 0,
     blok,
   }
   if (judul) h.judul = judul
-  return { halaman: h, galat }
+  return { halaman: h, galat, peringatan }
 }
 
-/** Parse teks file JSON menjadi halaman editor. */
+/**
+ * Parse file JSON → tepat satu halaman.
+ * Menolak file yang memuat lebih dari satu halaman.
+ */
 export function parseJsonMateriHalaman(teks: string): HasilParseMateriHalaman {
   const galat: string[] = []
   const peringatan: string[] = []
@@ -191,22 +224,21 @@ export function parseJsonMateriHalaman(teks: string): HasilParseMateriHalaman {
   } catch {
     return {
       metadata: {},
-      halaman: [],
+      halaman: null,
       galat: ['File bukan JSON yang valid.'],
       peringatan: [],
     }
   }
 
-  // Izinkan array halaman langsung
   let root: Record<string, unknown>
-  if (Array.isArray(data)) {
-    root = { halaman: data }
-  } else if (data && typeof data === 'object') {
+  if (data && typeof data === 'object' && !Array.isArray(data)) {
     root = data as Record<string, unknown>
+  } else if (Array.isArray(data)) {
+    root = { halaman: data }
   } else {
     return {
       metadata: {},
-      halaman: [],
+      halaman: null,
       galat: ['Struktur file tidak dikenali.'],
       peringatan: [],
     }
@@ -220,7 +252,11 @@ export function parseJsonMateriHalaman(teks: string): HasilParseMateriHalaman {
 
   const metadata: MetadataImportMateriHalaman = {}
   if (typeof root.mapel === 'string' && root.mapel.trim()) metadata.mapel = root.mapel.trim()
-  if (typeof root.judul === 'string' && root.judul.trim()) metadata.judul = root.judul.trim().slice(0, 200)
+  const judulMateri =
+    (typeof root.judulMateri === 'string' && root.judulMateri.trim()) ||
+    (typeof root.judul === 'string' && root.judul.trim()) ||
+    ''
+  if (judulMateri) metadata.judul = judulMateri.slice(0, 200)
   if (typeof root.deskripsi === 'string' && root.deskripsi.trim())
     metadata.deskripsi = root.deskripsi.trim().slice(0, 2000)
   if (typeof root.bab === 'string' && root.bab.trim()) metadata.bab = root.bab.trim().slice(0, 120)
@@ -228,42 +264,71 @@ export function parseJsonMateriHalaman(teks: string): HasilParseMateriHalaman {
   if (typeof root.tpNomor === 'number' && Number.isFinite(root.tpNomor)) metadata.tpNomor = root.tpNomor
   if (typeof root.tpNama === 'string' && root.tpNama.trim()) metadata.tpNama = root.tpNama.trim()
 
-  let daftar: unknown[] = []
-  if (Array.isArray(root.halaman)) daftar = root.halaman
-  else if (Array.isArray(root.pages)) daftar = root.pages
-  else if (Array.isArray(root.isi)) daftar = root.isi
+  let rawHalaman: unknown = null
+  if (root.halaman != null) {
+    if (Array.isArray(root.halaman)) {
+      if (root.halaman.length === 0) {
+        return {
+          metadata,
+          halaman: null,
+          galat: ['Array «halaman» kosong. Satu file harus berisi tepat satu halaman.'],
+          peringatan,
+        }
+      }
+      if (root.halaman.length > 1) {
+        return {
+          metadata,
+          halaman: null,
+          galat: [
+            `File memuat ${root.halaman.length} halaman. Impor dibatasi satu halaman per file agar kualitas terjaga. Pisahkan menjadi beberapa file, lalu impor satu per satu.`,
+          ],
+          peringatan,
+        }
+      }
+      rawHalaman = root.halaman[0]
+    } else if (typeof root.halaman === 'object') {
+      rawHalaman = root.halaman
+    }
+  } else if (Array.isArray(root.pages)) {
+    if (root.pages.length > 1) {
+      return {
+        metadata,
+        halaman: null,
+        galat: [
+          `File memuat ${root.pages.length} halaman. Impor dibatasi satu halaman per file. Pisahkan file, impor satu per satu.`,
+        ],
+        peringatan,
+      }
+    }
+    rawHalaman = root.pages[0]
+  } else if (Array.isArray(root.blok) || Array.isArray(root.blocks)) {
+    rawHalaman = { judul: root.judulHalaman || root.judulPage, blok: root.blok || root.blocks }
+  }
 
-  if (daftar.length === 0) {
+  if (rawHalaman == null) {
     return {
       metadata,
-      halaman: [],
-      galat: ['Tidak ada array «halaman» di file.'],
+      halaman: null,
+      galat: [
+        'Tidak menemukan objek «halaman». Gunakan template (satu objek halaman dengan banyak blok), bukan multi-halaman.',
+      ],
       peringatan,
     }
   }
-  if (daftar.length > BATAS_HALAMAN_PER_MATERI) {
-    galat.push(`Maksimal ${BATAS_HALAMAN_PER_MATERI} halaman; file memuat ${daftar.length} (sisanya diabaikan).`)
-    daftar = daftar.slice(0, BATAS_HALAMAN_PER_MATERI)
-  }
 
-  const halaman: MateriHalaman[] = []
-  for (let i = 0; i < daftar.length; i++) {
-    const r = normalisasiSatuHalaman(daftar[i], i)
-    galat.push(...r.galat)
-    if (r.halaman) {
-      r.halaman.urutan = halaman.length
-      halaman.push(r.halaman)
-    }
-  }
+  const hasil = normalisasiSatuHalaman(rawHalaman)
+  galat.push(...hasil.galat)
+  peringatan.push(...hasil.peringatan)
 
-  if (halaman.length === 0 && galat.length === 0) {
-    galat.push('Tidak ada halaman yang berhasil diparse.')
+  return {
+    metadata,
+    halaman: hasil.halaman ?? null,
+    galat,
+    peringatan,
   }
-
-  return { metadata, halaman, galat, peringatan }
 }
 
-/** Validasi ringan mapel / TP (peringatan, tidak membatalkan impor di editor). */
+/** Validasi ringan mapel / TP (peringatan saja). */
 export function peringatanMetadataMateri(
   meta: MetadataImportMateriHalaman,
   mapelDiharapkan: string,
@@ -280,77 +345,116 @@ export function peringatanMetadataMateri(
       meta.tpNama && meta.tpNama.trim().toLowerCase() === (tpDipilih.namaTp || '').trim().toLowerCase()
     if (!cocokId && !cocokNomor && !cocokNama) {
       out.push(
-        `TP di file (TP ${meta.tpNomor ?? '?'} · ${meta.tpNama || meta.tpId || '—'}) tidak cocok dengan TP terpilih (TP ${tpDipilih.nomorTp}. ${tpDipilih.namaTp}). Judul/isi tetap diimpor.`,
+        `TP di file (TP ${meta.tpNomor ?? '?'} · ${meta.tpNama || meta.tpId || '—'}) tidak cocok dengan TP terpilih (TP ${tpDipilih.nomorTp}. ${tpDipilih.namaTp}). Isi halaman tetap diimpor.`,
       )
     }
   }
   return out
 }
 
-/** Template JSON contoh untuk guru. */
+/**
+ * Template JSON **satu halaman** dengan banyak blok teks + gambar
+ * sesuai kompleksitas materi pelajaran SD.
+ */
 export function buatTemplateMateriHalamanJson(
   mapel: string,
   tp?: TpRingkas | null,
-  opsi?: { judul?: string },
+  opsi?: { judul?: string; judulHalaman?: string },
 ): string {
+  const gayaGambar =
+    'Gaya ilustrasi buku pelajaran SD Indonesia, flat design, outline halus, warna cerah ramah anak, proporsi tubuh sederhana, tanpa teks atau angka di dalam gambar, tanpa watermark.'
+
   const contoh = {
     versi: VERSI_IMPORT_MATERI_HALAMAN,
     jenis: JENIS_IMPORT_MATERI_HALAMAN,
     mapel,
-    judul: opsi?.judul || 'Contoh materi multi-halaman',
-    deskripsi: 'Impor ke editor materi halaman. Sesuaikan isi, lalu Simpan.',
+    judulMateri: opsi?.judul || 'Judul materi (opsional, diisi ke meta bila masih kosong)',
+    deskripsi:
+      'Satu file = satu halaman. Untuk halaman berikutnya, unduh template lagi atau salin file ini, lalu impor satu per satu.',
     bab: '',
     tpId: tp?.id || '',
     tpNomor: tp?.nomorTp ?? 1,
     tpNama: tp?.namaTp || 'Nama Tujuan Pembelajaran',
     catatan:
-      'Isi array halaman. Setiap halaman punya blok teks (html atau teks polos) dan/atau gambar (url http(s) dan/atau petunjukGambar untuk AI/unggah manual). Maks 20 halaman, 30 blok per halaman. Jangan ubah field jenis.',
-    halaman: [
-      {
-        judul: 'Pendahuluan',
-        blok: [
-          {
-            tipe: 'teks',
-            html: '<p>Selamat belajar! Pada materi ini kita akan mempelajari konsep dasar.</p><p>Baca setiap halaman dengan saksama.</p>',
-          },
-          {
-            tipe: 'gambar',
-            alt: 'Ilustrasi pembuka',
-            caption: 'Gambar pembuka materi',
-            petunjukGambar: 'Ilustrasi ramah anak SD tentang topik materi, gaya flat, cerah, tanpa teks di gambar',
-            url: '',
-          },
-        ],
-      },
-      {
-        judul: 'Penjelasan',
-        blok: [
-          {
-            tipe: 'teks',
-            teks: 'Gunakan field «teks» (polos) bila tidak ingin menulis HTML.\n\nParagraf kedua setelah baris kosong.',
-          },
-          {
-            tipe: 'teks',
-            html: '<h3>Poin penting</h3><ul><li>Poin pertama</li><li>Poin kedua</li></ul><p>Rumus contoh: $a^2 + b^2 = c^2$</p>',
-          },
-        ],
-      },
-      {
-        judul: 'Latihan singkat',
-        blok: [
-          {
-            tipe: 'teks',
-            html: '<p>Coba kerjakan soal berikut di buku latihanmu.</p><ol><li>Soal 1…</li><li>Soal 2…</li></ol>',
-          },
-        ],
-      },
-    ],
+      'PENTING: tepat SATU objek «halaman». Susun beberapa blok teks sesuai kompleksitas (pembuka → penjelasan → contoh → latihan → penutup), selang-seling gambar bila perlu. ' +
+      PANDUAN_PETUNJUK_GAMBAR +
+      ' Maks 30 blok. Field html untuk rich text; field teks untuk paragraf polos.',
+    halaman: {
+      judul: opsi?.judulHalaman || 'Judul halaman ini (contoh: Memahami konsep …)',
+      blok: [
+        {
+          tipe: 'teks',
+          peran: 'pembuka',
+          html:
+            '<p><strong>Selamat belajar!</strong> Pada halaman ini kita akan memahami gagasan utama materi.</p>' +
+            '<p>Setelah membaca, kamu diharapkan dapat menjelaskan konsep dengan kata-katamu sendiri.</p>',
+        },
+        {
+          tipe: 'teks',
+          peran: 'penjelasan',
+          html:
+            '<h3>Penjelasan</h3>' +
+            '<p>Tuliskan penjelasan konsep di sini. Pecah menjadi beberapa paragraf agar mudah dibaca di ponsel.</p>' +
+            '<p>Gunakan daftar bila perlu:</p>' +
+            '<ul><li>Poin penting pertama</li><li>Poin penting kedua</li><li>Poin penting ketiga</li></ul>' +
+            '<p>Contoh rumus (opsional): $a \\times b = c$</p>',
+        },
+        {
+          tipe: 'gambar',
+          peran: 'ilustrasi-konsep',
+          alt: 'Ilustrasi konsep utama',
+          caption: 'Gambar membantu memahami penjelasan di atas',
+          petunjukGambar:
+            'Ilustrasi untuk anak kelas SD yang sedang belajar topik materi ini. Tunjukkan satu situasi konkret di kelas atau kehidupan sehari-hari yang mencerminkan konsep utama (ganti detail sesuai TP). ' +
+            gayaGambar +
+            ' Komposisi: subjek di tengah, latar sederhana (meja belajar atau halaman sekolah), ekspresi antusias. Hindari menaruh teks, angka, atau label di dalam gambar.',
+          url: '',
+        },
+        {
+          tipe: 'teks',
+          peran: 'contoh',
+          html:
+            '<h3>Contoh</h3>' +
+            '<p>Contoh 1: …</p>' +
+            '<p>Langkah penyelesaian:</p>' +
+            '<ol><li>Langkah pertama</li><li>Langkah kedua</li><li>Kesimpulan</li></ol>' +
+            '<p>Contoh 2 (variasi): …</p>',
+        },
+        {
+          tipe: 'gambar',
+          peran: 'ilustrasi-contoh',
+          alt: 'Ilustrasi contoh soal',
+          caption: 'Visualisasi contoh di atas',
+          petunjukGambar:
+            'Ilustrasi langkah contoh soal untuk anak SD, menampilkan benda atau situasi yang sama dengan contoh teks (sesuaikan objeknya). ' +
+            gayaGambar +
+            ' Fokus pada urutan kegiatan yang jelas (misalnya tiga tahap dari kiri ke kanan) tanpa menuliskan angka atau kata di gambar. Latar bersih, kontras baik agar terbaca di layar ponsel.',
+          url: '',
+        },
+        {
+          tipe: 'teks',
+          peran: 'latihan',
+          html:
+            '<h3>Latihan singkat</h3>' +
+            '<p>Kerjakan di buku latihanmu.</p>' +
+            '<ol><li>Soal 1 …</li><li>Soal 2 …</li><li>Soal 3 (tantangan) …</li></ol>',
+        },
+        {
+          tipe: 'teks',
+          peran: 'penutup',
+          html:
+            '<h3>Yang perlu diingat</h3>' +
+            '<ul><li>Ringkasan poin 1</li><li>Ringkasan poin 2</li></ul>' +
+            '<p>Siap lanjut ke halaman berikutnya bila sudah paham.</p>',
+        },
+      ],
+    },
   }
   return JSON.stringify(contoh, null, 2)
 }
 
-/** Ekspor halaman editor saat ini ke JSON (bisa diedit & diimpor lagi). */
-export function eksporMateriHalamanKeJson(
+/** Ekspor **satu** halaman (halaman aktif) ke JSON template-compatible. */
+export function eksporSatuHalamanKeJson(
   meta: {
     mapel: string
     judul?: string
@@ -360,21 +464,24 @@ export function eksporMateriHalamanKeJson(
     tpNomor?: number
     tpNama?: string
   },
-  halaman: MateriHalaman[],
+  halaman: MateriHalaman,
+  opsi?: { indeks?: number },
 ): string {
+  const idx = opsi?.indeks ?? 0
   const out = {
     versi: VERSI_IMPORT_MATERI_HALAMAN,
     jenis: JENIS_IMPORT_MATERI_HALAMAN,
     mapel: meta.mapel,
-    judul: meta.judul || '',
+    judulMateri: meta.judul || '',
     deskripsi: meta.deskripsi || '',
     bab: meta.bab || '',
     tpId: meta.tpId || '',
     tpNomor: meta.tpNomor ?? null,
     tpNama: meta.tpNama || '',
-    halaman: halaman.map((h, i) => ({
-      judul: h.judul || `Halaman ${i + 1}`,
-      blok: h.blok.map((b) => {
+    catatan: 'Satu halaman. Impor dengan mode «Ganti halaman aktif» atau «Tambah sebagai halaman baru».',
+    halaman: {
+      judul: halaman.judul || `Halaman ${idx + 1}`,
+      blok: halaman.blok.map((b) => {
         if (b.tipe === 'teks') {
           return { tipe: 'teks' as const, html: b.html || '' }
         }
@@ -386,9 +493,33 @@ export function eksporMateriHalamanKeJson(
           petunjukGambar: b.petunjukGambar || '',
         }
       }),
-    })),
+    },
   }
   return JSON.stringify(out, null, 2)
+}
+
+/** Kompatibilitas: ekspor halaman pertama saja (alur satu-halaman). */
+export function eksporMateriHalamanKeJson(
+  meta: {
+    mapel: string
+    judul?: string
+    deskripsi?: string
+    bab?: string
+    tpId?: string
+    tpNomor?: number
+    tpNama?: string
+  },
+  halamanList: MateriHalaman[],
+): string {
+  const pertama = halamanList[0]
+  if (!pertama) {
+    return eksporSatuHalamanKeJson(meta, {
+      id: idBaru('h'),
+      urutan: 0,
+      blok: [{ id: idBaru('b'), tipe: 'teks', html: '' }],
+    })
+  }
+  return eksporSatuHalamanKeJson(meta, pertama, { indeks: 0 })
 }
 
 export function unduhTeksSebagaiFile(nama: string, isi: string, mime: string): void {
