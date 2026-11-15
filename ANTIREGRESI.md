@@ -1,3 +1,15 @@
+## §127. Export kuis cetak (.doc)
+
+127.1 Unduh lembar soal lewat `unduhKuisCetak` / `htmlKuisCetak` di `lib/exportKuisCetak.ts`. Format HTML + MIME `application/msword` (sama pola `unduhLaporanDoc`) — **jangan** menambah dependency `docx` tanpa keputusan eksplisit.
+
+127.2 Tombol di **Atur kuis** (`KuisDetail`): «Unduh soal» (tanpa kunci) dan «Unduh + kunci» (versi guru). Jangan sembunyikan untuk kuis offline.
+
+127.3 Pengelompokan cetak: objektif (pg/pgk/bs/jodoh) → isian → uraian, dengan nomor soal global berurutan. Instruksi bagian menyesuaikan template sumatif sekolah.
+
+127.4 Teks soal lewat `teksPolos` (bukan HTML mentah). Gambar soal **belum** di-embed di v1.
+
+127.5 Judul dokumen mengikuti `jenisPenilaian` (STS/SAS/SLM/Latihan), bukan hanya judul kuis.
+
 ## §126. Reset attempt kuis mapel (online)
 
 126.1 Reset attempt **bukan** hanya TKA. UI di `HasilKuisPanel` (detail + daftar) menampilkan aksi reset untuk **semua** kuis; jangan mengembalikan guard `if (!isTka) return` pada `resetAttempt`.

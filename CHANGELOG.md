@@ -1,3 +1,16 @@
+## 2026-11-15 — Export kuis ke Word siap cetak (template sumatif)
+
+- Tombol **Unduh soal** dan **Unduh + kunci** di panel Atur kuis (`KuisDetail`).
+- File `.doc` (HTML Word-compatible, tanpa library baru) mengikuti template sumatif sekolah:
+  - Header SD Muhammadiyah 01 Kukusan + judul dari jenis penilaian (STS/SAS/SLM/Latihan)
+  - Identitas: mapel, hari/tanggal (kosong), kelas, daftar TP
+  - Tabel paraf (No / Nama / Nilai / Paraf Guru / Paraf Orang Tua)
+  - Soal dikelompokkan: I objektif (PG/PGK/BS/jodoh) → II isian → III uraian
+  - Versi kunci: tabel kunci di bagian akhir
+- Belum embed gambar soal (teks saja; gambar tetap di LMS). Versi berikutnya bisa menambah logo & gambar.
+- File: `src/lib/exportKuisCetak.ts` (baru), `src/components/KuisDetail.tsx`.
+- ANTIREGRESI §127.
+
 ## 2026-11-15 — Reset attempt kuis mapel (online)
 
 - **Masalah:** reset attempt + draf hanya tersedia di hasil kuis TKA; kuis mata pelajaran online tidak punya cara mereset kiriman siswa agar bisa mengerjakan ulang.

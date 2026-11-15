@@ -19,6 +19,7 @@ import { bolehAnalisisKuisAi } from '../lib/analisisKuisAi'
 import { klasifikasiDomainTkaDenganAi } from '../lib/domainTkaAi'
 import { useAuth } from '../context/AuthContext'
 import PilihSoalManual, { type PilihanSoalRef } from './soal/PilihSoalManual'
+import { unduhKuisCetak } from '../lib/exportKuisCetak'
 
 /** Instruksi lengkap per bentuk soal (untuk siswa dan nantinya cetak). */
 export const INSTRUKSI_TIPE: Record<TipeSoal, string> = {
@@ -418,6 +419,52 @@ export default function KuisDetail({ kuis, onUpdated }: Props) {
             onClick={urutkanMenurutBentuk}
           >
             Kelompokkan bentuk
+          </button>
+          <button
+            type="button"
+            className="lms-btn-secondary text-xs"
+            disabled={soal.length === 0}
+            title="Unduh lembar soal siap cetak (Word)"
+            onClick={() => {
+              const draft: typeof kuis = {
+                ...kuis,
+                judul: judul.trim() || kuis.judul,
+                deskripsi: deskripsi || kuis.deskripsi,
+                soal,
+                jenisPenilaian,
+                modePelaksanaan,
+                tpNamaList: tpList.length ? tpList : kuis.tpNamaList,
+                jumlahSoal: soal.length,
+                totalPoin: ringkas.totalPoin,
+              }
+              unduhKuisCetak(draft, { sertakanKunci: false })
+              setInfo('Lembar soal (.doc) diunduh. Buka di Word / LibreOffice lalu cetak.')
+            }}
+          >
+            Unduh soal
+          </button>
+          <button
+            type="button"
+            className="lms-btn-secondary text-xs"
+            disabled={soal.length === 0}
+            title="Unduh lembar soal + kunci jawaban (untuk guru)"
+            onClick={() => {
+              const draft: typeof kuis = {
+                ...kuis,
+                judul: judul.trim() || kuis.judul,
+                deskripsi: deskripsi || kuis.deskripsi,
+                soal,
+                jenisPenilaian,
+                modePelaksanaan,
+                tpNamaList: tpList.length ? tpList : kuis.tpNamaList,
+                jumlahSoal: soal.length,
+                totalPoin: ringkas.totalPoin,
+              }
+              unduhKuisCetak(draft, { sertakanKunci: true })
+              setInfo('Lembar soal + kunci (.doc) diunduh.')
+            }}
+          >
+            Unduh + kunci
           </button>
           <button type="button" className="lms-btn-primary text-xs" disabled={busy} onClick={() => void simpan()}>
             {busy ? 'Menyimpan…' : 'Simpan perubahan'}
