@@ -120,10 +120,19 @@ type KepalaProps<T extends string> = {
   judul: string
   chips: ChipKepala[]
   nav: Omit<SegmenProps<T>, 'kecil'>
+  /** Tombol aksi tambahan di kanan (mis. unduh Word) — selalu terlihat di semua tab. */
+  aksi?: ReactNode
 }
 
-/** Kepala detail kuis: tombol kembali, judul + chip status, dan menu segmen. */
-export function KuisKepala<T extends string>({ onKembali, labelKembali, judul, chips, nav }: KepalaProps<T>) {
+/** Kepala detail kuis: tombol kembali, judul + chip status, menu segmen, aksi opsional. */
+export function KuisKepala<T extends string>({
+  onKembali,
+  labelKembali,
+  judul,
+  chips,
+  nav,
+  aksi,
+}: KepalaProps<T>) {
   return (
     <header className="kn-kepala">
       <div className="kn-kepala-atas">
@@ -141,7 +150,10 @@ export function KuisKepala<T extends string>({ onKembali, labelKembali, judul, c
           </div>
         </div>
       </div>
-      <KnSegmen {...nav} />
+      <div className="kn-kepala-kanan">
+        {aksi ? <div className="kn-kepala-aksi">{aksi}</div> : null}
+        <KnSegmen {...nav} />
+      </div>
     </header>
   )
 }

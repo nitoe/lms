@@ -1,3 +1,13 @@
+## §127.9 Tombol unduh di kepala kuis
+
+Tombol unduh Word wajib juga di `KuisKepala` (prop `aksi`), bukan hanya di dalam tab Atur kuis, agar mudah ditemukan dari tab Hasil / Offline.
+
+## §127.1 Optimasi cetak Word (2026-11-15)
+
+127.6 Layout cetak memakai **tabel** (bukan flex/grid) agar stabil di Microsoft Word.
+127.7 `@page { size: A4; margin: 1.5cm }`; soal `page-break-inside: avoid`; kunci `page-break-before: always`.
+127.8 Opsi PG = tabel 2 kolom (huruf | teks). Uraian = baris border-bottom. Jangan kembalikan ke `<ol type="A">` yang sering rusak di Word.
+
 ## §127. Export kuis cetak (.doc)
 
 127.1 Unduh lembar soal lewat `unduhKuisCetak` / `htmlKuisCetak` di `lib/exportKuisCetak.ts`. Format HTML + MIME `application/msword` (sama pola `unduhLaporanDoc`) — **jangan** menambah dependency `docx` tanpa keputusan eksplisit.

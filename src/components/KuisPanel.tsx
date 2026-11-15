@@ -43,6 +43,7 @@ import { labelKelasDibagikan } from '../lib/kelasLms'
 import KuisDetail, { INSTRUKSI_TIPE } from './KuisDetail'
 import HasilKuisPanel from './HasilKuisPanel'
 import OfflineKuisPanel from './OfflineKuisPanel'
+import { unduhKuisCetak } from '../lib/exportKuisCetak'
 import { KnKembali, KuisKepala, type ChipKepala } from './KuisNav'
 import { IkonAtur, IkonGrafik, IkonInput } from './ikonRuang'
 import PilihSoalManual from './soal/PilihSoalManual'
@@ -557,6 +558,28 @@ export default function KuisPanel({ kelas, mapel }: Props) {
           labelKembali="Daftar kuis"
           judul={kuis.judul}
           chips={chips}
+          aksi={
+            (kuis.jumlahSoal ?? kuis.soal?.length ?? 0) > 0 ? (
+              <>
+                <button
+                  type="button"
+                  className="kn-aksi-unduh"
+                  title="Unduh lembar soal siap cetak (Word)"
+                  onClick={() => unduhKuisCetak(kuis, { sertakanKunci: false })}
+                >
+                  Unduh soal
+                </button>
+                <button
+                  type="button"
+                  className="kn-aksi-unduh"
+                  title="Unduh lembar soal + kunci jawaban (untuk guru)"
+                  onClick={() => unduhKuisCetak(kuis, { sertakanKunci: true })}
+                >
+                  Unduh + kunci
+                </button>
+              </>
+            ) : undefined
+          }
           nav={{
             label: 'Bagian kuis',
             idPrefix: 'kuis-detail',

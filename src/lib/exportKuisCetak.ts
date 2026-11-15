@@ -1,8 +1,9 @@
 /**
  * Ekspor kuis ke dokumen siap cetak (Word membuka HTML sebagai .doc).
  * Layout mengikuti template Asesmen Sumatif SD Muhammadiyah 01 Kukusan:
- * header, identitas, tabel paraf, soal dikelompokkan per bentuk (PG / isian / uraian).
- * Tanpa dependensi baru — pola sama dengan unduhLaporanDoc (analisisKuisAi).
+ * header sekolah, identitas, tabel paraf, soal dikelompokkan per bentuk.
+ * Optimasi cetak: @page A4, tipografi Times, opsi A–D menggantung, spasi tulis tangan.
+ * Tanpa dependensi baru — pola sama dengan unduhLaporanDoc.
  * ANTIREGRESI §127.
  */
 import type { KuisLms, SoalKuis, JenisPenilaianKuis } from '../types/kuis'
@@ -17,8 +18,12 @@ export type OpsiCetakKuis = {
   judulDokumen?: string
   /** Tahun pelajaran, mis. 2026/2027. */
   tahunPelajaran?: string
-  /** Jumlah baris kosong di tabel nama/nilai (default 12). */
+  /** Semester untuk judul STS/SAS: 'ganjil' | 'genap'. Default ganjil. */
+  semester?: 'ganjil' | 'genap'
+  /** Jumlah baris kosong di tabel nama/nilai (default 10). */
   barisParaf?: number
+  /** Sembunyikan tabel paraf (cetak soal saja). */
+  sembunyikanParaf?: boolean
 }
 
 const HURUF = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
@@ -31,12 +36,14 @@ function esc(s: string): string {
     .replace(/"/g, '&quot;')
 }
 
-function judulDariJenis(jenis: JenisPenilaianKuis | undefined, mapel: string): string {
+/** Judul formal tanpa mapel (mapel ada di baris identitas, seperti template sekolah). */
+function judulUtama(jenis: JenisPenilaianKuis | undefined, semester: 'ganjil' | 'genap'): string {
+  const sem = semester === 'genap' ? 'GENAP' : 'GANJIL'
   const j = jenis ?? 'latihan'
-  if (j === 'sts') return `ASESMEN SUMATIF TENGAH SEMESTER — ${mapel}`
-  if (j === 'sas') return `ASESMEN SUMATIF AKHIR SEMESTER — ${mapel}`
-  if (j === 'slm') return `ASESMEN SUMATIF LINGKUP MATERI — ${mapel}`
-  return `LEMBAR SOAL — ${mapel}`
+  if (j === 'sts') return `ASESMEN SUMATIF TENGAH SEMESTER ${sem}`
+  if (j === 'sas') return `ASESMEN SUMATIF AKHIR SEMESTER ${sem}`
+  if (j === 'slm') return 'ASESMEN SUMATIF LINGKUP MATERI'
+  return 'LEMBAR SOAL'
 }
 
 function teksSoal(s: Soal): string {
@@ -46,10 +53,17 @@ function teksSoal(s: Soal): string {
 function stimulusHtml(s: Soal): string {
   const st = teksPolos(s.stimulus)
   if (!st) return ''
-  return `<div class="stimulus"><em>Bacalah teks berikut!</em><br/>${esc(st)}</div>`
+  // Pecah paragraf panjang agar mudah dibaca di kertas
+  const paragraf = st
+    .split(/\n+/)
+    .map((p) => p.trim())
+    .filter(Boolean)
+    .map((p) => `<p class="stimulus-p">${esc(p)}</p>`)
+    .join('')
+  return `<div class="stimulus"><p class="stimulus-label">Perhatikan teks berikut!</p>${paragraf}</div>`
 }
 
-/** Kelompokkan: objektif (pg/pgk/bs/jodoh) → isian → uraian, pertahankan urutan dalam kelompok. */
+/** Kelompokkan: objektif → isian → uraian; nomor global berurutan (seperti template sekolah). */
 function kelompokkan(soal: SoalKuis[]): {
   objektif: { no: number; s: SoalKuis }[]
   isian: { no: number; s: SoalKuis }[]
@@ -67,19 +81,22 @@ function kelompokkan(soal: SoalKuis[]): {
   return { objektif, isian, uraian }
 }
 
+/** Opsi A–D sebagai tabel 2 kolom (huruf | teks) — stabil di Word. */
 function htmlOpsiPg(s: SoalKuis): string {
   const opsi = 'opsi' in s && Array.isArray(s.opsi) ? s.opsi : []
   if (!opsi.length) return ''
-  return (
-    `<ol class="opsi" type="A">` +
-    opsi
-      .map((o, i) => {
-        const huruf = HURUF[i] ?? String(i + 1)
-        return `<li value="${huruf}"><span class="huruf">${huruf}.</span> ${esc(o.teks || '')}</li>`
-      })
-      .join('') +
-    `</ol>`
-  )
+  const rows = opsi
+    .map((o, i) => {
+      const huruf = HURUF[i] ?? String(i + 1)
+      return (
+        `<tr>` +
+        `<td class="opsi-huruf">${huruf}.</td>` +
+        `<td class="opsi-teks">${esc(o.teks || '')}</td>` +
+        `</tr>`
+      )
+    })
+    .join('')
+  return `<table class="opsi-tbl" cellspacing="0" cellpadding="0">${rows}</table>`
 }
 
 function htmlBs(s: SoalKuis): string {
@@ -89,23 +106,48 @@ function htmlBs(s: SoalKuis): string {
   const rows = (s.pernyataan || [])
     .map(
       (p, i) =>
-        `<tr><td class="no-per">${i + 1}.</td><td>${esc(teksPolos(p.teks))}</td>` +
-        `<td class="bs-col">${esc(labelB)}</td><td class="bs-col">${esc(labelS)}</td></tr>`,
+        `<tr>` +
+        `<td class="no-per">${i + 1}.</td>` +
+        `<td class="bs-teks">${esc(teksPolos(p.teks))}</td>` +
+        `<td class="bs-col">☐ ${esc(labelB)}</td>` +
+        `<td class="bs-col">☐ ${esc(labelS)}</td>` +
+        `</tr>`,
     )
     .join('')
-  return `<table class="bs-tbl"><thead><tr><th></th><th>Pernyataan</th><th>${esc(labelB)}</th><th>${esc(labelS)}</th></tr></thead><tbody>${rows}</tbody></table>`
+  return (
+    `<table class="bs-tbl" cellspacing="0" cellpadding="0">` +
+    `<thead><tr>` +
+    `<th class="no-per"></th><th>Pernyataan</th>` +
+    `<th class="bs-col">${esc(labelB)}</th><th class="bs-col">${esc(labelS)}</th>` +
+    `</tr></thead><tbody>${rows}</tbody></table>`
+  )
 }
 
 function htmlJodoh(s: SoalKuis): string {
   if (s.tipe !== 'jodoh') return ''
   const pasangan = s.pasangan || []
-  const kiri = pasangan.map((p, i) => `<li>${i + 1}. ${esc(teksPolos(p.kiri))}</li>`).join('')
-  const kanan = pasangan
-    .map((p, i) => `<li>${HURUF[i] ?? i + 1}. ${esc(teksPolos(p.kanan))}</li>`)
+  const kiriRows = pasangan
+    .map(
+      (p, i) =>
+        `<tr><td class="jodoh-no">${i + 1}.</td><td>${esc(teksPolos(p.kiri))}</td></tr>`,
+    )
     .join('')
-  return `<div class="jodoh"><div class="jodoh-kol"><strong>Kolom A</strong><ol>${kiri}</ol></div>` +
-    `<div class="jodoh-kol"><strong>Kolom B</strong><ol type="A">${kanan}</ol></div></div>` +
+  const kananRows = pasangan
+    .map(
+      (p, i) =>
+        `<tr><td class="jodoh-no">${HURUF[i] ?? i + 1}.</td><td>${esc(teksPolos(p.kanan))}</td></tr>`,
+    )
+    .join('')
+  return (
+    `<table class="jodoh-wrap" cellspacing="0" cellpadding="0"><tr>` +
+    `<td class="jodoh-kol"><p class="jodoh-judul">Kolom A</p>` +
+    `<table class="jodoh-inner">${kiriRows}</table></td>` +
+    `<td class="jodoh-gap">&nbsp;</td>` +
+    `<td class="jodoh-kol"><p class="jodoh-judul">Kolom B</p>` +
+    `<table class="jodoh-inner">${kananRows}</table></td>` +
+    `</tr></table>` +
     `<p class="petunjuk-kecil">Jodohkan nomor di kolom A dengan huruf di kolom B.</p>`
+  )
 }
 
 function htmlSatuSoal(item: { no: number; s: SoalKuis }): string {
@@ -113,29 +155,39 @@ function htmlSatuSoal(item: { no: number; s: SoalKuis }): string {
   const bagianStimulus = stimulusHtml(s)
   let isi = ''
   if (s.tipe === 'pg' || s.tipe === 'pgk') {
-    isi = htmlOpsiPg(s)
     if (s.tipe === 'pgk') {
-      isi =
-        `<p class="petunjuk-kecil">Pilih lebih dari satu jawaban yang benar.</p>` + isi
+      isi = `<p class="petunjuk-kecil">Pilih lebih dari satu jawaban yang benar.</p>`
     }
+    isi += htmlOpsiPg(s)
   } else if (s.tipe === 'bs') {
     isi = htmlBs(s)
   } else if (s.tipe === 'jodoh') {
     isi = htmlJodoh(s)
   } else if (s.tipe === 'isian') {
-    isi = `<p class="garis-jawab">Jawaban: _______________________________________________</p>`
-  } else if (s.tipe === 'uraian') {
     isi =
-      `<div class="ruang-uraian">` +
-      Array.from({ length: 5 }, () => `<div class="garis">&nbsp;</div>`).join('') +
-      `</div>`
+      `<p class="garis-jawab">` +
+      `<span class="garis-label">Jawaban:</span> ` +
+      `<span class="garis-isi">_______________________________________________</span>` +
+      `</p>`
+  } else if (s.tipe === 'uraian') {
+    // 6 baris tulis tangan — cukup untuk jawaban pendek–sedang
+    isi =
+      `<table class="ruang-uraian" cellspacing="0" cellpadding="0">` +
+      Array.from({ length: 6 }, () => `<tr><td class="garis-uraian">&nbsp;</td></tr>`).join('') +
+      `</table>`
   }
+
   return (
-    `<div class="soal">` +
-    `<p class="soal-teks"><strong>${no}.</strong> ${esc(teksSoal(s))}</p>` +
+    `<table class="soal-wrap" cellspacing="0" cellpadding="0">` +
+    `<tr>` +
+    `<td class="soal-no">${no}.</td>` +
+    `<td class="soal-body">` +
+    `<p class="soal-teks">${esc(teksSoal(s))}</p>` +
     bagianStimulus +
     isi +
-    `</div>`
+    `</td>` +
+    `</tr>` +
+    `</table>`
   )
 }
 
@@ -147,7 +199,7 @@ function htmlKunci(soal: SoalKuis[]): string {
     if (s.tipe === 'pg') {
       const opsi = s.opsi || []
       const idx = opsi.findIndex((o) => o.id === s.kunci)
-      kunci = idx >= 0 ? `${HURUF[idx]}. ${opsi[idx].teks}` : String(s.kunci)
+      kunci = idx >= 0 ? `${HURUF[idx]}. ${teksPolos(opsi[idx].teks)}` : String(s.kunci)
     } else if (s.tipe === 'pgk') {
       const opsi = s.opsi || []
       const ids = s.kunci || []
@@ -168,26 +220,44 @@ function htmlKunci(soal: SoalKuis[]): string {
     } else if (s.tipe === 'uraian') {
       kunci = teksPolos(s.kunciJawaban) || '(pedoman di sistem)'
     }
-    return `<tr><td>${no}</td><td>${esc(NAMA_TIPE[s.tipe as TipeSoal] ?? s.tipe)}</td><td>${esc(kunci)}</td></tr>`
+    return (
+      `<tr>` +
+      `<td class="kunci-no">${no}</td>` +
+      `<td class="kunci-tipe">${esc(NAMA_TIPE[s.tipe as TipeSoal] ?? s.tipe)}</td>` +
+      `<td class="kunci-isi">${esc(kunci)}</td>` +
+      `</tr>`
+    )
   })
   return (
-    `<h2 class="bagian">Kunci jawaban (untuk guru)</h2>` +
-    `<table class="kunci"><thead><tr><th>No</th><th>Tipe</th><th>Kunci / pedoman</th></tr></thead>` +
+    `<br clear="all" style="page-break-before:always"/>` +
+    `<h2 class="bagian kunci-judul">Kunci jawaban (untuk guru)</h2>` +
+    `<table class="kunci" cellspacing="0" cellpadding="0">` +
+    `<thead><tr><th class="kunci-no">No</th><th class="kunci-tipe">Tipe</th><th>Kunci / pedoman</th></tr></thead>` +
     `<tbody>${baris.join('')}</tbody></table>`
   )
 }
 
 function htmlTabelParaf(n: number): string {
-  const rows = Array.from(
-    { length: Math.max(4, n) },
-    () =>
-      `<tr><td style="height:22px">&nbsp;</td><td></td><td></td><td></td><td></td></tr>`,
-  ).join('')
+  const rows = Array.from({ length: Math.max(4, n) }, (_, i) => {
+    return (
+      `<tr>` +
+      `<td class="paraf-no">${i + 1}</td>` +
+      `<td class="paraf-nama">&nbsp;</td>` +
+      `<td class="paraf-nilai">&nbsp;</td>` +
+      `<td class="paraf-ttd">&nbsp;</td>` +
+      `<td class="paraf-ttd">&nbsp;</td>` +
+      `</tr>`
+    )
+  }).join('')
   return (
-    `<table class="paraf">` +
-    `<thead><tr><th style="width:8%">No.</th><th style="width:36%">Nama</th>` +
-    `<th style="width:14%">Nilai</th><th style="width:21%">Paraf Guru</th>` +
-    `<th style="width:21%">Paraf Orang Tua</th></tr></thead>` +
+    `<table class="paraf" cellspacing="0" cellpadding="0">` +
+    `<thead><tr>` +
+    `<th class="paraf-no">No.</th>` +
+    `<th class="paraf-nama">Nama</th>` +
+    `<th class="paraf-nilai">Nilai</th>` +
+    `<th class="paraf-ttd">Paraf Guru</th>` +
+    `<th class="paraf-ttd">Paraf Orang Tua</th>` +
+    `</tr></thead>` +
     `<tbody>${rows}</tbody></table>`
   )
 }
@@ -197,46 +267,67 @@ export function htmlKuisCetak(kuis: KuisLms, opsi: OpsiCetakKuis = {}): string {
   const soal = kuis.soal ?? []
   const { objektif, isian, uraian } = kelompokkan(soal)
   const jenis = kuis.jenisPenilaian
-  const judul =
-    opsi.judulDokumen?.trim() ||
-    judulDariJenis(jenis, kuis.mapel || 'Mata Pelajaran')
+  const semester = opsi.semester ?? 'ganjil'
+  const judul = opsi.judulDokumen?.trim() || judulUtama(jenis, semester)
   const tahun = opsi.tahunPelajaran?.trim() || '2026/2027'
   const tpList = (kuis.tpNamaList ?? []).filter(Boolean)
   const tpHtml = tpList.length
-    ? `<ol class="tp">${tpList.map((t) => `<li>${esc(t)}</li>`).join('')}</ol>`
-    : `<p class="meta-isi">—</p>`
+    ? `<ol class="tp">${tpList.map((t, i) => `<li value="${i + 1}">${esc(t)}</li>`).join('')}</ol>`
+    : `<span class="meta-kosong">—</span>`
 
+  // Header: tabel 3 kolom (logo kiri | judul | logo kanan) — mirip template resmi
   let body =
-    `<div class="header">` +
+    `<table class="kop" cellspacing="0" cellpadding="0">` +
+    `<tr>` +
+    `<td class="kop-logo">&#9733;</td>` +
+    `<td class="kop-tengah">` +
     `<p class="sekolah">SD MUHAMMADIYAH 01 KUKUSAN</p>` +
-    `<h1>${esc(judul)}</h1>` +
+    `<p class="judul-utama">${esc(judul)}</p>` +
     `<p class="tahun">TAHUN PELAJARAN ${esc(tahun)}</p>` +
-    `</div>` +
-    `<table class="identitas">` +
-    `<tr><td class="label">Mata Pelajaran</td><td class="titik">:</td><td>${esc(kuis.mapel || '—')}</td></tr>` +
-    `<tr><td class="label">Hari, Tanggal</td><td class="titik">:</td><td>........................................</td></tr>` +
-    `<tr><td class="label">Kelas</td><td class="titik">:</td><td>${esc(kuis.kelas || '—')}</td></tr>` +
-    `<tr><td class="label" style="vertical-align:top">TP</td><td class="titik" style="vertical-align:top">:</td><td>${tpHtml}</td></tr>` +
+    `</td>` +
+    `<td class="kop-logo">&#9733;</td>` +
+    `</tr>` +
     `</table>` +
-    htmlTabelParaf(opsi.barisParaf ?? 12)
+    `<div class="garis-ganda"></div>` +
+    `<table class="identitas" cellspacing="0" cellpadding="0">` +
+    `<tr>` +
+    `<td class="id-label">Mata Pelajaran</td><td class="id-titik">:</td>` +
+    `<td class="id-isi">${esc(kuis.mapel || '—')}</td>` +
+    `</tr>` +
+    `<tr>` +
+    `<td class="id-label">Hari, Tanggal</td><td class="id-titik">:</td>` +
+    `<td class="id-isi">................................................</td>` +
+    `</tr>` +
+    `<tr>` +
+    `<td class="id-label">Kelas</td><td class="id-titik">:</td>` +
+    `<td class="id-isi">${esc(kuis.kelas || '—')}</td>` +
+    `</tr>` +
+    `<tr>` +
+    `<td class="id-label id-label-top">TP</td><td class="id-titik id-label-top">:</td>` +
+    `<td class="id-isi">${tpHtml}</td>` +
+    `</tr>` +
+    `</table>`
+
+  if (!opsi.sembunyikanParaf) {
+    body += htmlTabelParaf(opsi.barisParaf ?? 10)
+  }
 
   if (objektif.length) {
     body +=
-      `<h2 class="bagian">I. Berilah tanda silang (X) pada huruf A, B, C, atau D di depan jawaban yang paling tepat!</h2>` +
+      `<p class="bagian">I. Berilah tanda silang (X) pada huruf A, B, C, atau D di depan jawaban yang paling tepat!</p>` +
       objektif.map(htmlSatuSoal).join('')
   }
   if (isian.length) {
     const romawi = objektif.length ? 'II' : 'I'
     body +=
-      `<h2 class="bagian">${romawi}. Lengkapilah kalimat / soal berikut dengan jawaban yang singkat dan tepat!</h2>` +
+      `<p class="bagian">${romawi}. Lengkapilah kalimat rumpang / soal berikut dengan jawaban yang singkat dan tepat!</p>` +
       isian.map(htmlSatuSoal).join('')
   }
   if (uraian.length) {
-    const n =
-      (objektif.length ? 1 : 0) + (isian.length ? 1 : 0) + 1
+    const n = (objektif.length ? 1 : 0) + (isian.length ? 1 : 0) + 1
     const romawi = n === 1 ? 'I' : n === 2 ? 'II' : 'III'
     body +=
-      `<h2 class="bagian">${romawi}. Jawablah pertanyaan di bawah ini dengan jelas dan benar!</h2>` +
+      `<p class="bagian">${romawi}. Jawablah pertanyaan di bawah ini dengan jelas dan benar!</p>` +
       uraian.map(htmlSatuSoal).join('')
   }
   if (!soal.length) {
@@ -248,56 +339,244 @@ export function htmlKuisCetak(kuis: KuisLms, opsi: OpsiCetakKuis = {}): string {
   }
 
   body +=
-    `<p class="footer-meta">${esc(kuis.judul || '')} · ${soal.length} soal · ${kuis.totalPoin ?? 0} poin` +
+    `<p class="footer-meta">` +
+    `${esc(kuis.judul || '')} · ${soal.length} soal · ${kuis.totalPoin ?? 0} poin` +
     (kuis.durasiMenit ? ` · ${kuis.durasiMenit} menit` : '') +
     `</p>`
 
   return body
 }
 
+/**
+ * CSS dioptimasi untuk Microsoft Word / LibreOffice Writer:
+ * - @page A4, margin 1,5 cm
+ * - Tabel untuk layout (bukan flex/grid)
+ * - Times New Roman 11pt (standar naskah sekolah)
+ * - page-break-inside: avoid pada soal
+ */
 const STYLE = `
-  body { font-family: 'Times New Roman', Times, serif; font-size: 11pt; color: #111; line-height: 1.4; margin: 1.5cm; }
-  .header { text-align: center; margin-bottom: 12pt; border-bottom: 2px solid #111; padding-bottom: 8pt; }
-  .sekolah { font-size: 11pt; font-weight: bold; margin: 0; letter-spacing: 0.5px; }
-  h1 { font-size: 13pt; margin: 4pt 0; text-transform: uppercase; }
-  .tahun { font-size: 10pt; margin: 0; font-weight: bold; }
-  .identitas { width: 100%; border-collapse: collapse; margin: 10pt 0 8pt; }
-  .identitas td { padding: 2pt 4pt; vertical-align: top; }
-  .identitas .label { width: 28%; font-weight: bold; }
-  .identitas .titik { width: 12px; }
-  .tp { margin: 0; padding-left: 18px; }
-  .paraf { width: 100%; border-collapse: collapse; margin: 8pt 0 14pt; font-size: 10pt; }
-  .paraf th, .paraf td { border: 1px solid #333; padding: 4pt 6pt; }
-  .paraf th { background: #f3f3f3; text-align: center; }
-  h2.bagian { font-size: 11pt; margin: 14pt 0 8pt; page-break-after: avoid; }
-  .soal { margin: 0 0 10pt; page-break-inside: avoid; }
-  .soal-teks { margin: 0 0 4pt; text-align: justify; }
-  .stimulus { margin: 4pt 0 6pt; padding: 6pt 8pt; border: 1px solid #999; background: #fafafa; font-size: 10.5pt; }
-  ol.opsi { list-style: none; margin: 2pt 0 0 12pt; padding: 0; }
-  ol.opsi li { margin: 2pt 0; }
-  .huruf { font-weight: bold; margin-right: 4px; }
-  .petunjuk-kecil { font-size: 9.5pt; font-style: italic; color: #333; margin: 2pt 0 4pt; }
-  .garis-jawab { margin: 6pt 0 0 12pt; }
-  .ruang-uraian { margin: 6pt 0 0 12pt; }
-  .ruang-uraian .garis { border-bottom: 1px solid #666; height: 18pt; margin-bottom: 2pt; }
-  table.bs-tbl { border-collapse: collapse; width: 100%; margin: 4pt 0 0; font-size: 10pt; }
-  table.bs-tbl th, table.bs-tbl td { border: 1px solid #444; padding: 3pt 5pt; }
-  table.bs-tbl .bs-col { width: 14%; text-align: center; }
-  table.bs-tbl .no-per { width: 24px; text-align: right; }
-  .jodoh { display: table; width: 100%; margin-top: 4pt; }
-  .jodoh-kol { display: table-cell; width: 48%; vertical-align: top; padding-right: 8pt; }
-  table.kunci { border-collapse: collapse; width: 100%; font-size: 10pt; margin-top: 6pt; }
-  table.kunci th, table.kunci td { border: 1px solid #444; padding: 4pt 6pt; vertical-align: top; }
-  table.kunci th { background: #eee; }
-  .footer-meta { margin-top: 18pt; font-size: 9pt; color: #555; border-top: 1px solid #ccc; padding-top: 6pt; }
+  @page {
+    size: A4;
+    margin: 1.5cm 1.6cm 1.5cm 1.6cm;
+  }
+  body {
+    font-family: 'Times New Roman', Times, serif;
+    font-size: 11pt;
+    color: #000;
+    line-height: 1.35;
+    margin: 0;
+  }
+
+  /* —— Kop surat —— */
+  table.kop { width: 100%; border-collapse: collapse; margin: 0 0 2pt; }
+  table.kop td { vertical-align: middle; }
+  .kop-logo {
+    width: 56px;
+    text-align: center;
+    font-size: 22pt;
+    color: #1a237e;
+    line-height: 1;
+  }
+  .kop-tengah { text-align: center; padding: 0 6pt; }
+  .sekolah {
+    font-size: 11pt;
+    font-weight: bold;
+    margin: 0 0 2pt;
+    letter-spacing: 0.4px;
+  }
+  .judul-utama {
+    font-size: 12pt;
+    font-weight: bold;
+    margin: 0 0 2pt;
+    text-transform: uppercase;
+    line-height: 1.25;
+  }
+  .tahun {
+    font-size: 10pt;
+    font-weight: bold;
+    margin: 0;
+  }
+  .garis-ganda {
+    border-top: 1.5pt solid #000;
+    border-bottom: 0.5pt solid #000;
+    height: 3pt;
+    margin: 4pt 0 8pt;
+  }
+
+  /* —— Identitas —— */
+  table.identitas { width: 100%; border-collapse: collapse; margin: 0 0 8pt; }
+  table.identitas td { padding: 1.5pt 2pt; vertical-align: top; }
+  .id-label { width: 26%; font-weight: bold; white-space: nowrap; }
+  .id-titik { width: 10px; font-weight: bold; }
+  .id-isi { }
+  .id-label-top { vertical-align: top; padding-top: 2pt; }
+  ol.tp { margin: 0; padding-left: 18px; }
+  ol.tp li { margin: 0 0 2pt; text-align: justify; }
+  .meta-kosong { color: #666; }
+
+  /* —— Tabel paraf —— */
+  table.paraf {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 6pt 0 12pt;
+    font-size: 10pt;
+  }
+  table.paraf th, table.paraf td {
+    border: 1pt solid #000;
+    padding: 3pt 5pt;
+  }
+  table.paraf th {
+    background: #f0f0f0;
+    text-align: center;
+    font-weight: bold;
+  }
+  .paraf-no { width: 7%; text-align: center; }
+  .paraf-nama { width: 38%; }
+  .paraf-nilai { width: 12%; text-align: center; }
+  .paraf-ttd { width: 21.5%; text-align: center; }
+  table.paraf tbody td { height: 20pt; }
+
+  /* —— Judul bagian —— */
+  p.bagian {
+    font-size: 11pt;
+    font-weight: bold;
+    margin: 12pt 0 6pt;
+    page-break-after: avoid;
+    page-break-before: auto;
+  }
+
+  /* —— Satu soal (tabel no | isi) —— */
+  table.soal-wrap {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 0 0 9pt;
+    page-break-inside: avoid;
+  }
+  td.soal-no {
+    width: 22px;
+    vertical-align: top;
+    font-weight: bold;
+    padding: 0 4pt 0 0;
+  }
+  td.soal-body { vertical-align: top; }
+  p.soal-teks {
+    margin: 0 0 3pt;
+    text-align: justify;
+  }
+
+  /* Stimulus / bacaan */
+  .stimulus {
+    margin: 3pt 0 5pt;
+    padding: 5pt 7pt;
+    border: 0.75pt solid #555;
+    background: #fafafa;
+  }
+  .stimulus-label {
+    font-style: italic;
+    font-weight: bold;
+    margin: 0 0 3pt;
+    font-size: 10.5pt;
+  }
+  .stimulus-p { margin: 0 0 3pt; text-align: justify; }
+  .stimulus-p:last-child { margin-bottom: 0; }
+
+  /* Opsi PG */
+  table.opsi-tbl {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 2pt 0 0 2pt;
+  }
+  td.opsi-huruf {
+    width: 22px;
+    vertical-align: top;
+    font-weight: bold;
+    padding: 1pt 4pt 1pt 0;
+  }
+  td.opsi-teks {
+    vertical-align: top;
+    padding: 1pt 0;
+    text-align: justify;
+  }
+
+  .petunjuk-kecil {
+    font-size: 9.5pt;
+    font-style: italic;
+    margin: 1pt 0 3pt;
+  }
+
+  /* Isian */
+  .garis-jawab { margin: 5pt 0 0 0; }
+  .garis-label { font-weight: bold; }
+
+  /* Uraian — baris garis */
+  table.ruang-uraian {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 4pt 0 0;
+  }
+  td.garis-uraian {
+    border-bottom: 0.75pt solid #444;
+    height: 16pt;
+    font-size: 1pt;
+  }
+
+  /* Benar-salah */
+  table.bs-tbl {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 3pt 0 0;
+    font-size: 10pt;
+  }
+  table.bs-tbl th, table.bs-tbl td {
+    border: 0.75pt solid #333;
+    padding: 3pt 5pt;
+    vertical-align: top;
+  }
+  table.bs-tbl th { background: #f0f0f0; text-align: center; }
+  td.no-per, th.no-per { width: 22px; text-align: right; }
+  td.bs-col, th.bs-col { width: 14%; text-align: center; white-space: nowrap; }
+
+  /* Menjodohkan */
+  table.jodoh-wrap { width: 100%; border-collapse: collapse; margin-top: 3pt; }
+  td.jodoh-kol { width: 48%; vertical-align: top; }
+  td.jodoh-gap { width: 4%; }
+  .jodoh-judul { font-weight: bold; margin: 0 0 3pt; font-size: 10.5pt; }
+  table.jodoh-inner { width: 100%; border-collapse: collapse; }
+  table.jodoh-inner td { padding: 1pt 2pt; vertical-align: top; }
+  td.jodoh-no { width: 22px; font-weight: bold; }
+
+  /* Kunci */
+  .kunci-judul { margin-top: 0; }
+  table.kunci {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 10pt;
+    margin-top: 4pt;
+  }
+  table.kunci th, table.kunci td {
+    border: 0.75pt solid #333;
+    padding: 3pt 5pt;
+    vertical-align: top;
+  }
+  table.kunci th { background: #eee; text-align: left; }
+  .kunci-no { width: 8%; text-align: center; }
+  .kunci-tipe { width: 22%; }
+
+  .footer-meta {
+    margin-top: 14pt;
+    font-size: 9pt;
+    color: #444;
+    border-top: 0.5pt solid #999;
+    padding-top: 5pt;
+  }
 `
 
 /** Unduh file .doc (HTML Word-compatible). */
 export function unduhKuisCetak(kuis: KuisLms, opsi: OpsiCetakKuis = {}): void {
   const body = htmlKuisCetak(kuis, opsi)
+  const semester = opsi.semester ?? 'ganjil'
   const judul =
-    opsi.judulDokumen?.trim() ||
-    judulDariJenis(kuis.jenisPenilaian, kuis.mapel || 'Kuis')
+    opsi.judulDokumen?.trim() || judulUtama(kuis.jenisPenilaian, semester)
   const suffix = opsi.sertakanKunci ? '_kunci' : ''
   const namaMentah = `${kuis.kelas || 'kelas'}_${kuis.mapel || 'mapel'}_${kuis.judul || 'kuis'}${suffix}`
   const aman = namaMentah.replace(/[^\w.\-()\s\u00C0-\u024F]+/g, '_').slice(0, 80)
@@ -308,9 +587,21 @@ export function unduhKuisCetak(kuis: KuisLms, opsi: OpsiCetakKuis = {}): void {
  xmlns="http://www.w3.org/TR/REC-html40">
 <head>
 <meta charset="utf-8">
+<meta name="ProgId" content="Word.Document">
+<meta name="Generator" content="LMS SD Muhammadiyah 01 Kukusan">
 <title>${esc(judul)}</title>
-<!--[if gte mso 9]><xml><w:WordDocument><w:View>Print</w:View></w:WordDocument></xml><![endif]-->
-<style>${STYLE}</style>
+<!--[if gte mso 9]>
+<xml>
+  <w:WordDocument>
+    <w:View>Print</w:View>
+    <w:Zoom>100</w:Zoom>
+    <w:DoNotOptimizeForBrowser/>
+  </w:WordDocument>
+</xml>
+<![endif]-->
+<style>
+${STYLE}
+</style>
 </head>
 <body>
 ${body}

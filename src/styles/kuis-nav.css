@@ -99,3 +99,29 @@
   .kn-seg--kecil .kn-seg-btn { padding: 0.2rem 0.5rem; font-size: 0.74rem; }
   .kn-bar-note { margin-left: 0; flex-basis: 100%; }
 }
+
+/* —— Aksi di kepala (unduh Word, dll.) —— */
+.kn-kepala-kanan {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 0.55rem 0.75rem;
+  flex: 1 1 auto;
+}
+.kn-kepala-aksi {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem;
+}
+.kn-kepala-aksi .kn-aksi-unduh {
+  display: inline-flex; align-items: center; gap: 0.35rem;
+  min-height: 2.15rem; padding: 0.28rem 0.75rem;
+  border: 1px solid var(--color-border); border-radius: 0.65rem;
+  background: #fff; color: var(--color-muh-700);
+  font-family: inherit; font-size: 0.76rem; font-weight: 750; cursor: pointer;
+  transition: background 0.12s, border-color 0.12s;
+}
+.kn-kepala-aksi .kn-aksi-unduh:hover:not(:disabled) {
+  background: #f4f5f9; border-color: var(--color-muh-300);
+}
+.kn-kepala-aksi .kn-aksi-unduh:disabled {
+  opacity: 0.45; cursor: not-allowed;
+}
+.kn-kepala-aksi .kn-aksi-unduh:focus-visible {
+  outline: 2px solid var(--rg-a, var(--color-muh-600)); outline-offset: 2px;
+}

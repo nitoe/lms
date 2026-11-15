@@ -1,3 +1,24 @@
+## 2026-11-15 — Tombol unduh soal di kepala detail kuis
+
+- **Masalah:** tombol «Unduh soal» / «Unduh + kunci» hanya di bilah dalam tab Atur kuis, mudah terlewat.
+- **Perbaikan:** tombol yang sama di **kepala detail kuis** (`KuisKepala`) — terlihat di semua tab (Atur / Offline / Hasil).
+- Slot `aksi` opsional di `KuisKepala`; gaya `.kn-aksi-unduh`.
+- File: `src/components/KuisNav.tsx`, `src/components/KuisPanel.tsx`, `src/styles/kuis-nav.css`.
+  (Generator: `src/lib/exportKuisCetak.ts` — sertakan versi layout terbaru bila belum.)
+
+## 2026-11-15 — Optimasi format cetak Word (export kuis)
+
+- Layout lebih mendekati template sumatif sekolah:
+  - Kop 3 kolom (logo placeholder | judul | logo), garis ganda
+  - Judul formal tanpa mapel (mapel di baris identitas); semester GANJIL/GENAP
+  - Soal: kolom nomor + isi (tabel stabil di Word)
+  - Opsi PG sebagai tabel huruf | teks (bukan list)
+  - Tabel paraf ber-tinggi tetap untuk tulis tangan; nomor baris 1…n
+  - Uraian: 6 baris garis; BS dengan checkbox ☐
+  - `@page A4` margin 1,5 cm; `page-break-inside: avoid` per soal
+  - Kunci jawaban di halaman baru (`page-break-before`)
+- File: `src/lib/exportKuisCetak.ts` saja (tombol KuisDetail tidak berubah).
+
 ## 2026-11-15 — Export kuis ke Word siap cetak (template sumatif)
 
 - Tombol **Unduh soal** dan **Unduh + kunci** di panel Atur kuis (`KuisDetail`).
