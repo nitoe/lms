@@ -575,7 +575,7 @@ export default function KuisPanel({ kelas, mapel }: Props) {
                   type="button"
                   className="kn-aksi-unduh"
                   title="Unduh lembar soal siap cetak (Word)"
-                  onClick={() => unduhKuisCetak(kuis, { sertakanKunci: false })}
+                  onClick={() => { void unduhKuisCetak(kuis, { sertakanKunci: false }) }}
                 >
                   Unduh soal
                 </button>
@@ -583,7 +583,7 @@ export default function KuisPanel({ kelas, mapel }: Props) {
                   type="button"
                   className="kn-aksi-unduh"
                   title="Unduh lembar soal + kunci jawaban (untuk guru)"
-                  onClick={() => unduhKuisCetak(kuis, { sertakanKunci: true })}
+                  onClick={() => { void unduhKuisCetak(kuis, { sertakanKunci: true }) }}
                 >
                   Unduh + kunci
                 </button>

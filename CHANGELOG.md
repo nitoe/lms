@@ -1,3 +1,11 @@
+## 2026-11-15 — Export Word: identitas 1 baris, spasi, ilustrasi soal
+
+- **Identitas siswa:** default **satu baris Nama + No. Absen** (bukan tabel 10 baris kosong). Tabel paraf multi-siswa hanya jika `barisParaf > 0`.
+- **Spasi antar soal:** margin bawah `.soal-wrap` dinaikkan ke **22pt** + padding body agar tidak berdempet.
+- **Ilustrasi ikut unduh:** `unduhKuisCetak` / `htmlKuisCetak` async — memuat `gambarId` (soal, opsi PG, jodoh kiri) dari `lms_gambar` dan menyematkan data-URL di dokumen Word.
+- File: `src/lib/exportKuisCetak.ts`, `src/components/KuisPanel.tsx`.
+- ANTIREGRESI §127.14–§127.16.
+
 ## 2026-11-15 — Export kuis: logo, spasi, pratinjau, unduh tunggal
 
 - **Logo kop:** logo sekolah (SDM) + logo Kota Depok (bukan bintang placeholder); disematkan data-URI PNG di `exportKuisCetak.ts`.

@@ -1,3 +1,11 @@
+## §127.14–§127.16 Export Word: identitas tunggal, spasi, gambar (2026-11-15)
+
+127.14 Default cetak **identitas tunggal** (`htmlIdentitasSiswa`: Nama + No. Absen). Jangan mengembalikan tabel paraf 10 baris kosong sebagai default (`barisParaf` default **0**). Tabel paraf multi-siswa hanya jika pemanggil set `barisParaf > 0`.
+
+127.15 Spasi antar soal: `table.soal-wrap { margin: 0 0 22pt }` (minimal). Jangan ≤ 12pt.
+
+127.16 Ilustrasi soal **wajib** di-embed bila `gambarId` / `opsi.gambarId` / `kiriGambarId` ada: `unduhKuisCetak` dan `htmlKuisCetak` **async**, muat lewat `ambilGambar` (`lms_gambar`), sematkan `<img class="soal-gambar|opsi-gambar">`. Pemanggil UI: `void unduhKuisCetak(...)`. Gagal muat gambar tidak menggagalkan unduh seluruh dokumen.
+
 ## §127.10–§127.13 Export cetak: logo, spasi, unduh tunggal, pratinjau (2026-11-15)
 
 127.10 Kop cetak memakai **logo SDM** (kiri) dan **logo Kota Depok** (kanan) sebagai `<img>` data-URI, bukan karakter bintang/placeholder. Jangan mengembalikan `&#9733;` di `.kop-logo`.

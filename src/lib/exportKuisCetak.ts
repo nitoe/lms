@@ -10,6 +10,7 @@ import type { KuisLms, SoalKuis, JenisPenilaianKuis } from '../types/kuis'
 import type { Soal, TipeSoal } from '../types/soal'
 import { NAMA_TIPE } from '../types/soal'
 import { teksPolos } from './html'
+import { ambilGambar } from './gambar'
 
 export type OpsiCetakKuis = {
   /** Sertakan kunci jawaban di bagian akhir (versi guru). */
@@ -20,9 +21,9 @@ export type OpsiCetakKuis = {
   tahunPelajaran?: string
   /** Semester untuk judul STS/SAS: 'ganjil' | 'genap'. Default ganjil. */
   semester?: 'ganjil' | 'genap'
-  /** Jumlah baris kosong di tabel nama/nilai (default 10). */
+  /** Jumlah baris tabel paraf multi-siswa. Default 0 = identitas tunggal (Nama + No. Absen). Isi >0 untuk lembar kolektif. */
   barisParaf?: number
-  /** Sembunyikan tabel paraf (cetak soal saja). */
+  /** Sembunyikan blok identitas nama/paraf. */
   sembunyikanParaf?: boolean
 }
 
@@ -82,16 +83,20 @@ function kelompokkan(soal: SoalKuis[]): {
 }
 
 /** Opsi A–D sebagai tabel 2 kolom (huruf | teks) — stabil di Word. */
-function htmlOpsiPg(s: SoalKuis): string {
+function htmlOpsiPg(s: SoalKuis, gambar: Map<string, string>): string {
   const opsi = 'opsi' in s && Array.isArray(s.opsi) ? s.opsi : []
   if (!opsi.length) return ''
   const rows = opsi
     .map((o, i) => {
       const huruf = HURUF[i] ?? String(i + 1)
+      const img =
+        o.gambarId && gambar.get(o.gambarId)
+          ? `<img class="opsi-gambar" src="${gambar.get(o.gambarId)}" alt="" />`
+          : ''
       return (
         `<tr>` +
         `<td class="opsi-huruf">${huruf}.</td>` +
-        `<td class="opsi-teks">${esc(o.teks || '')}</td>` +
+        `<td class="opsi-teks">${esc(o.teks || '')}${img}</td>` +
         `</tr>`
       )
     })
@@ -123,14 +128,17 @@ function htmlBs(s: SoalKuis): string {
   )
 }
 
-function htmlJodoh(s: SoalKuis): string {
+function htmlJodoh(s: SoalKuis, gambar: Map<string, string>): string {
   if (s.tipe !== 'jodoh') return ''
   const pasangan = s.pasangan || []
   const kiriRows = pasangan
-    .map(
-      (p, i) =>
-        `<tr><td class="jodoh-no">${i + 1}.</td><td>${esc(teksPolos(p.kiri))}</td></tr>`,
-    )
+    .map((p, i) => {
+      const img =
+        p.kiriGambarId && gambar.get(p.kiriGambarId)
+          ? `<img class="opsi-gambar" src="${gambar.get(p.kiriGambarId)}" alt="" />`
+          : ''
+      return `<tr><td class="jodoh-no">${i + 1}.</td><td>${esc(teksPolos(p.kiri))}${img}</td></tr>`
+    })
     .join('')
   const kananRows = pasangan
     .map(
@@ -150,19 +158,23 @@ function htmlJodoh(s: SoalKuis): string {
   )
 }
 
-function htmlSatuSoal(item: { no: number; s: SoalKuis }): string {
+function htmlSatuSoal(item: { no: number; s: SoalKuis }, gambar: Map<string, string>): string {
   const { no, s } = item
   const bagianStimulus = stimulusHtml(s)
+  const imgSoal =
+    s.gambarId && gambar.get(s.gambarId)
+      ? `<img class="soal-gambar" src="${gambar.get(s.gambarId)}" alt="Ilustrasi soal ${no}" />`
+      : ''
   let isi = ''
   if (s.tipe === 'pg' || s.tipe === 'pgk') {
     if (s.tipe === 'pgk') {
       isi = `<p class="petunjuk-kecil">Pilih lebih dari satu jawaban yang benar.</p>`
     }
-    isi += htmlOpsiPg(s)
+    isi += htmlOpsiPg(s, gambar)
   } else if (s.tipe === 'bs') {
     isi = htmlBs(s)
   } else if (s.tipe === 'jodoh') {
-    isi = htmlJodoh(s)
+    isi = htmlJodoh(s, gambar)
   } else if (s.tipe === 'isian') {
     isi =
       `<p class="garis-jawab">` +
@@ -170,7 +182,6 @@ function htmlSatuSoal(item: { no: number; s: SoalKuis }): string {
       `<span class="garis-isi">_______________________________________________</span>` +
       `</p>`
   } else if (s.tipe === 'uraian') {
-    // 6 baris tulis tangan — cukup untuk jawaban pendek–sedang
     isi =
       `<table class="ruang-uraian" cellspacing="0" cellpadding="0">` +
       Array.from({ length: 6 }, () => `<tr><td class="garis-uraian">&nbsp;</td></tr>`).join('') +
@@ -183,6 +194,7 @@ function htmlSatuSoal(item: { no: number; s: SoalKuis }): string {
     `<td class="soal-no">${no}.</td>` +
     `<td class="soal-body">` +
     `<p class="soal-teks">${esc(teksSoal(s))}</p>` +
+    imgSoal +
     bagianStimulus +
     isi +
     `</td>` +
@@ -237,8 +249,25 @@ function htmlKunci(soal: SoalKuis[]): string {
   )
 }
 
+/** Identitas satu siswa (default cetak individual). */
+function htmlIdentitasSiswa(): string {
+  return (
+    `<table class="identitas identitas-siswa" cellspacing="0" cellpadding="0">` +
+    `<tr>` +
+    `<td class="id-label">Nama</td><td class="id-titik">:</td>` +
+    `<td class="id-isi">................................................................</td>` +
+    `</tr>` +
+    `<tr>` +
+    `<td class="id-label">No. Absen</td><td class="id-titik">:</td>` +
+    `<td class="id-isi">................</td>` +
+    `</tr>` +
+    `</table>`
+  )
+}
+
+/** Tabel paraf multi-siswa (hanya jika barisParaf > 0). */
 function htmlTabelParaf(n: number): string {
-  const rows = Array.from({ length: Math.max(4, n) }, (_, i) => {
+  const rows = Array.from({ length: Math.max(1, n) }, (_, i) => {
     return (
       `<tr>` +
       `<td class="paraf-no">${i + 1}</td>` +
@@ -262,9 +291,46 @@ function htmlTabelParaf(n: number): string {
   )
 }
 
+/** Kumpulkan semua ID gambar yang dipakai di soal (soal, opsi, jodoh). */
+function kumpulkanGambarIds(soal: SoalKuis[]): string[] {
+  const ids = new Set<string>()
+  for (const s of soal) {
+    if (s.gambarId) ids.add(s.gambarId)
+    if ((s.tipe === 'pg' || s.tipe === 'pgk') && Array.isArray(s.opsi)) {
+      for (const o of s.opsi) {
+        if (o.gambarId) ids.add(o.gambarId)
+      }
+    }
+    if (s.tipe === 'jodoh' && Array.isArray(s.pasangan)) {
+      for (const p of s.pasangan) {
+        if (p.kiriGambarId) ids.add(p.kiriGambarId)
+      }
+    }
+  }
+  return [...ids]
+}
+
+/** Muat data-URL gambar dari Firestore (paralel, gagal diabaikan). */
+async function muatGambarMap(ids: string[]): Promise<Map<string, string>> {
+  const map = new Map<string, string>()
+  if (!ids.length) return map
+  await Promise.all(
+    ids.map(async (id) => {
+      try {
+        const data = await ambilGambar(id)
+        if (data) map.set(id, data)
+      } catch {
+        /* abaikan gambar gagal */
+      }
+    }),
+  )
+  return map
+}
+
 /** Bangun HTML body dokumen cetak. */
-export function htmlKuisCetak(kuis: KuisLms, opsi: OpsiCetakKuis = {}): string {
+export async function htmlKuisCetak(kuis: KuisLms, opsi: OpsiCetakKuis = {}): Promise<string> {
   const soal = kuis.soal ?? []
+  const gambar = await muatGambarMap(kumpulkanGambarIds(soal))
   const { objektif, isian, uraian } = kelompokkan(soal)
   const jenis = kuis.jenisPenilaian
   const semester = opsi.semester ?? 'ganjil'
@@ -309,26 +375,27 @@ export function htmlKuisCetak(kuis: KuisLms, opsi: OpsiCetakKuis = {}): string {
     `</table>`
 
   if (!opsi.sembunyikanParaf) {
-    body += htmlTabelParaf(opsi.barisParaf ?? 10)
+    const nParaf = opsi.barisParaf ?? 0
+    body += nParaf > 0 ? htmlTabelParaf(nParaf) : htmlIdentitasSiswa()
   }
 
   if (objektif.length) {
     body +=
       `<p class="bagian">I. Berilah tanda silang (X) pada huruf A, B, C, atau D di depan jawaban yang paling tepat!</p>` +
-      objektif.map(htmlSatuSoal).join('')
+      objektif.map((it) => htmlSatuSoal(it, gambar)).join('')
   }
   if (isian.length) {
     const romawi = objektif.length ? 'II' : 'I'
     body +=
       `<p class="bagian">${romawi}. Lengkapilah kalimat rumpang / soal berikut dengan jawaban yang singkat dan tepat!</p>` +
-      isian.map(htmlSatuSoal).join('')
+      isian.map((it) => htmlSatuSoal(it, gambar)).join('')
   }
   if (uraian.length) {
     const n = (objektif.length ? 1 : 0) + (isian.length ? 1 : 0) + 1
     const romawi = n === 1 ? 'I' : n === 2 ? 'II' : 'III'
     body +=
       `<p class="bagian">${romawi}. Jawablah pertanyaan di bawah ini dengan jelas dan benar!</p>` +
-      uraian.map(htmlSatuSoal).join('')
+      uraian.map((it) => htmlSatuSoal(it, gambar)).join('')
   }
   if (!soal.length) {
     body += `<p><em>Belum ada soal di kuis ini.</em></p>`
@@ -455,7 +522,7 @@ const STYLE = `
   table.soal-wrap {
     width: 100%;
     border-collapse: collapse;
-    margin: 0 0 16pt;
+    margin: 0 0 22pt;
     page-break-inside: avoid;
   }
   td.soal-no {
@@ -464,7 +531,11 @@ const STYLE = `
     font-weight: bold;
     padding: 0 4pt 0 0;
   }
-  td.soal-body { vertical-align: top; }
+  td.soal-body { vertical-align: top; padding-bottom: 4pt; }
+  table.soal-wrap + table.soal-wrap { margin-top: 2pt; }
+  .soal-gambar { max-width: 100%; max-height: 220pt; height: auto; display: block; margin: 4pt 0 6pt; }
+  .opsi-gambar { max-width: 120pt; max-height: 90pt; height: auto; display: block; margin: 2pt 0; }
+  .identitas-siswa { margin: 0 0 10pt; }
   p.soal-teks {
     margin: 0 0 3pt;
     text-align: justify;
@@ -577,9 +648,9 @@ const STYLE = `
   }
 `
 
-/** Unduh file .doc (HTML Word-compatible). */
-export function unduhKuisCetak(kuis: KuisLms, opsi: OpsiCetakKuis = {}): void {
-  const body = htmlKuisCetak(kuis, opsi)
+/** Unduh file .doc (HTML Word-compatible). Memuat ilustrasi soal dari Firestore. */
+export async function unduhKuisCetak(kuis: KuisLms, opsi: OpsiCetakKuis = {}): Promise<void> {
+  const body = await htmlKuisCetak(kuis, opsi)
   const semester = opsi.semester ?? 'ganjil'
   const judul =
     opsi.judulDokumen?.trim() || judulUtama(kuis.jenisPenilaian, semester)
