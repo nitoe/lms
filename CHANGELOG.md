@@ -1,3 +1,11 @@
+## 2026-11-15 — Query kelasList wajib sertakan mapel (permission list)
+
+- **Masih permission denied** meski helper `lmsLihatViaKelasList` sudah di rules: query klien hanya `where('kelasList','array-contains', kelas)` **tanpa** `mapel`. Evaluasi list Firestore konservatif — tanpa constraint mapel, dokumen hipotetis dengan mapel lain membuat rule gagal → seluruh query ditolak.
+- **Perbaikan klien:** `daftarTugas`, `daftarKuis`, `daftarMateri` sekarang `where('mapel','==', mapel) + where('kelasList','array-contains', kelas)`. Filter mapel di klien tidak lagi diperlukan.
+- Butuh **composite index** (mapel ASC + kelasList CONTAINS) untuk `lms_tugas`, `lms_kuis`, `lms_materi`. Disediakan di `firestore.indexes.json`; deploy index dari SDM01Penilaian / Firebase Console bila belum ada.
+- Rules `lmsLihatViaKelasList` tetap diperlukan (dari perbaikan sebelumnya). Pastikan rules **sudah di-deploy** ke project Firebase (`npm run deploy:rules` dari SDM01Penilaian).
+- File: `src/lib/tugas.ts`, `src/lib/kuis.ts`, `src/lib/materi.ts`, `firestore.indexes.json`. ANTIREGRESI §128.2–§128.6.
+
 ## 2026-11-15 — Perbaiki permission query kelasList (daftarTugas / daftarKuis)
 
 - **Gejala:** di console guru (contoh akun arif.azwar79@gmail.com / wali 5A) muncul berulang:

@@ -70,13 +70,15 @@ export async function daftarKuis(kelas: string, mapel: string): Promise<KuisLms[
     map.set(d.id, mapDokKuis(d.id, d.data() as Record<string, unknown>))
   }
 
+  // Query harus menyertakan mapel agar rules list evaluation lolos
+  // (lmsLihatViaKelasList + mapel ter-constraint). ANTIREGRESI §128.
   try {
-    const snap2 = await getDocs(query(koleksi(), where('kelasList', 'array-contains', k)))
+    const snap2 = await getDocs(
+      query(koleksi(), where('mapel', '==', mapel), where('kelasList', 'array-contains', k)),
+    )
     for (const d of snap2.docs) {
       if (map.has(d.id)) continue
-      const item = mapDokKuis(d.id, d.data() as Record<string, unknown>)
-      if (item.mapel !== mapel) continue
-      map.set(d.id, item)
+      map.set(d.id, mapDokKuis(d.id, d.data() as Record<string, unknown>))
     }
   } catch (e) {
     console.warn('daftarKuis kelasList', e)

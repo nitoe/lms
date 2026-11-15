@@ -57,14 +57,14 @@ export async function daftarMateri(kelas: string, mapel: string): Promise<Materi
     await tarik(query(koleksi(), where('kelas', '==', k), where('mapel', '==', mapel)))
   }
 
-  // 2) dibagikan ke kelas ini (kelasList)
+  // 2) dibagikan ke kelas ini (kelasList). Sertakan mapel agar selaras kuis/tugas
+  // dan siap jika rules materi diperketat nanti. ANTIREGRESI §128.
   try {
     const snap = await getDocs(
-      query(koleksi(), where('kelasList', 'array-contains', k)),
+      query(koleksi(), where('mapel', '==', mapel), where('kelasList', 'array-contains', k)),
     )
     for (const d of snap.docs) {
       const data = d.data() as Record<string, unknown>
-      if (String(data.mapel || '') !== mapel) continue
       if (!map.has(d.id)) map.set(d.id, { ...data, id: d.id } as MateriLms)
     }
   } catch (e) {

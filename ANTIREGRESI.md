@@ -1,14 +1,17 @@
 ## §128. Query kelasList array-contains (berbagi paralel) — permission list
 
-128.1 Query sekunder `where('kelasList','array-contains', kelas)` di `daftarTugas`, `daftarKuis` (dan pola serupa di materi) **wajib** didukung rules. Jangan mengandalkan hanya `lmsLihatMapelKelas(mapel, resource.data.kelas)` (kelas primary): dokumen share punya `kelas` = rombel pemilik, `kelasList` memuat penerima → list evaluation menolak.
+128.1 Query sekunder `where('kelasList','array-contains', kelas)` di `daftarTugas`, `daftarKuis`, `daftarMateri` **wajib** didukung rules **dan** menyertakan constraint `mapel`.
 
-128.2 Helper `lmsLihatViaKelasList(mapel, list)`: OR `lmsLihatMapelKelas` untuk tiap elemen list (maks 6). Dipakai di `allow read` `lms_kuis` dan `lms_tugas` (cabang `isGuru() && 'kelasList' in resource.data && …`). Selama guru ampu kelas yang di-query untuk mapel itu, setiap dokumen yang match punya kelas tersebut di list → rule benar.
+128.2 **Wajib di klien:** `where('mapel','==', mapel)` + `where('kelasList','array-contains', kelas)`. Tanpa mapel di query, list evaluation menolak (dokumen hipotetis mapel lain). Jangan mengandalkan filter mapel hanya di klien setelah getDocs.
 
-128.3 `lms_materi` sudah `allow read: if isGuru() || …` sehingga query kelasList-nya tidak kena masalah yang sama; jangan menyempitkan baca materi tanpa pertimbangan share.
+128.3 Helper rules `lmsLihatViaKelasList(mapel, list)`: OR `lmsLihatMapelKelas` untuk tiap elemen list (maks 6). Dipakai di `allow read` `lms_kuis` dan `lms_tugas` (cabang `isGuru() && 'kelasList' in resource.data && …`). Dengan mapel ter-constraint + user ampu kelas yang di-query, rule benar untuk semua dokumen match.
 
-128.4 Client tetap membungkus query kelasList dalam try/catch (best-effort). Setelah deploy rules ini, warn permission seharusnya hilang untuk guru yang ampu kelas yang di-query.
+128.4 `lms_materi` sudah `allow read: if isGuru() || …` sehingga lebih longgar; tetap sertakan mapel di query kelasList agar siap jika rules diperketat.
 
-128.5 Tulis/update `kelasList` tetap lewat `lmsKelasListBoleh` (semua kelas dalam list wajib `lmsTulisMapelKelas`) — jangan longgarkan write.
+128.5 Composite index: `mapel` ASC + `kelasList` CONTAINS untuk koleksi `lms_tugas`, `lms_kuis`, `lms_materi`. Tanpa index, error berubah dari permission menjadi «requires an index» (ikuti link di console Firebase).
+
+128.6 Tulis/update `kelasList` tetap lewat `lmsKelasListBoleh` (semua kelas dalam list wajib `lmsTulisMapelKelas`) — jangan longgarkan write. Deploy rules **dan** index; push kode klien saja tidak cukup jika rules lama masih aktif di Firebase.
+
 
 ## §127.23–§127.25 Export PDF v3: alur, uraian, footer halaman (2026-11-15)
 
