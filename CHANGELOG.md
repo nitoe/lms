@@ -1,3 +1,12 @@
+## 2026-11-15 — Export PDF: anti-potong, gambar kiri, 2 kolom
+
+- **Soal/ilustrasi tidak terbelah halaman:** `break-inside: avoid` + `page-break-inside: avoid` pada tiap blok soal dan gambar (jalur PDF/print).
+- **Gambar rata kiri** sejajar narasi/opsi (`margin-left: 0`, bukan `auto` tengah).
+- **PDF 2 kolom** (hemat kertas): `duaKolom: true` — `column-count: 2`, margin halaman ±1 cm, font **11pt** (tidak lebih kecil). Judul bagian (`p.bagian`) `column-span: all`.
+- Tombol di kepala: **PDF** (1 kolom) · **PDF 2 kolom** · Word · Word + kunci.
+- File: `src/lib/exportKuisCetak.ts`, `src/components/KuisPanel.tsx`.
+- ANTIREGRESI §127.20–§127.22.
+
 ## 2026-11-15 — Export cetak: JPEG, logo, PDF, anti-potong
 
 - **Gambar X di Word:** LMS menyimpan WebP; filter HTML Word sering gagal menampilkannya. Semua ilustrasi dikonversi ke **JPEG** (`keJpegDataUrl`) sebelum disematkan.

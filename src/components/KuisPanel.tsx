@@ -574,10 +574,18 @@ export default function KuisPanel({ kelas, mapel }: Props) {
                 <button
                   type="button"
                   className="kn-aksi-unduh"
-                  title="Cetak / simpan PDF (disarankan — layout & gambar lebih stabil)"
-                  onClick={() => { void cetakKuisPdf(kuis, { sertakanKunci: false }).catch((e) => alert(e instanceof Error ? e.message : 'Gagal cetak PDF')) }}
+                  title="Cetak PDF 1 kolom (disarankan — soal & ilustrasi utuh)"
+                  onClick={() => { void cetakKuisPdf(kuis, { sertakanKunci: false, duaKolom: false }).catch((e) => alert(e instanceof Error ? e.message : 'Gagal cetak PDF')) }}
                 >
                   PDF
+                </button>
+                <button
+                  type="button"
+                  className="kn-aksi-unduh"
+                  title="Cetak PDF 2 kolom (hemat kertas, font 11pt, margin rapat)"
+                  onClick={() => { void cetakKuisPdf(kuis, { sertakanKunci: false, duaKolom: true }).catch((e) => alert(e instanceof Error ? e.message : 'Gagal cetak PDF')) }}
+                >
+                  PDF 2 kolom
                 </button>
                 <button
                   type="button"

@@ -1,3 +1,11 @@
+## §127.20–§127.22 Export PDF: anti-potong, rata kiri, dua kolom (2026-11-15)
+
+127.20 Setiap blok soal (`table.soal-wrap`) dan ilustrasi (`.soal-gambar` / `.opsi-gambar`) **wajib** `break-inside: avoid` + `page-break-inside: avoid` pada `@media print` agar narasi, opsi, dan gambar tidak terpotong pergantian halaman.
+
+127.21 Ilustrasi soal **rata kiri** (`margin: … 0`, bukan `margin-inline: auto` / tengah), sejajar teks soal dan opsi.
+
+127.22 Mode **dua kolom** (`opsi.duaKolom`): isi soal dalam `.isi-soal--dua` (`column-count: 2`), margin `@page` ≈ 1 cm, `font-size: 11pt` minimum. Jangan mengecilkan di bawah 11pt. Judul bagian memakai `column-span: all`. Word tetap satu kolom.
+
 ## §127.17–§127.19 Export: JPEG, anti-potong, PDF (2026-11-15)
 
 127.17 Gambar soal **wajib** dikonversi ke JPEG (`keJpegDataUrl`) sebelum embed di HTML cetak. Jangan menyematkan data-URL WebP mentah — Word menampilkan ikon rusak (X).

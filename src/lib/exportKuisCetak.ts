@@ -25,6 +25,11 @@ export type OpsiCetakKuis = {
   barisParaf?: number
   /** Sembunyikan blok identitas nama/paraf. */
   sembunyikanParaf?: boolean
+  /**
+   * Cetak dua kolom (hemat kertas). Margin lebih kecil, font min 11pt.
+   * Hanya efektif di jalur PDF/print; Word tetap satu kolom.
+   */
+  duaKolom?: boolean
 }
 
 const HURUF = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
@@ -414,27 +419,31 @@ export async function htmlKuisCetak(kuis: KuisLms, opsi: OpsiCetakKuis = {}): Pr
     body += nParaf > 0 ? htmlTabelParaf(nParaf) : htmlIdentitasSiswa()
   }
 
+  let isiSoal = ''
   if (objektif.length) {
-    body +=
+    isiSoal +=
       `<p class="bagian">I. Berilah tanda silang (X) pada huruf A, B, C, atau D di depan jawaban yang paling tepat!</p>` +
       objektif.map((it) => htmlSatuSoal(it, gambar)).join('')
   }
   if (isian.length) {
     const romawi = objektif.length ? 'II' : 'I'
-    body +=
+    isiSoal +=
       `<p class="bagian">${romawi}. Lengkapilah kalimat rumpang / soal berikut dengan jawaban yang singkat dan tepat!</p>` +
       isian.map((it) => htmlSatuSoal(it, gambar)).join('')
   }
   if (uraian.length) {
     const n = (objektif.length ? 1 : 0) + (isian.length ? 1 : 0) + 1
     const romawi = n === 1 ? 'I' : n === 2 ? 'II' : 'III'
-    body +=
+    isiSoal +=
       `<p class="bagian">${romawi}. Jawablah pertanyaan di bawah ini dengan jelas dan benar!</p>` +
       uraian.map((it) => htmlSatuSoal(it, gambar)).join('')
   }
   if (!soal.length) {
-    body += `<p><em>Belum ada soal di kuis ini.</em></p>`
+    isiSoal += `<p><em>Belum ada soal di kuis ini.</em></p>`
   }
+
+  const kelasIsi = opsi.duaKolom ? 'isi-soal isi-soal--dua' : 'isi-soal'
+  body += `<div class="${kelasIsi}">${isiSoal}</div>`
 
   if (opsi.sertakanKunci) {
     body += htmlKunci(soal)
@@ -555,12 +564,14 @@ const STYLE = `
   }
 
   /* —— Satu soal (tabel no | isi) —— */
+  .isi-soal { width: 100%; }
   table.soal-wrap {
     width: 100%;
     border-collapse: collapse;
-    margin: 0 0 18pt;
-    /* auto: Word sering memotong isi jika force avoid pada soal panjang */
-    page-break-inside: auto;
+    margin: 0 0 14pt;
+    /* Hindari soal/opsi/gambar terbelah halaman (PDF/print) */
+    break-inside: avoid;
+    page-break-inside: avoid;
   }
   td.soal-no {
     width: 22px;
@@ -569,28 +580,56 @@ const STYLE = `
     padding: 0 4pt 0 0;
     page-break-after: avoid;
   }
-  td.soal-body { vertical-align: top; padding-bottom: 6pt; }
+  td.soal-body { vertical-align: top; padding-bottom: 4pt; }
   p.soal-teks {
     margin: 0 0 4pt;
     text-align: justify;
     orphans: 3;
     widows: 3;
   }
+  /* Ilustrasi rata kiri sejajar narasi/opsi (bukan tengah) */
   .soal-gambar {
-    max-width: 92%;
-    max-height: 200pt;
+    max-width: 88%;
+    max-height: 180pt;
     width: auto;
     height: auto;
     display: block;
-    margin: 6pt auto 8pt;
+    margin: 4pt 0 8pt 0;
+    break-inside: avoid;
+    page-break-inside: avoid;
   }
   .opsi-gambar {
-    max-width: 110pt;
-    max-height: 80pt;
+    max-width: 100pt;
+    max-height: 72pt;
     width: auto;
     height: auto;
     display: block;
-    margin: 3pt 0;
+    margin: 2pt 0;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  /* Dua kolom — hemat kertas; font min 11pt */
+  .isi-soal--dua {
+    column-count: 2;
+    column-gap: 14pt;
+    column-rule: 0.4pt solid #bbb;
+  }
+  .isi-soal--dua table.soal-wrap {
+    width: 100%;
+    display: inline-table;
+    margin: 0 0 10pt;
+  }
+  .isi-soal--dua p.bagian {
+    column-span: all;
+    margin: 8pt 0 5pt;
+  }
+  .isi-soal--dua .soal-gambar {
+    max-width: 100%;
+    max-height: 120pt;
+  }
+  .isi-soal--dua .opsi-gambar {
+    max-width: 72pt;
+    max-height: 54pt;
   }
 
   /* Stimulus / bacaan */
@@ -698,7 +737,13 @@ const STYLE = `
     border-top: 0.5pt solid #999;
     padding-top: 5pt;
   }
+
+  /* Mode dua kolom: margin halaman lebih kecil (print) */
+  body.mode-dua {
+    font-size: 11pt;
+  }
 `
+
 
 
 async function bangunHtmlLengkap(kuis: KuisLms, opsi: OpsiCetakKuis = {}): Promise<{ html: string; judul: string; namaFile: string }> {
@@ -709,6 +754,8 @@ async function bangunHtmlLengkap(kuis: KuisLms, opsi: OpsiCetakKuis = {}): Promi
   const suffix = opsi.sertakanKunci ? '_kunci' : ''
   const namaMentah = `${kuis.kelas || 'kelas'}_${kuis.mapel || 'mapel'}_${kuis.judul || 'kuis'}${suffix}`
   const namaFile = namaMentah.replace(/[^\w.\-()\s\u00C0-\u024F]+/g, '_').slice(0, 80)
+  const pageMargin = opsi.duaKolom ? '1cm 0.85cm 1cm 0.85cm' : '1.4cm 1.5cm 1.4cm 1.5cm'
+  const bodyClass = opsi.duaKolom ? 'mode-dua' : 'mode-satu'
 
   const html = `<!DOCTYPE html>
 <html xmlns:o="urn:schemas-microsoft-com:office:office"
@@ -730,14 +777,28 @@ async function bangunHtmlLengkap(kuis: KuisLms, opsi: OpsiCetakKuis = {}): Promi
 <![endif]-->
 <style>
 ${STYLE}
+@page {
+  size: A4;
+  margin: ${pageMargin};
+}
 @media print {
   body { margin: 0; }
-  table.soal-wrap { page-break-inside: auto; }
-  .soal-gambar { max-height: 180pt; }
+  table.soal-wrap {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+  .soal-gambar, .opsi-gambar {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+  p.bagian {
+    break-after: avoid;
+    page-break-after: avoid;
+  }
 }
 </style>
 </head>
-<body>
+<body class="${bodyClass}">
 ${body}
 </body>
 </html>`
