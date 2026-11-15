@@ -219,15 +219,17 @@ export async function daftarJawabanKuisMultiKelas(
 }
 
 /**
- * Reset attempt dan/atau draf progress TKA (CF resetJawabanKuisLms).
- * mode: 'attempt' | 'progress' | 'semua' (default).
+ * Reset attempt dan/atau draf progress kuis (online) — mapel & TKA.
+ * CF: `resetJawabanKuisLms`. Mode: `attempt` | `progress` | `semua` (default).
+ * Marker draf perangkat: `lms_tka_progress_reset/{kuisId}_{siswaId}` (nama koleksi historis TKA, dipakai semua kuis).
+ * ANTIREGRESI §101, §126.
  */
-export async function resetJawabanKuisTka(input: {
+export async function resetJawabanKuis(input: {
   kuisId: string
   siswaId: string
   /** attempt = hapus kiriman server; progress = tandai hapus draf perangkat; semua = keduanya */
   mode?: 'attempt' | 'progress' | 'semua'
-  /** Rombel siswa (6A/6B) — wajib jika belum ada lms_jawaban (reset draf saja). */
+  /** Rombel siswa — berguna jika belum ada lms_jawaban (reset draf saja). */
   kelasSiswa?: string
 }): Promise<{ ok: boolean; dihapus: number; progressDitandai?: boolean; mode?: string }> {
   const fn = httpsCallable(functions, 'resetJawabanKuisLms')
@@ -250,3 +252,6 @@ export async function resetJawabanKuisTka(input: {
     mode: data.mode,
   }
 }
+
+/** @deprecated Gunakan `resetJawabanKuis`. Alias kompatibilitas TKA. */
+export const resetJawabanKuisTka = resetJawabanKuis

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { collection, query, where, getDocs } from 'firebase/firestore'
+import { collection, doc, getDoc, query, where, getDocs } from 'firebase/firestore'
 import { httpsCallable } from 'firebase/functions'
 import { db, functions } from '../../lib/firebase'
 import { useSiswa } from '../../context/SiswaContext'
@@ -89,6 +89,34 @@ function clearProgress(siswaId: string, kuisId: string) {
     localStorage.removeItem(progressKey(siswaId, kuisId))
   } catch {
     /* ignore */
+  }
+}
+
+/**
+ * Jika guru mereset draf di server, hapus progress lokal yang lebih lama / sama.
+ * Marker: lms_tka_progress_reset/{kuisId}_{siswaId} (koleksi historis TKA, dipakai semua kuis).
+ * ANTIREGRESI §101, §126.
+ */
+async function sinkronProgressSetelahReset(siswaId: string, kuisId: string): Promise<void> {
+  if (!siswaId || !kuisId) return
+  try {
+    const id = `${kuisId}_${siswaId}`.slice(0, 150)
+    const snap = await getDoc(doc(db, 'lms_tka_progress_reset', id))
+    if (!snap.exists()) return
+    const data = snap.data() as { resetAtMs?: number; resetAt?: { toMillis?: () => number } }
+    const resetMs =
+      Number(data.resetAtMs) ||
+      (typeof data.resetAt?.toMillis === 'function' ? data.resetAt.toMillis() : 0)
+    if (!resetMs) {
+      clearProgress(siswaId, kuisId)
+      return
+    }
+    const lokal = loadProgress(siswaId, kuisId)
+    if (!lokal || (Number(lokal.updatedAt) || 0) <= resetMs) {
+      clearProgress(siswaId, kuisId)
+    }
+  } catch {
+    /* ignore — jangan gagalkan muat daftar */
   }
 }
 
@@ -214,6 +242,9 @@ export default function SiswaKuis() {
       const kuisList = [...byId.values()].filter((k) => kuisUntukSiswa(k))
       setList(kuisList)
 
+      // Sinkron marker reset draf (guru) → hapus localStorage bila perlu
+      await Promise.all(kuisList.map((k) => sinkronProgressSetelahReset(siswaId, k.id)))
+
       const entries = await Promise.all(
         kuisList.map(async (k) => {
           try {
@@ -287,7 +318,8 @@ export default function SiswaKuis() {
     setMode({ kuis, dariAwal: true })
   }
 
-  function lanjutkan(kuis: KuisLms) {
+  async function lanjutkan(kuis: KuisLms) {
+    await sinkronProgressSetelahReset(siswaId, kuis.id)
     setHasil(null)
     setMode({ kuis, dariAwal: false })
   }
@@ -501,7 +533,7 @@ export default function SiswaKuis() {
                         <button
                           type="button"
                           className="sw-btn-primary"
-                          onClick={() => (adaProgresLokal ? lanjutkan(k) : mulaiBaru(k))}
+                          onClick={() => (adaProgresLokal ? void lanjutkan(k) : mulaiBaru(k))}
                         >
                           {adaProgresLokal ? 'Lanjutkan' : 'Mulai kerjakan'}
                         </button>

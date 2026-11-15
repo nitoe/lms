@@ -1,3 +1,15 @@
+## §126. Reset attempt kuis mapel (online)
+
+126.1 Reset attempt **bukan** hanya TKA. UI di `HasilKuisPanel` (detail + daftar) menampilkan aksi reset untuk **semua** kuis; jangan mengembalikan guard `if (!isTka) return` pada `resetAttempt`.
+
+126.2 Client memakai `resetJawabanKuis` (CF `resetJawabanKuisLms`). Alias `resetJawabanKuisTka` boleh tetap untuk kompatibilitas.
+
+126.3 Marker draf perangkat tetap di koleksi **`lms_tka_progress_reset/{kuisId}_{siswaId}`** (nama historis). Klien **SiswaKuis** dan **SiswaTka** wajib cek marker sebelum memakai localStorage progress (`sinkronProgressSetelahReset`).
+
+126.4 Mode: `attempt` | `progress` | `semua`. Default UI daftar = `semua` (Reset+). Detail menyediakan ketiga mode.
+
+126.5 Setelah reset attempt, daftar hasil di-muat ulang; siswa boleh mengerjakan ulang (termasuk jenis SLM/STS/SAS yang sebelumnya terkunci setelah kirim).
+
 ## §125.4 Gambar HP-first: 1200px + ~180KB WebP
 
 ## §125. Viewer materi

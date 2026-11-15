@@ -1,3 +1,14 @@
+## 2026-11-15 — Reset attempt kuis mapel (online)
+
+- **Masalah:** reset attempt + draf hanya tersedia di hasil kuis TKA; kuis mata pelajaran online tidak punya cara mereset kiriman siswa agar bisa mengerjakan ulang.
+- **Perbaikan:**
+  - Tombol **Reset attempt + draf / Reset draf saja / Reset attempt saja** di detail hasil, dan **Reset+** di daftar nilai, berlaku untuk **semua kuis** (mapel & TKA).
+  - Client: `resetJawabanKuis` (menggantikan nama khusus TKA; alias `resetJawabanKuisTka` tetap ada).
+  - Siswa mapel (`SiswaKuis`): cek marker `lms_tka_progress_reset/{kuisId}_{siswaId}` saat muat daftar dan saat «Lanjutkan» — draf lokal dihapus jika guru sudah mereset.
+- CF `resetJawabanKuisLms` tidak berubah (sudah generik). Marker koleksi tetap nama historis TKA agar kompatibel.
+- File: `src/lib/jawabanKuis.ts`, `src/components/HasilKuisPanel.tsx`, `src/pages/siswa/SiswaKuis.tsx`.
+- ANTIREGRESI §126.
+
 ## 2026-11-14 — Optimasi gambar materi untuk smartphone
 
 - **Prioritas:** ukuran file kecil + tetap terbaca di HP (akses utama siswa).
