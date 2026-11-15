@@ -917,3 +917,62 @@
   gap: 0.4rem;
   margin-top: 0.35rem;
 }
+
+/* ── Template / impor halaman ── */
+.mh-info {
+  margin: 0 1rem;
+  padding: 0.55rem 0.75rem;
+  border-radius: 0.5rem;
+  background: #ecfdf5;
+  border: 1px solid #a7f3d0;
+  color: #065f46;
+  font-size: 0.82rem;
+  line-height: 1.4;
+}
+.mh-impor-panel {
+  margin: 0 1rem 0.5rem;
+  padding: 0.75rem 1rem 1rem;
+  border-radius: 0.65rem;
+  border: 1px solid #c7d2fe;
+  background: linear-gradient(180deg, #eef2ff 0%, #f8fafc 100%);
+}
+.mh-impor-panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.35rem;
+}
+.mh-impor-lead {
+  margin: 0 0 0.65rem;
+  font-size: 0.8rem;
+  color: #475569;
+  line-height: 1.45;
+}
+.mh-impor-actions,
+.mh-impor-file {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  align-items: center;
+  margin-bottom: 0.55rem;
+}
+.mh-impor-mode {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+  margin-bottom: 0.55rem;
+  font-size: 0.8rem;
+  color: #334155;
+}
+.mh-impor-radio {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  cursor: pointer;
+}
+.mh-btn-on {
+  outline: 2px solid #6366f1;
+  outline-offset: 1px;
+}
