@@ -1,3 +1,14 @@
+## 2026-11-15 — Export cetak: JPEG, logo, PDF, anti-potong
+
+- **Gambar X di Word:** LMS menyimpan WebP; filter HTML Word sering gagal menampilkannya. Semua ilustrasi dikonversi ke **JPEG** (`keJpegDataUrl`) sebelum disematkan.
+- **Logo kop:** JPEG lebih tajam (SDM + Kota Depok), ukuran ~56px.
+- **Tipografi kop:** judul 14pt, nama sekolah 13pt; jarak garis ganda → identitas diperbesar (`margin` 14pt).
+- **Soal terpotong:** `page-break-inside: auto` (bukan avoid paksa) agar Word tidak memotong narasi/opsi panjang.
+- **PDF (disarankan):** tombol **PDF** membuka dialog print browser → «Save as PDF». Layout & gambar lebih stabil daripada .doc.
+- Tombol Word tetap ada sebagai cadangan; «Word + kunci» untuk guru.
+- File: `src/lib/exportKuisCetak.ts`, `src/components/KuisPanel.tsx`.
+- ANTIREGRESI §127.17–§127.19.
+
 ## 2026-11-15 — Export Word: identitas 1 baris, spasi, ilustrasi soal
 
 - **Identitas siswa:** default **satu baris Nama + No. Absen** (bukan tabel 10 baris kosong). Tabel paraf multi-siswa hanya jika `barisParaf > 0`.

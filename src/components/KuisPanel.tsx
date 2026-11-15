@@ -43,7 +43,7 @@ import { labelKelasDibagikan } from '../lib/kelasLms'
 import KuisDetail, { INSTRUKSI_TIPE } from './KuisDetail'
 import HasilKuisPanel from './HasilKuisPanel'
 import OfflineKuisPanel from './OfflineKuisPanel'
-import { unduhKuisCetak } from '../lib/exportKuisCetak'
+import { unduhKuisCetak, cetakKuisPdf } from '../lib/exportKuisCetak'
 import { KnKembali, KuisKepala, type ChipKepala } from './KuisNav'
 import { IkonAtur, IkonGrafik, IkonInput } from './ikonRuang'
 import PilihSoalManual from './soal/PilihSoalManual'
@@ -574,18 +574,26 @@ export default function KuisPanel({ kelas, mapel }: Props) {
                 <button
                   type="button"
                   className="kn-aksi-unduh"
-                  title="Unduh lembar soal siap cetak (Word)"
-                  onClick={() => { void unduhKuisCetak(kuis, { sertakanKunci: false }) }}
+                  title="Cetak / simpan PDF (disarankan — layout & gambar lebih stabil)"
+                  onClick={() => { void cetakKuisPdf(kuis, { sertakanKunci: false }).catch((e) => alert(e instanceof Error ? e.message : 'Gagal cetak PDF')) }}
                 >
-                  Unduh soal
+                  PDF
                 </button>
                 <button
                   type="button"
                   className="kn-aksi-unduh"
-                  title="Unduh lembar soal + kunci jawaban (untuk guru)"
+                  title="Unduh Word (.doc) — cadangan"
+                  onClick={() => { void unduhKuisCetak(kuis, { sertakanKunci: false }) }}
+                >
+                  Word
+                </button>
+                <button
+                  type="button"
+                  className="kn-aksi-unduh"
+                  title="Unduh Word + kunci jawaban (untuk guru)"
                   onClick={() => { void unduhKuisCetak(kuis, { sertakanKunci: true }) }}
                 >
-                  Unduh + kunci
+                  Word + kunci
                 </button>
               </>
             ) : undefined

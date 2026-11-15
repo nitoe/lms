@@ -1,3 +1,11 @@
+## §127.17–§127.19 Export: JPEG, anti-potong, PDF (2026-11-15)
+
+127.17 Gambar soal **wajib** dikonversi ke JPEG (`keJpegDataUrl`) sebelum embed di HTML cetak. Jangan menyematkan data-URL WebP mentah — Word menampilkan ikon rusak (X).
+
+127.18 Jangan memakai `page-break-inside: avoid` pada seluruh `table.soal-wrap` untuk soal panjang — Word memotong narasi/opsi. Pakai `auto` + orphans/widows pada teks.
+
+127.19 Cetak PDF lewat `cetakKuisPdf` (window.print / Save as PDF) adalah jalur **utama** untuk hasil cetak andal. `unduhKuisCetak` (.doc) tetap ada sebagai cadangan. Popup diblokir → tampilkan pesan jelas.
+
 ## §127.14–§127.16 Export Word: identitas tunggal, spasi, gambar (2026-11-15)
 
 127.14 Default cetak **identitas tunggal** (`htmlIdentitasSiswa`: Nama + No. Absen). Jangan mengembalikan tabel paraf 10 baris kosong sebagai default (`barisParaf` default **0**). Tabel paraf multi-siswa hanya jika pemanggil set `barisParaf > 0`.
