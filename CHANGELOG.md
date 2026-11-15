@@ -1,3 +1,12 @@
+## 2026-11-15 — Export PDF v3: alur halaman, uraian penuh, nomor halaman
+
+- **Halaman 1 tidak kosong:** margin identitas/garis diperketat; tinggi ilustrasi dibatasi (≤130pt) agar soal mulai di halaman yang sama dengan kop.
+- **Anti-potong:** `break-inside: avoid` pada soal, opsi, tabel BS/jodoh, ruang uraian, dan gambar.
+- **Uraian selalu 1 kolom penuh** (`.isi-soal--penuh`) meski mode PDF 2 kolom — 8 baris garis jawaban.
+- **Nomor halaman** di bottom margin (`@page @bottom-center { content: counter(page) }`); margin bawah diperbesar agar tidak menempel soal.
+- File: `src/lib/exportKuisCetak.ts`.
+- ANTIREGRESI §127.23–§127.25.
+
 ## 2026-11-15 — Export PDF: anti-potong, gambar kiri, 2 kolom
 
 - **Soal/ilustrasi tidak terbelah halaman:** `break-inside: avoid` + `page-break-inside: avoid` pada tiap blok soal dan gambar (jalur PDF/print).

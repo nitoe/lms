@@ -1,3 +1,11 @@
+## §127.23–§127.25 Export PDF v3: alur, uraian, footer halaman (2026-11-15)
+
+127.23 Jangan membiarkan halaman 1 hanya berisi kop/identitas. Margin identitas & garis ganda diperketat; `max-height` ilustrasi dibatasi agar blok soal muat mulai di halaman pertama.
+
+127.24 Bagian **uraian** tidak ikut `column-count: 2`. Selalu dibungkus `.isi-soal--penuh` (1 kolom) dengan minimal 8 baris garis jawaban.
+
+127.25 Nomor halaman hanya di **bottom margin** via `@page { @bottom-center { content: counter(page) } }`. Margin bawah ≥ 1.6 cm. Jangan menaruh nomor halaman menempel konten soal.
+
 ## §127.20–§127.22 Export PDF: anti-potong, rata kiri, dua kolom (2026-11-15)
 
 127.20 Setiap blok soal (`table.soal-wrap`) dan ilustrasi (`.soal-gambar` / `.opsi-gambar`) **wajib** `break-inside: avoid` + `page-break-inside: avoid` pada `@media print` agar narasi, opsi, dan gambar tidak terpotong pergantian halaman.

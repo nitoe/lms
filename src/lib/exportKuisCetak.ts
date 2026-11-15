@@ -220,9 +220,10 @@ function htmlSatuSoal(item: { no: number; s: SoalKuis }, gambar: Map<string, str
       `<span class="garis-isi">_______________________________________________</span>` +
       `</p>`
   } else if (s.tipe === 'uraian') {
+    // 8 baris tulis tangan — ruang jawaban panjang (selalu 1 kolom)
     isi =
       `<table class="ruang-uraian" cellspacing="0" cellpadding="0">` +
-      Array.from({ length: 6 }, () => `<tr><td class="garis-uraian">&nbsp;</td></tr>`).join('') +
+      Array.from({ length: 8 }, () => `<tr><td class="garis-uraian">&nbsp;</td></tr>`).join('') +
       `</table>`
   }
 
@@ -419,36 +420,45 @@ export async function htmlKuisCetak(kuis: KuisLms, opsi: OpsiCetakKuis = {}): Pr
     body += nParaf > 0 ? htmlTabelParaf(nParaf) : htmlIdentitasSiswa()
   }
 
-  let isiSoal = ''
+  let isiObjektif = ''
   if (objektif.length) {
-    isiSoal +=
+    isiObjektif +=
       `<p class="bagian">I. Berilah tanda silang (X) pada huruf A, B, C, atau D di depan jawaban yang paling tepat!</p>` +
       objektif.map((it) => htmlSatuSoal(it, gambar)).join('')
   }
   if (isian.length) {
     const romawi = objektif.length ? 'II' : 'I'
-    isiSoal +=
+    isiObjektif +=
       `<p class="bagian">${romawi}. Lengkapilah kalimat rumpang / soal berikut dengan jawaban yang singkat dan tepat!</p>` +
       isian.map((it) => htmlSatuSoal(it, gambar)).join('')
   }
+
+  let isiUraian = ''
   if (uraian.length) {
     const n = (objektif.length ? 1 : 0) + (isian.length ? 1 : 0) + 1
     const romawi = n === 1 ? 'I' : n === 2 ? 'II' : 'III'
-    isiSoal +=
+    isiUraian +=
       `<p class="bagian">${romawi}. Jawablah pertanyaan di bawah ini dengan jelas dan benar!</p>` +
       uraian.map((it) => htmlSatuSoal(it, gambar)).join('')
   }
+
   if (!soal.length) {
-    isiSoal += `<p><em>Belum ada soal di kuis ini.</em></p>`
+    isiObjektif += `<p><em>Belum ada soal di kuis ini.</em></p>`
   }
 
-  const kelasIsi = opsi.duaKolom ? 'isi-soal isi-soal--dua' : 'isi-soal'
-  body += `<div class="${kelasIsi}">${isiSoal}</div>`
+  // Objektif/isian: boleh 2 kolom. Uraian selalu 1 kolom penuh (ruang jawab panjang).
+  if (opsi.duaKolom) {
+    if (isiObjektif) body += `<div class="isi-soal isi-soal--dua">${isiObjektif}</div>`
+    if (isiUraian) body += `<div class="isi-soal isi-soal--penuh">${isiUraian}</div>`
+  } else {
+    body += `<div class="isi-soal">${isiObjektif}${isiUraian}</div>`
+  }
 
   if (opsi.sertakanKunci) {
     body += htmlKunci(soal)
   }
 
+  // Meta singkat di akhir konten (bukan nomor halaman — nomor di @page footer)
   body +=
     `<p class="footer-meta">` +
     `${esc(kuis.judul || '')} · ${soal.length} soal · ${kuis.totalPoin ?? 0} poin` +
@@ -468,7 +478,7 @@ export async function htmlKuisCetak(kuis: KuisLms, opsi: OpsiCetakKuis = {}): Pr
 const STYLE = `
   @page {
     size: A4;
-    margin: 1.5cm 1.6cm 1.5cm 1.6cm;
+    margin: 1.2cm 1.4cm 1.8cm 1.4cm;
   }
   body {
     font-family: 'Times New Roman', Times, serif;
@@ -517,12 +527,12 @@ const STYLE = `
     border-top: 2pt solid #000;
     border-bottom: 0.75pt solid #000;
     height: 4pt;
-    margin: 6pt 0 14pt;
+    margin: 4pt 0 8pt;
   }
 
   /* —— Identitas —— */
   table.identitas { width: 100%; border-collapse: collapse; margin: 0 0 6pt; }
-  .identitas-siswa { margin: 0 0 14pt !important; }
+  .identitas-siswa { margin: 0 0 6pt !important; }
   table.identitas td { padding: 1.5pt 2pt; vertical-align: top; }
   .id-label { width: 26%; font-weight: bold; white-space: nowrap; }
   .id-titik { width: 10px; font-weight: bold; }
@@ -558,20 +568,29 @@ const STYLE = `
   p.bagian {
     font-size: 11pt;
     font-weight: bold;
-    margin: 12pt 0 6pt;
+    margin: 6pt 0 4pt;
     page-break-after: avoid;
     page-break-before: auto;
+    break-after: avoid;
   }
 
   /* —— Satu soal (tabel no | isi) —— */
   .isi-soal { width: 100%; }
+  /* Uraian selalu lebar penuh (meski mode 2 kolom) */
+  .isi-soal--penuh {
+    width: 100%;
+    column-count: 1 !important;
+    margin-top: 8pt;
+    clear: both;
+  }
   table.soal-wrap {
     width: 100%;
     border-collapse: collapse;
-    margin: 0 0 14pt;
-    /* Hindari soal/opsi/gambar terbelah halaman (PDF/print) */
+    margin: 0 0 10pt;
+    /* Jaga satu soal utuh; gambar dibatasi tinggi agar halaman 1 tidak kosong */
     break-inside: avoid;
     page-break-inside: avoid;
+    -webkit-column-break-inside: avoid;
   }
   td.soal-no {
     width: 22px;
@@ -580,27 +599,27 @@ const STYLE = `
     padding: 0 4pt 0 0;
     page-break-after: avoid;
   }
-  td.soal-body { vertical-align: top; padding-bottom: 4pt; }
+  td.soal-body { vertical-align: top; padding-bottom: 2pt; }
   p.soal-teks {
-    margin: 0 0 4pt;
+    margin: 0 0 3pt;
     text-align: justify;
-    orphans: 3;
-    widows: 3;
+    orphans: 2;
+    widows: 2;
   }
-  /* Ilustrasi rata kiri sejajar narasi/opsi (bukan tengah) */
+  /* Ilustrasi rata kiri; tinggi dibatasi agar muat bersama opsi di halaman yang sama */
   .soal-gambar {
-    max-width: 88%;
-    max-height: 180pt;
+    max-width: 85%;
+    max-height: 130pt;
     width: auto;
     height: auto;
     display: block;
-    margin: 4pt 0 8pt 0;
+    margin: 3pt 0 6pt 0;
     break-inside: avoid;
     page-break-inside: avoid;
   }
   .opsi-gambar {
-    max-width: 100pt;
-    max-height: 72pt;
+    max-width: 90pt;
+    max-height: 64pt;
     width: auto;
     height: auto;
     display: block;
@@ -608,28 +627,37 @@ const STYLE = `
     break-inside: avoid;
     page-break-inside: avoid;
   }
-  /* Dua kolom — hemat kertas; font min 11pt */
+  table.opsi-tbl, table.bs-tbl, table.jodoh-wrap, table.ruang-uraian {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  /* Dua kolom — hanya objektif/isian; font min 11pt */
   .isi-soal--dua {
     column-count: 2;
-    column-gap: 14pt;
+    column-gap: 12pt;
     column-rule: 0.4pt solid #bbb;
+    column-fill: auto;
   }
   .isi-soal--dua table.soal-wrap {
     width: 100%;
     display: inline-table;
-    margin: 0 0 10pt;
+    margin: 0 0 8pt;
   }
   .isi-soal--dua p.bagian {
     column-span: all;
-    margin: 8pt 0 5pt;
+    margin: 6pt 0 4pt;
   }
   .isi-soal--dua .soal-gambar {
     max-width: 100%;
-    max-height: 120pt;
+    max-height: 100pt;
   }
   .isi-soal--dua .opsi-gambar {
-    max-width: 72pt;
-    max-height: 54pt;
+    max-width: 64pt;
+    max-height: 48pt;
+  }
+  /* Uraian: lebih banyak baris garis di mode penuh */
+  .isi-soal--penuh table.ruang-uraian td.garis-uraian {
+    height: 18pt;
   }
 
   /* Stimulus / bacaan */
@@ -754,7 +782,8 @@ async function bangunHtmlLengkap(kuis: KuisLms, opsi: OpsiCetakKuis = {}): Promi
   const suffix = opsi.sertakanKunci ? '_kunci' : ''
   const namaMentah = `${kuis.kelas || 'kelas'}_${kuis.mapel || 'mapel'}_${kuis.judul || 'kuis'}${suffix}`
   const namaFile = namaMentah.replace(/[^\w.\-()\s\u00C0-\u024F]+/g, '_').slice(0, 80)
-  const pageMargin = opsi.duaKolom ? '1cm 0.85cm 1cm 0.85cm' : '1.4cm 1.5cm 1.4cm 1.5cm'
+  // Margin bawah lebih besar agar nomor halaman di footer tidak menempel soal
+  const pageMargin = opsi.duaKolom ? '0.9cm 0.8cm 1.6cm 0.8cm' : '1.2cm 1.4cm 1.8cm 1.4cm'
   const bodyClass = opsi.duaKolom ? 'mode-dua' : 'mode-satu'
 
   const html = `<!DOCTYPE html>
@@ -780,20 +809,30 @@ ${STYLE}
 @page {
   size: A4;
   margin: ${pageMargin};
+  @bottom-center {
+    content: counter(page);
+    font-family: 'Times New Roman', Times, serif;
+    font-size: 9pt;
+    color: #333;
+  }
 }
 @media print {
   body { margin: 0; }
   table.soal-wrap {
     break-inside: avoid !important;
     page-break-inside: avoid !important;
+    -webkit-column-break-inside: avoid !important;
   }
-  .soal-gambar, .opsi-gambar {
+  .soal-gambar, .opsi-gambar, table.opsi-tbl, table.bs-tbl, table.jodoh-wrap, table.ruang-uraian {
     break-inside: avoid !important;
     page-break-inside: avoid !important;
   }
   p.bagian {
     break-after: avoid;
     page-break-after: avoid;
+  }
+  .footer-meta {
+    break-before: avoid;
   }
 }
 </style>
