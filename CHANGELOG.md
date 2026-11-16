@@ -1,3 +1,10 @@
+## 2026-11-15 — Export kuis: judul dokumen mengikuti jenis penilaian + semester otomatis
+
+- **Judul otomatis** dari `jenisPenilaian` kuis: Latihan → **ASESMEN TERTULIS LATIHAN** (sebelumnya «LEMBAR SOAL»); SLM → ASESMEN SUMATIF LINGKUP MATERI; STS → ASESMEN SUMATIF TENGAH SEMESTER GANJIL/GENAP; SAS → ASESMEN SUMATIF AKHIR SEMESTER GANJIL/GENAP. Jenis kosong dianggap latihan.
+- **Semester otomatis:** sebelumnya selalu GANJIL karena pemanggil tidak mengirim `opsi.semester`. Kini diturunkan dari `waktuMulai` kuis (bila terbaca) atau tanggal hari ini: Juli–Desember = ganjil, Januari–Juni = genap. `opsi.semester` dan `opsi.judulDokumen` tetap bisa menimpa.
+- Berlaku untuk PDF dan Word. Diuji untuk semua jenis dan kedua semester.
+- File: `src/lib/exportKuisCetak.ts`, `CHANGELOG.md`, `ANTIREGRESI.md` (§127.33).
+
 ## 2026-11-15 — Export PDF v4: paginasi sendiri (kop+soal satu halaman, anti-potong, footer)
 
 - **Penyebab (direproduksi di Chromium):** CSS v3 mengandalkan pemecah halaman browser (`break-inside: avoid`, `column-count`). Hasilnya: halaman 1 hanya berisi kop/identitas (soal mulai di hal. 2), opsi jawaban terpisah dari soalnya, dan baris meta tercecer sendirian di halaman terakhir.

@@ -47,6 +47,10 @@ Bila error tetap permission setelah rules 300 ter-deploy: cek penugasan `penugas
 
 
 
+## §127.33 Judul dokumen & semester export kuis (2026-11-15)
+
+127.33 Judul kop dihitung di `judulUtama()` dari `kuis.jenisPenilaian` (latihan → «ASESMEN TERTULIS LATIHAN», slm, sts, sas). Jangan kembali ke «LEMBAR SOAL» / hardcode satu judul. Semester **jangan hardcode 'ganjil'**: pakai `opsi.semester ?? semesterOtomatis(kuis)` (waktuMulai kuis, fallback tanggal hari ini; Jul–Des ganjil, Jan–Jun genap). Tahun pelajaran masih default konstanta `2026/2027` (`metaDokumen`) — perbarui bila tahun ajaran berganti atau turunkan otomatis.
+
 ## §127.26–§127.32 Export PDF v4: paginasi sendiri (2026-11-15)
 
 127.26 **Jalur PDF tidak boleh mengandalkan pemecah halaman browser** (`break-inside`, `break-after`, `column-count`, `column-span`, `@page @bottom-*`). Terbukti di Chromium: halaman 1 hanya kop (soal mulai hal. 2), opsi terpisah dari soal, meta tercecer. Pembagian halaman dihitung di `susunHalaman()` (ukur tinggi blok → tempatkan pada `.halaman` A4 tetap, posisi `absolute`). Jangan mengembalikan CSS kolom/pemecah halaman untuk jalur PDF.

@@ -21,7 +21,7 @@ export type OpsiCetakKuis = {
   judulDokumen?: string
   /** Tahun pelajaran, mis. 2026/2027. */
   tahunPelajaran?: string
-  /** Semester untuk judul STS/SAS: 'ganjil' | 'genap'. Default ganjil. */
+  /** Semester untuk judul STS/SAS: 'ganjil' | 'genap'. Default otomatis (waktuMulai kuis / tanggal hari ini). */
   semester?: 'ganjil' | 'genap'
   /** Jumlah baris tabel paraf multi-siswa. Default 0 = identitas tunggal (Nama + No. Absen). Isi >0 untuk lembar kolektif. */
   barisParaf?: number
@@ -80,18 +80,31 @@ async function keJpegDataUrl(dataUrl: string, sisiMaks = 900): Promise<string | 
   }
 }
 
-/** Judul formal tanpa mapel (mapel ada di baris identitas, seperti template sekolah). */
+/**
+ * Judul formal tanpa mapel (mapel ada di baris identitas, seperti template sekolah).
+ * Mengikuti `jenisPenilaian` kuis: latihan → asesmen tertulis latihan; SLM; STS; SAS.
+ */
 function judulUtama(jenis: JenisPenilaianKuis | undefined, semester: 'ganjil' | 'genap'): string {
   const sem = semester === 'genap' ? 'GENAP' : 'GANJIL'
   const j = jenis ?? 'latihan'
   if (j === 'sts') return `ASESMEN SUMATIF TENGAH SEMESTER ${sem}`
   if (j === 'sas') return `ASESMEN SUMATIF AKHIR SEMESTER ${sem}`
   if (j === 'slm') return 'ASESMEN SUMATIF LINGKUP MATERI'
-  return 'LEMBAR SOAL'
+  return 'ASESMEN TERTULIS LATIHAN'
+}
+
+/**
+ * Semester otomatis bila `opsi.semester` tidak diberikan: dari `waktuMulai` kuis (jika terbaca),
+ * selain itu dari tanggal hari ini. Kalender sekolah: Juli–Desember = ganjil, Januari–Juni = genap.
+ */
+function semesterOtomatis(kuis: KuisLms): 'ganjil' | 'genap' {
+  let tgl = kuis.waktuMulai ? new Date(kuis.waktuMulai) : new Date(NaN)
+  if (Number.isNaN(tgl.getTime())) tgl = new Date()
+  return tgl.getMonth() >= 6 ? 'ganjil' : 'genap'
 }
 
 function metaDokumen(kuis: KuisLms, opsi: OpsiCetakKuis): { judul: string; tahun: string } {
-  const semester = opsi.semester ?? 'ganjil'
+  const semester = opsi.semester ?? semesterOtomatis(kuis)
   return {
     judul: opsi.judulDokumen?.trim() || judulUtama(kuis.jenisPenilaian, semester),
     tahun: opsi.tahunPelajaran?.trim() || '2026/2027',
