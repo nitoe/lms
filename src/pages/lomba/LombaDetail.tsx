@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState, type CSSProperties, type KeyboardEvent, type ReactNode } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { getLomba } from '../../lib/lomba'
@@ -14,9 +14,23 @@ import { TINGKAT_LOMBA } from '../../types/lomba'
 import MateriPanel from '../../components/MateriPanel'
 import BankSoalPanel from '../../components/BankSoalPanel'
 import KuisPanel from '../../components/KuisPanel'
+import { KnChips } from '../../components/KuisNav'
+import { IkonBankSoal, IkonDaftar, IkonKuis, IkonMateri } from '../../components/ikonRuang'
+import { aksenMapel } from '../../lib/uiAksen'
+import '../../styles/ruang.css'
 import '../../styles/lomba.css'
 
 type Tab = 'ringkas' | 'materi' | 'soal' | 'kuis'
+
+/** Urutan & ikon tab sama dengan ruang kelas: Materi · Kuis · Bank Soal. */
+const TABS: { id: Tab; label: string; ikon: ReactNode }[] = [
+  { id: 'ringkas', label: 'Ringkasan', ikon: <IkonDaftar size={16} /> },
+  { id: 'materi', label: 'Materi', ikon: <IkonMateri size={16} /> },
+  { id: 'kuis', label: 'Kuis', ikon: <IkonKuis size={16} /> },
+  { id: 'soal', label: 'Bank Soal', ikon: <IkonBankSoal size={16} /> },
+]
+
+const KELAS_TP = ['1A','1B','1C','2A','2B','2C','3A','3B','3C','4A','4B','4C','5A','5B','5C','6A','6B']
 
 function formatTanggal(d: Date | null): string {
   if (!d) return '—'
@@ -109,15 +123,23 @@ export default function LombaDetail() {
     )
   }
 
-  const tabs: { id: Tab; label: string }[] = [
-    { id: 'ringkas', label: 'Ringkasan' },
-    { id: 'materi', label: 'Materi' },
-    { id: 'soal', label: 'Bank soal' },
-    { id: 'kuis', label: 'Kuis' },
-  ]
+  /** Aksen mengikuti mapel aktif (selaras ruang kelas); oranye Lomba bila belum ada mapel. */
+  const aksen = mapelAktif ? aksenMapel(mapelAktif).bar : '#c2410c'
+
+  function onKeyTab(e: KeyboardEvent<HTMLButtonElement>, i: number) {
+    let ke = -1
+    if (e.key === 'ArrowRight') ke = (i + 1) % TABS.length
+    else if (e.key === 'ArrowLeft') ke = (i - 1 + TABS.length) % TABS.length
+    else if (e.key === 'Home') ke = 0
+    else if (e.key === 'End') ke = TABS.length - 1
+    if (ke < 0) return
+    e.preventDefault()
+    setTab(TABS[ke].id)
+    document.getElementById(`lomba-tab-${TABS[ke].id}`)?.focus()
+  }
 
   return (
-    <div className="lomba-dash space-y-5">
+    <div className="lomba-dash space-y-5" style={{ '--rg-a': aksen } as CSSProperties}>
       <section className="lomba-hero">
         <div className="lomba-hero-inner">
           <p className="lomba-eyebrow">{labelTingkat(lomba.tingkat)}</p>
@@ -139,39 +161,44 @@ export default function LombaDetail() {
         </div>
       </section>
 
-      <nav className="lomba-tabs" aria-label="Bagian lomba">
-        {tabs.map((t) => (
+      <div
+        className="rg-tabs"
+        role="tablist"
+        aria-label="Bagian lomba"
+        style={{ '--rg-a': aksen } as CSSProperties}
+      >
+        {TABS.map((t, i) => (
           <button
             key={t.id}
+            id={`lomba-tab-${t.id}`}
             type="button"
-            className={`lomba-tab${tab === t.id ? ' on' : ''}`}
+            role="tab"
+            aria-selected={tab === t.id}
+            aria-controls="lomba-panel"
+            tabIndex={tab === t.id ? 0 : -1}
             onClick={() => setTab(t.id)}
+            onKeyDown={(e) => onKeyTab(e, i)}
+            className={`rg-tab${tab === t.id ? ' rg-tab--on' : ''}`}
           >
+            {t.ikon}
             {t.label}
           </button>
         ))}
-      </nav>
+      </div>
 
       {tab !== 'ringkas' && lomba.mapelTerkait.length > 0 && (
-        <div className="lomba-mapel-bar">
-          <span className="lomba-mapel-bar-label">Mapel</span>
-          <div className="lomba-pill-row">
-            {lomba.mapelTerkait.map((m) => (
-              <button
-                key={m}
-                type="button"
-                className={`lomba-pill-btn${mapelAktif === m ? ' on' : ''}`}
-                onClick={() => setMapelAktif(m)}
-              >
-                {m}
-              </button>
-            ))}
-          </div>
+        <div className="kn-bar lomba-ruangbar">
+          <KnChips
+            label="Mapel"
+            nilai={mapelAktif}
+            opsi={lomba.mapelTerkait.map((m) => ({ v: m, teks: m }))}
+            onPilih={setMapelAktif}
+          />
           {admin && (
-            <label className="lomba-tp-kelas">
+            <label className="lomba-tp">
               <span>TP dari kelas</span>
               <select value={tpKelas} onChange={(e) => setTpKelas(e.target.value)}>
-                {['1A','1B','1C','2A','2B','2C','3A','3B','3C','4A','4B','4C','5A','5B','5C','6A','6B'].map((k) => (
+                {KELAS_TP.map((k) => (
                   <option key={k} value={k}>{k}</option>
                 ))}
               </select>
@@ -180,6 +207,12 @@ export default function LombaDetail() {
         </div>
       )}
 
+      <div
+        role="tabpanel"
+        id="lomba-panel"
+        aria-labelledby={`lomba-tab-${tab}`}
+        className="min-w-0 space-y-5"
+      >
       {tab === 'ringkas' && (
         <>
           <div className="lomba-detail-grid">
@@ -282,6 +315,7 @@ export default function LombaDetail() {
           <p>Lomba ini belum punya mapel terkait. Ubah meta lomba terlebih dahulu.</p>
         </div>
       )}
+      </div>
     </div>
   )
 }

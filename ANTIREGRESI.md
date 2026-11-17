@@ -432,3 +432,14 @@ Build deploy (`tsc -b`) gagal dengan `TS6133 'tpKelas' is declared but its value
 1. Prop yang tidak dipakai sebuah panel tetap dideklarasikan di tipe `Props` (agar pemanggil seragam), tetapi **jangan** dimasukkan ke destructuring parameter — `noUnusedLocals`/`noUnusedParameters` menolaknya.
 2. Saat menambah prop baru ke panel bersama, periksa tiap panel: destructure hanya yang benar-benar dibaca.
 3. Selalu jalankan `npx tsc -b` (atau `npm run build`) sebelum `npm run deploy`; jangan mengandalkan Vite dev server yang tidak mengecek tipe.
+
+### §Lomba.9 Nama kelas CSS ganda & kesamaan tampilan dengan ruang kelas
+Regresi: bar mapel di detail lomba tampil terhimpit (tombol mapel membulat, «TP dari kelas» terpotong per kata) karena `.lomba-mapel-bar` dipakai **dua kali** di `lomba.css` — bilah warna kartu mapel form (`width: 0.28rem; align-self: stretch`) dan baris filter mapel. Aturan CSS bergabung, lebar bilah ikut terbawa.
+
+**Aturan:**
+1. Sebelum menambah kelas CSS baru, `grep -n "nama-kelas" src/styles/*.css` — jangan memakai ulang nama yang sudah ada di file yang sama dengan arti berbeda. Filter mapel detail lomba = `.kn-bar.lomba-ruangbar`; pemilih TP = `.lomba-tp`.
+2. Tab detail lomba memakai `rg-tabs`/`rg-tab` (ruang.css) dan filter mapel memakai `KnChips` (KuisNav) agar selaras dengan ruang kelas/TKA. Jangan membuat tab/pill khusus Lomba lagi.
+3. `.rg-tabs` punya `--rg-a` bawaan ungu; aksen mapel wajib diset **inline pada elemen `.rg-tabs`** (bukan hanya pembungkus), seperti `KelasDetail`.
+4. Aksen = `aksenMapel(mapelAktif).bar` lewat `--rg-a` pada pembungkus `lomba-dash`, agar `kn-*` di dalam panel Kuis ikut berwarna mapel.
+5. Cek visual halaman baru di lebar ≤ 640 px dan ≥ 1280 px sebelum deploy; jalankan `npx tsc -b` (§Lomba.8).
+

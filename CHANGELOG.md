@@ -1,3 +1,13 @@
+## 2026-11-17 — Lomba: tampilan detail selaras ruang kelas & kuis/bank soal TKA
+
+- **Bug tampilan:** pada tab Materi/Bank soal/Kuis, tombol mapel menjadi lingkaran besar dan «TP dari kelas» terhimpit satu kolom sempit. **Akar:** `.lomba-mapel-bar` didefinisikan dua kali di `lomba.css` — sebagai bilah warna form (`width: 0.28rem`) dan sebagai baris filter mapel; lebar 0,28rem ikut terbawa sehingga seluruh isi baris tertekan.
+- **Tab** memakai komponen yang sama dengan ruang kelas (`rg-tabs`/`rg-tab`): berikon, urutan Ringkasan · Materi · Kuis · Bank Soal, ARIA tablist/tabpanel + navigasi panah/Home/End.
+- **Filter mapel** memakai `KnChips` dalam `kn-bar` (sama dengan filter di dalam panel Kuis); «TP dari kelas» (admin) menjadi pemilih rapi di ujung kanan bar.
+- **Aksen warna mengikuti mapel aktif** (`--rg-a` dari `aksenMapel`), sehingga tab, chip, menu segmen Kuis (Atur/Hasil), dan tombol di panel Kuis/Bank soal/Materi berwarna sama seperti di ruang kelas; oranye Lomba dipakai bila belum ada mapel.
+- Kelas lama `.lomba-tabs`, `.lomba-tab`, `.lomba-mapel-bar` (versi bar), `.lomba-mapel-bar-label`, `.lomba-pill-btn`, `.lomba-tp-kelas` dihapus dari `lomba.css` (hanya dipakai `LombaDetail`). Bilah warna form `.lomba-mapel-bar` tidak berubah.
+- Tidak mengubah data, query, rules, maupun panel Materi/Kuis/Bank soal. Diverifikasi `tsc -b` dan `vite build` lolos.
+- File: `src/pages/lomba/LombaDetail.tsx`, `src/styles/lomba.css`, `CHANGELOG.md`, `ANTIREGRESI.md` (§Lomba.9).
+
 ## 2026-11-17 — Lomba: perbaikan build deploy (TS6133 `tpKelas` di KuisPanel)
 
 - **Gejala:** `npm run deploy` gagal di tahap `tsc -b`: `src/components/KuisPanel.tsx:110:60 - error TS6133: 'tpKelas' is declared but its value is never read.`
