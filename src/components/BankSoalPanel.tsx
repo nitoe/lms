@@ -16,13 +16,17 @@ import {
 } from '../types/soal'
 import {
   buatTemplateCsv,
+  buatTemplateCsvTanpaTp,
   buatTemplateCsvTka,
   buatTemplateJson,
+  buatTemplateJsonTanpaTp,
   buatTemplateJsonTka,
   parseCsvImport,
   parseJsonImport,
   validasiMetadata,
+  validasiMetadataTanpaTp,
   validasiMetadataTka,
+  VALUE_TANPA_TP,
 } from '../lib/importSoal'
 import { kelasAksenMapel, LABEL_TIPE_PENDEK, materiPaket, paketMemuatMateri } from '../lib/aksenTka'
 import '../styles/soal.css'
@@ -318,6 +322,20 @@ export default function BankSoalPanel({ kelas, mapel, ruangId, lombaId, tpKelas 
       setMateriIdExport('')
       return
     }
+    if (tpIdExport === VALUE_TANPA_TP) {
+      const nama = `template-soal-${mapel.replace(/\s+/g, '-')}-tanpa-TP.${format}`
+      const isi = format === 'json' ? buatTemplateJsonTanpaTp(mapel) : buatTemplateCsvTanpaTp(mapel)
+      const blob = new Blob([isi], { type: format === 'json' ? 'application/json' : 'text/csv;charset=utf-8' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = nama
+      a.click()
+      URL.revokeObjectURL(url)
+      setFormExport(false)
+      setTpIdExport('')
+      return
+    }
     const tp = tpList.find((t) => t.id === tpIdExport)
     if (!tp) {
       setError('Pilih Tujuan Pembelajaran terlebih dahulu.')
@@ -347,11 +365,14 @@ export default function BankSoalPanel({ kelas, mapel, ruangId, lombaId, tpKelas 
       const isJson = fileImport.name.toLowerCase().endsWith('.json') || teks.trim().startsWith('{') || teks.trim().startsWith('[')
       const hasil = isJson ? parseJsonImport(teks) : parseCsvImport(teks)
 
-      const tpDipilih = !isTka ? (tpList.find((t) => t.id === tpIdImport) || null) : null
+      const tanpaTp = !isTka && tpIdImport === VALUE_TANPA_TP
+      const tpDipilih = !isTka && !tanpaTp ? (tpList.find((t) => t.id === tpIdImport) || null) : null
       const materiDipilih = isTka ? materiIdImport.trim() : ''
       const galatMeta = isTka
         ? validasiMetadataTka(hasil.metadata, mapel, materiDipilih || null)
-        : validasiMetadata(hasil.metadata, mapel, tpDipilih)
+        : tanpaTp
+          ? validasiMetadataTanpaTp(hasil.metadata, mapel)
+          : validasiMetadata(hasil.metadata, mapel, tpDipilih)
       const semuaGalat = [...galatMeta, ...hasil.galat]
 
       if (semuaGalat.length) {
@@ -411,11 +432,14 @@ export default function BankSoalPanel({ kelas, mapel, ruangId, lombaId, tpKelas 
       const isJson = fileImportKePaket.name.toLowerCase().endsWith('.json') || teks.trim().startsWith('{') || teks.trim().startsWith('[')
       const hasil = isJson ? parseJsonImport(teks) : parseCsvImport(teks)
 
+      const paketTanpaTp = !isTka && !paketTargetImport.tpId
       const tpPaket = !isTka ? (tpList.find((t) => t.id === paketTargetImport.tpId) || null) : null
       const materiPaket = isTka ? (paketTargetImport.tipeMateri || '').trim() : ''
       const galatMeta = isTka
         ? validasiMetadataTka(hasil.metadata, mapel, materiPaket || null)
-        : validasiMetadata(hasil.metadata, mapel, tpPaket)
+        : paketTanpaTp
+          ? validasiMetadataTanpaTp(hasil.metadata, mapel)
+          : validasiMetadata(hasil.metadata, mapel, tpPaket)
       const semuaGalat = [...galatMeta, ...hasil.galat]
 
       if (semuaGalat.length) {
@@ -755,7 +779,7 @@ export default function BankSoalPanel({ kelas, mapel, ruangId, lombaId, tpKelas 
               <label className="materi-field">
                 <span>Tujuan Pembelajaran (opsional)</span>
                 <select value={tpId} onChange={(e) => setTpId(e.target.value)}>
-                  <option value="">— tanpa TP —</option>
+                  <option value="">— Tanpa TP (soal gabungan) —</option>
                   {tpList.map((t) => (
                     <option key={t.id} value={t.id}>TP {t.nomorTp}. {t.namaTp}</option>
                   ))}
@@ -780,7 +804,7 @@ export default function BankSoalPanel({ kelas, mapel, ruangId, lombaId, tpKelas 
           <p className="mb-3 text-sm text-slate-600">
             {isTka
               ? 'Template TKA berisi satu materi yang Anda pilih. Isi soal (pg / pgk / bs), lalu impor kembali.'
-              : 'Template hanya berisi satu Tujuan Pembelajaran yang Anda pilih. Isi soal di dalamnya, lalu impor kembali.'}
+              : 'Pilih satu Tujuan Pembelajaran, atau «Tanpa TP» bila soal berasal dari gabungan beberapa TP (tidak terikat satu TP). Isi soal di dalamnya, lalu impor kembali.'}
           </p>
           <div className="materi-form-grid">
             {isTka ? (
@@ -798,6 +822,7 @@ export default function BankSoalPanel({ kelas, mapel, ruangId, lombaId, tpKelas 
                 <span>Pilih TP</span>
                 <select value={tpIdExport} onChange={(e) => setTpIdExport(e.target.value)} required>
                   <option value="">— pilih TP —</option>
+                  <option value={VALUE_TANPA_TP}>Tanpa TP (soal gabungan beberapa TP)</option>
                   {tpList.map((t) => (
                     <option key={t.id} value={t.id}>TP {t.nomorTp}. {t.namaTp}</option>
                   ))}
@@ -825,7 +850,7 @@ export default function BankSoalPanel({ kelas, mapel, ruangId, lombaId, tpKelas 
           <p className="mb-3 text-sm text-slate-600">
             {isTka
               ? 'Masukkan judul paket dan materi TKA. File harus memuat mata pelajaran dan materi yang sama (satu materi saja).'
-              : 'Masukkan judul paket dan TP terlebih dahulu. File harus memuat mata pelajaran dan TP yang sama (satu TP saja). Jika berbeda, impor ditolak.'}
+              : 'Masukkan judul paket dan pilih TP — atau «Tanpa TP» untuk soal gabungan beberapa TP. Dengan TP: file harus memuat mata pelajaran dan TP yang sama (satu TP saja). Tanpa TP: file harus dari template «Tanpa TP» (tidak memuat TP). Jika tidak sesuai, impor ditolak.'}
           </p>
           <div className="materi-form-grid">
             <label className="materi-field">
@@ -853,6 +878,7 @@ export default function BankSoalPanel({ kelas, mapel, ruangId, lombaId, tpKelas 
                 <span>Tujuan Pembelajaran</span>
                 <select value={tpIdImport} onChange={(e) => setTpIdImport(e.target.value)} required>
                   <option value="">— pilih TP —</option>
+                  <option value={VALUE_TANPA_TP}>Tanpa TP (soal gabungan beberapa TP)</option>
                   {tpList.map((t) => (
                     <option key={t.id} value={t.id}>TP {t.nomorTp}. {t.namaTp}</option>
                   ))}
@@ -885,7 +911,10 @@ export default function BankSoalPanel({ kelas, mapel, ruangId, lombaId, tpKelas 
             <button type="button" className="lms-btn-ghost" onClick={() => setPaketTargetImport(null)}>Batal</button>
           </div>
           <p className="mb-3 text-sm text-slate-600">
-            File harus memuat mata pelajaran dan TP yang sama dengan paket ini. Soal akan ditambahkan ke paket yang sudah ada (bukan diganti).
+            {!isTka && !paketTargetImport.tpId
+              ? 'Paket ini tanpa TP: gunakan file dari template «Tanpa TP» (mata pelajaran harus sama dan file tidak memuat TP). '
+              : 'File harus memuat mata pelajaran dan TP yang sama dengan paket ini. '}
+            Soal akan ditambahkan ke paket yang sudah ada (bukan diganti).
           </p>
           <div className="materi-form-grid">
             <label className="materi-field materi-field--full">

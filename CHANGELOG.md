@@ -1,3 +1,15 @@
+## 2026-11-17 — Bank soal: template & import «Tanpa TP» (soal gabungan) + perbaikan import CSV
+
+- **Tujuan:** admin dan guru pengampu (Lomba, juga ruang mapel biasa) bisa membuat bank soal tanpa terikat satu TP — mis. soal gabungan beberapa TP saat latihan/lomba mepet.
+- **Unduh template:** dropdown TP kini punya pilihan **«Tanpa TP (soal gabungan beberapa TP)»**. Menghasilkan `template-soal-<mapel>-tanpa-TP.json/.csv` tanpa kolom/field TP (JSON bertanda `"tanpaTp": true`).
+- **Import ke paket baru:** pilihan yang sama di dropdown TP. Paket tersimpan tanpa `tpId` (kartu berlabel «Tanpa TP»). Validasi: mapel harus sama; file **tidak boleh memuat TP** (supaya soal ber-TP tidak tercampur diam-diam) — pesan galat menunjuk ke pilihan yang benar. Sebaliknya, file tanpa TP yang diimpor ke mode «pilih TP» ditolak dengan petunjuk memilih «Tanpa TP».
+- **Import ke paket yang sudah ada:** paket tanpa TP kini menerima file template «Tanpa TP» (sebelumnya selalu ditolak karena file wajib memuat TP).
+- **Form «Paket soal baru»:** opsi kosong diberi label «Tanpa TP (soal gabungan)» (perilaku tidak berubah).
+- **Perbaikan bug lama — import CSV gagal total:** semua template CSV (per-TP, TKA, dan baru) ditolak dengan «soal PG minimal harus punya 2 opsi» karena header dijadikan huruf kecil (`opsia`) sedangkan kode membaca `opsiA`. Kini kunci disimpan dengan nama asli **dan** huruf kecil.
+- **Parser CSV lebih tahan:** sel bertanda kutip boleh memuat koma / baris baru / `""`; pemisah `,` atau `;` terdeteksi otomatis (Excel regional Indonesia menyimpan dengan `;`); BOM UTF-8 dibuang (`pecahCsv`).
+- Tidak ada perubahan `firestore.rules` (rules paket soal tidak mewajibkan TP) maupun data model. Diverifikasi `tsc -b`, `vite build`, dan uji parse/validasi untuk JSON & CSV (TP, tanpa TP, TKA, `;`, BOM, multi-baris).
+- File: `src/lib/importSoal.ts`, `src/components/BankSoalPanel.tsx`, `CHANGELOG.md`, `ANTIREGRESI.md` (§129).
+
 ## 2026-11-17 — Lomba: tampilan detail selaras ruang kelas & kuis/bank soal TKA
 
 - **Bug tampilan:** pada tab Materi/Bank soal/Kuis, tombol mapel menjadi lingkaran besar dan «TP dari kelas» terhimpit satu kolom sempit. **Akar:** `.lomba-mapel-bar` didefinisikan dua kali di `lomba.css` — sebagai bilah warna form (`width: 0.28rem`) dan sebagai baris filter mapel; lebar 0,28rem ikut terbawa sehingga seluruh isi baris tertekan.

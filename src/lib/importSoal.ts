@@ -21,6 +21,34 @@ export interface HasilParseImport {
   galat: string[]
 }
 
+/** Nilai pilihan «Tanpa TP» pada dropdown unduh template / import (bukan id TP sungguhan). */
+export const VALUE_TANPA_TP = '__tanpa__'
+
+/** File memuat identitas TP (id / nomor / nama)? */
+export function metaMemuatTp(meta: MetadataImport): boolean {
+  return Boolean(meta.tpId || meta.tpNomor || (meta.tpNama && meta.tpNama.trim()))
+}
+
+/**
+ * Validasi import ke bank soal TANPA TP (soal gabungan beberapa TP, mis. latihan/lomba).
+ * Mapel wajib cocok; file tidak boleh membawa TP tertentu supaya tidak tercampur diam-diam.
+ */
+export function validasiMetadataTanpaTp(meta: MetadataImport, mapelDiharapkan: string): string[] {
+  const galat: string[] = []
+  if (!meta.mapel || !meta.mapel.trim()) {
+    galat.push('File import tidak memuat mata pelajaran. Import dibatalkan.')
+  } else if (meta.mapel.trim().toLowerCase() !== mapelDiharapkan.trim().toLowerCase()) {
+    galat.push(`Mata pelajaran di file («${meta.mapel}») tidak cocok dengan ruang kelas («${mapelDiharapkan}»).`)
+  }
+  if (metaMemuatTp(meta)) {
+    galat.push(
+      `File ini memuat TP (TP ${meta.tpNomor || '?'} · ${meta.tpNama || meta.tpId || 'tidak diketahui'}). ` +
+        'Untuk bank soal tanpa TP gunakan template «Tanpa TP», atau pilih TP yang sesuai pada form import.',
+    )
+  }
+  return galat
+}
+
 /** Validasi bahwa file hanya untuk satu TP dan mapel cocok. */
 export function validasiMetadata(
   meta: MetadataImport,
@@ -34,7 +62,9 @@ export function validasiMetadata(
     galat.push(`Mata pelajaran di file («${meta.mapel}») tidak cocok dengan ruang kelas («${mapelDiharapkan}»).`)
   }
   if (!meta.tpId && !meta.tpNomor && !meta.tpNama) {
-    galat.push('File import tidak memuat Tujuan Pembelajaran (TP). Import dibatalkan.')
+    galat.push(
+      'File import tidak memuat Tujuan Pembelajaran (TP). Bila ini soal gabungan beberapa TP, pilih «Tanpa TP» pada form import. Import dibatalkan.',
+    )
   }
   if (tpDipilih) {
     const cocokId = meta.tpId && meta.tpId === tpDipilih.id
@@ -261,11 +291,56 @@ export function parseJsonImport(teks: string): HasilParseImport {
   return { metadata: meta, soal, galat }
 }
 
-/** Parse CSV sederhana (kompatibel Excel). */
+/**
+ * Pecah teks CSV menjadi baris × sel (RFC 4180 secukupnya): sel bertanda kutip boleh memuat
+ * koma / titik koma / baris baru, `""` = tanda kutip. Pemisah otomatis `,` atau `;` (Excel
+ * dengan pengaturan regional Indonesia menyimpan CSV memakai `;`). BOM dibuang.
+ */
+export function pecahCsv(teks: string): string[][] {
+  const t = teks.replace(/^\uFEFF/, '')
+  const baris1 = t.split(/\r?\n/, 1)[0] ?? ''
+  const jmlKoma = (baris1.match(/,/g) ?? []).length
+  const jmlTitikKoma = (baris1.match(/;/g) ?? []).length
+  const pemisah = jmlTitikKoma > jmlKoma ? ';' : ','
+  const hasil: string[][] = []
+  let baris: string[] = []
+  let sel = ''
+  let dalamKutip = false
+  for (let i = 0; i < t.length; i++) {
+    const c = t[i]
+    if (dalamKutip) {
+      if (c === '"') {
+        if (t[i + 1] === '"') {
+          sel += '"'
+          i++
+        } else dalamKutip = false
+      } else sel += c
+    } else if (c === '"') {
+      dalamKutip = true
+    } else if (c === pemisah) {
+      baris.push(sel)
+      sel = ''
+    } else if (c === '\n' || c === '\r') {
+      if (c === '\r' && t[i + 1] === '\n') i++
+      baris.push(sel)
+      hasil.push(baris)
+      baris = []
+      sel = ''
+    } else sel += c
+  }
+  if (sel !== '' || baris.length) {
+    baris.push(sel)
+    hasil.push(baris)
+  }
+  return hasil
+}
+
+/** Parse CSV (kompatibel Excel; lihat pecahCsv untuk pemisah & tanda kutip). */
 export function parseCsvImport(teks: string): HasilParseImport {
-  const lines = teks.split(/\r?\n/).filter((l) => l.trim())
-  if (lines.length < 2) return { metadata: { mapel: '' }, soal: [], galat: ['File CSV kosong atau hanya header.'] }
-  const header = lines[0].split(',').map((h) => h.trim().replace(/^"|"$/g, '').toLowerCase())
+  const rows = pecahCsv(teks).filter((r) => r.some((c) => c.trim()))
+  if (rows.length < 2) return { metadata: { mapel: '' }, soal: [], galat: ['File CSV kosong atau hanya header.'] }
+  const headerAsli = rows[0].map((h) => h.trim())
+  const header = headerAsli.map((h) => h.toLowerCase())
   const idx = (nama: string[]) => header.findIndex((h) => nama.some((n) => h.includes(n)))
   const iMapel = idx(['mapel', 'mata pelajaran'])
   const iTpId = idx(['tpid', 'tp id'])
@@ -285,11 +360,16 @@ export function parseCsvImport(teks: string): HasilParseImport {
   const galat: string[] = []
   const tpSet = new Set<string>()
 
-  for (let r = 1; r < lines.length; r++) {
-    const cols = lines[r].split(',').map((c) => c.trim().replace(/^"|"$/g, ''))
-    if (cols.every((c) => !c)) continue
+  for (let r = 1; r < rows.length; r++) {
+    const cols = rows[r].map((c) => c.trim())
     const raw: Record<string, unknown> = {}
-    header.forEach((h, i) => { raw[h] = cols[i] || '' })
+    // Simpan di bawah nama asli (opsiA, tipeMateri, …) DAN huruf kecil: normalisasiSoalDariImport
+    // membaca kunci camelCase; hanya huruf kecil membuat semua soal PG ditolak («minimal 2 opsi»).
+    headerAsli.forEach((h, i) => {
+      const v = cols[i] || ''
+      raw[h] = v
+      raw[header[i]] = v
+    })
     if (iMapel >= 0 && cols[iMapel]) meta.mapel = cols[iMapel]
     if (iTpId >= 0 && cols[iTpId]) meta.tpId = cols[iTpId]
     if (iTpNomor >= 0 && cols[iTpNomor]) meta.tpNomor = Number(cols[iTpNomor]) || undefined
@@ -306,7 +386,76 @@ export function parseCsvImport(teks: string): HasilParseImport {
   return { metadata: meta, soal, galat }
 }
 
+
 /** Generate template JSON untuk satu TP. */
+/** Contoh soal untuk template bank soal mapel biasa (dipakai template per-TP dan «Tanpa TP»). */
+function contohSoalMapel(): Record<string, unknown>[] {
+  return [
+    {
+      tipe: 'pg',
+      teks: 'Contoh soal pilihan ganda.',
+      kompleksitas: 'L1',
+      poin: 1,
+      waktuMenit: 1,
+      opsi: ['Pilihan A', 'Pilihan B', 'Pilihan C', 'Pilihan D'],
+      kunci: 'A',
+      pembahasan: 'Penjelasan jawaban.',
+    },
+    {
+      tipe: 'pgk',
+      teks: 'Contoh soal pilihan ganda kompleks (pilih dua jawaban benar).',
+      kompleksitas: 'L2',
+      poin: 1,
+      waktuMenit: 2,
+      opsi: ['Pilihan A', 'Pilihan B', 'Pilihan C', 'Pilihan D'],
+      kunci: ['A', 'C'],
+      pembahasan: 'Penjelasan.',
+    },
+    {
+      tipe: 'isian',
+      teks: 'Contoh soal isian singkat.',
+      kompleksitas: 'L1',
+      poin: 1,
+      waktuMenit: 1,
+      kunci: ['jawaban benar', 'variasi jawaban'],
+      pembahasan: 'Penjelasan.',
+    },
+    {
+      tipe: 'jodoh',
+      teks: 'Contoh soal menjodohkan.',
+      kompleksitas: 'L2',
+      poin: 1,
+      waktuMenit: 2,
+      pasangan: [
+        { kiri: 'Kiri 1', kanan: 'Kanan 1' },
+        { kiri: 'Kiri 2', kanan: 'Kanan 2' },
+      ],
+      pembahasan: 'Penjelasan.',
+    },
+    {
+      tipe: 'bs',
+      teks: 'Contoh soal benar/salah.',
+      kompleksitas: 'L1',
+      poin: 1,
+      waktuMenit: 1,
+      pernyataan: [
+        { teks: 'Pernyataan pertama benar.', benar: true },
+        { teks: 'Pernyataan kedua salah.', benar: false },
+      ],
+      pembahasan: 'Penjelasan.',
+    },
+    {
+      tipe: 'uraian',
+      teks: 'Contoh soal uraian.',
+      kompleksitas: 'L2',
+      poin: 2,
+      waktuMenit: 3,
+      kunciJawaban: 'Pedoman jawaban singkat.',
+      pembahasan: 'Penjelasan.',
+    },
+  ]
+}
+
 export function buatTemplateJson(mapel: string, tp: TpRingkas): string {
   const contoh = {
     mapel,
@@ -314,70 +463,7 @@ export function buatTemplateJson(mapel: string, tp: TpRingkas): string {
     tpNomor: tp.nomorTp,
     tpNama: tp.namaTp,
     catatan: 'Isi array soal. Jangan ubah mapel/tpId. Satu file = satu TP. Setiap tipe memiliki field wajib yang berbeda.',
-    soal: [
-      {
-        tipe: 'pg',
-        teks: 'Contoh soal pilihan ganda.',
-        kompleksitas: 'L1',
-        poin: 1,
-        waktuMenit: 1,
-        opsi: ['Pilihan A', 'Pilihan B', 'Pilihan C', 'Pilihan D'],
-        kunci: 'A',
-        pembahasan: 'Penjelasan jawaban.',
-      },
-      {
-        tipe: 'pgk',
-        teks: 'Contoh soal pilihan ganda kompleks (pilih dua jawaban benar).',
-        kompleksitas: 'L2',
-        poin: 1,
-        waktuMenit: 2,
-        opsi: ['Pilihan A', 'Pilihan B', 'Pilihan C', 'Pilihan D'],
-        kunci: ['A', 'C'],
-        pembahasan: 'Penjelasan.',
-      },
-      {
-        tipe: 'isian',
-        teks: 'Contoh soal isian singkat.',
-        kompleksitas: 'L1',
-        poin: 1,
-        waktuMenit: 1,
-        kunci: ['jawaban benar', 'variasi jawaban'],
-        pembahasan: 'Penjelasan.',
-      },
-      {
-        tipe: 'jodoh',
-        teks: 'Contoh soal menjodohkan.',
-        kompleksitas: 'L2',
-        poin: 1,
-        waktuMenit: 2,
-        pasangan: [
-          { kiri: 'Kiri 1', kanan: 'Kanan 1' },
-          { kiri: 'Kiri 2', kanan: 'Kanan 2' },
-        ],
-        pembahasan: 'Penjelasan.',
-      },
-      {
-        tipe: 'bs',
-        teks: 'Contoh soal benar/salah.',
-        kompleksitas: 'L1',
-        poin: 1,
-        waktuMenit: 1,
-        pernyataan: [
-          { teks: 'Pernyataan pertama benar.', benar: true },
-          { teks: 'Pernyataan kedua salah.', benar: false },
-        ],
-        pembahasan: 'Penjelasan.',
-      },
-      {
-        tipe: 'uraian',
-        teks: 'Contoh soal uraian.',
-        kompleksitas: 'L2',
-        poin: 2,
-        waktuMenit: 3,
-        kunciJawaban: 'Pedoman jawaban singkat.',
-        pembahasan: 'Penjelasan.',
-      },
-    ],
+    soal: contohSoalMapel(),
   }
   return JSON.stringify(contoh, null, 2)
 }
@@ -388,6 +474,28 @@ export function buatTemplateCsv(mapel: string, tp: TpRingkas): string {
   const rows = [
     `${mapel},${tp.id},${tp.nomorTp},"${tp.namaTp}",pg,"Contoh soal pilihan ganda.",L1,1,1,"Pilihan A","Pilihan B","Pilihan C","Pilihan D",A,"Penjelasan."`,
     `${mapel},${tp.id},${tp.nomorTp},"${tp.namaTp}",isian,"Contoh soal isian.",L1,1,1,,,,,"jawaban benar","Penjelasan."`,
+  ]
+  return `${header}\n${rows.join('\n')}\n`
+}
+
+/** Template JSON bank soal TANPA TP — soal boleh berasal dari gabungan beberapa TP. */
+export function buatTemplateJsonTanpaTp(mapel: string): string {
+  const contoh = {
+    mapel,
+    tanpaTp: true,
+    catatan:
+      'Template TANPA TP: soal boleh gabungan beberapa TP. Jangan menambahkan tpId/tpNomor/tpNama dan jangan ubah mapel. Pilih «Tanpa TP» saat import. Setiap tipe memiliki field wajib yang berbeda.',
+    soal: contohSoalMapel(),
+  }
+  return JSON.stringify(contoh, null, 2)
+}
+
+/** Template CSV bank soal TANPA TP (tanpa kolom TP). */
+export function buatTemplateCsvTanpaTp(mapel: string): string {
+  const header = 'mapel,tipe,teks,kompleksitas,poin,waktuMenit,opsiA,opsiB,opsiC,opsiD,kunci,pembahasan'
+  const rows = [
+    `${mapel},pg,"Contoh soal pilihan ganda.",L1,1,1,"Pilihan A","Pilihan B","Pilihan C","Pilihan D",A,"Penjelasan."`,
+    `${mapel},isian,"Contoh soal isian.",L1,1,1,,,,,"jawaban benar","Penjelasan."`,
   ]
   return `${header}\n${rows.join('\n')}\n`
 }

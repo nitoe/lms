@@ -443,3 +443,19 @@ Regresi: bar mapel di detail lomba tampil terhimpit (tombol mapel membulat, «TP
 4. Aksen = `aksenMapel(mapelAktif).bar` lewat `--rg-a` pada pembungkus `lomba-dash`, agar `kn-*` di dalam panel Kuis ikut berwarna mapel.
 5. Cek visual halaman baru di lebar ≤ 640 px dan ≥ 1280 px sebelum deploy; jalankan `npx tsc -b` (§Lomba.8).
 
+## §129. Template & import bank soal: «Tanpa TP» dan parser CSV
+
+129.1 Bank soal mapel biasa (termasuk Lomba, kelas bank `LB`) **boleh tanpa TP**: `tpId/tpNomor/tpNama` opsional di `lms_paket_soal` (rules tidak mewajibkannya — jangan menambah syarat TP di rules/klien). Kuis dari paket tanpa TP tetap sah (`tpIds` dihitung hanya dari paket yang punya `tpId`).
+
+129.2 Pilihan «Tanpa TP» di dropdown unduh/import memakai konstanta `VALUE_TANPA_TP` (`'__tanpa__'`) dari `importSoal.ts` — **jangan** mencocokkan `tpList.find(id === ...)` untuk nilai ini (menghasilkan `null` dan membuat `validasiMetadata(..., null)` meloloskan file tanpa pengecekan TP). Mode tanpa TP **wajib** lewat `validasiMetadataTanpaTp`.
+
+129.3 Mode tanpa TP menolak file yang memuat TP; mode «pilih TP» menolak file tanpa TP. Paket yang sudah ada tanpa `tpId` divalidasi dengan `validasiMetadataTanpaTp` (bukan `validasiMetadata`). Jangan melonggarkan ke «terima semua» — tujuannya mencegah soal ber-TP tercampur ke bank gabungan tanpa disadari.
+
+129.4 Template per-TP dan «Tanpa TP» berbagi contoh soal lewat `contohSoalMapel()`; ubah contoh di satu tempat. Struktur template per-TP (`mapel, tpId, tpNomor, tpNama, catatan, soal`) tidak boleh berubah (dipakai validasi).
+
+129.5 **Parser CSV:** `normalisasiSoalDariImport` membaca kunci camelCase (`opsiA`, `tipeMateri`, `kompleksitas`, `waktuMenit`, `kunciJawaban`). `parseCsvImport` WAJIB menyimpan nilai sel di bawah nama header asli **dan** huruf kecil. Regresi lama: hanya huruf kecil → semua soal PG/PGK CSV ditolak («minimal 2 opsi») dan template CSV tidak pernah bisa diimpor.
+
+129.6 CSV dipecah dengan `pecahCsv` (bukan `split(',')`): kutip ganda, koma/baris baru di dalam sel, pemisah `,`/`;` otomatis, BOM dibuang. Jangan kembali ke `split(',')` — teks soal sering memuat koma (mis. «3,5») dan Excel regional Indonesia memakai `;`.
+
+129.7 Setelah mengubah `importSoal.ts`, uji minimal: template JSON & CSV (per-TP, Tanpa TP, TKA) → parse tanpa galat dan lolos validasi yang sesuai; CSV ber-`;` dengan koma di teks; file ber-TP ditolak di mode Tanpa TP dan sebaliknya.
+
