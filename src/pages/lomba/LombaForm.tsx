@@ -192,7 +192,7 @@ export default function LombaForm() {
         return prev
       }
       setGalat('')
-      return [...prev, { uid: s.uid, nama: s.nama, email: s.email || undefined }]
+      return [...prev, s.email ? { uid: s.uid, nama: s.nama, email: s.email } : { uid: s.uid, nama: s.nama }]
     })
   }
 
@@ -237,6 +237,7 @@ export default function LombaForm() {
       nama: namaTrim,
       deskripsi: deskripsi.trim() || undefined,
       identitas: identitas.trim() || undefined,
+      // pengampu: email opsional tanpa undefined — dinormalisasi di lib/lomba
       tingkat,
       mapelTerkait,
       mulai: fromInputDate(mulai),

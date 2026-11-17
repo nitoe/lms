@@ -235,6 +235,20 @@ function validasiPeserta(siswaIds: string[], siswaList: PesertaLomba[]) {
   }
 }
 
+
+/** Firestore menolak `undefined` di field (nested termasuk). */
+function sanitasiPeserta(list: PesertaLomba[]): { id: string; nama: string; kelas: string; nisn?: string }[] {
+  return list.map((p) => {
+    const row: { id: string; nama: string; kelas: string; nisn?: string } = {
+      id: p.id,
+      nama: p.nama,
+      kelas: p.kelas,
+    }
+    if (typeof p.nisn === 'string' && p.nisn.trim()) row.nisn = p.nisn.trim()
+    return row
+  })
+}
+
 function validasiPengampu(list: PengampuLomba[]) {
   if (!list.length) throw new Error('Minimal satu guru pengampu.')
   if (list.length > MAKS_PENGAMPU_LOMBA) {
@@ -252,18 +266,22 @@ function normalisasiPengampu(list: PengampuLomba[]): {
   guruPengampuNama: string
   guruPengampuEmail: string | null
 } {
-  const clean = list.map((p) => ({
-    uid: p.uid,
-    nama: (p.nama || '').trim() || p.uid,
-    email: p.email?.trim() || null,
-  }))
+  const clean = list.map((p) => {
+    const email = typeof p.email === 'string' ? p.email.trim() : ''
+    const row: { uid: string; nama: string; email: string | null } = {
+      uid: String(p.uid || '').trim(),
+      nama: (p.nama || '').trim() || String(p.uid || '').trim(),
+      email: email || null,
+    }
+    return row
+  })
   const first = clean[0]
   return {
     guruPengampuUids: clean.map((p) => p.uid),
     guruPengampuList: clean,
     guruPengampuUid: first.uid,
     guruPengampuNama: first.nama,
-    guruPengampuEmail: first.email,
+    guruPengampuEmail: first.email, // null, never undefined
   }
 }
 
@@ -287,7 +305,7 @@ function payloadDasar(
     selesai: input.selesai ? Timestamp.fromDate(input.selesai) : null,
     status: input.status || 'draf',
     siswaIds: input.siswaIds || [],
-    siswaList: input.siswaList || [],
+    siswaList: sanitasiPeserta(input.siswaList || []),
   }
   if (pengampu) {
     Object.assign(base, pengampu)
@@ -343,7 +361,7 @@ export async function perbaruiLomba(
     Object.assign(data, normalisasiPengampu(input.guruPengampuList))
   }
   if (input.siswaIds !== undefined) data.siswaIds = input.siswaIds
-  if (input.siswaList !== undefined) data.siswaList = input.siswaList
+  if (input.siswaList !== undefined) data.siswaList = sanitasiPeserta(input.siswaList)
 
   await updateDoc(doc(db, 'lms_lomba', id), data)
 }
