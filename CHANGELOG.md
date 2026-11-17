@@ -1,5 +1,14 @@
 ## 2026-11-17 — Modul Lomba Tahap 1: fondasi data, akses, CRUD meta
 
+## 2026-11-17 — Lomba form: layout responsif
+
+- Form 1 kolom hingga 1024px, 2 kolom (identitas | mapel) di desktop.
+- Mapel: 1→2 kolom; di kolom form sempit tetap 1 kolom agar teks tidak terpotong.
+- Guru: 1 / 2 / 3 kolom; max-height berbasis viewport; role disembunyikan di HP.
+- Input ≥16px di mobile (anti-zoom iOS); tombol aksi & tambah peserta full-width di HP.
+- File: `src/styles/lomba.css`.
+
+
 ## 2026-11-17 — Lomba form: pisah kartu mapel & guru
 
 - Mapel terkait dan Guru pengampu dipisah menjadi **dua kartu** terpisah.
