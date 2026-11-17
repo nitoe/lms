@@ -373,7 +373,7 @@ export default function BankSoalPanel({ kelas, mapel, ruangId, lombaId, tpKelas 
         : tanpaTp
           ? validasiMetadataTanpaTp(hasil.metadata, mapel)
           : validasiMetadata(hasil.metadata, mapel, tpDipilih)
-      const semuaGalat = [...galatMeta, ...hasil.galat]
+      const semuaGalat = hasil.gagalParse ? [...hasil.galat] : [...galatMeta, ...hasil.galat]
 
       if (semuaGalat.length) {
         setError(semuaGalat.join('\n'))
@@ -408,7 +408,7 @@ export default function BankSoalPanel({ kelas, mapel, ruangId, lombaId, tpKelas 
       // Simpan soal hasil import (buatPaket membuat 1 soal kosong; kita timpa)
       await simpanPaket(id, { soal: soalImpor as any, ...(materiPaket ? { tipeMateri: materiPaket } : {}) })
 
-      setInfoImport(`Berhasil mengimpor ${hasil.soal.length} soal ke paket baru.`)
+      setInfoImport(`Berhasil mengimpor ${hasil.soal.length} soal ke paket baru.${hasil.diperbaiki ? ' (Format JSON dirapikan otomatis.)' : ''}`)
       setFormImport(false)
       setJudulImport('')
       setTpIdImport('')
@@ -440,7 +440,7 @@ export default function BankSoalPanel({ kelas, mapel, ruangId, lombaId, tpKelas 
         : paketTanpaTp
           ? validasiMetadataTanpaTp(hasil.metadata, mapel)
           : validasiMetadata(hasil.metadata, mapel, tpPaket)
-      const semuaGalat = [...galatMeta, ...hasil.galat]
+      const semuaGalat = hasil.gagalParse ? [...hasil.galat] : [...galatMeta, ...hasil.galat]
 
       if (semuaGalat.length) {
         setError(semuaGalat.join('\n'))
@@ -459,7 +459,7 @@ export default function BankSoalPanel({ kelas, mapel, ruangId, lombaId, tpKelas 
       const soalBaru = [...(paketTargetImport.soal || []), ...tambahan]
       await simpanPaket(paketTargetImport.id, { soal: soalBaru as any })
 
-      setInfoImport(`Berhasil menambahkan ${hasil.soal.length} soal ke paket «${paketTargetImport.judul}».`)
+      setInfoImport(`Berhasil menambahkan ${hasil.soal.length} soal ke paket «${paketTargetImport.judul}».${hasil.diperbaiki ? ' (Format JSON dirapikan otomatis.)' : ''}`)
       setPaketTargetImport(null)
       setFileImportKePaket(null)
       await muat()
@@ -912,7 +912,7 @@ export default function BankSoalPanel({ kelas, mapel, ruangId, lombaId, tpKelas 
           </div>
           <p className="mb-3 text-sm text-slate-600">
             {!isTka && !paketTargetImport.tpId
-              ? 'Paket ini tanpa TP: gunakan file dari template «Tanpa TP» (mata pelajaran harus sama dan file tidak memuat TP). '
+              ? 'Paket ini tanpa TP: gunakan file dari template «Tanpa TP» (file tidak boleh memuat TP; mata pelajaran boleh dikosongkan, bila diisi harus sama). '
               : 'File harus memuat mata pelajaran dan TP yang sama dengan paket ini. '}
             Soal akan ditambahkan ke paket yang sudah ada (bukan diganti).
           </p>

@@ -1,3 +1,16 @@
+## 2026-11-17 — Bank soal (Lomba & mapel biasa): import «Tanpa TP» gagal «File import tidak memuat mata pelajaran» + «File JSON tidak valid»
+
+- **Gejala:** menambah soal ke paket bank soal **tanpa TP** lewat tombol **Import** (di kartu paket) ditolak dengan dua baris galat sekaligus: «File import tidak memuat mata pelajaran. Import dibatalkan.» dan «File JSON tidak valid.».
+- **Akar:** galat pertama adalah **galat susulan palsu**. Saat `JSON.parse` gagal, `parseJsonImport` mengembalikan `mapel: ''`, lalu panel tetap menjalankan validasi metadata sehingga muncul «tidak memuat mata pelajaran» di atas galat yang sebenarnya. Penyebab nyata: file **bukan JSON yang valid** menurut parser ketat — pola yang lazim dari salinan AI/editor teks: BOM atau karakter tak terlihat, pagar ```` ```json ````, teks pembuka/penutup di luar kurung, koma sisa sebelum `}`/`]`, komentar, atau baris baru mentah di dalam string. Pesan lama juga tidak menunjukkan letak kesalahan.
+- **Perbaikan:**
+  - `parseJsonImport` kini mencoba **merapikan otomatis** (`rapikanJson`) bila parse pertama gagal: buang BOM/spasi tak terlihat, pagar kode, teks di luar kurung terluar, komentar `//` dan `/* */`, koma sisa, serta escape baris baru/tab di dalam string. Isi teks soal tidak diubah. Bila berhasil, notifikasi sukses menambahkan «(Format JSON dirapikan otomatis.)».
+  - Bila tetap tidak valid, galat **hanya satu** dan informatif: perkiraan **baris/kolom + cuplikan**, petunjuk tanda kutip miring (“ ”) dan tanda kutip ganda di dalam teks soal. Galat susulan «tidak memuat mata pelajaran» tidak muncul lagi (`HasilParseImport.gagalParse`; berlaku untuk import ke paket baru **dan** ke paket yang sudah ada, JSON maupun CSV).
+  - Isi JSON yang bukan objek/daftar (mis. `null`, angka) ditolak dengan pesan jelas, bukan error teknis; butir soal non-objek dilaporkan per baris.
+  - **Mode «Tanpa TP»:** `mapel` di file kini **boleh kosong** (mengikuti ruang/paket tujuan), sehingga daftar soal polos `[ ... ]` bisa diimpor. Bila `mapel` diisi, tetap harus cocok; file yang memuat TP tetap ditolak. Mode «pilih TP» dan TKA tidak berubah (mapel tetap wajib).
+  - CSV: kolom mapel yang tidak ada tidak lagi menghentikan parse; mode Tanpa TP menerimanya, mode lain tetap ditolak oleh validator dengan pesan «tidak memuat mata pelajaran».
+- Tidak ada perubahan `firestore.rules`, model data, maupun fitur lain. Diverifikasi `tsc -b` lolos dan uji parse/validasi (BOM, pagar kode, koma sisa, komentar, baris baru mentah, teks pembuka, daftar polos tanpa mapel, JSON rusak, file ber-TP ditolak di mode Tanpa TP, CSV tanpa kolom mapel).
+- File: `src/lib/importSoal.ts`, `src/components/BankSoalPanel.tsx`, `CHANGELOG.md`, `ANTIREGRESI.md` (§130).
+
 ## 2026-11-17 — Lomba: perbaiki «Missing or insufficient permissions» saat import soal / buat paket / tambah materi
 
 - **Gejala:** di detail Lomba → tab Bank soal, **Import soal** (dan «+ Paket soal baru») gagal dengan `Missing or insufficient permissions`. Tambah materi di tab Materi berpotensi sama.

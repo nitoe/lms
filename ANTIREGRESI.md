@@ -467,7 +467,7 @@ Regresi: `firestore.rules` di repo `nitoe/lms` tidak memuat rules Lomba (`lms_lo
 
 129.2 Pilihan «Tanpa TP» di dropdown unduh/import memakai konstanta `VALUE_TANPA_TP` (`'__tanpa__'`) dari `importSoal.ts` — **jangan** mencocokkan `tpList.find(id === ...)` untuk nilai ini (menghasilkan `null` dan membuat `validasiMetadata(..., null)` meloloskan file tanpa pengecekan TP). Mode tanpa TP **wajib** lewat `validasiMetadataTanpaTp`.
 
-129.3 Mode tanpa TP menolak file yang memuat TP; mode «pilih TP» menolak file tanpa TP. Paket yang sudah ada tanpa `tpId` divalidasi dengan `validasiMetadataTanpaTp` (bukan `validasiMetadata`). Jangan melonggarkan ke «terima semua» — tujuannya mencegah soal ber-TP tercampur ke bank gabungan tanpa disadari.
+129.3 Mode tanpa TP menolak file yang memuat TP; mode «pilih TP» menolak file tanpa TP. Paket yang sudah ada tanpa `tpId` divalidasi dengan `validasiMetadataTanpaTp` (bukan `validasiMetadata`). Jangan melonggarkan ke «terima semua» — tujuannya mencegah soal ber-TP tercampur ke bank gabungan tanpa disadari. (Yang boleh kosong hanya `mapel`, lihat §130.3; larangan memuat TP tetap berlaku.)
 
 129.4 Template per-TP dan «Tanpa TP» berbagi contoh soal lewat `contohSoalMapel()`; ubah contoh di satu tempat. Struktur template per-TP (`mapel, tpId, tpNomor, tpNama, catatan, soal`) tidak boleh berubah (dipakai validasi).
 
@@ -477,3 +477,15 @@ Regresi: `firestore.rules` di repo `nitoe/lms` tidak memuat rules Lomba (`lms_lo
 
 129.7 Setelah mengubah `importSoal.ts`, uji minimal: template JSON & CSV (per-TP, Tanpa TP, TKA) → parse tanpa galat dan lolos validasi yang sesuai; CSV ber-`;` dengan koma di teks; file ber-TP ditolak di mode Tanpa TP dan sebaliknya.
 
+
+## §130. Import bank soal: galat susulan palsu, JSON toleran, `mapel` kosong di mode Tanpa TP
+
+130.1 **Jangan menjalankan validasi metadata bila isi file gagal dibaca.** `parseJsonImport`/`parseCsvImport` menandai `gagalParse: true` untuk JSON rusak, isi bukan objek/daftar, dan CSV kosong. Kedua pemanggil di `BankSoalPanel.tsx` (`prosesImport` dan `prosesImportKePaket`) WAJIB memakai `hasil.gagalParse ? [...hasil.galat] : [...galatMeta, ...hasil.galat]`. Regresi lama: JSON rusak → `mapel: ''` → muncul «File import tidak memuat mata pelajaran» di atas «File JSON tidak valid», sehingga pengguna mencari kesalahan di tempat yang salah. Setiap pemanggil baru `parse*Import` harus meniru pola ini.
+
+130.2 **JSON diparse toleran, tidak ketat.** `parseJsonImport` mencoba `JSON.parse` apa adanya, lalu `rapikanJson` (BOM/zero-width, pagar ```` ```json ````, teks di luar kurung terluar, komentar, koma sisa, baris baru/tab mentah dalam string). Jangan menghapus langkah rapikan: file hasil salinan AI hampir selalu tidak 100% valid. `rapikanJson` bersifat sadar-string (tidak menyentuh `//`, `,` atau `]` di dalam teks soal, mis. URL) — uji dengan teks soal yang memuat `http://` dan `, ]`. Kutip miring (“ ”) **sengaja tidak** diperbaiki otomatis (tidak bisa dibedakan dari isi teks); pesan galat menunjuk ke sana.
+
+130.3 **`mapel` boleh kosong hanya di mode «Tanpa TP»** (`validasiMetadataTanpaTp`): file tanpa TP sering berupa daftar soal polos `[...]`; mapel diwarisi dari ruang/paket tujuan. Bila diisi, harus cocok. Mode «pilih TP» (`validasiMetadata`) dan TKA (`validasiMetadataTka`) tetap mewajibkan mapel — jangan ikut dilonggarkan. File yang memuat TP tetap ditolak di mode Tanpa TP (§129.3).
+
+130.4 **Pesan galat parse harus menunjuk lokasi** (baris/kolom + cuplikan, dari `position N` pada pesan `JSON.parse`). Jangan kembali ke pesan datar «File JSON tidak valid.» tanpa petunjuk.
+
+130.5 Uji setelah mengubah `importSoal.ts` (tambahan atas §129.7): JSON ber-BOM, berpagar kode, koma sisa, komentar, baris baru mentah, teks pembuka; daftar polos tanpa `mapel` di mode Tanpa TP (lolos) dan di mode pilih TP (ditolak «tidak memuat mata pelajaran»); JSON rusak → **tepat satu** galat; `null`/angka → pesan «harus berupa objek… atau daftar».

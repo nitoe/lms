@@ -19,6 +19,14 @@ export interface HasilParseImport {
   metadata: MetadataImport
   soal: Partial<Soal>[]
   galat: string[]
+  /**
+   * true bila isi file tidak bisa dibaca sama sekali (JSON rusak / CSV kosong). Pemanggil WAJIB
+   * hanya menampilkan `galat` dan melewati validasi metadata — kalau tidak, muncul galat susulan
+   * menyesatkan «File import tidak memuat mata pelajaran» (ANTIREGRESI §130).
+   */
+  gagalParse?: boolean
+  /** true bila JSON hanya terbaca setelah dirapikan otomatis (BOM, ```json, koma sisa, komentar, dst.). */
+  diperbaiki?: boolean
 }
 
 /** Nilai pilihan «Tanpa TP» pada dropdown unduh template / import (bukan id TP sungguhan). */
@@ -31,13 +39,13 @@ export function metaMemuatTp(meta: MetadataImport): boolean {
 
 /**
  * Validasi import ke bank soal TANPA TP (soal gabungan beberapa TP, mis. latihan/lomba).
- * Mapel wajib cocok; file tidak boleh membawa TP tertentu supaya tidak tercampur diam-diam.
+ * Mapel di file BOLEH kosong (otomatis mengikuti ruang/paket tujuan) — file tanpa TP sering berupa
+ * daftar soal polos. Bila mapel diisi, harus cocok. File tidak boleh membawa TP tertentu supaya
+ * soal ber-TP tidak tercampur diam-diam (ANTIREGRESI §129.3).
  */
 export function validasiMetadataTanpaTp(meta: MetadataImport, mapelDiharapkan: string): string[] {
   const galat: string[] = []
-  if (!meta.mapel || !meta.mapel.trim()) {
-    galat.push('File import tidak memuat mata pelajaran. Import dibatalkan.')
-  } else if (meta.mapel.trim().toLowerCase() !== mapelDiharapkan.trim().toLowerCase()) {
+  if (meta.mapel && meta.mapel.trim() && meta.mapel.trim().toLowerCase() !== mapelDiharapkan.trim().toLowerCase()) {
     galat.push(`Mata pelajaran di file («${meta.mapel}») tidak cocok dengan ruang kelas («${mapelDiharapkan}»).`)
   }
   if (metaMemuatTp(meta)) {
@@ -249,14 +257,125 @@ export function normalisasiSoalDariImport(raw: Record<string, unknown>, index: n
   return { soal }
 }
 
+/**
+ * Rapikan JSON «hampir benar» yang lazim dari salinan AI / editor teks: BOM & spasi tak terlihat,
+ * pagar kode ```json, teks pembuka/penutup di luar kurung terluar, komentar // dan /* *\/,
+ * koma sisa sebelum } atau ], serta baris baru / tab mentah di dalam string.
+ * Hanya dipakai bila JSON.parse pada teks asli gagal; isi string tidak diubah selain karakter kontrol.
+ */
+export function rapikanJson(teks: string): string {
+  let t = teks.replace(/[\uFEFF\u200B-\u200D\u2060]/g, '').replace(/\u00A0/g, ' ')
+  // pagar kode markdown
+  t = t.replace(/^\s*```[a-zA-Z]*\s*\n?/, '').replace(/\n?\s*```\s*$/, '')
+  // buang teks di luar kurung terluar
+  const mulai = t.search(/[{[]/)
+  const akhir = Math.max(t.lastIndexOf('}'), t.lastIndexOf(']'))
+  if (mulai > 0 || (akhir >= 0 && akhir < t.length - 1)) {
+    if (mulai >= 0 && akhir > mulai) t = t.slice(mulai, akhir + 1)
+  }
+
+  // Lintasan 1: komentar + karakter kontrol dalam string
+  let o1 = ''
+  let dalam = false
+  for (let i = 0; i < t.length; i++) {
+    const c = t[i]
+    if (dalam) {
+      if (c === '\\') {
+        o1 += c + (t[i + 1] ?? '')
+        i++
+      } else if (c === '"') {
+        dalam = false
+        o1 += c
+      } else if (c === '\n') o1 += '\\n'
+      else if (c === '\r') {
+        if (t[i + 1] === '\n') i++
+        o1 += '\\n'
+      } else if (c === '\t') o1 += '\\t'
+      else o1 += c
+    } else if (c === '"') {
+      dalam = true
+      o1 += c
+    } else if (c === '/' && t[i + 1] === '/') {
+      while (i < t.length && t[i] !== '\n') i++
+      o1 += '\n'
+    } else if (c === '/' && t[i + 1] === '*') {
+      i += 2
+      while (i < t.length && !(t[i] === '*' && t[i + 1] === '/')) i++
+      i++
+    } else o1 += c
+  }
+
+  // Lintasan 2: koma sisa sebelum } atau ]
+  let o2 = ''
+  dalam = false
+  for (let i = 0; i < o1.length; i++) {
+    const c = o1[i]
+    if (dalam) {
+      o2 += c
+      if (c === '\\') {
+        o2 += o1[i + 1] ?? ''
+        i++
+      } else if (c === '"') dalam = false
+    } else if (c === '"') {
+      dalam = true
+      o2 += c
+    } else if (c === ',') {
+      let j = i + 1
+      while (j < o1.length && /\s/.test(o1[j])) j++
+      if (o1[j] === '}' || o1[j] === ']') continue
+      o2 += c
+    } else o2 += c
+  }
+  return o2
+}
+
+/** Pesan galat JSON yang menunjuk lokasi (baris/kolom) + petunjuk penyebab yang lazim. */
+function pesanGalatJson(teks: string, e: unknown): string {
+  const msg = e instanceof Error ? e.message : ''
+  let pos = -1
+  const mPos = msg.match(/position (\d+)/i)
+  if (mPos) pos = Number(mPos[1])
+  let lokasi = ''
+  if (pos >= 0 && pos <= teks.length) {
+    const sebelum = teks.slice(0, pos)
+    const baris = sebelum.split(/\r?\n/).length
+    const kolom = pos - (sebelum.lastIndexOf('\n') + 1) + 1
+    const cuplikan = teks.slice(Math.max(0, pos - 25), pos + 25).replace(/\s+/g, ' ').trim()
+    lokasi = ` Perkiraan lokasi: baris ${baris}, kolom ${kolom} — dekat «${cuplikan}».`
+  } else {
+    const mBaris = msg.match(/line (\d+) column (\d+)/i)
+    if (mBaris) lokasi = ` Perkiraan lokasi: baris ${mBaris[1]}, kolom ${mBaris[2]}.`
+  }
+  const petunjuk: string[] = []
+  if (/[\u201C\u201D\u201E\u2018\u2019]/.test(teks)) {
+    petunjuk.push('File memuat tanda kutip miring (“ ” ‘ ’) — pakai tanda kutip lurus " pada nama field dan teks.')
+  }
+  petunjuk.push('Periksa tanda kutip ganda di dalam teks soal (tulis \\" ), koma antar-soal, dan kurung yang belum tertutup.')
+  return `File JSON tidak valid.${lokasi} ${petunjuk.join(' ')}`
+}
+
 /** Parse JSON template. */
 export function parseJsonImport(teks: string): HasilParseImport {
   const galat: string[] = []
   let data: any
+  let diperbaiki = false
   try {
     data = JSON.parse(teks)
-  } catch {
-    return { metadata: { mapel: '' }, soal: [], galat: ['File JSON tidak valid.'] }
+  } catch (eAsli) {
+    try {
+      data = JSON.parse(rapikanJson(teks))
+      diperbaiki = true
+    } catch {
+      return { metadata: { mapel: '' }, soal: [], galat: [pesanGalatJson(teks, eAsli)], gagalParse: true }
+    }
+  }
+  if (data === null || typeof data !== 'object') {
+    return {
+      metadata: { mapel: '' },
+      soal: [],
+      galat: ['Isi file JSON harus berupa objek { "soal": [...] } atau daftar soal [ ... ].'],
+      gagalParse: true,
+    }
   }
   const meta: MetadataImport = {
     mapel: String(data.mapel || data.mataPelajaran || '').trim(),
@@ -272,6 +391,10 @@ export function parseJsonImport(teks: string): HasilParseImport {
   const teksTerlihat = new Set<string>()
 
   daftar.forEach((item: any, i: number) => {
+    if (!item || typeof item !== 'object') {
+      galat.push(`Baris ${i + 1}: butir soal harus berupa objek.`)
+      return
+    }
     const r = normalisasiSoalDariImport(item, i)
     if (r.galat) {
       galat.push(r.galat)
@@ -288,7 +411,7 @@ export function parseJsonImport(teks: string): HasilParseImport {
     }
   })
   if (soal.length === 0 && galat.length === 0) galat.push('Tidak ada soal yang berhasil diparse.')
-  return { metadata: meta, soal, galat }
+  return { metadata: meta, soal, galat, ...(diperbaiki ? { diperbaiki } : {}) }
 }
 
 /**
@@ -338,7 +461,9 @@ export function pecahCsv(teks: string): string[][] {
 /** Parse CSV (kompatibel Excel; lihat pecahCsv untuk pemisah & tanda kutip). */
 export function parseCsvImport(teks: string): HasilParseImport {
   const rows = pecahCsv(teks).filter((r) => r.some((c) => c.trim()))
-  if (rows.length < 2) return { metadata: { mapel: '' }, soal: [], galat: ['File CSV kosong atau hanya header.'] }
+  if (rows.length < 2) {
+    return { metadata: { mapel: '' }, soal: [], galat: ['File CSV kosong atau hanya header.'], gagalParse: true }
+  }
   const headerAsli = rows[0].map((h) => h.trim())
   const header = headerAsli.map((h) => h.toLowerCase())
   const idx = (nama: string[]) => header.findIndex((h) => nama.some((n) => h.includes(n)))
@@ -347,7 +472,8 @@ export function parseCsvImport(teks: string): HasilParseImport {
   const iTpNomor = idx(['tpnomor', 'tp nomor', 'nomor tp'])
   const iTpNama = idx(['tpnama', 'tp nama', 'tujuan'])
   const iMateri = idx(['tipemateri', 'tipe materi', 'materi'])
-  if (iMapel < 0) return { metadata: { mapel: '' }, soal: [], galat: ['Kolom mata pelajaran tidak ditemukan.'] }
+  // Kolom mapel boleh tidak ada: mode «Tanpa TP» memakai mapel ruang; mode lain ditolak validator metadata
+  // dengan pesan «File import tidak memuat mata pelajaran».
 
   const meta: MetadataImport = {
     mapel: '',
