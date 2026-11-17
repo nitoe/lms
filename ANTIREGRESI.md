@@ -548,6 +548,15 @@ Regresi: `firestore.rules` di repo `nitoe/lms` tidak memuat rules Lomba (`lms_lo
 4. Hook mencatat `console.warn` saat query gagal (mis. `permission-denied`); jangan kembali ke `.catch(() => {})` kosong. Jika menu tidak muncul padahal siswa terdaftar: buka konsol browser siswa → bila `permission-denied`, deploy `firestore.rules` terbaru (SDM01Penilaian → `npm run deploy:rules`); bila tidak ada galat, periksa `siswaIds` di dokumen `lms_lomba` memuat ID siswa (ID dokumen `siswa`, sama dengan claim `siswaId`).
 5. Uji: login siswa peserta → Beranda menampilkan kartu Lomba dan nav menampilkan «Lomba»; siswa non-peserta tidak melihat keduanya.
 
+
+### §Lomba.21 List `lms_lomba` untuk siswa: jangan pakai predikat tipe pada `resource.data`
+
+1. Gejala: konsol siswa `daftarLombaSiswa gagal … Missing or insufficient permissions` → menu/kartu Lomba tidak pernah muncul.
+2. Akar: cabang siswa pada `allow list` memuat `resource.data.siswaIds is list`. Untuk query list, Firestore harus membuktikan aturan benar untuk SEMUA dokumen yang cocok dengan filter; predikat tipe (`is list`, `is string`) pada field tidak dapat dibuktikan dari filter `array-contains`, sehingga query ditolak walau tiap dokumen sebenarnya lolos. Pola yang terbukti jalan (kuis siswa): `request.auth.token.kelas in resource.data.kelasList` tanpa predikat tipe.
+3. Aturan benar: `isSiswaLms() && request.auth.token.siswaId in resource.data.siswaIds`. Bila `siswaIds` bukan list, operator `in` gagal → ditolak, jadi keamanan tidak berkurang.
+4. Berlaku umum: pada cabang `allow list` hanya pakai kondisi yang selaras dengan filter query (kesetaraan / `in` terhadap filter), bukan predikat tipe atau fungsi bantu yang membaca field lain. `allow get` boleh lebih ketat.
+5. Wajib deploy `firestore.rules` (SDM01Penilaian → `npm run deploy:rules`). Uji: login siswa peserta → konsol tanpa galat → kartu Lomba muncul di Beranda dan nav.
+
 ## §129. Template & import bank soal: «Tanpa TP» dan parser CSV
 
 129.1 Bank soal mapel biasa (termasuk Lomba, kelas bank `LB`) **boleh tanpa TP**: `tpId/tpNomor/tpNama` opsional di `lms_paket_soal` (rules tidak mewajibkannya — jangan menambah syarat TP di rules/klien). Kuis dari paket tanpa TP tetap sah (`tpIds` dihitung hanya dari paket yang punya `tpId`).

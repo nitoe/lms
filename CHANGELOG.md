@@ -1,3 +1,11 @@
+## 2026-11-17 — Lomba: perbaiki permission-denied daftar lomba siswa (menu Lomba siswa tidak muncul)
+
+- **Gejala:** Konsol siswa peserta: `daftarLombaSiswa gagal — Missing or insufficient permissions`; tidak ada menu/kartu Lomba.
+- **Akar:** cabang siswa pada `allow list` `lms_lomba` memuat predikat tipe `resource.data.siswaIds is list` yang tidak dapat dibuktikan dari query `array-contains` (§Lomba.21).
+- **Perbaikan:** predikat dihapus dari cabang list siswa; `get` tetap ketat.
+- **Wajib:** deploy `firestore.rules` (salin utuh ke SDM01Penilaian → `npm run deploy:rules`).
+- File: `firestore.rules`, `CHANGELOG.md`, `ANTIREGRESI.md`.
+
 ## 2026-11-17 — Lomba: kartu menu Lomba di dashboard (Beranda) siswa
 
 - **Gejala:** Siswa yang sudah didaftarkan ikut lomba tidak melihat menu Lomba di dashboard akun siswa.
