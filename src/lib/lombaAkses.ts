@@ -15,6 +15,10 @@ import { peranDari } from './peran'
 /** Email admin LMS yang disebutkan di spesifikasi (selaras role admin). */
 export const EMAIL_ADMIN_LMS = 'arif.nitoe@gmail.com'
 
+/** Kelas kanonik bank konten lomba (materi / paket / kuis), pola mirip TKA «6». */
+export const KELAS_LOMBA_BANK = 'LB'
+
+
 export function adalahAdminLms(user: User | null, profil: AppUser | null): boolean {
   if (!user || !profil) return false
   if (profil.aktif === false) return false

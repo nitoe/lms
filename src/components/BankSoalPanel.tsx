@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
-import { buatPaket, daftarPaket, hapusPaket, simpanPaket } from '../lib/soal'
+import { buatPaket, daftarPaket, daftarPaketLomba, hapusPaket, simpanPaket } from '../lib/soal'
+import { KELAS_LOMBA_BANK } from '../lib/lombaAkses'
 import { getTpMapelKelas } from '../lib/tpData'
 import { adalahMapelTka, materiTkaUntuk, TIPE_SOAL_TKA, KELAS_TKA_BANK, LABEL_MAPEL_TKA } from '../lib/tkaAkses'
 import type { TpRingkas } from '../types/materi'
@@ -27,7 +28,7 @@ import { kelasAksenMapel, LABEL_TIPE_PENDEK, materiPaket, paketMemuatMateri } fr
 import '../styles/soal.css'
 import '../styles/tka-bank.css'
 
-type Props = { kelas: string; mapel: string; ruangId: string }
+type Props = { kelas: string; mapel: string; ruangId: string; lombaId?: string; tpKelas?: string }
 
 type GrupMode = 'tidak' | 'tp' | 'tipe' | 'kompleksitas'
 
@@ -60,7 +61,7 @@ function hitungKompleksitas(p: PaketSoal): Partial<Record<KompleksitasSoal, numb
   return out
 }
 
-export default function BankSoalPanel({ kelas, mapel, ruangId }: Props) {
+export default function BankSoalPanel({ kelas, mapel, ruangId, lombaId, tpKelas }: Props) {
   const { profil } = useAuth()
   const navigate = useNavigate()
   const isTka = adalahMapelTka(mapel)
@@ -104,13 +105,13 @@ export default function BankSoalPanel({ kelas, mapel, ruangId }: Props) {
     try {
       if (isTka) {
         // Bank bersama TKA: daftarPaket sudah menggabungkan kelas «6» + sisa migrasi 6A/6B (ANTIREGRESI §121).
-        const merged = await daftarPaket(kelas, mapel)
+        const merged = lombaId ? await daftarPaketLomba(lombaId, mapel) : await daftarPaket(kelas, mapel)
         setList(merged)
         setTpList([])
       } else {
         const [p, tp] = await Promise.all([
-          daftarPaket(kelas, mapel),
-          getTpMapelKelas(mapel, kelas).catch(() => []),
+          lombaId ? daftarPaketLomba(lombaId, mapel) : daftarPaket(kelas, mapel),
+          getTpMapelKelas(mapel, tpKelas || kelas).catch(() => []),
         ])
         setList(p)
         setTpList(tp)
@@ -119,7 +120,7 @@ export default function BankSoalPanel({ kelas, mapel, ruangId }: Props) {
       setError(e instanceof Error ? e.message : 'Gagal memuat bank soal.')
       setList([])
     }
-  }, [kelas, mapel, isTka])
+  }, [kelas, mapel, isTka, lombaId, tpKelas])
 
   useEffect(() => {
     void muat()
@@ -265,8 +266,9 @@ export default function BankSoalPanel({ kelas, mapel, ruangId }: Props) {
       }
       const tp = !isTka ? tpList.find((t) => t.id === tpId) : undefined
       const id = await buatPaket({
-        kelas: isTka ? KELAS_TKA_BANK : kelas,
+        kelas: lombaId ? KELAS_LOMBA_BANK : isTka ? KELAS_TKA_BANK : kelas,
         mapel,
+        ...(lombaId ? { lombaId } : {}),
         judul,
         tpId: tp?.id,
         tpNomor: tp?.nomorTp,
@@ -372,8 +374,9 @@ export default function BankSoalPanel({ kelas, mapel, ruangId }: Props) {
         ? hasil.soal.map((s) => ({ ...s, tipeMateri: s.tipeMateri || materiPaket }))
         : hasil.soal
       const id = await buatPaket({
-        kelas: isTka ? KELAS_TKA_BANK : kelas,
+        kelas: lombaId ? KELAS_LOMBA_BANK : isTka ? KELAS_TKA_BANK : kelas,
         mapel,
+        ...(lombaId ? { lombaId } : {}),
         judul: judulImport,
         tpId: isTka ? undefined : tpDipilih?.id,
         tpNomor: isTka ? undefined : tpDipilih?.nomorTp,

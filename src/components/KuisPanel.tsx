@@ -4,6 +4,7 @@ import { bolehGenerateSoalAi } from '../lib/generateSoalAi'
 import {
   buatKuisDariPaket,
   daftarKuis,
+  daftarKuisLomba,
   daftarKuisDibuatOleh,
   daftarPaketSiap,
   aturBerbagiKuis,
@@ -19,7 +20,7 @@ import {
 } from '../lib/susunKuis'
 import { teksPolos } from '../lib/html'
 import { daftarJawabanKuis } from '../lib/jawabanKuis'
-import { ringkasanPaket } from '../lib/soal'
+import { daftarPaketLomba, ringkasanPaket } from '../lib/soal'
 import type { FilterSusunKuis, KuisLms, ModeSusunKuis, SoalKuis, TahapTryOutTka } from '../types/kuis'
 import {
   DAFTAR_TAHAP_TRYOUT_TKA,
@@ -36,6 +37,7 @@ import {
   normalisasiKompleksitas,
 } from '../types/soal'
 import { adalahMapelTka, LABEL_MAPEL_TKA, materiTkaUntuk, TIPE_SOAL_TKA } from '../lib/tkaAkses'
+import { KELAS_LOMBA_BANK } from '../lib/lombaAkses'
 import { kelasAksenMapel, LABEL_TIPE_PENDEK, materiPaket, paketMemuatMateri } from '../lib/aksenTka'
 import KonfirmasiHapusDialog from './KonfirmasiHapusDialog'
 import BerbagiKelasDialog from './BerbagiKelasDialog'
@@ -53,6 +55,8 @@ import '../styles/tka-bank.css'
 type Props = {
   kelas: string
   mapel: string
+  lombaId?: string
+  tpKelas?: string
 }
 
 type Langkah = 'daftar' | 'wizard' | 'detail'
@@ -103,7 +107,7 @@ function kelompokkanPerTipe(soal: SoalKuis[], urutan: readonly TipeSoal[]) {
 
 const PRESET_JUMLAH = [10, 15, 20, 25, 30]
 
-export default function KuisPanel({ kelas, mapel }: Props) {
+export default function KuisPanel({ kelas, mapel, lombaId, tpKelas }: Props) {
   const { profil, user } = useAuth()
   const bolehAi = bolehGenerateSoalAi(user?.uid)
   /** Filter bentuk soal TKA hanya PG / PGK / BS — jangan regresi mapel biasa (ANTIREGRESI §88). */
@@ -141,7 +145,7 @@ export default function KuisPanel({ kelas, mapel }: Props) {
     try {
       const kelasU = String(kelas).toUpperCase()
       const [k, milikSaya, p] = await Promise.all([
-        daftarKuis(kelas, mapel).catch((e) => {
+        (lombaId ? daftarKuisLomba(lombaId, mapel) : daftarKuis(kelas, mapel)).catch((e) => {
           console.warn('daftarKuis', e)
           return [] as KuisLms[]
         }),
@@ -149,7 +153,7 @@ export default function KuisPanel({ kelas, mapel }: Props) {
           console.warn('daftarKuisDibuatOleh', e)
           return [] as KuisLms[]
         }),
-        daftarPaketSiap(kelas, mapel).catch(() => []),
+        (lombaId ? daftarPaketLomba(lombaId, mapel).then(ps => ps.filter(p => p.status === "siap")) : daftarPaketSiap(kelas, mapel)).catch(() => []),
       ])
       // Gabung: query kelas×mapel + kuis saya di kelas yang sama (mapel sama ATAU
       // mapel beda sedikit — tetap ditampilkan agar data lama tidak hilang dari UI).
@@ -197,7 +201,7 @@ export default function KuisPanel({ kelas, mapel }: Props) {
       setError(e instanceof Error ? e.message : 'Gagal memuat kuis.')
       setList([])
     }
-  }, [kelas, mapel])
+  }, [kelas, mapel, lombaId])
 
   useEffect(() => {
     void muat()
@@ -394,8 +398,9 @@ export default function KuisPanel({ kelas, mapel }: Props) {
       const tpNamaList = [...tpMap.values()]
 
       const id = await buatKuisDariPaket({
-        kelas,
+        kelas: lombaId ? KELAS_LOMBA_BANK : kelas,
         mapel,
+        ...(lombaId ? { lombaId } : {}),
         judul,
         deskripsi,
         namaGuru: profil?.nama,

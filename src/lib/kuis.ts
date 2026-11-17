@@ -132,6 +132,27 @@ export async function ambilKuis(id: string): Promise<KuisLms | null> {
   } as KuisLms
 }
 
+
+export async function daftarKuisLomba(lombaId: string, mapel: string): Promise<KuisLms[]> {
+  if (!lombaId) return []
+  const snap = await getDocs(
+    query(koleksi(), where('lombaId', '==', lombaId), where('mapel', '==', mapel)),
+  )
+  return snap.docs.map((d) => {
+    const data = d.data()
+    return {
+      id: d.id,
+      ...data,
+      kelas: String(data.kelas || '').toUpperCase(),
+      sumberPaketIds: Array.isArray(data.sumberPaketIds) ? data.sumberPaketIds : [],
+      soal: Array.isArray(data.soal) ? data.soal : [],
+      modeSusun: (data.modeSusun as ModeSusunKuis) || 'manual',
+      jumlahSoal: typeof data.jumlahSoal === 'number' ? data.jumlahSoal : (data.soal?.length ?? 0),
+      totalPoin: typeof data.totalPoin === 'number' ? data.totalPoin : 0,
+    } as KuisLms
+  })
+}
+
 export type InputBuatKuis = {
   kelas: string
   mapel: string
@@ -152,6 +173,8 @@ export type InputBuatKuis = {
   tpNamaList?: string[]
   /** TKA saja: tahap Try Out I–V (untuk rekap nilai TKA). */
   tahapTryOutTka?: TahapTryOutTka
+  /** Scope modul Lomba. */
+  lombaId?: string
 }
 
 /**
@@ -209,6 +232,7 @@ export async function buatKuisDariPaket(input: InputBuatKuis): Promise<string> {
     kelas: kelasU,
     kelasList: normalisasiKelasList(kelasU),
     mapel: input.mapel.trim(),
+    ...(input.lombaId ? { lombaId: input.lombaId } : {}),
     judul,
     deskripsi: input.deskripsi?.trim() || undefined,
     sumberPaketIds: input.sumberPaketIds,

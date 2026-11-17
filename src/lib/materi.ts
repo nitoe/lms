@@ -76,6 +76,18 @@ export async function daftarMateri(kelas: string, mapel: string): Promise<Materi
   return list
 }
 
+
+/** Materi milik satu lomba × mapel (kelas bank LB). */
+export async function daftarMateriLomba(lombaId: string, mapel: string): Promise<MateriLms[]> {
+  if (!lombaId) return []
+  const snap = await getDocs(
+    query(koleksi(), where('lombaId', '==', lombaId), where('mapel', '==', mapel)),
+  )
+  const list = snap.docs.map((d) => ({ id: d.id, ...d.data() }) as MateriLms)
+  list.sort((a, b) => (a.urutan ?? 0) - (b.urutan ?? 0))
+  return list
+}
+
 export async function ambilMateri(id: string): Promise<MateriLms | null> {
   const snap = await getDoc(doc(db, 'lms_materi', id))
   if (!snap.exists()) return null
@@ -141,6 +153,8 @@ export type MateriBaruInput = {
   /** Untuk unggah file */
   file?: File
   namaGuru?: string
+  /** Scope modul Lomba — disimpan di dokumen untuk query & rules. */
+  lombaId?: string
 }
 
 export async function tambahMateri(input: MateriBaruInput): Promise<string> {

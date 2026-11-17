@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useAuth } from '../context/AuthContext'
-import { aturBerbagiMateri, daftarMateri, hapusMateri, tambahMateri } from '../lib/materi'
+import { aturBerbagiMateri, daftarMateri, daftarMateriLomba, hapusMateri, tambahMateri } from '../lib/materi'
+import { KELAS_LOMBA_BANK } from '../lib/lombaAkses'
 import BerbagiKelasDialog from './BerbagiKelasDialog'
 import { labelKelasDibagikan } from '../lib/kelasLms'
 import { getTpMapelKelas } from '../lib/tpData'
@@ -13,6 +14,10 @@ import { jumlahHalaman } from '../lib/materiUi'
 type Props = {
   kelas: string
   mapel: string
+  /** Jika diisi, konten di-scope ke lomba (kelas bank LB). */
+  lombaId?: string
+  /** Kelas untuk memuat daftar TP (boleh beda dari kelas simpan LB). */
+  tpKelas?: string
 }
 
 type ModeForm = 'tutup' | 'file' | 'youtube' | 'tautan' | 'halaman'
@@ -112,7 +117,7 @@ function toneJenis(jenis: string): string {
   }
 }
 
-export default function MateriPanel({ kelas, mapel }: Props) {
+export default function MateriPanel({ kelas, mapel, lombaId, tpKelas }: Props) {
   const { profil } = useAuth()
   const [list, setList] = useState<MateriLms[] | null>(null)
   const [tpList, setTpList] = useState<TpRingkas[]>([])
@@ -137,8 +142,8 @@ export default function MateriPanel({ kelas, mapel }: Props) {
     setError('')
     try {
       const [m, tp] = await Promise.all([
-        daftarMateri(kelas, mapel),
-        getTpMapelKelas(mapel, kelas),
+        lombaId ? daftarMateriLomba(lombaId, mapel) : daftarMateri(kelas, mapel),
+        getTpMapelKelas(mapel, tpKelas || kelas),
       ])
       setList(m)
       setTpList(tp)
@@ -146,7 +151,7 @@ export default function MateriPanel({ kelas, mapel }: Props) {
       setError(e instanceof Error ? e.message : 'Gagal memuat materi.')
       setList([])
     }
-  }, [kelas, mapel])
+  }, [kelas, mapel, lombaId, tpKelas])
 
   useEffect(() => {
     void muat()
@@ -225,8 +230,9 @@ export default function MateriPanel({ kelas, mapel }: Props) {
         )
       }
       await tambahMateri({
-        kelas,
+        kelas: lombaId ? KELAS_LOMBA_BANK : kelas,
         mapel,
+        ...(lombaId ? { lombaId } : {}),
         judul,
         deskripsi: deskripsi || undefined,
         bab: bab || undefined,

@@ -1,5 +1,15 @@
 ## 2026-11-17 — Modul Lomba Tahap 1: fondasi data, akses, CRUD meta
 
+## 2026-11-17 — Lomba Tahap 2: materi, bank soal, kuis
+
+- Tab **Ringkasan · Materi · Bank soal · Kuis** di detail lomba.
+- Konten di-scope `lombaId` + kelas bank **LB** + mapel dari `mapelTerkait`.
+- Admin: filter **TP dari kelas** (dropdown); pengampu memakai kelas peserta default.
+- Panel existing (`MateriPanel`, `BankSoalPanel`, `KuisPanel`) menerima `lombaId` / `tpKelas` opsional — ruang mapel biasa tidak berubah.
+- Rules: tulis konten LB bila `lombaKontenBoleh(lombaId)` (admin atau guru pengampu).
+- File: `LombaDetail.tsx`, panel×3, `materi.ts`/`soal.ts`/`kuis.ts`, `lombaAkses.ts`, `lomba.css`, `firestore.rules`.
+
+
 ## 2026-11-17 — Lomba form: layout responsif
 
 - Form 1 kolom hingga 1024px, 2 kolom (identitas | mapel) di desktop.

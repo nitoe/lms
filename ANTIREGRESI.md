@@ -422,3 +422,6 @@ Regresi berulang: halaman modul baru (Lomba, dan kelak fitur lain) memakai `max-
 3. Halaman daftar wajib punya **hero** (gradient + judul + lead) dan **kartu grid** dengan meta/badge — pola referensi: `tka-dash-*` / `lomba-*`. Jangan hanya judul + daftar border generik.
 4. CSS modul baru taruh di `src/styles/{modul}.css` dan di-import di halaman; jangan mengandalkan utility Tailwind sempit untuk layout halaman.
 
+### §Lomba.7 Konten kelas bank LB + lombaId
+Materi/paket/kuis lomba disimpan dengan `kelas == "LB"` dan field **`lombaId`**. Query wajib `where lombaId` + `mapel`. Jangan campur dengan ruang kelas biasa. Rules: `lombaKontenBoleh(lombaId)`.
+
