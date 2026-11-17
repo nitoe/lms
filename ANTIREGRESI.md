@@ -558,6 +558,21 @@ Regresi: `firestore.rules` di repo `nitoe/lms` tidak memuat rules Lomba (`lms_lo
 5. Wajib deploy `firestore.rules` (SDM01Penilaian → `npm run deploy:rules`). Uji: login siswa peserta → konsol tanpa galat → kartu Lomba muncul di Beranda dan nav.
 
 
+
+### §Lomba.23 Kuis Lomba untuk siswa: rules + daftar aktif + mesin TKA
+
+1. **Rules `lms_kuis` baca siswa Lomba** wajib ada:
+   ```
+   isSiswaLms() && aktif == true && 'lombaId' in resource.data
+   && exists(.../lms_lomba/$(lombaId))
+   && request.auth.token.siswaId in get(...).data.siswaIds
+   ```
+   Query klien: `where('lombaId','==', id), where('aktif','==', true)` — **tanpa** filter mapel (satu query untuk semua mapel + Gabungan). Jangan mengandalkan `kelas == token.kelas` (bank LB ≠ rombel siswa).
+2. Setelah ubah rules: salin **file utuh** ke SDM01Penilaian → `npm run deploy:rules`. Hosting baru ≠ rules baru.
+3. UI siswa: `SiswaLombaDetail` menampilkan kartu kuis aktif + **Mulai Kerjakan**. Pengerjaan **wajib** memakai pola TKA (`tka.css`, progress lokal, ragu, tinjau, timer, `nilaiKuisLms`). Jangan membuat halaman generik baru (§Lomba.6).
+4. Progress lokal prefix terpisah (`lomba_progress_v1_`) agar tidak bentrok dengan TKA/kuis biasa.
+5. Uji: peserta login → detail lomba → kartu kuis tampil → Mulai → kirim → skor muncul; non-peserta ditolak rules; kuis non-aktif tidak tampil.
+
 ### §Lomba.22 Rute siswa baru wajib didaftarkan di App.tsx (jangan jatuh ke `path="*"` → login)
 
 1. Gejala: tombol «Lihat detail» pada kartu lomba siswa melempar siswa ke halaman login. Akar: rute `/siswa/lomba/:lombaId` belum ada; `path="*"` mengarah ke `/` yang lalu mengarahkan ke login.

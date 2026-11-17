@@ -154,6 +154,21 @@ export async function daftarKuisLomba(lombaId: string, mapel: string): Promise<K
   })
 }
 
+/** Semua kuis aktif milik satu lomba (semua mapel + Gabungan). Untuk siswa peserta. */
+export async function daftarKuisLombaAktif(lombaId: string): Promise<KuisLms[]> {
+  if (!lombaId) return []
+  const snap = await getDocs(
+    query(koleksi(), where('lombaId', '==', lombaId), where('aktif', '==', true)),
+  )
+  const list = snap.docs.map((d) => mapDokKuis(d.id, d.data() as Record<string, unknown>))
+  list.sort((a, b) => {
+    const ta = (a.updatedAt as { seconds?: number })?.seconds ?? 0
+    const tb = (b.updatedAt as { seconds?: number })?.seconds ?? 0
+    return tb - ta
+  })
+  return list
+}
+
 export type InputBuatKuis = {
   kelas: string
   mapel: string

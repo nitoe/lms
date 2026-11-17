@@ -1,3 +1,14 @@
+## 2026-11-17 — Lomba siswa: daftar kuis aktif + Mulai Kerjakan (mesin TKA)
+
+- **Gejala:** Siswa peserta melihat detail lomba generik (hanya meta + «Lihat detail»); tidak ada tombol mulai kuis meski lomba sedang berlangsung dan kuis sudah aktif.
+- **Akar:** (1) `SiswaLombaDetail` masih placeholder; (2) rules `lms_kuis` tidak punya cabang baca siswa untuk dokumen ber-`lombaId` (kelas bank `LB`) — hanya `kelas == token.kelas` / bank TKA `6`.
+- **Perbaikan:**
+  - Cabang rules siswa-peserta: `aktif == true` + `lombaId` + `siswaId in lomba.siswaIds` (get + list `where lombaId + aktif`).
+  - `daftarKuisLombaAktif(lombaId)` di `kuis.ts`.
+  - `SiswaLombaDetail` menampilkan kartu kuis aktif (jadwal buka/tutup, draf lokal, riwayat) + **Mulai Kerjakan / Lanjutkan**; pengerjaan memakai mesin TKA (progress lokal, ragu-ragu, tinjau, timer, zoom, `nilaiKuisLms`). Bukan halaman generik baru (§Lomba.6).
+- **Wajib:** deploy `firestore.rules` (salin utuh ke SDM01Penilaian → `npm run deploy:rules`).
+- File: `firestore.rules`, `src/lib/kuis.ts`, `src/pages/siswa/SiswaLombaDetail.tsx`, `CHANGELOG.md`, `ANTIREGRESI.md` (§Lomba.23).
+
 ## 2026-11-17 — Lomba siswa: halaman detail lomba (perbaiki «Lihat detail» melempar ke login)
 
 - **Gejala:** Tombol «Lihat detail» di kartu lomba siswa membuka halaman login.
