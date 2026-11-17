@@ -1,9 +1,8 @@
-import { useEffect, useState } from 'react'
 import { NavLink, Navigate, Outlet, useNavigate } from 'react-router-dom'
 import { useSiswa } from '../../context/SiswaContext'
-import { daftarLombaSiswa } from '../../lib/lomba'
 import { bolehTkaSiswa } from '../../lib/tkaAkses'
 import SiswaIcon, { type SiswaIconName } from './SiswaIcon'
+import { useLombaSiswa } from './useLombaSiswa'
 
 const NAV: { to: string; end: boolean; label: string; icon: SiswaIconName }[] = [
   { to: '/siswa', end: true, label: 'Beranda', icon: 'home' },
@@ -26,25 +25,8 @@ const NAV_LOMBA = { to: '/siswa/lomba', end: false, label: 'Lomba', icon: 'lomba
 export default function SiswaLayout() {
   const { sesi, keluar } = useSiswa()
   const navigate = useNavigate()
-  const [punyaLomba, setPunyaLomba] = useState(false)
-
-  useEffect(() => {
-    if (!sesi?.id) {
-      setPunyaLomba(false)
-      return
-    }
-    let batal = false
-    void daftarLombaSiswa(sesi.id)
-      .then((list) => {
-        if (!batal) setPunyaLomba(list.length > 0)
-      })
-      .catch(() => {
-        if (!batal) setPunyaLomba(false)
-      })
-    return () => {
-      batal = true
-    }
-  }, [sesi?.id])
+  const { list: daftarLomba } = useLombaSiswa()
+  const punyaLomba = daftarLomba.length > 0
 
   // Jangan memanggil navigate() saat render (lihat ANTIREGRESI §12).
   if (!sesi) return <Navigate to="/siswa/masuk" replace />

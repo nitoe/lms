@@ -539,6 +539,15 @@ Regresi: `firestore.rules` di repo `nitoe/lms` tidak memuat rules Lomba (`lms_lo
 2. Akun tetap sebaiknya ber-`role: "admin"` di `users/{uid}` agar fitur non-Lomba (mis. daftar pengampu/siswa) konsisten dengan UI.
 3. Jika menambah koleksi Lomba baru, pakai `lombaAdmin()` / `lombaKontenBoleh()`, bukan `isAdmin()`.
 
+
+### §Lomba.20 Menu Lomba siswa: kartu di Beranda + nav, satu sumber data, galat tidak ditelan diam
+
+1. Dashboard siswa (`SiswaBeranda.tsx`) punya daftar kartu SENDIRI (`MENU`) terpisah dari nav (`SiswaLayout.tsx`). Menu baru siswa wajib ditambahkan di KEDUANYA; sebelumnya Lomba hanya ada di nav sehingga «tidak ada menu Lomba» di dashboard.
+2. Keterdaftaran dibaca lewat satu hook `src/pages/siswa/useLombaSiswa.ts` (`daftarLombaSiswa(sesi.id)`), dipakai nav dan Beranda. Jangan menduplikasi query di komponen.
+3. Kartu/nav Lomba tampil hanya bila siswa terdaftar di ≥1 lomba non-arsip. Kartu disisipkan SEBELUM kartu «Segera» (Pencapaian).
+4. Hook mencatat `console.warn` saat query gagal (mis. `permission-denied`); jangan kembali ke `.catch(() => {})` kosong. Jika menu tidak muncul padahal siswa terdaftar: buka konsol browser siswa → bila `permission-denied`, deploy `firestore.rules` terbaru (SDM01Penilaian → `npm run deploy:rules`); bila tidak ada galat, periksa `siswaIds` di dokumen `lms_lomba` memuat ID siswa (ID dokumen `siswa`, sama dengan claim `siswaId`).
+5. Uji: login siswa peserta → Beranda menampilkan kartu Lomba dan nav menampilkan «Lomba»; siswa non-peserta tidak melihat keduanya.
+
 ## §129. Template & import bank soal: «Tanpa TP» dan parser CSV
 
 129.1 Bank soal mapel biasa (termasuk Lomba, kelas bank `LB`) **boleh tanpa TP**: `tpId/tpNomor/tpNama` opsional di `lms_paket_soal` (rules tidak mewajibkannya — jangan menambah syarat TP di rules/klien). Kuis dari paket tanpa TP tetap sah (`tpIds` dihitung hanya dari paket yang punya `tpId`).

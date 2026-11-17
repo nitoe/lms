@@ -1,3 +1,10 @@
+## 2026-11-17 — Lomba: kartu menu Lomba di dashboard (Beranda) siswa
+
+- **Gejala:** Siswa yang sudah didaftarkan ikut lomba tidak melihat menu Lomba di dashboard akun siswa.
+- **Akar:** Beranda siswa memakai daftar kartu sendiri yang tidak memuat Lomba (menu hanya ada di nav), dan pengecekan keterdaftaran di nav menelan galat tanpa jejak.
+- **Perbaikan:** hook bersama `useLombaSiswa` (nav + Beranda); kartu «Lomba» tampil di Beranda bagi peserta; galat query dicatat di konsol (§Lomba.20).
+- File: `src/pages/siswa/useLombaSiswa.ts` (baru), `src/pages/siswa/SiswaBeranda.tsx`, `src/pages/siswa/SiswaLayout.tsx`, `CHANGELOG.md`, `ANTIREGRESI.md`.
+
 ## 2026-11-17 — Lomba: perbaiki «Missing or insufficient permissions» saat menyimpan kuis + draf lokal wizard
 
 - **Gejala:** Kuis Lomba tidak dapat disimpan («Missing or insufficient permissions.») berulang kali, walau login `arif.nitoe@gmail.com`; kemajuan susunan kuis hilang saat halaman di-reload.

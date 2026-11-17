@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom'
 import { useSiswa } from '../../context/SiswaContext'
 import { bolehTkaSiswa } from '../../lib/tkaAkses'
 import SiswaIcon, { type SiswaIconName } from './SiswaIcon'
+import { useLombaSiswa } from './useLombaSiswa'
 
 type MenuItem = {
   to: string
@@ -66,10 +67,29 @@ const MENU_TKA: MenuItem = {
   segera: false,
 }
 
+/** Kartu Lomba: hanya untuk siswa yang terdaftar di ≥1 lomba (ANTIREGRESI §Lomba.20). */
+const MENU_LOMBA: MenuItem = {
+  to: '/siswa/lomba',
+  label: 'Lomba',
+  deskripsi: 'Materi & latihan lombamu',
+  icon: 'lomba',
+  tone: 'bg-orange-50 text-orange-700',
+  segera: false,
+}
+
 export default function SiswaBeranda() {
   const { sesi } = useSiswa()
+  const { list: daftarLomba } = useLombaSiswa()
   const namaPanggil = sesi?.nama?.split(' ')[0] || 'Siswa'
-  const menu = bolehTkaSiswa(sesi?.kelas) ? [...MENU, MENU_TKA] : MENU
+  let menu = bolehTkaSiswa(sesi?.kelas) ? [...MENU, MENU_TKA] : [...MENU]
+  if (daftarLomba.length > 0) {
+    // «Pencapaian» (Segera) tetap paling akhir; Lomba disisipkan sebelumnya.
+    const idxSegera = menu.findIndex((m) => m.segera)
+    menu =
+      idxSegera === -1
+        ? [...menu, MENU_LOMBA]
+        : [...menu.slice(0, idxSegera), MENU_LOMBA, ...menu.slice(idxSegera)]
+  }
 
   return (
     <div className="space-y-6">
