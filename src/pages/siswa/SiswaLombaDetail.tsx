@@ -531,7 +531,6 @@ function DialogToken({
 }
 
 function HasilLomba({ hasil, onKembali }: { hasil: Hasil; onKembali: () => void }) {
-  const n = skor100(hasil.skor, hasil.totalPoin)
   return (
     <div className="lomba-dash space-y-4 p-4 sm:p-6">
       <section className="tka-hasil">
