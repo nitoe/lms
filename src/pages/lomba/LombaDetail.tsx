@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState, type CSSProperties, type KeyboardEvent, type ReactNode } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { getLomba } from '../../lib/lomba'
 import {
@@ -55,10 +55,16 @@ export default function LombaDetail() {
   const { lombaId } = useParams<{ lombaId: string }>()
   const { user, profil } = useAuth()
   const admin = adalahAdminLms(user, profil)
+  const [searchParams] = useSearchParams()
+  const tabUrl = searchParams.get('tab')
+  const mapelUrl = searchParams.get('mapel') ?? ''
   const [lomba, setLomba] = useState<Lomba | null>(null)
   const [loading, setLoading] = useState(true)
   const [galat, setGalat] = useState('')
-  const [tab, setTab] = useState<Tab>('ringkas')
+  /** `?tab=` & `?mapel=` dipakai tombol «kembali» dari editor soal agar mendarat di Bank Soal mapel yang sama. */
+  const [tab, setTab] = useState<Tab>(
+    tabUrl === 'materi' || tabUrl === 'soal' || tabUrl === 'kuis' || tabUrl === 'ringkas' ? tabUrl : 'ringkas',
+  )
   const [mapelAktif, setMapelAktif] = useState('')
   /** Kelas untuk memuat TP (admin boleh ganti). Default: kelas peserta pertama atau 6A. */
   const [tpKelas, setTpKelas] = useState('6A')
@@ -72,7 +78,10 @@ export default function LombaDetail() {
       setLomba(l)
       if (!l) setGalat('Lomba tidak ditemukan.')
       else {
-        if (l.mapelTerkait.length) setMapelAktif((m) => m || l.mapelTerkait[0])
+        if (l.mapelTerkait.length) {
+          const dariUrl = l.mapelTerkait.includes(mapelUrl) ? mapelUrl : ''
+          setMapelAktif((m) => m || dariUrl || l.mapelTerkait[0])
+        }
         if (l.siswaList.length) {
           const k = l.siswaList[0].kelas
           if (k) setTpKelas(k)
@@ -84,7 +93,7 @@ export default function LombaDetail() {
     } finally {
       setLoading(false)
     }
-  }, [lombaId])
+  }, [lombaId, mapelUrl])
 
   useEffect(() => {
     void muat()

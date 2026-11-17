@@ -1,3 +1,15 @@
+## 2026-11-17 — Lomba: tombol kembali dari editor soal menuju dashboard Lomba (bukan Ruang Kelas)
+
+- **Gejala:** di Lomba → tab Bank Soal → buka paket soal, tombol **←** (kembali) membawa ke halaman «Kelas LB · Matematika» lalu «← Semua ruang kelas» yang kosong («Belum ada penugasan», termasuk di akun admin), bukan ke dashboard Lomba.
+- **Akar:** `SoalEditor` selalu kembali ke `/kelas/<ruangId>?tab=soal`. Untuk paket Lomba, `ruangId` berbentuk `LB--<Mapel>` (kelas bank «LB» hanya konvensi penyimpanan, bukan ruang kelas), sehingga mendarat di `KelasDetail` untuk «kelas LB». Halaman «Ruang Kelas» sendiri kosong untuk admin karena daftarnya hanya diisi dari penugasan/wali kelas profil guru — itu perilaku normal, bukan galat.
+- **Perbaikan:**
+  - `BankSoalPanel` membawa `?lomba=<lombaId>` saat membuka editor (tombol **Buka**, **+ Paket soal baru**, dan **Impor & buka editor**).
+  - `SoalEditor` menentukan tujuan kembali: bila ada `lombaId` (dari query, atau field `lombaId` pada paket) → `/lomba/<lombaId>?tab=soal&mapel=<mapel>`; bila kelas `LB` tanpa lombaId → `/lomba`; selain itu perilaku lama (`/kelas/<ruangId>?tab=soal`).
+  - `LombaDetail` membaca `?tab=` dan `?mapel=` sehingga pengguna mendarat tepat di **Bank Soal mapel yang sama** (mapel yang tidak termasuk lomba diabaikan).
+  - `KelasDetail`: tautan lama/bookmark `/kelas/LB--…` dialihkan ke `/lomba` (kelas bank «LB» bukan ruang kelas).
+- Ruang kelas biasa dan ruang TKA tidak berubah. Tidak ada perubahan rules maupun data. Diverifikasi `tsc -b` lolos.
+- File: `src/pages/SoalEditor.tsx`, `src/components/BankSoalPanel.tsx`, `src/pages/lomba/LombaDetail.tsx`, `src/pages/KelasDetail.tsx`, `CHANGELOG.md`, `ANTIREGRESI.md` (§Lomba.12).
+
 ## 2026-11-17 — Bank soal (Lomba & mapel biasa): import «Tanpa TP» gagal «File import tidak memuat mata pelajaran» + «File JSON tidak valid»
 
 - **Gejala:** menambah soal ke paket bank soal **tanpa TP** lewat tombol **Import** (di kartu paket) ditolak dengan dua baris galat sekaligus: «File import tidak memuat mata pelajaran. Import dibatalkan.» dan «File JSON tidak valid.».

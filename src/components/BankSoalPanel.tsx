@@ -104,6 +104,9 @@ export default function BankSoalPanel({ kelas, mapel, ruangId, lombaId, tpKelas 
   const [filterStatus, setFilterStatus] = useState<'' | 'draf' | 'siap'>('')
   const [grupMode, setGrupMode] = useState<GrupMode>('tidak')
 
+  /** Paket Lomba: bawa lombaId ke editor agar tombol kembali menuju dashboard Lomba (ANTIREGRESI §Lomba.12). */
+  const qLomba = lombaId ? `?lomba=${encodeURIComponent(lombaId)}` : ''
+
   const muat = useCallback(async () => {
     setError('')
     try {
@@ -280,7 +283,7 @@ export default function BankSoalPanel({ kelas, mapel, ruangId, lombaId, tpKelas 
         tipeMateri: isTka ? materiId.trim() : undefined,
         namaGuru: profil?.nama,
       })
-      navigate(`/kelas/${encodeURIComponent(ruangId)}/soal/${id}`)
+      navigate(`/kelas/${encodeURIComponent(ruangId)}/soal/${id}${qLomba}`)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Gagal membuat paket soal.')
       setBusy(false)
@@ -413,7 +416,7 @@ export default function BankSoalPanel({ kelas, mapel, ruangId, lombaId, tpKelas 
       setJudulImport('')
       setTpIdImport('')
       setFileImport(null)
-      navigate(`/kelas/${encodeURIComponent(ruangId)}/soal/${id}`)
+      navigate(`/kelas/${encodeURIComponent(ruangId)}/soal/${id}${qLomba}`)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Gagal memproses import.')
     } finally {
@@ -475,7 +478,7 @@ export default function BankSoalPanel({ kelas, mapel, ruangId, lombaId, tpKelas 
     const jk = hitungKompleksitas(p)
     const totalK = URUTAN_KOMPLEKSITAS.reduce((n, k) => n + (jk[k] ?? 0), 0)
     const tipeAda = URUTAN_TIPE.filter((t) => (jt[t] ?? 0) > 0)
-    const urlEditor = `/kelas/${encodeURIComponent(ruangId)}/soal/${p.id}`
+    const urlEditor = `/kelas/${encodeURIComponent(ruangId)}/soal/${p.id}${qLomba}`
     const materi = (p.tipeMateri ?? '').trim()
     const labelTp = p.tpNama ? `TP ${p.tpNomor ? `${p.tpNomor} · ` : ''}${p.tpNama}` : ''
     const labelAtas = materi || labelTp || (isTka ? 'Materi belum diisi' : 'Tanpa TP')

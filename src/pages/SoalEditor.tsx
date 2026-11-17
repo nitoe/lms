@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useParams, useSearchParams } from 'react-router-dom'
 import SoalEditorKartu from '../components/soal/SoalEditorKartu'
 import PratinjauSoal from '../components/soal/PratinjauSoal'
 import { useAuth } from '../context/AuthContext'
@@ -17,6 +17,7 @@ import {
 } from '../lib/soal'
 import { daftarSoalButuhStimulus } from '../lib/analisisSoal'
 import { parseRuangId } from '../lib/kelasLms'
+import { KELAS_LOMBA_BANK } from '../lib/lombaAkses'
 import { getTpMapelKelas } from '../lib/tpData'
 import type { TpRingkas } from '../types/materi'
 import type { PaketSoal, Soal, TipeSoal } from '../types/soal'
@@ -46,9 +47,20 @@ export default function SoalEditor() {
   const { ruangId = '', paketId = '' } = useParams()
   const { user } = useAuth()
   const ruang = useMemo(() => parseRuangId(decodeURIComponent(ruangId)), [ruangId])
-  const kembaliKe = `/kelas/${ruangId}?tab=soal`
+  const [searchParams] = useSearchParams()
 
   const [paket, setPaket] = useState<PaketSoal | null>(null)
+  /**
+   * Tujuan tombol kembali. Paket Lomba (kelas bank «LB») BUKAN milik ruang kelas: kembali ke dashboard
+   * Lomba (tab Bank Soal + mapel yang sama), bukan ke /kelas/LB--… (ANTIREGRESI §Lomba.12).
+   * Sumber lombaId: query `?lomba=` (langsung tersedia) lalu field paket (setelah dimuat).
+   */
+  const lombaIdAsal = searchParams.get('lomba') || (paket as (PaketSoal & { lombaId?: string }) | null)?.lombaId || ''
+  const kembaliKe = lombaIdAsal
+    ? `/lomba/${encodeURIComponent(lombaIdAsal)}?tab=soal&mapel=${encodeURIComponent(paket?.mapel ?? ruang?.mapel ?? '')}`
+    : ruang?.kelas === KELAS_LOMBA_BANK
+      ? '/lomba'
+      : `/kelas/${ruangId}?tab=soal`
   const [galatMuat, setGalatMuat] = useState('')
   const [aktifId, setAktifId] = useState<string>('')
   const [status, setStatus] = useState<StatusSimpan>('tersimpan')

@@ -1,9 +1,10 @@
 import { useMemo, useState, type CSSProperties, type KeyboardEvent, type ReactNode } from 'react'
-import { Link, useParams, useSearchParams } from 'react-router-dom'
+import { Link, Navigate, useParams, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { daftarRuangKelas, parseRuangId } from '../lib/kelasLms'
 import { kunciRuang, useRingkasanRuang } from '../lib/ringkasanRuang'
 import { adalahMapelTka, materiTkaUntuk } from '../lib/tkaAkses'
+import { KELAS_LOMBA_BANK } from '../lib/lombaAkses'
 import { aksenMapel, inisialMapel } from '../lib/uiAksen'
 import MateriPanel from '../components/MateriPanel'
 import KuisPanel from '../components/KuisPanel'
@@ -66,6 +67,9 @@ export default function KelasDetail() {
   )
   const sebagaiAdmin = profil?.role === 'admin' || profil?.peranLms === 'admin'
   const { ringkas, aktif } = useRingkasanRuang(ruangSatu, sebagaiAdmin)
+
+  // Kelas bank «LB» milik modul Lomba, bukan ruang kelas: tautan lama/bookmark dialihkan ke menu Lomba.
+  if (parsed?.kelas === KELAS_LOMBA_BANK) return <Navigate to="/lomba" replace />
 
   if (!parsed) {
     return (

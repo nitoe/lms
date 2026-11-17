@@ -461,6 +461,16 @@ Regresi: `firestore.rules` di repo `nitoe/lms` tidak memuat rules Lomba (`lms_lo
 2. Pastikan keluaran tidak kehilangan blok milik repo lain: bandingkan dengan `diff` terhadap versi Penilaian — hanya baris yang memang diubah yang boleh berbeda.
 3. Setelah mengubah rules di repo mana pun, salin ke repo satunya agar tidak berselisih lagi.
 
+### §Lomba.12 Kelas bank «LB» bukan ruang kelas: navigasi balik harus ke dashboard Lomba
+
+1. Paket/materi/kuis Lomba disimpan dengan `kelas = 'LB'` (`KELAS_LOMBA_BANK`) hanya agar rules & query seragam. «LB» **bukan** ruang kelas: tidak ada di penugasan guru, tidak tampil di `/kelas`. Jangan pernah mengarahkan pengguna Lomba ke `/kelas/LB--…`; hasilnya halaman «Kelas LB» dan daftar «Ruang Kelas» kosong (juga untuk admin).
+2. `BankSoalPanel` dengan prop `lombaId` WAJIB menambahkan `?lomba=<lombaId>` pada setiap tautan/navigasi ke `/kelas/:ruangId/soal/:paketId` (`qLomba`). Tautan editor baru dari konteks Lomba harus meniru ini.
+3. `SoalEditor`: tujuan kembali = `/lomba/<id>?tab=soal&mapel=<mapel>` bila ada lombaId (query `?lomba=` dahulu — tersedia sebelum paket selesai dimuat — lalu `paket.lombaId`); `/lomba` bila kelas `LB` tanpa lombaId; selain itu `/kelas/<ruangId>?tab=soal`. Jangan mengembalikan `kembaliKe` menjadi konstanta `/kelas/...`.
+4. `LombaDetail` membaca `?tab=` (ringkas/materi/kuis/soal) dan `?mapel=` (harus ada di `mapelTerkait`). Jangan menghapusnya — dipakai tombol kembali editor.
+5. `KelasDetail` mengalihkan kelas `LB` ke `/lomba` sebagai jaring pengaman untuk bookmark/tautan lama.
+6. «Ruang Kelas» kosong di akun admin itu normal (daftar hanya dari `penugasan`/`waliKelas` profil), jangan dianggap bug dan jangan «diisi» dengan ruang LB.
+7. Uji: Lomba → Bank Soal (mapel B) → Buka paket → ← mendarat di tab Bank Soal mapel B pada lomba yang sama; ruang kelas biasa & TKA tetap kembali ke tab soal ruangnya.
+
 ## §129. Template & import bank soal: «Tanpa TP» dan parser CSV
 
 129.1 Bank soal mapel biasa (termasuk Lomba, kelas bank `LB`) **boleh tanpa TP**: `tpId/tpNomor/tpNama` opsional di `lms_paket_soal` (rules tidak mewajibkannya — jangan menambah syarat TP di rules/klien). Kuis dari paket tanpa TP tetap sah (`tpIds` dihitung hanya dari paket yang punya `tpId`).
