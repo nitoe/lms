@@ -1,5 +1,13 @@
 ## 2026-11-17 — Modul Lomba Tahap 1: fondasi data, akses, CRUD meta
 
+## 2026-11-17 — Lomba form: pisah kartu mapel & guru
+
+- Mapel terkait dan Guru pengampu dipisah menjadi **dua kartu** terpisah.
+- Layout: Identitas | Mapel (sejajar); **Guru pengampu full-width** di bawah keduanya; Peserta full-width.
+- Daftar guru di mode lebar: 2 kolom agar tidak terlalu tinggi.
+- File: `src/pages/lomba/LombaForm.tsx`, `src/styles/lomba.css`.
+
+
 ## 2026-11-17 — Lomba form: mapel grid + pemilih guru
 
 - **Mapel terkait:** chip generik diganti grid kartu (inisial + bilah warna `aksenMapel`, centang, hitungan dipilih).

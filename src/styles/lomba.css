@@ -893,3 +893,26 @@
 .lomba-guru-terpilih strong {
   color: #9a3412;
 }
+
+/* Guru full-width di bawah identitas + mapel */
+.lomba-guru-list--lebar {
+  max-height: 18rem;
+}
+@media (min-width: 900px) {
+  .lomba-guru-list--lebar {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    max-height: 14rem;
+  }
+  .lomba-guru-list--lebar li {
+    border-top: none;
+    border-right: 1px solid #f1f5f9;
+  }
+  .lomba-guru-list--lebar li:nth-child(2n) {
+    border-right: none;
+  }
+  /* baris genap/ganjil: border antar baris via shadow pada row */
+  .lomba-guru-list--lebar .lomba-guru-row {
+    border-bottom: 1px solid #f1f5f9;
+  }
+}

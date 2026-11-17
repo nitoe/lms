@@ -409,8 +409,10 @@ export default function LombaForm() {
               })}
             </div>
           )}
+        </section>
 
-          <h3 className="mt-5">Guru pengampu *</h3>
+        <section className="lomba-form-card lomba-form-span">
+          <h3>Guru pengampu *</h3>
           <p className="hint">Cari nama atau email, lalu pilih satu staf aktif sebagai pengampu lomba.</p>
           <div className="lomba-guru-search">
             <span className="ikon" aria-hidden>
@@ -427,7 +429,7 @@ export default function LombaForm() {
               autoComplete="off"
             />
           </div>
-          <ul className="lomba-guru-list" role="listbox" aria-label="Daftar staf">
+          <ul className="lomba-guru-list lomba-guru-list--lebar" role="listbox" aria-label="Daftar staf">
             {stafTerfilter.length === 0 ? (
               <li className="lomba-guru-kosong">
                 {staf.length === 0 ? 'Memuat staf…' : 'Tidak ada yang cocok dengan pencarian.'}
