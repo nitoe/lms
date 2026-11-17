@@ -1,3 +1,12 @@
+## 2026-11-17 — Area siswa tahap 2: halaman masuk, Tugas/Kuis, viewer materi
+
+- Halaman masuk siswa: tampilan lebih berwarna & ramah anak (kartu bulat, tombol pil, pil fitur tiga warna, font Nunito). Kolom isian kini 16px agar iPhone tidak zoom otomatis saat fokus. Halaman masuk staf **tidak** berubah.
+- Judul halaman Tugas dan Kuis diberi ikon berwarna (selaras Materi).
+- Viewer materi (siswa): pil halaman hijau, tombol Sebelumnya/Berikutnya berwarna, titik halaman lebih besar, kartu halaman dibulatkan.
+- Perbaikan: bilah navigasi viewer materi di HP kini berada **di atas** nav melayang (sebelumnya bisa tertutup).
+- File: `src/pages/siswa/{SiswaMasuk,SiswaTugas,SiswaKuis}.tsx`, `src/styles/siswa.css`.
+- Antiregresi: ANTIREGRESI.md §131.10–131.12.
+
 ## 2026-11-17 — Area siswa: tampilan baru yang lebih hidup (PC & HP)
 
 - Gejala: akun siswa terasa generik (kartu putih datar, nav sama di semua ukuran layar).

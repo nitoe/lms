@@ -92,7 +92,7 @@ export default function SiswaMasuk() {
   }
 
   return (
-    <div className="auth-shell">
+    <div className="auth-shell auth-shell--siswa">
       <aside className="auth-hero">
         <div className="auth-hero-inner">
           <div className="auth-brand-row">

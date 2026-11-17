@@ -254,9 +254,14 @@ export default function SiswaTugas() {
   return (
     <div className="space-y-5">
       <div className="sw-kat-head">
-        <div>
-          <h1 className="sw-kat-title">Tugas</h1>
-          <p className="sw-kat-sub">Kerjakan & kumpulkan dari gurumu</p>
+        <div className="sw-page-head sw-tone-amber">
+          <span className="sw-page-ico" aria-hidden>
+            <SiswaIcon name="pencil" size={26} />
+          </span>
+          <div className="min-w-0">
+            <h1 className="sw-page-title">Tugas</h1>
+            <p className="sw-page-sub">Kerjakan & kumpulkan dari gurumu</p>
+          </div>
         </div>
         {list && list.length > 0 && (
           <div className="sw-kat-stats" aria-label="Ringkasan tugas">

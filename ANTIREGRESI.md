@@ -668,3 +668,9 @@ Regresi: `firestore.rules` di repo `nitoe/lms` tidak memuat rules Lomba (`lms_lo
 131.8 **Penamaan menu/aktivitas tetap polos-deskriptif** (Materi, Tugas, Kuis, Pekan ini, Tugas untukmu, Pelajaranmu). Jangan memakai tagline/julukan («Detektif…», «Petualang…», «Agen…») — preferensi pemilik proyek.
 
 131.9 **Tanda «Pekan ini»** (titik oranye) = tenggat tugas **belum dinilai** pada hari itu; bukan jadwal pelajaran. Cincin hero = tugas berstatus `dinilai` / seluruh tugas aktif kelas.
+
+131.10 **Halaman masuk siswa** memakai modifier `auth-shell--siswa` pada wrapper `SiswaMasuk`; semua gaya baru di-scope ke class itu. Jangan mengubah `.auth-*` global — dipakai juga oleh `Login.tsx` (staf) dan `OrangtuaMasuk.tsx`.
+
+131.11 **Input form di HP = 16px** (`font-size: 1rem`). Ukuran <16px membuat iOS Safari zoom otomatis saat fokus dan layout bergeser. Jangan kembali ke 0.875rem pada `.auth-field input/select` siswa.
+
+131.12 **Viewer materi di bawah nav melayang.** `.mh-viewer-nav` sticky bottom harus `calc(5.5rem + env(safe-area-inset-bottom))` pada <1024px (hanya di `.sw-app`). Bila tinggi nav HP berubah, sesuaikan angka ini. Override viewer selalu di-scope `.sw-app` agar tampilan guru (editor/pratinjau) tidak ikut berubah.
