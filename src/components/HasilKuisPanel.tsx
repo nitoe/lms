@@ -1006,7 +1006,7 @@ export default function HasilKuisPanel({ kuis, onUpdated }: Props) {
         </button>
       </div>
 
-      {isTka && (
+      {(isTka || isLomba) && (
         <div
           className={`flex flex-wrap items-center justify-between gap-3 rounded-2xl border px-4 py-3 shadow-sm ${
             hasilDipublish
@@ -1020,8 +1020,12 @@ export default function HasilKuisPanel({ kuis, onUpdated }: Props) {
             </p>
             <p className="mt-0.5 text-xs text-slate-600">
               {hasilDipublish
-                ? 'Siswa yang sudah mengerjakan dapat melihat skor dan rincian (kompleksitas / materi / domain).'
-                : 'Siswa hanya melihat status «jawaban terkirim». Skor disembunyikan sampai Anda mempublikasikan.'}
+                ? isLomba
+                  ? 'Peserta lomba yang sudah mengerjakan dapat melihat skor kuis ini.'
+                  : 'Siswa yang sudah mengerjakan dapat melihat skor dan rincian (kompleksitas / materi / domain).'
+                : isLomba
+                  ? 'Peserta hanya melihat status «jawaban terkirim». Skor disembunyikan sampai Anda mempublikasikan.'
+                  : 'Siswa hanya melihat status «jawaban terkirim». Skor disembunyikan sampai Anda mempublikasikan.'}
             </p>
           </div>
           <button

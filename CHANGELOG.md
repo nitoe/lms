@@ -1,3 +1,10 @@
+## 2026-11-17 — Lomba siswa: skor disembunyikan sampai publikasi (pola TKA)
+
+- Setelah submit, siswa **tidak** melihat skor; layar «Jawaban terkirim» + narasi nilai belum dipublikasikan (selaras TKA).
+- Daftar kuis lomba: «Jawaban terkirim · nilai belum dipublikasikan» hingga guru/pengampu menekan **Publikasikan hasil ke siswa**.
+- `HasilKuisPanel`: tombol publikasi juga untuk kuis Lomba (`isTka || isLomba`).
+- File: `SiswaLombaDetail.tsx`, `HasilKuisPanel.tsx`, CHANGELOG, ANTIREGRESI §Lomba.27.
+
 ## 2026-11-17 — Lomba: kirim kuis 403 + hasil roster + reset
 
 - **Gejala:** Siswa peserta kirim jawaban kuis Lomba → `Kuis bukan untuk kelasmu. [403]`.

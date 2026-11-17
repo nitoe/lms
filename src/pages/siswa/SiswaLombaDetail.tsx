@@ -463,10 +463,12 @@ export default function SiswaLombaDetail() {
                     {sudah && terakhir && (
                       <div className="lomba-kuis-riwayat">
                         <strong>
-                          Sudah dikerjakan
-                          {terakhir.totalPoin > 0
+                          Jawaban terkirim
+                          {k.hasilDipublish === true && terakhir.totalPoin > 0
                             ? ` · skor ${teksSkor(terakhir.skor, terakhir.totalPoin)}`
-                            : ''}
+                            : k.hasilDipublish !== true
+                              ? ' · nilai belum dipublikasikan'
+                              : ''}
                         </strong>
                         <span>{formatWaktu(terakhir.createdAtMs)}</span>
                       </div>
@@ -569,21 +571,39 @@ function DialogToken({
 }
 
 function HasilLomba({ hasil, onKembali }: { hasil: Hasil; onKembali: () => void }) {
+  // Lomba: skor hanya ke siswa setelah guru publikasikan (selaras TKA / ANTIREGRESI §Lomba.27).
+  const dipublish = hasil.kuis.hasilDipublish === true
   return (
-    <div className="lomba-dash space-y-4 p-4 sm:p-6">
+    <div className="lomba-dash mx-auto max-w-xl space-y-4 p-4 sm:p-6">
       <section className="tka-hasil">
-        <p className="tka-eyebrow">Selesai</p>
-        <h1 className="tka-hasil-judul">{hasil.kuis.judul}</h1>
-        <p className="tka-hasil-skor">
-          Skor <strong>{teksSkor(hasil.skor, hasil.totalPoin)}</strong>
-          <span className="text-slate-500"> / 100</span>
-        </p>
-        <p className="text-sm text-slate-600">
-          {hasil.skor} poin dari {hasil.totalPoin} · percobaan ke-{hasil.percobaan}
-        </p>
-        <button type="button" className="lms-btn-primary text-sm mt-4" onClick={onKembali}>
-          Kembali ke daftar kuis
-        </button>
+        <div className="text-sm font-medium text-slate-500">Jawaban terkirim</div>
+        <h2 className="mt-1 text-lg font-bold text-slate-800">{hasil.kuis.judul}</h2>
+        {dipublish ? (
+          <>
+            <div className="tka-hasil-skor">
+              {teksSkor(hasil.skor, hasil.totalPoin)}
+              <span> / 100</span>
+            </div>
+            <p className="text-xs text-slate-500">
+              {hasil.skor} dari {hasil.totalPoin} poin
+              {hasil.status === 'sebagian_manual' ? ' · sebagian dinilai guru' : ''}
+              {hasil.percobaan > 1 ? ` · percobaan ke-${hasil.percobaan}` : ''}
+            </p>
+          </>
+        ) : (
+          <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+            <p className="font-semibold">Nilai belum dipublikasikan</p>
+            <p className="mt-1 text-xs leading-relaxed text-amber-800/90">
+              Jawabanmu sudah tersimpan. Skor lomba akan tampil di sini setelah panitia atau
+              pengampu mempublikasikan hasil kuis ini.
+            </p>
+          </div>
+        )}
+        <div className="mt-5">
+          <button type="button" className="lms-btn-secondary text-sm" onClick={onKembali}>
+            Kembali ke daftar kuis
+          </button>
+        </div>
       </section>
     </div>
   )

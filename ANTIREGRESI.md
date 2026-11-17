@@ -562,6 +562,14 @@ Regresi: `firestore.rules` di repo `nitoe/lms` tidak memuat rules Lomba (`lms_lo
 
 
 
+
+### §Lomba.27 Skor kuis Lomba ke siswa hanya setelah publikasi
+
+1. Setelah submit, UI siswa **jangan** menampilkan skor — pakai pola TKA: «Jawaban terkirim» + kotak amber «Nilai belum dipublikasikan».
+2. Skor/rincian baru tampil jika `kuis.hasilDipublish === true`.
+3. Guru/pengampu mempublikasikan lewat `HasilKuisPanel` (toggle sama TKA, juga aktif untuk `lombaId`).
+4. Di daftar kartu kuis lomba: tanpa skor sampai dipublish («nilai belum dipublikasikan»).
+
 ### §Lomba.26 Kirim jawaban Lomba (CF) + hasil roster + reset
 
 1. **`nilaiKuisLms`:** selain kelas==siswa / TKA bank 6, izinkan kuis `kelas=='LB'` + `lombaId` jika `siswaId ∈ lomba.siswaIds`. Tolak tetap pesan «Kuis bukan untuk kelasmu.»
