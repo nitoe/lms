@@ -2040,3 +2040,90 @@ button.sw-kat-card {
   color: var(--t-fg);
   padding: 0.2rem 0.6rem;
 }
+
+
+/* ═══════════════════════════════════════════════════════════
+   Mode kerjakan (kuis, TKA, lomba) — poles tampilan SAJA (2026-11-17)
+   `.sw-kuis-kerja*` dipakai bersama SiswaKuis, SiswaTka, SiswaLombaDetail.
+   Tidak ada perubahan markup/logika (ANTIREGRESI §131.17).
+   ═══════════════════════════════════════════════════════════ */
+.sw-app .sw-kuis-kerja-head {
+  border-radius: 1.25rem;
+  border-color: rgba(226, 228, 238, 0.95);
+  box-shadow: 0 6px 18px rgba(49, 48, 131, 0.1);
+}
+.sw-app .sw-kuis-keluar {
+  min-height: 2.25rem;
+  padding: 0.35rem 0.9rem;
+  font-family: inherit;
+  font-weight: 800;
+}
+.sw-app .sw-kuis-keluar:hover {
+  background: #fff1f2;
+  border-color: #fecdd3;
+  color: #be123c;
+}
+.sw-app .sw-kuis-nav {
+  border-radius: 1.25rem;
+  border-color: rgba(226, 228, 238, 0.95);
+  box-shadow: 0 2px 10px rgba(23, 23, 57, 0.05);
+}
+.sw-app .sw-kuis-nav-btn {
+  height: 2.3rem;
+  border-radius: 0.7rem;
+  font-size: 0.8rem;
+  font-weight: 800;
+}
+.sw-app .sw-kuis-nav-btn--aktif {
+  background: linear-gradient(145deg, #4a4fa3 0%, #313083 100%);
+  box-shadow: 0 4px 10px rgba(49, 48, 131, 0.3);
+}
+.sw-app .sw-kuis-nav-btn--jawab {
+  background: #a7f3d0;
+  color: #064e3b;
+}
+.sw-app .sw-kuis-nav-legend { font-size: 0.7rem; font-weight: 700; }
+.sw-app .sw-kuis-soal .tampil { border-radius: 1.4rem; }
+
+.sw-app .sw-kuis-kerja-foot {
+  border-radius: 1.4rem;
+  border-color: rgba(226, 228, 238, 0.95);
+  box-shadow: 0 -6px 20px rgba(49, 48, 131, 0.1);
+}
+.sw-app .sw-kuis-kerja-foot .lms-btn-primary,
+.sw-app .sw-kuis-kerja-foot .lms-btn-secondary {
+  min-height: 2.9rem;
+  padding: 0.5rem 1.15rem;
+  border-radius: 999px;
+  font-family: inherit;
+  font-weight: 800;
+}
+.sw-app .sw-kuis-kerja-foot .lms-btn-primary {
+  background: linear-gradient(145deg, #4a4fa3 0%, #313083 100%);
+  box-shadow: 0 4px 12px rgba(49, 48, 131, 0.3);
+}
+.sw-app .sw-kuis-kerja-foot .lms-btn-primary:hover:not(:disabled) {
+  background: linear-gradient(145deg, #4a4fa3 0%, #313083 100%);
+  filter: brightness(1.08);
+}
+.sw-app .sw-kuis-kerja-foot .lms-btn-primary:disabled,
+.sw-app .sw-kuis-kerja-foot .lms-btn-secondary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+.sw-app .sw-kuis-foot-meta { font-size: 0.85rem; font-weight: 800; }
+
+/* HP: navigasi soal tidak boleh memakan layar (30 soal = 6 baris) → maks. ±2 baris, bisa digulir;
+   foot menghormati area aman bawah (home bar iPhone). */
+@media (max-width: 767px) {
+  .sw-app .sw-kuis-nav-grid {
+    max-height: 5.4rem;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+  .sw-app .sw-kuis-nav-legend { display: none; }
+  .sw-app .sw-kuis-kerja-foot {
+    padding-bottom: calc(0.65rem + env(safe-area-inset-bottom));
+  }
+}
