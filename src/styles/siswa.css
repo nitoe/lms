@@ -2043,87 +2043,116 @@ button.sw-kat-card {
 
 
 /* ═══════════════════════════════════════════════════════════
-   Mode kerjakan (kuis, TKA, lomba) — poles tampilan SAJA (2026-11-17)
-   `.sw-kuis-kerja*` dipakai bersama SiswaKuis, SiswaTka, SiswaLombaDetail.
-   Tidak ada perubahan markup/logika (ANTIREGRESI §131.17).
+   Pengumpulan tugas (foto) — siswa (2026-11-17, ANTIREGRESI §132)
    ═══════════════════════════════════════════════════════════ */
-.sw-app .sw-kuis-kerja-head {
-  border-radius: 1.25rem;
-  border-color: rgba(226, 228, 238, 0.95);
-  box-shadow: 0 6px 18px rgba(49, 48, 131, 0.1);
+.sw-kumpul { display: flex; flex-direction: column; gap: 0.7rem; }
+.sw-kumpul h2 { margin: 0; }
+.sw-kumpul-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
 }
-.sw-app .sw-kuis-keluar {
-  min-height: 2.25rem;
-  padding: 0.35rem 0.9rem;
-  font-family: inherit;
-  font-weight: 800;
-}
-.sw-app .sw-kuis-keluar:hover {
-  background: #fff1f2;
-  border-color: #fecdd3;
-  color: #be123c;
-}
-.sw-app .sw-kuis-nav {
-  border-radius: 1.25rem;
-  border-color: rgba(226, 228, 238, 0.95);
-  box-shadow: 0 2px 10px rgba(23, 23, 57, 0.05);
-}
-.sw-app .sw-kuis-nav-btn {
-  height: 2.3rem;
-  border-radius: 0.7rem;
-  font-size: 0.8rem;
-  font-weight: 800;
-}
-.sw-app .sw-kuis-nav-btn--aktif {
-  background: linear-gradient(145deg, #4a4fa3 0%, #313083 100%);
-  box-shadow: 0 4px 10px rgba(49, 48, 131, 0.3);
-}
-.sw-app .sw-kuis-nav-btn--jawab {
-  background: #a7f3d0;
-  color: #064e3b;
-}
-.sw-app .sw-kuis-nav-legend { font-size: 0.7rem; font-weight: 700; }
-.sw-app .sw-kuis-soal .tampil { border-radius: 1.4rem; }
-
-.sw-app .sw-kuis-kerja-foot {
-  border-radius: 1.4rem;
-  border-color: rgba(226, 228, 238, 0.95);
-  box-shadow: 0 -6px 20px rgba(49, 48, 131, 0.1);
-}
-.sw-app .sw-kuis-kerja-foot .lms-btn-primary,
-.sw-app .sw-kuis-kerja-foot .lms-btn-secondary {
-  min-height: 2.9rem;
-  padding: 0.5rem 1.15rem;
+.sw-kumpul-tambah {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  align-self: flex-start;
+  min-height: 3rem;
+  padding: 0.6rem 1.3rem;
   border-radius: 999px;
-  font-family: inherit;
+  border: 2px dashed var(--color-muh-300);
+  background: var(--color-muh-50);
+  color: var(--color-muh-700);
+  font-size: 0.95rem;
   font-weight: 800;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
 }
-.sw-app .sw-kuis-kerja-foot .lms-btn-primary {
-  background: linear-gradient(145deg, #4a4fa3 0%, #313083 100%);
-  box-shadow: 0 4px 12px rgba(49, 48, 131, 0.3);
+.sw-kumpul-tambah:hover { background: var(--color-muh-100); }
+.sw-kumpul-tambah--off { opacity: 0.5; cursor: not-allowed; }
+.sw-kumpul-input:focus-visible + .sw-kumpul-tambah {
+  outline: 2px solid var(--color-muh-600);
+  outline-offset: 2px;
 }
-.sw-app .sw-kuis-kerja-foot .lms-btn-primary:hover:not(:disabled) {
-  background: linear-gradient(145deg, #4a4fa3 0%, #313083 100%);
-  filter: brightness(1.08);
+.sw-kumpul-thumbs {
+  display: grid;
+  gap: 0.6rem;
+  grid-template-columns: repeat(auto-fill, minmax(8.5rem, 1fr));
 }
-.sw-app .sw-kuis-kerja-foot .lms-btn-primary:disabled,
-.sw-app .sw-kuis-kerja-foot .lms-btn-secondary:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-  box-shadow: none;
+.sw-kumpul-thumb-wrap { position: relative; }
+.sw-kumpul-thumb {
+  display: block;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  border-radius: 1rem;
+  border: 1px solid var(--color-border);
+  background: #f1f3f7;
 }
-.sw-app .sw-kuis-foot-meta { font-size: 0.85rem; font-weight: 800; }
-
-/* HP: navigasi soal tidak boleh memakan layar (30 soal = 6 baris) → maks. ±2 baris, bisa digulir;
-   foot menghormati area aman bawah (home bar iPhone). */
-@media (max-width: 767px) {
-  .sw-app .sw-kuis-nav-grid {
-    max-height: 5.4rem;
-    overflow-y: auto;
-    overscroll-behavior: contain;
-  }
-  .sw-app .sw-kuis-nav-legend { display: none; }
-  .sw-app .sw-kuis-kerja-foot {
-    padding-bottom: calc(0.65rem + env(safe-area-inset-bottom));
-  }
+.sw-kumpul-hapus {
+  position: absolute;
+  top: 0.35rem;
+  right: 0.35rem;
+  display: flex;
+  height: 2rem;
+  width: 2rem;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 9999px;
+  background: rgba(15, 23, 42, 0.78);
+  color: #fff;
+  font-size: 1.2rem;
+  line-height: 1;
+  cursor: pointer;
 }
+.sw-kumpul-hapus:hover { background: #be123c; }
+.sw-kumpul-label { font-size: 0.8rem; font-weight: 800; color: #374151; }
+.sw-kumpul-catatan {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1.5px solid #cdd1e0;
+  border-radius: 0.9rem;
+  padding: 0.6rem 0.8rem;
+  font-family: inherit;
+  font-size: 1rem; /* 16px: cegah zoom otomatis iOS */
+  font-weight: 600;
+  resize: vertical;
+}
+.sw-kumpul-catatan:focus {
+  outline: none;
+  border-color: var(--color-muh-600);
+  box-shadow: 0 0 0 3px rgba(49, 48, 131, 0.16);
+}
+.sw-kumpul-aksi { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.sw-btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.75rem;
+  padding: 0.5rem 1.1rem;
+  border-radius: 999px;
+  border: 1px solid #e2e5ef;
+  background: #fff;
+  color: #4b5563;
+  font-family: inherit;
+  font-size: 0.875rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+.sw-btn-ghost:hover { background: #f4f5f9; }
+.sw-btn-ghost:disabled { opacity: 0.5; cursor: not-allowed; }
+.sw-kumpul-status {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.85rem;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+.sw-kumpul-status--ok { background: #ecfdf5; color: #065f46; }
+.sw-kumpul-status--err { background: #fff1f2; color: #be123c; }

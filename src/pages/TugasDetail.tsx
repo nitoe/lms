@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext'
 import { cakupanTugas } from '../lib/cakupanTugas'
 import { ambilTugas, aturBerbagiTugas, buatTugas, updateTugas } from '../lib/tugas'
 import BerbagiKelasDialog from '../components/BerbagiKelasDialog'
+import PengumpulanPanel from '../components/PengumpulanPanel'
 import { labelKelasDibagikan } from '../lib/kelasLms'
 import { aksenMapel, inisialMapel } from '../lib/uiAksen'
 import {
@@ -42,7 +43,7 @@ import type {
 import { labelJenisTugas, NAMA_JENIS_PENILAIAN_TUGAS, semuaMapelTugas } from '../types/tugas'
 import type { TpRingkas } from '../types/materi'
 
-type TabId = 'pengaturan' | 'isi' | 'nilai'
+type TabId = 'pengaturan' | 'isi' | 'kumpul' | 'nilai'
 type SubNilai = 'pengaturan-nilai' | 'daftar-nilai'
 
 type DraftBaris = {
@@ -810,6 +811,7 @@ export default function TugasDetail() {
           [
             { id: 'pengaturan' as const, label: 'Pengaturan', hint: 'Identitas & TP' },
             { id: 'isi' as const, label: 'Isi tugas', hint: 'Instruksi siswa' },
+            { id: 'kumpul' as const, label: 'Pengumpulan', hint: 'Foto dari siswa' },
             { id: 'nilai' as const, label: 'Input nilai', hint: 'Rubrik & daftar' },
           ] as const
         ).map((t) => (
@@ -1098,6 +1100,15 @@ export default function TugasDetail() {
           </div>
         </div>
       )}
+
+      {tab === 'kumpul' &&
+        (isBaru || !tugas ? (
+          <div className="td-form">
+            <p className="td-kumpul-kosong">Simpan tugas dulu, lalu pengumpulan siswa akan tampil di sini.</p>
+          </div>
+        ) : (
+          <PengumpulanPanel tugas={tugas} />
+        ))}
 
       {tab === 'nilai' && (
         <div className="td-form">

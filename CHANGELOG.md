@@ -1,9 +1,11 @@
-## 2026-11-17 — Area siswa: poles mode kerjakan (kuis, TKA, lomba)
+## 2026-11-17 — Pengumpulan tugas oleh siswa (foto) + tab «Pengumpulan» guru
 
-- Kepala, navigasi soal, dan footer mode kerjakan dibulatkan; tombol Sebelumnya/Berikutnya/Kirim berbentuk pil dan lebih besar (min. 2,9rem); nomor soal aktif berwarna gradien, yang sudah dijawab hijau tegas; kartu soal lebih bulat.
-- HP: navigasi soal dibatasi ±2 baris dan bisa digulir (sebelumnya 30 soal memakan ±6 baris sehingga soal terdorong ke bawah); legenda disembunyikan di HP; footer menghormati area aman bawah (home bar iPhone).
-- Hanya CSS (`src/styles/siswa.css`) — markup dan logika SiswaKuis/SiswaTka/SiswaLombaDetail tidak diubah.
-- Antiregresi: ANTIREGRESI.md §131.17.
+- **Siswa:** di detail tugas, tombol «Ambil / pilih foto» (maks. 3 foto, dikecilkan otomatis di perangkat), catatan opsional, «Kumpulkan». Bisa «Kirim ulang» selama belum dinilai; setelah dinilai terkunci. Kartu tugas menampilkan lencana «Terkumpul».
+- **Guru:** tab baru «Pengumpulan» di detail tugas: daftar siswa yang mengumpulkan (waktu, jumlah foto, tanda «Terlambat» bila lewat tenggat), foto dimuat saat baris dibuka.
+- Koleksi baru **`lms_pengumpulan`** (meta) dan **`lms_pengumpulan_foto`** (foto terkompres). Foto disimpan di Firestore (bukan Storage); `storage.rules` tidak berubah.
+- **WAJIB deploy `firestore.rules`** (versi lengkap di zip, salin juga ke SDM01Penilaian → `npm run deploy:rules`). Tanpa itu, siswa/guru melihat pesan «belum bisa dibuka/dikumpulkan» (aplikasi tidak rusak).
+- File: `firestore.rules`, `src/lib/pengumpulan.ts` (baru), `src/pages/siswa/PengumpulanSiswa.tsx` (baru), `src/components/PengumpulanPanel.tsx` (baru), `src/pages/siswa/SiswaTugas.tsx`, `src/pages/TugasDetail.tsx`, `src/styles/siswa.css`, `src/styles/tugas.css`.
+- Antiregresi: ANTIREGRESI.md §132.
 
 ## 2026-11-17 — Area siswa: halaman Pencapaian (bintang & lencana) aktif
 

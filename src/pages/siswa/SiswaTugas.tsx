@@ -19,6 +19,8 @@ import {
 } from '../../types/tugas'
 import type { NilaiTugasDok } from '../../lib/nilaiTugas'
 import SiswaIcon from './SiswaIcon'
+import PengumpulanSiswa from './PengumpulanSiswa'
+import { muatPengumpulanSaya, type PengumpulanDok } from '../../lib/pengumpulan'
 
 const FILTER_STATUS_LABEL: Record<StatusTugasSiswa | 'semua', string> = {
   semua: 'Semua',
@@ -31,8 +33,8 @@ type FilterStatus = StatusTugasSiswa | 'semua'
 
 /**
  * Katalog tugas siswa: dikelompokkan per mapel + filter status.
- * Pengumpulan file belum diaktifkan (koleksi lms_pengumpulan menyusul);
- * status «Sudah dinilai» memakai lms_nilai_tugas milik siswa.
+ * Pengumpulan foto: lms_pengumpulan (ANTIREGRESI §132). Status «Sudah dinilai» tetap memakai
+ * lms_nilai_tugas milik siswa; «Terkumpul» hanya lencana tambahan, bukan status filter.
  */
 export default function SiswaTugas() {
   const { sesi } = useSiswa()
@@ -41,6 +43,7 @@ export default function SiswaTugas() {
   const [params, setParams] = useSearchParams()
   const [list, setList] = useState<TugasLms[] | null>(null)
   const [nilaiMap, setNilaiMap] = useState<Record<string, NilaiTugasDok>>({})
+  const [kumpulMap, setKumpulMap] = useState<Record<string, PengumpulanDok>>({})
   const [error, setError] = useState('')
   const [filterStatus, setFilterStatus] = useState<FilterStatus>('semua')
   const [filterMapel, setFilterMapel] = useState<string>('semua')
@@ -65,6 +68,13 @@ export default function SiswaTugas() {
         if (data.tugasId) map[data.tugasId] = { ...data, id: d.id }
       }
       setNilaiMap(map)
+
+      // Pengumpulan sendiri: gagal baca tidak boleh menggagalkan daftar tugas.
+      try {
+        setKumpulMap(await muatPengumpulanSaya(siswaId))
+      } catch (e2) {
+        console.warn('Pengumpulan siswa gagal dimuat', e2)
+      }
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Gagal memuat tugas')
       setList([])
@@ -243,10 +253,16 @@ export default function SiswaTugas() {
           </div>
         )}
 
-        <p className="sw-kat-hint">
-          Pengumpulan lewat aplikasi (unggah foto/file) akan segera tersedia. Untuk sementara, ikuti
-          petunjuk guru di kelas atau di instruksi di atas.
-        </p>
+        <PengumpulanSiswa
+          key={detail.id}
+          tugas={detail}
+          siswaId={siswaId}
+          siswaNama={sesi?.nama ?? ''}
+          kelas={String(kelas).toUpperCase()}
+          ada={kumpulMap[detail.id] ?? null}
+          terkunci={st === 'dinilai'}
+          onTersimpan={(d) => setKumpulMap((prev) => ({ ...prev, [detail.id]: d }))}
+        />
       </div>
     )
   }
@@ -413,6 +429,9 @@ export default function SiswaTugas() {
                               ? 'Lewat tenggat'
                               : 'Belum dinilai'}
                         </span>
+                        {kumpulMap[t.id] && (
+                          <span className="sw-kat-badge sw-kat-badge--info">Terkumpul</span>
+                        )}
                       </div>
                       <div className="sw-kat-card-actions">
                         <span className="sw-btn-primary" style={{ pointerEvents: 'none' }}>

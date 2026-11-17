@@ -679,4 +679,20 @@ Regresi: `firestore.rules` di repo `nitoe/lms` tidak memuat rules Lomba (`lms_lo
 
 131.16 **Kriteria lencana hanya di satu tempat** (`susunLencana`); teks syarat di UI berasal dari sana. Mengubah ambang (mis. `AMBANG_NILAI_BAGUS = 80`) cukup di file itu. Kegagalan memuat ditampilkan ramah (`pesanGagalPencapaian`) dengan tombol coba lagi — jangan dibiarkan layar kosong/melempar galat.
 
-131.17 **Mode kerjakan: CSS saja, dipakai bersama.** `.sw-kuis-kerja`, `-head`, `-nav`, `-nav-btn`, `-kerja-foot` dipakai oleh `SiswaKuis`, `SiswaTka` (`.tka-kerja`) **dan** `SiswaLombaDetail`. Ubah lewat override `.sw-app …` di `siswa.css`; jangan mengubah markup/urutan elemen tanpa menguji ketiganya. Di HP `.sw-kuis-nav-grid` dibatasi `max-height: 5.4rem` + gulir; nomor soal aktif bisa berada di luar area terlihat — header «Soal X dari N» dan tombol footer tetap menjadi acuan. Footer wajib punya `padding-bottom` berbasis `env(safe-area-inset-bottom)` di HP (tombol Kirim tidak boleh tertutup home bar).
+## §132. Pengumpulan tugas siswa (foto) — `lms_pengumpulan` & `lms_pengumpulan_foto` (2026-11-17)
+
+132.1 **Dua koleksi, foto di Firestore.** Meta `lms_pengumpulan/{tugasId_siswaId}` (catatan, `fotoIds`, `jumlahFoto`, `createdAt`, `updatedAt`) dan foto `lms_pengumpulan_foto/{tugasId_siswaId_slot}` (`slot` '1'..'3', `data` = data URL ≤ 300.000 karakter). Siswa TIDAK boleh menulis ke Storage (`storage.rules` sengaja tidak mengenal token siswa); jangan memindahkan foto ke Storage tanpa mengubah kedua file rules **utuh**.
+
+132.2 **Urutan tulis di klien:** foto dulu, meta TERAKHIR (`kirimPengumpulan`). Kirim ulang = `updateDoc` TANPA `createdAt` (rules membatasi `affectedKeys` meta ke `catatan, fotoIds, jumlahFoto, updatedAt`; foto ke `data, updatedAt`). Jangan mengganti `updateDoc` menjadi `setDoc` penuh pada dokumen yang sudah ada — `createdAt == request.time` akan melanggar rules.
+
+132.3 **Daftar guru hanya memuat meta**; foto dimuat per baris saat dibuka (`muatFoto`). Jangan menaruh data URL di dokumen meta atau memuat semua foto kelas sekaligus (30 siswa × ±500 KB).
+
+132.4 **Query wajib sesuai rules.** Siswa: `where('siswaId','==', sesi.id)` saja. Guru: `where tugasId + mapel + kelas` (satu query per rombel; `daftarPengumpulanTugas`). Tanpa `mapel`+`kelas`, evaluasi list ditolak permission (pola §128).
+
+132.5 **Rules (helper `lmsSiswaBolehKumpul`, `lmsSudahDinilai`):** siswa hanya untuk tugas **aktif** rombelnya (kelas utama atau `kelasList`), `mapel` dokumen = `mapel` tugas, ID dokumen deterministik, dan **terkunci** bila `lms_nilai_tugas/{tugasId_siswaId}` ada (ID itu = `idNilai()`; bila format ID nilai diubah, kunci ini ikut tidak berfungsi — ubah bersamaan). **Tenggat TIDAK ditegakkan di rules**; «Terlambat» hanya tanda di UI guru (`updatedAt` > tenggat).
+
+132.6 **Deploy:** `firestore.rules` harus dideploy dari SDM01Penilaian (salin file UTUH, §0). Sebelum deploy, uji dengan emulator/akun nyata: (a) siswa kumpul 1 & 3 foto, (b) kirim ulang dengan 2 foto (slot 3 terhapus), (c) setelah guru menyimpan nilai, siswa gagal kirim ulang, (d) siswa kelas lain gagal, (e) guru pengampu melihat; guru lain tidak.
+
+132.7 **Foto hanya boleh dipasang lewat `<img src>` setelah `dataUrlGambarAman`** (awalan `data:image/`). Jangan merender `data` sebagai HTML atau tautan `href`.
+
+132.8 **Status filter Tugas tidak berubah** (`belum | dinilai | lewat`, §124.2). «Terkumpul» hanya lencana tambahan; jangan menjadikannya status yang mengubah hitungan Beranda/Pencapaian tanpa menguji keduanya.
