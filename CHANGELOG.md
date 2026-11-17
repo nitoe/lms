@@ -1,3 +1,10 @@
+## 2026-11-17 — Lomba siswa: halaman detail lomba (perbaiki «Lihat detail» melempar ke login)
+
+- **Gejala:** Tombol «Lihat detail» di kartu lomba siswa membuka halaman login.
+- **Akar:** rute `/siswa/lomba/:lombaId` belum didaftarkan; `path="*"` mengarahkan ke login (§Lomba.22).
+- **Perbaikan:** halaman baru `SiswaLombaDetail` (info lomba, masa, pengampu, mapel, jumlah peserta; hanya untuk peserta) + rute di `App.tsx`. Materi/kuis lomba untuk siswa menyusul.
+- File: `src/pages/siswa/SiswaLombaDetail.tsx` (baru), `src/App.tsx`, `CHANGELOG.md`, `ANTIREGRESI.md`.
+
 ## 2026-11-17 — Lomba: perbaiki permission-denied daftar lomba siswa (menu Lomba siswa tidak muncul)
 
 - **Gejala:** Konsol siswa peserta: `daftarLombaSiswa gagal — Missing or insufficient permissions`; tidak ada menu/kartu Lomba.

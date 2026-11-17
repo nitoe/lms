@@ -557,6 +557,13 @@ Regresi: `firestore.rules` di repo `nitoe/lms` tidak memuat rules Lomba (`lms_lo
 4. Berlaku umum: pada cabang `allow list` hanya pakai kondisi yang selaras dengan filter query (kesetaraan / `in` terhadap filter), bukan predikat tipe atau fungsi bantu yang membaca field lain. `allow get` boleh lebih ketat.
 5. Wajib deploy `firestore.rules` (SDM01Penilaian → `npm run deploy:rules`). Uji: login siswa peserta → konsol tanpa galat → kartu Lomba muncul di Beranda dan nav.
 
+
+### §Lomba.22 Rute siswa baru wajib didaftarkan di App.tsx (jangan jatuh ke `path="*"` → login)
+
+1. Gejala: tombol «Lihat detail» pada kartu lomba siswa melempar siswa ke halaman login. Akar: rute `/siswa/lomba/:lombaId` belum ada; `path="*"` mengarah ke `/` yang lalu mengarahkan ke login.
+2. Setiap `Link`/`navigate` ke `/siswa/...` harus punya `<Route>` di dalam blok `/siswa` (di bawah `WajibSiswa` + `SiswaLayout`) di `src/App.tsx`. Cek: cari semua `to="/siswa/` dan padankan dengan rute.
+3. Halaman `SiswaLombaDetail` memverifikasi `siswaIds` memuat `sesi.id` (pesan ramah); penegak sebenarnya tetap rules `get` pada `lms_lomba`. Materi & kuis lomba untuk siswa belum ada (butuh rules baca + halaman terpisah).
+
 ## §129. Template & import bank soal: «Tanpa TP» dan parser CSV
 
 129.1 Bank soal mapel biasa (termasuk Lomba, kelas bank `LB`) **boleh tanpa TP**: `tpId/tpNomor/tpNama` opsional di `lms_paket_soal` (rules tidak mewajibkannya — jangan menambah syarat TP di rules/klien). Kuis dari paket tanpa TP tetap sah (`tpIds` dihitung hanya dari paket yang punya `tpId`).

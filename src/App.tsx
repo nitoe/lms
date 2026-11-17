@@ -26,6 +26,7 @@ import LombaList from './pages/lomba/LombaList'
 import LombaDetail from './pages/lomba/LombaDetail'
 import LombaForm from './pages/lomba/LombaForm'
 import SiswaLomba from './pages/siswa/SiswaLomba'
+import SiswaLombaDetail from './pages/siswa/SiswaLombaDetail'
 import OrangtuaBeranda from './pages/OrangtuaBeranda'
 import { isStaf } from './lib/peran'
 import { bolehAksesTkaStaf, bolehImportRekapTka } from './lib/tkaAkses'
@@ -94,6 +95,7 @@ export default function App() {
         <Route path="kuis" element={<SiswaKuis />} />
         <Route path="tka" element={<SiswaTka />} />
         <Route path="lomba" element={<SiswaLomba />} />
+        <Route path="lomba/:lombaId" element={<SiswaLombaDetail />} />
         <Route
           path="pencapaian"
           element={
