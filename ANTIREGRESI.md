@@ -679,6 +679,8 @@ Regresi: `firestore.rules` di repo `nitoe/lms` tidak memuat rules Lomba (`lms_lo
 
 131.16 **Kriteria lencana hanya di satu tempat** (`susunLencana`); teks syarat di UI berasal dari sana. Mengubah ambang (mis. `AMBANG_NILAI_BAGUS = 80`) cukup di file itu. Kegagalan memuat ditampilkan ramah (`pesanGagalPencapaian`) dengan tombol coba lagi — jangan dibiarkan layar kosong/melempar galat.
 
+131.17 **Mode kerjakan: CSS saja, dipakai bersama.** `.sw-kuis-kerja`, `-head`, `-nav`, `-nav-btn`, `-kerja-foot` dipakai oleh `SiswaKuis`, `SiswaTka` (`.tka-kerja`) **dan** `SiswaLombaDetail`. Ubah lewat override `.sw-app …` di `siswa.css`; jangan mengubah markup/urutan elemen tanpa menguji ketiganya. Di HP `.sw-kuis-nav-grid` dibatasi `max-height: 5.4rem` + gulir; nomor soal aktif bisa berada di luar area terlihat — header «Soal X dari N» dan tombol footer tetap menjadi acuan. Footer wajib punya `padding-bottom` berbasis `env(safe-area-inset-bottom)` di HP (tombol Kirim tidak boleh tertutup home bar).
+
 ## §132. Pengumpulan tugas siswa (foto) — `lms_pengumpulan` & `lms_pengumpulan_foto` (2026-11-17)
 
 132.1 **Dua koleksi, foto di Firestore.** Meta `lms_pengumpulan/{tugasId_siswaId}` (catatan, `fotoIds`, `jumlahFoto`, `createdAt`, `updatedAt`) dan foto `lms_pengumpulan_foto/{tugasId_siswaId_slot}` (`slot` '1'..'3', `data` = data URL ≤ 300.000 karakter). Siswa TIDAK boleh menulis ke Storage (`storage.rules` sengaja tidak mengenal token siswa); jangan memindahkan foto ke Storage tanpa mengubah kedua file rules **utuh**.
