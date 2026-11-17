@@ -195,7 +195,7 @@ export default function SiswaLomba() {
                 )}
                 <div className="lomba-kartu-foot">
                   {bisaMulai ? (
-                    <Link to={`/siswa/lomba/${l.id}`} className="lomba-cta-mulai">
+                    <Link to={`/siswa/lomba/${l.id}?mulai=1`} className="lomba-cta-mulai">
                       Mulai kerjakan
                     </Link>
                   ) : (

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { collection, getDocs, query, where } from 'firebase/firestore'
 import { httpsCallable } from 'firebase/functions'
 import { db, functions } from '../../lib/firebase'
@@ -187,7 +187,10 @@ async function muatRiwayat(siswaId: string, kuisId: string): Promise<Riwayat[]> 
 
 export default function SiswaLombaDetail() {
   const { lombaId } = useParams<{ lombaId: string }>()
+  const [searchParams, setSearchParams] = useSearchParams()
   const { sesi } = useSiswa()
+  const autoMulai = searchParams.get('mulai') === '1'
+  const autoMulaiRef = useRef(autoMulai)
   const [lomba, setLomba] = useState<Lomba | null>(null)
   const [kuisList, setKuisList] = useState<KuisLms[] | null>(null)
   const [riwayatMap, setRiwayatMap] = useState<Record<string, Riwayat[]>>({})
@@ -246,6 +249,28 @@ export default function SiswaLombaDetail() {
       batal = true
     }
   }, [lombaId, sesi?.id])
+
+  // Dari daftar: ?mulai=1 → langsung buka kuis yang sedang dibuka (ANTIREGRESI §Lomba.24).
+  useEffect(() => {
+    if (!autoMulaiRef.current || !sesi?.id || !kuisList || kuisList.length === 0) return
+    if (kerja || hasil) return
+    const sekarang = Date.now()
+    const kandidat = kuisList.find((k) => statusJadwal(k, sekarang) === 'buka')
+    if (!kandidat) {
+      autoMulaiRef.current = false
+      setSearchParams({}, { replace: true })
+      return
+    }
+    autoMulaiRef.current = false
+    setSearchParams({}, { replace: true })
+    const draf = muatProgress(sesi.id, kandidat.id)
+    const adaDraf = !!draf && Object.keys(draf.jawaban || {}).length > 0
+    if (kandidat.token?.trim() && !adaDraf) {
+      setTokenUntuk(kandidat)
+      return
+    }
+    setKerja({ kuis: kandidat, dariAwal: !adaDraf })
+  }, [kuisList, sesi?.id, kerja, hasil, setSearchParams])
 
   const mulai = useCallback((k: KuisLms, dariAwal: boolean) => {
     setHasil(null)
@@ -317,68 +342,55 @@ export default function SiswaLombaDetail() {
   const list = kuisList ?? []
 
   return (
-    <div className="lomba-dash space-y-4 p-4 sm:p-6">
+    <div className="lomba-dash space-y-5 p-4 sm:p-6">
       <Link to="/siswa/lomba" className="lomba-back">
         ← Daftar lomba
       </Link>
 
       <section className="lomba-hero">
         <div className="lomba-hero-inner">
-          <p className="lomba-eyebrow">{tingkat}</p>
+          <div className="lomba-hero-top">
+            <p className="lomba-eyebrow">{tingkat}</p>
+            <span
+              className={
+                berlangsung
+                  ? 'lomba-badge lomba-badge--aktif'
+                  : lomba.status === 'draf'
+                    ? 'lomba-badge lomba-badge--draf'
+                    : 'lomba-badge lomba-badge--selesai'
+              }
+            >
+              {berlangsung ? 'Berlangsung' : labelStatusLomba(lomba.status)}
+            </span>
+          </div>
           <h1 className="lomba-judul">{lomba.nama}</h1>
           {lomba.identitas ? <p className="lomba-lead">{lomba.identitas}</p> : null}
-          <span
-            className={
-              berlangsung
-                ? 'lomba-badge lomba-badge--aktif'
-                : lomba.status === 'draf'
-                  ? 'lomba-badge lomba-badge--draf'
-                  : 'lomba-badge lomba-badge--selesai'
-            }
-          >
-            {berlangsung ? 'Berlangsung' : labelStatusLomba(lomba.status)}
-          </span>
-        </div>
-      </section>
-
-      <section className="lomba-kartu">
-        <dl className="lomba-kartu-meta">
-          <div>
-            <dd>
-              <span className="label">Masa</span>
-              <span className="nilai">
-                {formatTanggal(lomba.mulai)} – {formatTanggal(lomba.selesai)}
-              </span>
-            </dd>
+          <div className="lomba-hero-meta">
+            <span>
+              <strong>Masa</strong> {formatTanggal(lomba.mulai)} – {formatTanggal(lomba.selesai)}
+            </span>
+            <span>
+              <strong>Pengampu</strong> {lomba.guruPengampuNama || '—'}
+            </span>
+            <span>
+              <strong>Peserta</strong> {lomba.siswaIds.length} siswa
+            </span>
           </div>
-          <div>
-            <dd>
-              <span className="label">Pengampu</span>
-              <span className="nilai">{lomba.guruPengampuNama || '—'}</span>
-            </dd>
-          </div>
-          <div>
-            <dd>
-              <span className="label">Peserta</span>
-              <span className="nilai">{lomba.siswaIds.length} siswa</span>
-            </dd>
-          </div>
-        </dl>
-        {lomba.mapelTerkait.length > 0 && (
-          <div className="px-[1.1rem] pb-3">
-            <div className="lomba-pill-row">
+          {lomba.mapelTerkait.length > 0 && (
+            <div className="lomba-pill-row lomba-hero-pills">
               {lomba.mapelTerkait.map((m) => (
-                <span key={m} className="lomba-pill">
+                <span key={m} className="lomba-pill lomba-pill--hero">
                   {m}
                 </span>
               ))}
             </div>
-          </div>
-        )}
-        {lomba.deskripsi ? (
-          <p className="px-[1.1rem] pb-4 text-sm leading-relaxed text-slate-700">{lomba.deskripsi}</p>
-        ) : null}
+          )}
+        </div>
       </section>
+
+      {lomba.deskripsi ? (
+        <p className="lomba-deskripsi">{lomba.deskripsi}</p>
+      ) : null}
 
       <section className="lomba-kuis-section">
         <div className="lomba-kuis-section-head">
@@ -744,85 +756,91 @@ function KerjakanLomba({
     sisaMs == null
       ? ''
       : sisaMs < 60_000
-        ? 'tka-timer tka-timer--kritis'
+        ? 'tka-timer tka-timer--habis'
         : sisaMs < 5 * 60_000
-          ? 'tka-timer tka-timer--waspada'
+          ? 'tka-timer tka-timer--hampir'
           : 'tka-timer'
 
+  const persen = soalList.length ? Math.round((nLengkap / soalList.length) * 100) : 0
+
   return (
-    <div className="tka-kerja" style={{ fontSize: `${zoom}em` }}>
-      <header className="tka-kerja-head">
-        <div className="min-w-0">
-          <p className="tka-eyebrow truncate">{kuis.judul}</p>
-          <p className="text-xs text-slate-500">
+    <div className="sw-kuis-kerja tka-kerja" style={{ ['--tka-zoom' as string]: zoom }}>
+      <header className="sw-kuis-kerja-head tka-kepala">
+        <div className="min-w-0 flex-1">
+          <p className="text-xs font-semibold text-slate-500 truncate">{kuis.judul}</p>
+          <p className="text-sm font-bold text-slate-800">
             Soal {idx + 1} / {soalList.length}
             {kuis.mapel ? ` · ${kuis.mapel}` : ''}
           </p>
         </div>
-        <div className="tka-kerja-aksi">
+        <div className="flex flex-wrap items-center gap-2">
           {sisaMs != null && (
             <span className={timerClass} aria-live="polite">
               {String(menit).padStart(2, '0')}:{String(detik).padStart(2, '0')}
             </span>
           )}
-          <button
-            type="button"
-            className="tka-zoom"
-            onClick={() => setZoom((z) => Math.min(1.4, Math.round((z + 0.1) * 10) / 10))}
-            aria-label="Perbesar huruf"
-          >
-            A+
-          </button>
-          <button
-            type="button"
-            className="tka-zoom"
-            onClick={() => setZoom((z) => Math.max(0.85, Math.round((z - 0.1) * 10) / 10))}
-            aria-label="Perkecil huruf"
-          >
-            A−
-          </button>
-          <button type="button" className="lms-btn-secondary text-xs" onClick={() => setKonfirmKeluar(true)}>
+          <div className="tka-zoom">
+            <button type="button" onClick={() => setZoom((z) => Math.min(1.4, Math.round((z + 0.1) * 10) / 10))} aria-label="Perbesar">
+              A+
+            </button>
+            <button type="button" onClick={() => setZoom((z) => Math.max(0.85, Math.round((z - 0.1) * 10) / 10))} aria-label="Perkecil">
+              A−
+            </button>
+          </div>
+          <button type="button" className="sw-kuis-keluar" onClick={() => setKonfirmKeluar(true)}>
             Keluar
           </button>
         </div>
+        <div className="tka-progres" role="progressbar" aria-valuenow={persen} aria-valuemin={0} aria-valuemax={100}>
+          <div className="tka-progres-isi" style={{ width: `${persen}%` }} />
+        </div>
       </header>
 
-      <nav className="tka-nav-soal" aria-label="Navigasi soal">
-        {soalList.map((s, i) => (
-          <button
-            key={s.id}
-            type="button"
-            className={`sw-kuis-nav-btn ${i === idx ? 'sw-kuis-nav-btn--aktif' : ''} ${
-              status[i] === 'lengkap' ? 'sw-kuis-nav-btn--jawab' : status[i] === 'sebagian' ? 'tka-nav--sebagian' : ''
-            } ${ragu.includes(s.id) ? 'tka-nav--ragu' : ''}`}
-            onClick={() => setIdx(i)}
-          >
-            {i + 1}
-          </button>
-        ))}
-      </nav>
+      <div className="sw-kuis-kerja-body tka-badan">
+        <aside className="sw-kuis-nav tka-nav" aria-label="Navigasi soal">
+          <div className="mb-2 text-xs font-semibold text-slate-500">
+            {nLengkap}/{soalList.length} terjawab
+          </div>
+          <div className="sw-kuis-nav-grid">
+            {soalList.map((s, i) => {
+              const st = status[i]
+              const kls = [
+                'sw-kuis-nav-btn',
+                i === idx ? 'sw-kuis-nav-btn--aktif' : st === 'lengkap' ? 'sw-kuis-nav-btn--jawab' : '',
+                st === 'sebagian' && i !== idx ? 'tka-nav--sebagian' : '',
+                ragu.includes(s.id) ? 'tka-nav--ragu' : '',
+              ]
+                .filter(Boolean)
+                .join(' ')
+              return (
+                <button key={s.id} type="button" className={kls} onClick={() => setIdx(i)}>
+                  {i + 1}
+                </button>
+              )
+            })}
+          </div>
+        </aside>
 
-      <div className={`tka-isi ${pisah ? 'tka-isi--dua' : ''}`}>
-        {pisah && <StimulusSoal soal={soal} className="tka-stimulus" />}
-        <div className="tka-soal min-w-0">
-          <SoalTampil
-            soal={soal}
-            nomor={idx + 1}
-            jawaban={jawaban[soal.id]}
-            onJawab={(j) => setJawaban((prev) => ({ ...prev, [soal.id]: j }))}
-            seed={`${siswaId}:${kuis.id}`}
-            tanpaStimulus={pisah}
-          />
-          <div className="mt-3 flex flex-wrap gap-2">
-            <button
-              type="button"
-              className={`text-xs px-2 py-1 rounded border ${
-                ragu.includes(soal.id) ? 'border-amber-400 bg-amber-50 text-amber-800' : 'border-slate-200 text-slate-600'
-              }`}
-              onClick={toggleRagu}
-            >
-              {ragu.includes(soal.id) ? '★ Ragu-ragu' : '☆ Tandai ragu'}
-            </button>
+        <div className={`tka-isi ${pisah ? 'tka-isi--dua' : ''}`}>
+          {pisah && <StimulusSoal soal={soal} className="tka-stimulus" />}
+          <div className="tka-soal min-w-0">
+            <SoalTampil
+              soal={soal}
+              nomor={idx + 1}
+              jawaban={jawaban[soal.id]}
+              onJawab={(j) => setJawaban((prev) => ({ ...prev, [soal.id]: j }))}
+              seed={`${siswaId}:${kuis.id}`}
+              tanpaStimulus={pisah}
+            />
+            <div className="mt-3">
+              <button
+                type="button"
+                className={ragu.includes(soal.id) ? 'tka-ragu tka-ragu--aktif' : 'tka-ragu'}
+                onClick={toggleRagu}
+              >
+                {ragu.includes(soal.id) ? '★ Ragu-ragu' : '☆ Tandai ragu'}
+              </button>
+            </div>
           </div>
         </div>
       </div>

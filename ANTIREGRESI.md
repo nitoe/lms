@@ -560,6 +560,13 @@ Regresi: `firestore.rules` di repo `nitoe/lms` tidak memuat rules Lomba (`lms_lo
 
 
 
+
+### §Lomba.25 Mulai kerjakan = mode pengerjaan, bukan sekadar detail
+
+1. Tombol **Mulai kerjakan** di daftar lomba siswa wajib membawa `?mulai=1` (atau setara) sehingga detail **auto-start** kuis yang jadwalnya buka — jangan hanya `Link` ke detail tanpa aksi.
+2. Info Masa/Pengampu/Peserta di detail siswa diletakkan di **hero** (`.lomba-hero-meta`), bukan `lomba-kartu` + `lomba-kartu-meta` tanpa padding atas (konten menempel border).
+3. Mode pengerjaan memakai kerangka `sw-kuis-kerja` / pola TKA, bukan layout ad-hoc.
+
 ### §Lomba.24 UI siswa Lomba: CTA daftar + kartu kuis non-generik
 
 1. Daftar lomba siswa: tombol kaki **Mulai kerjakan** jika `daftarKuisLombaAktif` menghasilkan ≥1 kuis dengan jadwal buka (aktif + dalam `waktuMulai`/`waktuSelesai`); selain itu **Lihat detail**. Jangan hardcode selalu «Lihat detail».

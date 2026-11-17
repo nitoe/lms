@@ -1,3 +1,10 @@
+## 2026-11-17 — Lomba siswa: layout info di hero + Mulai kerjakan benar-benar mulai kuis
+
+- **Layout:** meta Masa/Pengampu/Peserta dipindah ke dalam hero (`.lomba-hero-meta`), bukan kartu putih dengan padding 0 yang menempel border. Deskripsi di blok terpisah berpadding. Pill mapel di body kartu `align-self: flex-start` (tidak meregang penuh).
+- **CTA daftar:** «Mulai kerjakan» → `/siswa/lomba/:id?mulai=1`. Detail membaca query dan **langsung membuka mode pengerjaan** kuis yang statusnya dibuka (token tetap dihormati).
+- **Pengerjaan:** kerangka `sw-kuis-kerja` + `tka-badan`/`tka-nav` selaras TKA/SiswaKuis (bukan header generik).
+- File: `SiswaLomba.tsx`, `SiswaLombaDetail.tsx`, `lomba.css`, `CHANGELOG.md`, `ANTIREGRESI.md`.
+
 ## 2026-11-17 — Lomba siswa: UI kuis tidak generik + CTA Mulai di daftar
 
 - **Gejala:** Detail lomba menampilkan kartu kuis polos (kelas `tka-grid`/`tka-kartu` tanpa aksen Lomba); daftar lomba selalu «Lihat detail» meski kuis sudah dibuka.
