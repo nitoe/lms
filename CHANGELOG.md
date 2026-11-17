@@ -1,5 +1,12 @@
 ## 2026-11-17 — Modul Lomba Tahap 1: fondasi data, akses, CRUD meta
 
+## 2026-11-17 — Lomba form: mapel grid + pemilih guru
+
+- **Mapel terkait:** chip generik diganti grid kartu (inisial + bilah warna `aksenMapel`, centang, hitungan dipilih).
+- **Guru pengampu:** dropdown diganti daftar dapat dicari (avatar, email, badge peran, ringkasan terpilih).
+- File: `src/pages/lomba/LombaForm.tsx`, `src/styles/lomba.css`.
+
+
 ## 2026-11-17 — Lomba UI: lebar penuh + tampilan non-generik
 
 - **Regresi ruang kosong kiri/kanan:** form lomba memakai `max-w-3xl` → diganti layout full shell (`.lomba-form` grid 2 kolom). Daftar/detail tanpa max-width sempit.

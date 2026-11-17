@@ -9,6 +9,7 @@ import {
 } from '../../lib/lomba'
 import { adalahAdminLms } from '../../lib/lombaAkses'
 import { getDaftarMapel } from '../../lib/mapelData'
+import { aksenMapel, inisialMapel } from '../../lib/uiAksen'
 import { DAFTAR_KELAS, muatSiswaKelas, type SiswaDasar } from '../../lib/siswaAuth'
 import type { PesertaLomba, StatusLomba, TingkatLomba } from '../../types/lomba'
 import {
@@ -48,6 +49,7 @@ export default function LombaForm() {
   const [selesai, setSelesai] = useState('')
   const [status, setStatus] = useState<StatusLomba>('draf')
   const [guruUid, setGuruUid] = useState('')
+  const [guruCari, setGuruCari] = useState('')
   const [staf, setStaf] = useState<{ uid: string; nama: string; email: string; role: string }[]>([])
   const [mapelOpsi, setMapelOpsi] = useState<string[]>([])
   const [peserta, setPeserta] = useState<PesertaLomba[]>([])
@@ -160,6 +162,37 @@ export default function LombaForm() {
     setMapelTerkait((prev) =>
       prev.includes(m) ? prev.filter((x) => x !== m) : [...prev, m],
     )
+  }
+
+  const stafTerfilter = useMemo(() => {
+    const q = guruCari.trim().toLowerCase()
+    if (!q) return staf
+    return staf.filter(
+      (s) =>
+        s.nama.toLowerCase().includes(q) ||
+        s.email.toLowerCase().includes(q) ||
+        s.role.toLowerCase().includes(q),
+    )
+  }, [staf, guruCari])
+
+  const guruTerpilih = useMemo(
+    () => staf.find((s) => s.uid === guruUid) || null,
+    [staf, guruUid],
+  )
+
+  function inisialNama(nama: string): string {
+    const parts = nama.trim().split(/\s+/).filter(Boolean)
+    if (!parts.length) return '?'
+    if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase()
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
+  }
+
+  function labelRole(role: string): string {
+    if (role === 'admin') return 'Admin'
+    if (role === 'guru_akademik') return 'Guru akademik'
+    if (role === 'guru_tahsin_tahfizh') return 'Tahsin'
+    if (role === 'guru') return 'Guru'
+    return role
   }
 
   async function handleSubmit(e: FormEvent) {
@@ -332,44 +365,109 @@ export default function LombaForm() {
         </section>
 
         <section className="lomba-form-card">
-          <h3>Mapel terkait *</h3>
+          <div className="lomba-mapel-head">
+            <h3 style={{ margin: 0 }}>Mapel terkait *</h3>
+            <span className="count">
+              {mapelTerkait.length} dipilih
+            </span>
+          </div>
           <p className="hint">
             TP pada materi, bank soal, dan kuis lomba dibatasi ke mapel yang dipilih di sini.
+            Ketuk kartu untuk memilih atau membatalkan.
           </p>
-          <div className="lomba-mapel-chips">
-            {mapelOpsi.length === 0 ? (
-              <span className="text-xs text-muted">Memuat mapel…</span>
-            ) : (
-              mapelOpsi.map((m) => (
-                <button
-                  key={m}
-                  type="button"
-                  className={mapelTerkait.includes(m) ? 'on' : ''}
-                  onClick={() => toggleMapel(m)}
-                >
-                  {m}
-                </button>
-              ))
-            )}
-          </div>
+          {mapelOpsi.length === 0 ? (
+            <p className="text-xs text-muted">Memuat mapel…</p>
+          ) : (
+            <div className="lomba-mapel-grid" role="group" aria-label="Mapel terkait">
+              {mapelOpsi.map((m) => {
+                const on = mapelTerkait.includes(m)
+                const aksen = aksenMapel(m)
+                return (
+                  <button
+                    key={m}
+                    type="button"
+                    className={`lomba-mapel-item${on ? ' on' : ''}`}
+                    onClick={() => toggleMapel(m)}
+                    aria-pressed={on}
+                  >
+                    <span className="lomba-mapel-bar" style={{ background: aksen.bar }} aria-hidden />
+                    <span
+                      className="lomba-mapel-inisial"
+                      style={{ background: aksen.bar }}
+                      aria-hidden
+                    >
+                      {inisialMapel(m)}
+                    </span>
+                    <span className="lomba-mapel-nama">{m}</span>
+                    <span className="lomba-mapel-check" aria-hidden>
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="20 6 9 17 4 12" />
+                      </svg>
+                    </span>
+                  </button>
+                )
+              })}
+            </div>
+          )}
 
           <h3 className="mt-5">Guru pengampu *</h3>
-          <label className="lomba-field">
-            <span>Pilih staf aktif</span>
-            <select
-              value={guruUid}
-              onChange={(e) => setGuruUid(e.target.value)}
-              required
-            >
-              <option value="">— Pilih guru —</option>
-              {staf.map((s) => (
-                <option key={s.uid} value={s.uid}>
-                  {s.nama}
-                  {s.email ? ` (${s.email})` : ''} · {s.role}
-                </option>
-              ))}
-            </select>
-          </label>
+          <p className="hint">Cari nama atau email, lalu pilih satu staf aktif sebagai pengampu lomba.</p>
+          <div className="lomba-guru-search">
+            <span className="ikon" aria-hidden>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                <circle cx="11" cy="11" r="7" />
+                <path d="m20 20-3.5-3.5" />
+              </svg>
+            </span>
+            <input
+              type="search"
+              value={guruCari}
+              onChange={(e) => setGuruCari(e.target.value)}
+              placeholder="Cari nama, email, atau peran…"
+              autoComplete="off"
+            />
+          </div>
+          <ul className="lomba-guru-list" role="listbox" aria-label="Daftar staf">
+            {stafTerfilter.length === 0 ? (
+              <li className="lomba-guru-kosong">
+                {staf.length === 0 ? 'Memuat staf…' : 'Tidak ada yang cocok dengan pencarian.'}
+              </li>
+            ) : (
+              stafTerfilter.map((s) => {
+                const on = guruUid === s.uid
+                return (
+                  <li key={s.uid}>
+                    <button
+                      type="button"
+                      role="option"
+                      aria-selected={on}
+                      className={`lomba-guru-row${on ? ' on' : ''}`}
+                      onClick={() => setGuruUid(s.uid)}
+                    >
+                      <span className="lomba-guru-avatar" aria-hidden>
+                        {inisialNama(s.nama)}
+                      </span>
+                      <span className="lomba-guru-info">
+                        <span className="lomba-guru-nama">{s.nama}</span>
+                        {s.email ? <span className="lomba-guru-email">{s.email}</span> : null}
+                      </span>
+                      <span className="lomba-guru-role">{labelRole(s.role)}</span>
+                      <span className="lomba-guru-radio" aria-hidden />
+                    </button>
+                  </li>
+                )
+              })
+            )}
+          </ul>
+          {guruTerpilih ? (
+            <div className="lomba-guru-terpilih">
+              <span>Pengampu:</span>
+              <strong>{guruTerpilih.nama}</strong>
+              {guruTerpilih.email ? (
+                <span className="text-slate-500">· {guruTerpilih.email}</span>
+              ) : null}
+            </div>
+          ) : null}
         </section>
 
         <section className="lomba-form-card lomba-form-span">

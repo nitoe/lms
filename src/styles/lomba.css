@@ -636,3 +636,260 @@
 .lomba-back:hover {
   text-decoration: underline;
 }
+
+
+/* —— Mapel terkait: grid kartu toggle (bukan chip generik) —— */
+.lomba-mapel-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.35rem 0.75rem;
+  margin-bottom: 0.65rem;
+}
+.lomba-mapel-head .count {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #c2410c;
+  background: #fff7ed;
+  border-radius: 999px;
+  padding: 0.15rem 0.55rem;
+  box-shadow: inset 0 0 0 1px #fed7aa;
+}
+.lomba-mapel-grid {
+  display: grid;
+  gap: 0.45rem;
+  grid-template-columns: 1fr;
+}
+@media (min-width: 480px) {
+  .lomba-mapel-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (min-width: 900px) {
+  .lomba-mapel-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+.lomba-mapel-item {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  width: 100%;
+  text-align: left;
+  border-radius: 0.75rem;
+  border: 1px solid #e8eaf0;
+  background: #fff;
+  padding: 0.55rem 0.7rem;
+  cursor: pointer;
+  transition: border-color 0.12s, box-shadow 0.12s, background 0.12s;
+}
+.lomba-mapel-item:hover {
+  border-color: #fdba74;
+  background: #fffbf7;
+}
+.lomba-mapel-item.on {
+  border-color: #fb923c;
+  background: #fff7ed;
+  box-shadow: 0 0 0 1px rgba(251, 146, 60, 0.25);
+}
+.lomba-mapel-bar {
+  width: 0.28rem;
+  align-self: stretch;
+  min-height: 1.75rem;
+  border-radius: 999px;
+  flex-shrink: 0;
+}
+.lomba-mapel-inisial {
+  display: grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 0.55rem;
+  font-size: 0.65rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  flex-shrink: 0;
+  color: #fff;
+}
+.lomba-mapel-nama {
+  flex: 1;
+  min-width: 0;
+  font-size: 0.8rem;
+  font-weight: 650;
+  color: #1e293b;
+  line-height: 1.3;
+}
+.lomba-mapel-item.on .lomba-mapel-nama {
+  color: #9a3412;
+}
+.lomba-mapel-check {
+  display: grid;
+  place-items: center;
+  width: 1.35rem;
+  height: 1.35rem;
+  border-radius: 999px;
+  border: 1.5px solid #cbd5e1;
+  flex-shrink: 0;
+  color: transparent;
+  background: #fff;
+}
+.lomba-mapel-item.on .lomba-mapel-check {
+  border-color: #c2410c;
+  background: #c2410c;
+  color: #fff;
+}
+.lomba-mapel-check svg {
+  width: 0.75rem;
+  height: 0.75rem;
+}
+
+/* —— Guru pengampu: cari + daftar kartu —— */
+.lomba-guru-search {
+  position: relative;
+  margin-bottom: 0.55rem;
+}
+.lomba-guru-search input {
+  width: 100%;
+  border-radius: 0.7rem;
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  padding: 0.55rem 0.75rem 0.55rem 2.15rem;
+  font-size: 0.875rem;
+}
+.lomba-guru-search input:focus {
+  outline: none;
+  border-color: #fb923c;
+  box-shadow: 0 0 0 3px rgba(251, 146, 60, 0.18);
+}
+.lomba-guru-search .ikon {
+  position: absolute;
+  left: 0.7rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #94a3b8;
+  pointer-events: none;
+  display: flex;
+}
+.lomba-guru-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 16rem;
+  overflow-y: auto;
+  border-radius: 0.85rem;
+  border: 1px solid #e8eaf0;
+  background: #fafbfc;
+}
+.lomba-guru-list li {
+  border-top: 1px solid #f1f5f9;
+}
+.lomba-guru-list li:first-child {
+  border-top: none;
+}
+.lomba-guru-row {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  width: 100%;
+  text-align: left;
+  border: none;
+  background: transparent;
+  padding: 0.65rem 0.75rem;
+  cursor: pointer;
+  transition: background 0.12s;
+}
+.lomba-guru-row:hover {
+  background: #fff7ed;
+}
+.lomba-guru-row.on {
+  background: #fff7ed;
+}
+.lomba-guru-avatar {
+  display: grid;
+  place-items: center;
+  width: 2.35rem;
+  height: 2.35rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: #fff;
+  background: linear-gradient(145deg, #c2410c, #ea580c);
+  flex-shrink: 0;
+}
+.lomba-guru-row.on .lomba-guru-avatar {
+  box-shadow: 0 0 0 2px #fff, 0 0 0 4px #fb923c;
+}
+.lomba-guru-info {
+  flex: 1;
+  min-width: 0;
+}
+.lomba-guru-nama {
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: #1e293b;
+  line-height: 1.25;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.lomba-guru-email {
+  font-size: 0.72rem;
+  color: #64748b;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.lomba-guru-role {
+  flex-shrink: 0;
+  border-radius: 999px;
+  padding: 0.15rem 0.5rem;
+  font-size: 0.65rem;
+  font-weight: 700;
+  background: #f1f5f9;
+  color: #475569;
+}
+.lomba-guru-row.on .lomba-guru-role {
+  background: #ffedd5;
+  color: #9a3412;
+}
+.lomba-guru-radio {
+  width: 1.15rem;
+  height: 1.15rem;
+  border-radius: 999px;
+  border: 2px solid #cbd5e1;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  background: #fff;
+}
+.lomba-guru-row.on .lomba-guru-radio {
+  border-color: #c2410c;
+}
+.lomba-guru-row.on .lomba-guru-radio::after {
+  content: '';
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 999px;
+  background: #c2410c;
+}
+.lomba-guru-kosong {
+  padding: 1.25rem 0.85rem;
+  text-align: center;
+  font-size: 0.85rem;
+  color: #64748b;
+}
+.lomba-guru-terpilih {
+  margin-top: 0.55rem;
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  border-radius: 0.7rem;
+  border: 1px solid #fed7aa;
+  background: #fff7ed;
+  padding: 0.5rem 0.7rem;
+  font-size: 0.8rem;
+}
+.lomba-guru-terpilih strong {
+  color: #9a3412;
+}
