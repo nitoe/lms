@@ -561,6 +561,15 @@ Regresi: `firestore.rules` di repo `nitoe/lms` tidak memuat rules Lomba (`lms_lo
 
 
 
+
+### §Lomba.26 Kirim jawaban Lomba (CF) + hasil roster + reset
+
+1. **`nilaiKuisLms`:** selain kelas==siswa / TKA bank 6, izinkan kuis `kelas=='LB'` + `lombaId` jika `siswaId ∈ lomba.siswaIds`. Tolak tetap pesan «Kuis bukan untuk kelasmu.»
+2. Dokumen `lms_jawaban` untuk Lomba **wajib** menyimpan `lombaId` (denormalisasi). Field `kelas` tetap **rombel siswa**, bukan `LB`.
+3. **Rules baca `lms_jawaban`:** cabang `lombaId` + `lombaKontenBoleh` (pengampu/admin). Query hasil: `where kuisId + lombaId` — **jangan** `where kelas=='LB'`.
+4. **Hasil:** tabel roster dari `lomba.siswaList` (semua peserta), gabung jawaban terbaru; status «Belum mengerjakan» bila null. Reset attempt = CF `resetJawabanKuisLms` mode `semua` (hapus `lms_jawaban` + marker progress lokal).
+5. Deploy functions di repo SDM01Penilaian; rules di LMS. Index Firestore: `lms_jawaban` composite `kuisId` + `lombaId` bila konsol meminta.
+
 ### §Lomba.25 Mulai kerjakan = mode pengerjaan, bukan sekadar detail
 
 1. Tombol **Mulai kerjakan** di daftar lomba siswa wajib membawa `?mulai=1` (atau setara) sehingga detail **auto-start** kuis yang jadwalnya buka — jangan hanya `Link` ke detail tanpa aksi.

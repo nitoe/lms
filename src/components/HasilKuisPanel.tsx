@@ -5,6 +5,7 @@ import {
   agregatPerSoal,
   daftarJawabanKuis,
   daftarJawabanKuisMultiKelas,
+  daftarJawabanKuisLomba,
   formatSkor100,
   ringkasPerSiswa,
   jawabanTsMs,
@@ -44,6 +45,8 @@ import {
   type MapelTkaNama,
 } from '../lib/tkaAkses'
 import { muatSiswaKelas, type SiswaDasar } from '../lib/siswaAuth'
+import { getLomba } from '../lib/lomba'
+import type { PesertaLomba } from '../types/lomba'
 
 type Props = {
   kuis: KuisLms
@@ -196,6 +199,8 @@ async function jalankanAnalisisSiswa(
 export default function HasilKuisPanel({ kuis, onUpdated }: Props) {
   const { user, profil } = useAuth()
   const isTka = adalahMapelTka(kuis.mapel)
+  const isLomba = !!kuis.lombaId
+  const [rosterLomba, setRosterLomba] = useState<PesertaLomba[] | null>(null)
   const adminTka = adalahAdminTka(user, profil)
   const [hasilDipublish, setHasilDipublish] = useState(!!kuis.hasilDipublish)
   const [busyPublish, setBusyPublish] = useState(false)
@@ -230,11 +235,20 @@ export default function HasilKuisPanel({ kuis, onUpdated }: Props) {
   const muat = useCallback(async () => {
     setError('')
     try {
-      if (isTka) {
+      if (isLomba && kuis.lombaId) {
+        const [data, lomba] = await Promise.all([
+          daftarJawabanKuisLomba(kuis.id, kuis.lombaId),
+          getLomba(kuis.lombaId),
+        ])
+        setList(data)
+        setRosterTka(null)
+        setRosterLomba(lomba?.siswaList ?? [])
+      } else if (isTka) {
         const izin = kelasHasilTkaBolehDilihat(user, profil)
         if (izin.length === 0) {
           setList([])
           setRosterTka([])
+          setRosterLomba(null)
           setError('Anda tidak punya akses melihat hasil TKA untuk rombel mana pun.')
           return
         }
@@ -244,14 +258,17 @@ export default function HasilKuisPanel({ kuis, onUpdated }: Props) {
         ])
         setList(data)
         setRosterTka(siswaBatches.flat().sort((a, b) => a.nama.localeCompare(b.nama, 'id')))
+        setRosterLomba(null)
       } else {
         const data = await daftarJawabanKuis(kuis.id, kuis.kelas, kuis.mapel)
         setList(data)
         setRosterTka(null)
+        setRosterLomba(null)
       }
     } catch (e) {
       setList([])
       if (isTka) setRosterTka([])
+      if (isLomba) setRosterLomba([])
       const msg = e instanceof Error ? e.message : String(e)
       setError(
         msg.includes('permission') || msg.includes('Permission')
@@ -259,7 +276,7 @@ export default function HasilKuisPanel({ kuis, onUpdated }: Props) {
           : msg || 'Gagal memuat hasil.',
       )
     }
-  }, [kuis.id, kuis.kelas, kuis.mapel, isTka, user, profil])
+  }, [kuis.id, kuis.kelas, kuis.mapel, kuis.lombaId, isTka, isLomba, user, profil])
 
   useEffect(() => {
     void muat()
@@ -381,6 +398,38 @@ export default function HasilKuisPanel({ kuis, onUpdated }: Props) {
     return rows
   }, [isTka, rosterTka, tampil, filterKelasTka])
 
+  /** Roster peserta Lomba: semua nama tampil meski belum mengerjakan (§Lomba.26). */
+  const barisLomba = useMemo((): BarisHasilTka[] => {
+    if (!isLomba || rosterLomba === null) return []
+    const bySiswa = new Map<string, JawabanKuis>()
+    for (const j of tampil) {
+      const key = j.siswaId || j.siswaUid || ''
+      if (!key) continue
+      const prev = bySiswa.get(key)
+      if (!prev || jawabanTsMs(j.createdAt) > jawabanTsMs(prev.createdAt) || j.percobaan > prev.percobaan) {
+        bySiswa.set(key, j)
+      }
+    }
+    return rosterLomba.map((s) => ({
+      siswaId: s.id,
+      siswaNama: s.nama,
+      kelas: s.kelas,
+      jawaban: bySiswa.get(s.id) ?? null,
+    }))
+  }, [isLomba, rosterLomba, tampil])
+
+  const barisRoster = isLomba ? barisLomba : isTka ? barisTka : []
+
+  /** Mapel sumber di kuis Gabungan — kolom capaian per mapel. */
+  const mapelSumberLomba = useMemo(() => {
+    if (!isLomba) return [] as string[]
+    const set = new Set<string>()
+    for (const s of kuis.soal ?? []) {
+      if (s.sumberMapel) set.add(s.sumberMapel)
+    }
+    return [...set].sort((a, b) => a.localeCompare(b, 'id'))
+  }, [isLomba, kuis.soal])
+
   const soalIds = useMemo(() => (kuis.soal ?? []).map((s) => s.id), [kuis.soal])
 
   /**
@@ -423,9 +472,9 @@ export default function HasilKuisPanel({ kuis, onUpdated }: Props) {
   }, [list, tampil, soalIds, isTka, barisTka])
 
   const ringkas = useMemo(() => {
-    if (isTka) {
-      const nRoster = barisTka.length
-      const sudah = barisTka.filter((b) => b.jawaban)
+    if (isTka || isLomba) {
+      const nRoster = barisRoster.length
+      const sudah = barisRoster.filter((b) => b.jawaban)
       const n = sudah.length
       if (n === 0) return { n: 0, nRoster, rata: 0, perlu: 0, selesai: 0 }
       let sum = 0
@@ -452,7 +501,7 @@ export default function HasilKuisPanel({ kuis, onUpdated }: Props) {
       if (j.status === 'sebagian_manual' || (j.detail ?? []).some((d) => d.butuhManual)) perlu += 1
     }
     return { n, nRoster: n, rata: Math.round((sum / n) * 10) / 10, perlu, selesai: n - perlu }
-  }, [tampil, isTka, barisTka])
+  }, [tampil, isTka, isLomba, barisTka, barisRoster])
 
   const terpilih = list?.find((j) => j.id === pilihId) ?? null
   const jenis = (kuis.jenisPenilaian ?? 'latihan') as JenisPenilaianKuis
@@ -1228,22 +1277,26 @@ export default function HasilKuisPanel({ kuis, onUpdated }: Props) {
         <span className="kn-hitung">
           {isTka
             ? `${ringkas.n} mengerjakan · ${ringkas.nRoster} siswa roster`
+            : isLomba && ringkas.nRoster
+              ? `${ringkas.n} mengerjakan · ${ringkas.nRoster} peserta lomba`
             : `${list.length} kiriman · ${ringkasPerSiswa(list).length} siswa`}
         </span>
       </div>
 
-      {list.length === 0 && !error && !(isTka && (rosterTka?.length ?? 0) > 0) && (
+      {list.length === 0 && !error && !(isTka && (rosterTka?.length ?? 0) > 0) && !(isLomba && (rosterLomba?.length ?? 0) > 0) && (
         <div className="rounded-2xl border border-dashed border-slate-200 bg-white px-6 py-14 text-center shadow-sm">
           <p className="text-sm font-semibold text-slate-700">Belum ada jawaban terkirim</p>
           <p className="mx-auto mt-1 max-w-md text-xs leading-relaxed text-slate-500">
             {isTka
               ? 'Roster siswa akan tampil di bawah bila data kelas tersedia. Setelah siswa mengirim, nilai muncul otomatis.'
-              : 'Setelah siswa menekan «Selesai & Kirim», nilai muncul di sini — termasuk untuk latihan.'}
+              : isLomba
+                ? 'Semua peserta lomba ditampilkan. Setelah siswa mengirim, skor muncul otomatis. Reset attempt menghapus kiriman + draf lokal.'
+                : 'Setelah siswa menekan «Selesai & Kirim», nilai muncul di sini — termasuk untuk latihan.'}
           </p>
         </div>
       )}
 
-      {mode === 'siswa' && isTka && barisTka.length > 0 && (
+      {mode === 'siswa' && (isTka || isLomba) && barisRoster.length > 0 && (
         <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
           <div className="overflow-x-auto">
             <table className="w-full min-w-[640px] text-left text-sm">
@@ -1287,7 +1340,7 @@ export default function HasilKuisPanel({ kuis, onUpdated }: Props) {
                 </tr>
               </thead>
               <tbody>
-                {barisTka.map((row) => {
+                {barisRoster.map((row) => {
                   const j = row.jawaban
                   if (!j) {
                     return (

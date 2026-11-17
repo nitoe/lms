@@ -1,3 +1,15 @@
+## 2026-11-17 — Lomba: kirim kuis 403 + hasil roster + reset
+
+- **Gejala:** Siswa peserta kirim jawaban kuis Lomba → `Kuis bukan untuk kelasmu. [403]`.
+- **Akar:** CF `nilaiKuisLms` hanya mengizinkan kelas kuis == kelas siswa atau bank TKA «6»; kelas bank Lomba `LB` ditolak.
+- **Perbaikan CF (SDM01Penilaian):**
+  - `nilaiKuisLms`: izinkan peserta Lomba (`lombaId` + `siswaId ∈ lomba.siswaIds`); juga `kelasList`; tulis `lombaId` di `lms_jawaban`.
+  - `resetJawabanKuisLms`: izinkan kuis Lomba (pengampu/admin) — hapus attempt + marker draf lokal (koleksi `lms_tka_progress_reset`).
+- **Rules `lms_jawaban`:** baca pengampu/admin via `lombaId` + `lombaKontenBoleh`.
+- **Hasil guru:** `HasilKuisPanel` + `daftarJawabanKuisLomba` — roster **semua peserta** lomba (belum mengerjakan tetap tampil), skor, reset. Query `kuisId` + `lombaId` (bukan kelas `LB`).
+- **Wajib deploy:** functions `nilaiKuisLms` + `resetJawabanKuisLms` dari SDM01Penilaian; `firestore.rules` LMS.
+- File: `functions/nilaiKuisLms.js`, `functions/resetJawabanKuisLms.js`, `firestore.rules`, `src/lib/jawabanKuis.ts`, `src/components/HasilKuisPanel.tsx`, CHANGELOG, ANTIREGRESI (§Lomba.26).
+
 ## 2026-11-17 — Lomba siswa: layout info di hero + Mulai kerjakan benar-benar mulai kuis
 
 - **Layout:** meta Masa/Pengampu/Peserta dipindah ke dalam hero (`.lomba-hero-meta`), bukan kartu putih dengan padding 0 yang menempel border. Deskripsi di blok terpisah berpadding. Pill mapel di body kartu `align-self: flex-start` (tidak meregang penuh).

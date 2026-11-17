@@ -41,6 +41,8 @@ export type JawabanKuis = {
   createdAt?: unknown
   dinilaiOleh?: string
   dinilaiOlehNama?: string
+  /** Kuis modul Lomba — denormalisasi dari lms_kuis. */
+  lombaId?: string
 }
 
 function tsMs(v: unknown): number {
@@ -73,6 +75,7 @@ function dariDok(id: string, data: Record<string, unknown>): JawabanKuis {
     createdAt: data.createdAt,
     dinilaiOleh: typeof data.dinilaiOleh === 'string' ? data.dinilaiOleh : undefined,
     dinilaiOlehNama: typeof data.dinilaiOlehNama === 'string' ? data.dinilaiOlehNama : undefined,
+    lombaId: typeof data.lombaId === 'string' ? data.lombaId : undefined,
   }
 }
 
@@ -210,6 +213,31 @@ export async function daftarJawabanKuisMultiKelas(
     unik.map((kelas) => daftarJawabanKuis(kuisId, kelas, mapel)),
   )
   const list = batches.flat()
+  list.sort((a, b) => {
+    const tb = tsMs(b.createdAt) - tsMs(a.createdAt)
+    if (tb !== 0) return tb
+    return (b.percobaan ?? 0) - (a.percobaan ?? 0)
+  })
+  return list
+}
+
+/**
+ * Jawaban kuis Lomba (kelas bank LB). Query kuisId + lombaId — jawaban menyimpan
+ * rombel siswa di field kelas, bukan «LB». Butuh rules cabang lombaId (§Lomba.26).
+ * Index: lms_jawaban kuisId ASC, lombaId ASC (atau composite otomatis).
+ */
+export async function daftarJawabanKuisLomba(
+  kuisId: string,
+  lombaId: string,
+): Promise<JawabanKuis[]> {
+  if (!kuisId || !lombaId) return []
+  const q = query(
+    collection(db, 'lms_jawaban'),
+    where('kuisId', '==', kuisId),
+    where('lombaId', '==', lombaId),
+  )
+  const snap = await getDocs(q)
+  const list = snap.docs.map((d) => dariDok(d.id, d.data() as Record<string, unknown>))
   list.sort((a, b) => {
     const tb = tsMs(b.createdAt) - tsMs(a.createdAt)
     if (tb !== 0) return tb
