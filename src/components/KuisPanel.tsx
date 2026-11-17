@@ -56,6 +56,7 @@ type Props = {
   kelas: string
   mapel: string
   lombaId?: string
+  /** Diterima agar pemanggil (LombaDetail) seragam dengan MateriPanel/BankSoalPanel; kuis tidak memakainya (TP diambil dari paket sumber). Jangan di-destructure bila tak dipakai — TS6133. */
   tpKelas?: string
 }
 
@@ -107,7 +108,7 @@ function kelompokkanPerTipe(soal: SoalKuis[], urutan: readonly TipeSoal[]) {
 
 const PRESET_JUMLAH = [10, 15, 20, 25, 30]
 
-export default function KuisPanel({ kelas, mapel, lombaId, tpKelas }: Props) {
+export default function KuisPanel({ kelas, mapel, lombaId }: Props) {
   const { profil, user } = useAuth()
   const bolehAi = bolehGenerateSoalAi(user?.uid)
   /** Filter bentuk soal TKA hanya PG / PGK / BS — jangan regresi mapel biasa (ANTIREGRESI §88). */

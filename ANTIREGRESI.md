@@ -425,3 +425,10 @@ Regresi berulang: halaman modul baru (Lomba, dan kelak fitur lain) memakai `max-
 ### §Lomba.7 Konten kelas bank LB + lombaId
 Materi/paket/kuis lomba disimpan dengan `kelas == "LB"` dan field **`lombaId`**. Query wajib `where lombaId` + `mapel`. Jangan campur dengan ruang kelas biasa. Rules: `lombaKontenBoleh(lombaId)`.
 
+### §Lomba.8 Prop opsional untuk panel bersama: jangan di-destructure bila tak dipakai
+Build deploy (`tsc -b`) gagal dengan `TS6133 'tpKelas' is declared but its value is never read` di `KuisPanel`. Panel bersama (`MateriPanel`, `BankSoalPanel`, `KuisPanel`) menerima `lombaId` / `tpKelas` opsional dari `LombaDetail`, tetapi **tidak semua panel memakai kedua prop**. `KuisPanel` hanya memakai `lombaId` (TP kuis berasal dari paket sumber).
+
+**Aturan:**
+1. Prop yang tidak dipakai sebuah panel tetap dideklarasikan di tipe `Props` (agar pemanggil seragam), tetapi **jangan** dimasukkan ke destructuring parameter — `noUnusedLocals`/`noUnusedParameters` menolaknya.
+2. Saat menambah prop baru ke panel bersama, periksa tiap panel: destructure hanya yang benar-benar dibaca.
+3. Selalu jalankan `npx tsc -b` (atau `npm run build`) sebelum `npm run deploy`; jangan mengandalkan Vite dev server yang tidak mengecek tipe.

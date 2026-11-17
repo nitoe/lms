@@ -1,3 +1,10 @@
+## 2026-11-17 — Lomba: perbaikan build deploy (TS6133 `tpKelas` di KuisPanel)
+
+- **Gejala:** `npm run deploy` gagal di tahap `tsc -b`: `src/components/KuisPanel.tsx:110:60 - error TS6133: 'tpKelas' is declared but its value is never read.`
+- **Akar:** pada Lomba Tahap 2, `KuisPanel` diberi prop opsional `tpKelas` (agar seragam dengan `MateriPanel`/`BankSoalPanel`) dan di-destructure di parameter, tetapi kuis tidak memakainya — TP kuis diturunkan dari paket sumber. `tsconfig` mengaktifkan pemeriksaan variabel tak terpakai.
+- **Perbaikan:** `tpKelas` tetap ada di tipe `Props` (pemanggil `LombaDetail` tidak berubah) tetapi tidak lagi di-destructure di `KuisPanel`. Tidak ada perubahan perilaku.
+- File: `src/components/KuisPanel.tsx`, `CHANGELOG.md`, `ANTIREGRESI.md` (§Lomba.8).
+
 ## 2026-11-17 — Modul Lomba Tahap 1: fondasi data, akses, CRUD meta
 
 ## 2026-11-17 — Lomba Tahap 2: materi, bank soal, kuis
