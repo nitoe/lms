@@ -108,7 +108,7 @@ function kelompokkanPerTipe(soal: SoalKuis[], urutan: readonly TipeSoal[]) {
     .filter((g) => g.items.length > 0)
 }
 
-const PRESET_JUMLAH = [10, 15, 20, 25, 30]
+const PRESET_JUMLAH = [10, 15, 20, 25, 30, 40, 50]
 
 export default function KuisPanel({ kelas, mapel, lombaId, mapelGabungan }: Props) {
   /** Kuis Lomba lintas mapel: paket diambil dari semua mapel lomba (ANTIREGRESI §Lomba.13). */
@@ -293,6 +293,13 @@ export default function KuisPanel({ kelas, mapel, lombaId, mapelGabungan }: Prop
 
   function pilihSemuaTampil() {
     setPaketIds((prev) => Array.from(new Set([...prev, ...paketTampil.map((p) => p.id)])))
+    setPratinjau(null)
+    setPeringatanDuplikat([])
+  }
+
+  /** Pilih semua paket Siap tanpa mempedulikan saring mapel/materi (khusus kuis gabungan Lomba). */
+  function pilihSemuaSiap() {
+    setPaketIds(paketSiap.map((p) => p.id))
     setPratinjau(null)
     setPeringatanDuplikat([])
   }
@@ -847,7 +854,13 @@ export default function KuisPanel({ kelas, mapel, lombaId, mapelGabungan }: Prop
                   </h4>
                   <p className="wz-seksi-bantu">
                     Hanya paket berstatus <strong>Siap</strong> yang muncul di sini.
-                    {gabungan && ' Kuis gabungan: pilih paket dari beberapa mapel sekaligus.'}
+                    {gabungan && (
+                      <>
+                        {' '}Kuis gabungan: paket dari <strong>semua mapel terkait lomba</strong> tersedia.
+                        Saring per mapel hanya untuk memudahkan memilih; soal yang disusun memakai
+                        <strong> seluruh paket yang dicentang</strong> (lintas mapel).
+                      </>
+                    )}
                     {paketIds.length > 0 && ` ${paketIds.length} paket dipilih.`}
                   </p>
                 </div>
@@ -921,10 +934,36 @@ export default function KuisPanel({ kelas, mapel, lombaId, mapelGabungan }: Prop
                     <button type="button" className="wz-tautan" onClick={pilihSemuaTampil} disabled={paketTampil.length === 0}>
                       Pilih semua yang tampil
                     </button>
+                    {gabungan && (
+                      <button
+                        type="button"
+                        className="wz-tautan"
+                        onClick={pilihSemuaSiap}
+                        disabled={paketSiap.length === 0}
+                        title="Centang semua paket Siap dari seluruh mapel lomba"
+                      >
+                        Pilih semua paket Siap
+                      </button>
+                    )}
                     <button type="button" className="wz-tautan" onClick={kosongkanPaket} disabled={paketIds.length === 0}>
                       Kosongkan
                     </button>
                   </div>
+                  {gabungan && paketIds.length > 0 && (
+                    <p className="wz-info" style={{ marginTop: '0.35rem' }}>
+                      Terpilih:{' '}
+                      {mapelTersedia
+                        .map(({ mapel: m }) => {
+                          const n = paketSiap.filter((p) => p.mapel === m && paketIds.includes(p.id)).length
+                          return n > 0 ? `${m} (${n})` : null
+                        })
+                        .filter(Boolean)
+                        .join(' · ') || `${paketIds.length} paket`}
+                      {mapelPaketAktif
+                        ? ' — saring aktif: hanya menampilkan paket mapel ini; centang tetap berlaku untuk penyusunan.'
+                        : '.'}
+                    </p>
+                  )}
                   {paketTampil.length === 0 ? (
                     <div className="wz-kosong-paket">Tidak ada paket yang cocok dengan pencarian.</div>
                   ) : (

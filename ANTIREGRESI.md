@@ -483,6 +483,15 @@ Regresi: `firestore.rules` di repo `nitoe/lms` tidak memuat rules Lomba (`lms_lo
 8. Sisi siswa untuk kuis Lomba belum ada (`/siswa/lomba/:id` belum dirutekan; rules siswa membaca `lms_kuis` lewat `kelas == token.kelas`, bukan «LB»). Saat dibuat, tambahkan cabang rules baca siswa untuk `lombaId` (peserta: `request.auth.token.siswaId in lomba.siswaIds`) dan deploy rules.
 9. Uji: lomba ≥ 2 mapel → buat paket Siap di dua mapel → Kuis → Gabungan → pilih paket kedua mapel → pratinjau memuat soal campuran → simpan → buka kuis → «Tambah soal dari bank» menampilkan paket kedua mapel (juga untuk akun guru pengampu non-admin).
 
+
+### §Lomba.14 Kuis gabungan: preset jumlah soal & saring paket tidak membatasi penyusunan
+
+1. Preset jumlah soal di wizard kuis (`PRESET_JUMLAH` di `KuisPanel.tsx`) mencakup **40** dan **50** di samping 10–30. Batas keras tetap `BATAS_SOAL_PER_KUIS` (100) di `types/kuis.ts` dan `susunOtomatis`. Jangan menghapus 40/50 tanpa alasan; lomba sering memakai 30–50 soal.
+2. Saring Mapel (chip) di langkah «Pilih paket soal» mode Gabungan **hanya memfilter tampilan** (`paketTampil`). `paketIds` dan `kandidat`/`susunOtomatis` memakai **seluruh paket yang dicentang**, termasuk yang sedang disembunyikan saring. Jangan memfilter `kandidat` dengan `mapelPaketAktif`.
+3. Tombol «Pilih semua yang tampil» menghormati saring; tombol **«Pilih semua paket Siap»** (Gabungan saja) mengabaikan saring dan mencentang semua `paketSiap`. Keduanya harus tetap ada.
+4. Saat saring mapel aktif dan ada paket terpilih dari mapel lain, UI menampilkan ringkasan «Terpilih: …» agar pengguna tidak mengira centang hilang.
+5. Uji: Lomba ≥2 mapel → Gabungan → saring ke satu mapel → centang paket → saring ke mapel lain → centang lagi → ringkasan menunjukkan kedua mapel → Susun pratinjau → soal berasal dari kedua paket; preset 40/50 tersedia dan menghasilkan jumlah sesuai stok.
+
 ## §129. Template & import bank soal: «Tanpa TP» dan parser CSV
 
 129.1 Bank soal mapel biasa (termasuk Lomba, kelas bank `LB`) **boleh tanpa TP**: `tpId/tpNomor/tpNama` opsional di `lms_paket_soal` (rules tidak mewajibkannya — jangan menambah syarat TP di rules/klien). Kuis dari paket tanpa TP tetap sah (`tpIds` dihitung hanya dari paket yang punya `tpId`).

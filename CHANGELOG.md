@@ -1,3 +1,13 @@
+## 2026-11-17 — Lomba kuis gabungan: opsi 40/50 soal & pemilihan paket lintas mapel lebih jelas
+
+- **Opsi jumlah soal:** preset penyusunan otomatis ditambah **40** dan **50** (sebelumnya maksimal chip 30). Batas absolut tetap `BATAS_SOAL_PER_KUIS` (100). Cocok untuk lomba yang memakai 30+ soal.
+- **Pemilihan paket di mode Gabungan:**
+  - Teks bantu menjelaskan bahwa saring Mapel hanya memudahkan memilih; **penyusunan memakai seluruh paket yang dicentang** (lintas mapel), bukan hanya yang tampil di saring aktif.
+  - Tombol **«Pilih semua paket Siap»** (hanya mode Gabungan) mencentang semua paket Siap dari seluruh mapel lomba sekaligus, tanpa mempedulikan saring Mapel/Materi.
+  - Ringkasan «Terpilih: Mapel A (n) · Mapel B (m)» di atas daftar paket, plus catatan bila saring mapel aktif bahwa centang tetap berlaku untuk penyusunan.
+- Tidak mengubah query, penyimpanan, atau perilaku ruang kelas/TKA. Diverifikasi perubahan lokal pada `KuisPanel.tsx`.
+- File: `src/components/KuisPanel.tsx`, `CHANGELOG.md`, `ANTIREGRESI.md` (§Lomba.14).
+
 ## 2026-11-17 — Lomba: kuis gabungan lintas mapel (satu kuis berisi soal dari beberapa mapel)
 
 - **Kebutuhan:** kuis Lomba tidak harus per mapel; satu kuis bisa memuat soal dari beberapa mapel sekaligus (tidak terpisah). Sebelumnya wizard hanya menampilkan paket dari **satu** mapel aktif.
