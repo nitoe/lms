@@ -1,3 +1,14 @@
+## 2026-11-17 — Lomba: perbaiki «Missing or insufficient permissions» saat menyimpan kuis + draf lokal wizard
+
+- **Gejala:** Kuis Lomba tidak dapat disimpan («Missing or insufficient permissions.») berulang kali, walau login `arif.nitoe@gmail.com`; kemajuan susunan kuis hilang saat halaman di-reload.
+- **Akar (rules):**
+  1. Update `lms_kuis`/`lms_materi`/`lms_tugas` milik Lomba ditolak: dokumen berisi `kelasList: ['LB']`, sehingga aturan `lmsKelasListBoleh` (butuh penugasan per kelas) selalu dijalankan dan gagal (§Lomba.17).
+  2. Perbaikan sebelumnya (email admin, cabang Lomba-first) hanya tercatat di CHANGELOG/ANTIREGRESI; `firestore.rules` di repo belum memuatnya dan rules belum tentu dideploy.
+- **Perbaikan `firestore.rules`:** `lombaKelasListSah()`; `isAdminLmsEmail()` + `lombaAdmin()` (scoped Lomba, `isAdmin()` global tidak berubah); cabang baca Lomba tanpa syarat `isGuru()`; `lombaKontenBoleh` kini cek `akunAktif()`; cabang create Lomba didahulukan.
+- **Fitur baru:** Draf lokal wizard «Susun kuis» (`src/lib/kuisDraf.ts`) — autosave ke localStorage, banner «Lanjutkan / Buang draf», bertahan saat hard reload dan saat simpan gagal (§Lomba.18). Pesan galat `permission-denied` kini menjelaskan langkah deploy rules.
+- **Wajib:** salin `firestore.rules` UTUH ke repo SDM01Penilaian, lalu `npm run deploy:rules` (deploy Hosting saja tidak cukup).
+- File: `firestore.rules`, `src/lib/kuisDraf.ts` (baru), `src/components/KuisPanel.tsx`, `CHANGELOG.md`, `ANTIREGRESI.md` (§Lomba.17–19).
+
 ## 2026-11-17 — Lomba: rules isAdmin selaras email admin LMS (perbaiki simpan kuis)
 
 - **Gejala:** Admin LMS (`arif.nitoe@gmail.com`) bisa membuka paket/bank Lomba dan menyusun pratinjau kuis Gabungan, tetapi **simpan** gagal «Missing or insufficient permissions.»

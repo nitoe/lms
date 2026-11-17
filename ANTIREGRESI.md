@@ -507,10 +507,37 @@ Regresi: `firestore.rules` di repo `nitoe/lms` tidak memuat rules Lomba (`lms_lo
 ### §Lomba.16 Admin LMS di rules = role admin ATAU email arif.nitoe@gmail.com
 
 1. Klien (`adalahAdminLms` di `lombaAkses.ts`) mengizinkan admin lewat `peranDari === 'admin'` **atau** email `arif.nitoe@gmail.com`. Rules sebelumnya hanya `myRole() == 'admin'`. Ketidakselarasan ini menyebabkan UI admin tetapi create/update konten Lomba (`lms_kuis` / paket / materi kelas `LB`) ditolak permission.
-2. Rules wajib punya `isAdminEmail()` (token email lower-case == `arif.nitoe@gmail.com`) dan `isAdmin() = (akunAktif && role == 'admin') || isAdminEmail()`. Semua pemakaian `isAdmin()` / `lombaAdmin()` / `lombaKontenBoleh` otomatis ikut.
+2. **(Dikoreksi §Lomba.19)** Rules memakai `isAdminLmsEmail()` (token email lower-case == `arif.nitoe@gmail.com`, + `akunAktif()`) HANYA lewat `lombaAdmin() = isAdmin() || isAdminLmsEmail()`. `isAdmin()` global JANGAN diubah (dipakai Penilaian, Perpustakaan, Sarpras).
 3. Setelah mengubah definisi `isAdmin`, deploy **firestore.rules** ke proyek `sdm01kukusan-2e735`. Jangan mengandalkan hanya deploy Hosting.
 4. Idealnya dokumen `users/{uid}` untuk akun itu juga `role: "admin"` (sumber kebenaran Penilaian); email fallback melindungi bila role belum tersinkron.
 5. Uji: login `arif.nitoe@gmail.com` → Lomba → Kuis → Gabungan → pilih paket → susun pratinjau → **Simpan** → dokumen `lms_kuis` terbentuk (`kelas: "LB"`, `mapel: "Gabungan"`, `lombaId` terisi).
+
+
+### §Lomba.17 UPDATE dokumen Lomba (`lms_kuis`, `lms_materi`, `lms_tugas`) ditolak karena aturan `kelasList` — akar «Missing or insufficient permissions» saat menyimpan kuis Lomba
+
+1. **Akar sebenarnya.** Pada UPDATE, `request.resource.data` adalah dokumen HASIL gabungan, bukan hanya field yang dikirim. Kuis Lomba dibuat dengan `kelasList: ['LB']` (`normalisasiKelasList('LB')`), jadi `'kelasList' in request.resource.data` SELALU true pada setiap update berikutnya (aktifkan, ubah judul/soal, atur jadwal, simpan). Aturan lama lalu mewajibkan `lmsKelasListBoleh(mapel, ['LB'])` → `lmsTulisMapelKelas` per-kelas «LB» → false untuk admin maupun guru pengampu (tidak ada penugasan «LB::mapel»). Perbaikan create-only (§Lomba.15–16) tidak menyentuh jalur ini.
+2. **Rules wajib** punya `lombaKelasListSah(list)` (`list is list && size()==1 && list[0]=='LB'`) dan cabang `('lombaId' in resource.data && lombaKelasListSah(request.resource.data.kelasList))` di klausa kelasList update `lms_materi`, `lms_kuis`, `lms_tugas`. Konten Lomba TIDAK boleh dibagikan ke rombel (`aturBerbagiKuis` tidak dipakai di Lomba).
+3. **Jangan** menghapus `kelasList` dari payload create Lomba sebagai «solusi»: query/rules kelas lain bergantung pada field itu; perbaiki di rules.
+4. Cabang baca Lomba pada `lms_paket_soal` & `lms_kuis` TIDAK lagi bergantung pada `isGuru()`; cukup `'lombaId' in resource.data && lombaKontenBoleh(lombaId)` (admin via email tidak ber-role admin/guru di `users`). `lms_materi` read menambah `lombaAdmin()`.
+5. Cabang create Lomba didahulukan (Lomba-first) di `lms_materi`, `lms_paket_soal`, `lms_kuis`, `lms_tugas`, `lms_nilai_tugas`; `lombaKontenBoleh` kini juga mensyaratkan `akunAktif()`.
+6. Uji (urut, akun `arif.nitoe@gmail.com` DAN akun guru pengampu): Lomba → Kuis → Gabungan → susun → **Simpan** (create) → buka kuis → **Aktifkan** / ubah judul / hapus satu soal (update) → keduanya sukses. Akun guru lain (bukan pengampu) tetap ditolak.
+7. File `firestore.rules` bersifat BERSAMA: harus disalin UTUH ke repo SDM01Penilaian lalu `npm run deploy:rules`. Mengubah rules di repo lms saja TIDAK berefek di Firebase.
+
+### §Lomba.18 Draf lokal wizard «Susun kuis» (localStorage)
+
+1. `src/lib/kuisDraf.ts` menyimpan kemajuan wizard (judul, deskripsi, paket, mode, filter, pilihan manual, pratinjau) di `localStorage` kunci `lms:kuis-draf:v1:{uid}:{lomba:ID|kelas:K}:{mapel}`. Murni sisi klien — TIDAK melewati firestore.rules, jadi tetap berfungsi saat simpan ke Firestore gagal.
+2. Autosave debounce 500 ms saat `langkah === 'wizard'`, plus flush di `pagehide`/`beforeunload` dan di tombol «Batal dan kembali». Wizard KOSONG tidak boleh menimpa draf lama (`drafKuisKosong`).
+3. Draf dihapus HANYA saat simpan sukses (`buatKuisDariPaket` resolve) atau «Buang draf» / memilih mulai kuis baru di dialog. `resetWizard()` sengaja TIDAK menghapus draf.
+4. Kuota penuh → ulang tanpa `pratinjau` (hasil `tanpa-pratinjau`); gagal total → pesan di wizard. Selalu dibungkus try/catch (mode privat/diblokir).
+5. Error `permission-denied` saat simpan menampilkan pesan khusus (deploy rules) dan memanggil `simpanDrafSegera()`; draf tidak boleh hilang pada jalur galat.
+6. Hook draf WAJIB berada di atas `return` bersyarat `KuisPanel` (aturan hooks). Jangan memindahkannya ke dalam cabang `langkah === 'wizard'`.
+7. Uji: isi wizard → hard reload (Ctrl+Shift+R) → daftar kuis menampilkan banner «Draf kuis belum disimpan» → Lanjutkan → semua isian & pratinjau kembali; simpan sukses → banner hilang.
+
+### §Lomba.19 Email admin LMS hanya discope ke modul Lomba
+
+1. `isAdminLmsEmail()` + `lombaAdmin()` dipakai oleh `lms_lomba`, `lombaKontenBoleh`, dan baca `lms_materi`. `isAdmin()` global TIDAK dimodifikasi agar akun itu tidak otomatis admin di Penilaian/Perpustakaan/Sarpras tanpa role di `users`.
+2. Akun tetap sebaiknya ber-`role: "admin"` di `users/{uid}` agar fitur non-Lomba (mis. daftar pengampu/siswa) konsisten dengan UI.
+3. Jika menambah koleksi Lomba baru, pakai `lombaAdmin()` / `lombaKontenBoleh()`, bukan `isAdmin()`.
 
 ## §129. Template & import bank soal: «Tanpa TP» dan parser CSV
 

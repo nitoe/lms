@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { bolehGenerateSoalAi } from '../lib/generateSoalAi'
 import {
@@ -19,6 +19,16 @@ import {
   susunOtomatis,
 } from '../lib/susunKuis'
 import { teksPolos } from '../lib/html'
+import {
+  bacaDrafKuis,
+  drafKuisKosong,
+  hapusDrafKuis,
+  kunciDrafKuis,
+  labelWaktuDraf,
+  simpanDrafKuis,
+  type DrafKuisWizard,
+  type HasilSimpanDraf,
+} from '../lib/kuisDraf'
 import { daftarJawabanKuis } from '../lib/jawabanKuis'
 import { daftarPaketLomba, daftarPaketLombaSemua, ringkasanPaket } from '../lib/soal'
 import type { FilterSusunKuis, KuisLms, ModeSusunKuis, SoalKuis, TahapTryOutTka } from '../types/kuis'
@@ -146,6 +156,89 @@ export default function KuisPanel({ kelas, mapel, lombaId, mapelGabungan }: Prop
   const [pilihanManual, setPilihanManual] = useState<{ paketId: string; soalId: string }[]>([])
   const [pratinjau, setPratinjau] = useState<SoalKuis[] | null>(null)
   const [peringatanDuplikat, setPeringatanDuplikat] = useState<string[]>([])
+
+  // ---- Draf lokal wizard (localStorage) — kemajuan tidak hilang saat reload / simpan gagal.
+  // ANTIREGRESI §Lomba.18. Tidak menyentuh Firestore, jadi aman dari firestore.rules.
+  const kunciDraf = useMemo(
+    () => kunciDrafKuis(user?.uid, lombaId, kelas, mapel),
+    [user?.uid, lombaId, kelas, mapel],
+  )
+  const [drafTersimpan, setDrafTersimpan] = useState<DrafKuisWizard | null>(null)
+  const [drafInfo, setDrafInfo] = useState<{ hasil: HasilSimpanDraf; waktu: number } | null>(null)
+  const drafRef = useRef<{
+    kunci: string
+    aktif: boolean
+    isi: Omit<DrafKuisWizard, 'v' | 'tersimpan'>
+  }>({
+    kunci: '',
+    aktif: false,
+    isi: {
+      judul: '',
+      deskripsi: '',
+      tahapTryOutTka: '',
+      paketIds: [],
+      mode: 'otomatis',
+      jumlahSoal: 10,
+      tipeAktif: [],
+      kompleksitasAktif: [],
+      pilihanManual: [],
+      pratinjau: null,
+    },
+  })
+  useEffect(() => {
+    drafRef.current = {
+      kunci: kunciDraf,
+      aktif: langkah === 'wizard',
+      isi: {
+        judul,
+        deskripsi,
+        tahapTryOutTka,
+        paketIds,
+        mode,
+        jumlahSoal,
+        tipeAktif,
+        kompleksitasAktif,
+        pilihanManual,
+        pratinjau,
+      },
+    }
+  })
+  const simpanDrafSegera = useCallback(() => {
+    const { kunci, aktif, isi } = drafRef.current
+    // Hanya saat wizard terbuka dan ada isian: wizard kosong tidak boleh menimpa draf lama.
+    if (!kunci || !aktif || drafKuisKosong(isi)) return
+    setDrafInfo({ hasil: simpanDrafKuis(kunci, isi), waktu: Date.now() })
+  }, [])
+  useEffect(() => {
+    setDrafTersimpan(bacaDrafKuis(kunciDraf))
+  }, [kunciDraf, langkah])
+  useEffect(() => {
+    if (langkah !== 'wizard') return
+    const t = window.setTimeout(simpanDrafSegera, 500)
+    return () => window.clearTimeout(t)
+  }, [
+    langkah,
+    judul,
+    deskripsi,
+    tahapTryOutTka,
+    paketIds,
+    mode,
+    jumlahSoal,
+    tipeAktif,
+    kompleksitasAktif,
+    pilihanManual,
+    pratinjau,
+    simpanDrafSegera,
+  ])
+  useEffect(() => {
+    // Reload / tutup tab saat debounce belum jalan: simpan seketika.
+    window.addEventListener('pagehide', simpanDrafSegera)
+    window.addEventListener('beforeunload', simpanDrafSegera)
+    return () => {
+      window.removeEventListener('pagehide', simpanDrafSegera)
+      window.removeEventListener('beforeunload', simpanDrafSegera)
+    }
+  }, [simpanDrafSegera])
 
   const muat = useCallback(async () => {
     setError('')
@@ -315,7 +408,41 @@ export default function KuisPanel({ kelas, mapel, lombaId, mapelGabungan }: Prop
     document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
 
+  function buangDraf() {
+    hapusDrafKuis(kunciDraf)
+    setDrafTersimpan(null)
+    setDrafInfo(null)
+  }
+
+  function lanjutkanDraf() {
+    const d = drafTersimpan
+    if (!d) return
+    setError('')
+    setJudul(d.judul)
+    setDeskripsi(d.deskripsi)
+    setTahapTryOutTka(d.tahapTryOutTka)
+    setPaketIds(d.paketIds)
+    setMode(d.mode)
+    setJumlahSoal(d.jumlahSoal)
+    setTipeAktif(d.tipeAktif)
+    setKompleksitasAktif(d.kompleksitasAktif)
+    setPilihanManual(d.pilihanManual)
+    setPratinjau(d.pratinjau)
+    setPeringatanDuplikat([])
+    setLangkah('wizard')
+  }
+
   function mulaiWizard() {
+    if (
+      drafTersimpan &&
+      window.confirm(
+        'Ada draf kuis yang belum disimpan di perangkat ini.\n\nOK = lanjutkan draf tersebut\nBatal = mulai kuis baru (draf lama dibuang)',
+      )
+    ) {
+      lanjutkanDraf()
+      return
+    }
+    if (drafTersimpan) buangDraf()
     resetWizard()
     setMode(bolehAi ? 'otomatis_ai' : 'otomatis')
     setLangkah('wizard')
@@ -445,12 +572,24 @@ export default function KuisPanel({ kelas, mapel, lombaId, mapelGabungan }: Prop
         tpNamaList: tpNamaList.length ? tpNamaList : undefined,
         tahapTryOutTka: isTka && tahapTryOutTka ? tahapTryOutTka : undefined,
       })
+      hapusDrafKuis(kunciDraf)
+      setDrafTersimpan(null)
+      setDrafInfo(null)
       resetWizard()
       await muat()
       setSelectedId(id)
       setLangkah('detail')
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Gagal membuat kuis.')
+      const pesan = err instanceof Error ? err.message : 'Gagal membuat kuis.'
+      const ditolak =
+        (err as { code?: string } | null)?.code === 'permission-denied' ||
+        /insufficient permissions/i.test(pesan)
+      simpanDrafSegera()
+      setError(
+        ditolak
+          ? 'Penyimpanan ditolak oleh Firestore Rules (permission-denied). Draf kuis Anda tetap aman di perangkat ini. Pastikan firestore.rules terbaru sudah dideploy (npm run deploy:rules dari repo SDM01Penilaian), lalu klik Simpan lagi.'
+          : pesan,
+      )
     } finally {
       setBusy(false)
     }
@@ -758,6 +897,7 @@ export default function KuisPanel({ kelas, mapel, lombaId, mapelGabungan }: Prop
             type="button"
             className="wz-kembali"
             onClick={() => {
+              simpanDrafSegera() // kemajuan tetap tersimpan sebagai draf; dibuang lewat «Buang draf»
               resetWizard()
               setLangkah('daftar')
             }}
@@ -765,6 +905,16 @@ export default function KuisPanel({ kelas, mapel, lombaId, mapelGabungan }: Prop
             <span aria-hidden>←</span> Batal dan kembali
           </button>
           <h3 className="wz-judul-halaman">Susun kuis dari bank soal</h3>
+          {drafInfo && (
+            <p className="text-xs text-muted" role="status">
+              {drafInfo.hasil === 'ok' &&
+                `Draf otomatis tersimpan di perangkat ini (${labelWaktuDraf(drafInfo.waktu)}).`}
+              {drafInfo.hasil === 'tanpa-pratinjau' &&
+                'Draf tersimpan, tetapi pratinjau soal terlalu besar untuk disimpan lokal — susun ulang pratinjau bila halaman dimuat ulang.'}
+              {drafInfo.hasil === 'gagal' &&
+                'Draf tidak dapat disimpan di perangkat ini (penyimpanan penuh atau diblokir browser).'}
+            </p>
+          )}
         </div>
 
         <ol className="wz-stepper" aria-label="Langkah penyusunan kuis">
@@ -1409,6 +1559,26 @@ export default function KuisPanel({ kelas, mapel, lombaId, mapelGabungan }: Prop
       {error && (
         <div className="rounded-xl border border-red-200 bg-red-50 px-3.5 py-2.5 text-sm text-red-800">
           {error}
+        </div>
+      )}
+
+      {drafTersimpan && (
+        <div
+          className="flex flex-wrap items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3.5 py-2.5 text-sm text-amber-900"
+          role="status"
+        >
+          <span className="min-w-0 flex-1">
+            <b>Draf kuis belum disimpan</b>
+            {drafTersimpan.judul.trim() ? ` — «${drafTersimpan.judul.trim()}»` : ''} · terakhir{' '}
+            {labelWaktuDraf(drafTersimpan.tersimpan)}
+            {drafTersimpan.pratinjau?.length ? ` · ${drafTersimpan.pratinjau.length} soal tersusun` : ''}
+          </span>
+          <button type="button" className="pk-btn pk-btn--utama" onClick={lanjutkanDraf}>
+            Lanjutkan draf
+          </button>
+          <button type="button" className="pk-btn" onClick={buangDraf}>
+            Buang draf
+          </button>
         </div>
       )}
 
