@@ -62,6 +62,8 @@ export type SoalKuis = Soal & {
   sumberPaketId: string
   sumberSoalId: string
   sumberPaketJudul?: string
+  /** Mapel paket asal soal (diisi sejak kuis gabungan Lomba; kuis lama tidak punya). */
+  sumberMapel?: string
 }
 
 /** Dokumen `lms_kuis/{id}`. */
@@ -75,6 +77,8 @@ export interface KuisLms {
    */
   kelasList?: string[]
   mapel: string
+  /** Kuis modul Lomba: id lomba (kelas bank «LB»). mapel = «Gabungan» bila soal lintas mapel. */
+  lombaId?: string
   judul: string
   deskripsi?: string
   sumberPaketIds: string[]

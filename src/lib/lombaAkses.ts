@@ -19,6 +19,17 @@ export const EMAIL_ADMIN_LMS = 'arif.nitoe@gmail.com'
 export const KELAS_LOMBA_BANK = 'LB'
 
 
+/**
+ * Nilai `mapel` untuk kuis Lomba yang menggabungkan soal dari beberapa mapel dalam satu kuis.
+ * Disimpan di field `mapel` dokumen `lms_kuis` (rules hanya mewajibkan string 1–80 karakter, jadi tanpa
+ * perubahan rules). Asal mapel tiap soal ada di `SoalKuis.sumberMapel`. ANTIREGRESI §Lomba.13.
+ */
+export const MAPEL_GABUNGAN_LOMBA = 'Gabungan'
+
+export function adalahMapelGabungan(mapel: string | null | undefined): boolean {
+  return mapel === MAPEL_GABUNGAN_LOMBA
+}
+
 export function adalahAdminLms(user: User | null, profil: AppUser | null): boolean {
   if (!user || !profil) return false
   if (profil.aktif === false) return false

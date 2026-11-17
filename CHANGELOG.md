@@ -1,3 +1,17 @@
+## 2026-11-17 — Lomba: kuis gabungan lintas mapel (satu kuis berisi soal dari beberapa mapel)
+
+- **Kebutuhan:** kuis Lomba tidak harus per mapel; satu kuis bisa memuat soal dari beberapa mapel sekaligus (tidak terpisah). Sebelumnya wizard hanya menampilkan paket dari **satu** mapel aktif.
+- **Cara pakai:** Lomba → tab **Kuis** → pilih chip **«Gabungan (semua mapel)»** (muncul bila lomba punya ≥ 2 mapel terkait; hanya di tab Kuis) → **Buat kuis**. Di langkah «Pilih paket soal» tampil paket **Siap** dari semua mapel lomba, dengan label mapel pada tiap kartu, chip saring Mapel, dan pencarian yang ikut mencari nama mapel. Penyusunan (otomatis/AI/manual, filter bentuk & kompleksitas) memakai kumpulan soal dari seluruh paket terpilih, jadi satu kuis dapat berisi campuran mapel.
+- **Penyimpanan:** kuis tersimpan dengan `mapel = 'Gabungan'` (`MAPEL_GABUNGAN_LOMBA`) + `lombaId`; asal tiap soal dicatat di `SoalKuis.sumberMapel` (untuk analisis per mapel nanti). **Tidak ada perubahan `firestore.rules`** (rules hanya mewajibkan `mapel` string 1–80 karakter) — cukup deploy Hosting.
+- **Perbaikan terkait pada kuis Lomba:**
+  - `KuisDetail` («Tambah soal dari bank», «Perbarui TP dari paket») memuat paket lewat `daftarPaket(kuis.kelas, kuis.mapel)` = kelas bank «LB» + mapel: tercampur antar-lomba dan ditolak rules untuk guru pengampu non-admin. Kini memakai `daftarPaketUntukKuis` (paket se-lomba; kuis gabungan = semua mapel, kuis biasa = mapelnya saja).
+  - Daftar kuis Lomba tidak lagi ikut menampilkan kuis kelas «LB» milik saya dari **lomba/mapel lain** (penggabungan «kuis saya» dilewati bila `lombaId` ada).
+  - Fallback `buatKuisDariPaket` untuk lomba mengambil paket se-lomba, bukan `daftarPaket('LB', mapel)`.
+  - Panel «Penilaian & TP» (SLM/STS/SAS → nilai per mapel) disembunyikan untuk kuis gabungan; jenis penilaian tetap «Latihan».
+- Ruang kelas biasa dan TKA tidak berubah. Diverifikasi `tsc -b` lolos.
+- **Belum ada (tahap berikutnya):** halaman siswa untuk mengerjakan kuis Lomba (`/siswa/lomba/:id` belum ada di routing; rules siswa membaca kuis lewat kelas rombel, bukan kelas bank «LB»). Kuis gabungan baru bisa dibuat, dipratinjau, dan dikelola guru.
+- File: `src/lib/lombaAkses.ts`, `src/types/kuis.ts`, `src/lib/susunKuis.ts`, `src/lib/soal.ts`, `src/lib/kuis.ts`, `src/components/KuisPanel.tsx`, `src/components/KuisDetail.tsx`, `src/pages/lomba/LombaDetail.tsx`, `CHANGELOG.md`, `ANTIREGRESI.md` (§Lomba.13).
+
 ## 2026-11-17 — Lomba: tombol kembali dari editor soal menuju dashboard Lomba (bukan Ruang Kelas)
 
 - **Gejala:** di Lomba → tab Bank Soal → buka paket soal, tombol **←** (kembali) membawa ke halaman «Kelas LB · Matematika» lalu «← Semua ruang kelas» yang kosong («Belum ada penugasan», termasuk di akun admin), bukan ke dashboard Lomba.

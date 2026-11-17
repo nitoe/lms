@@ -31,7 +31,8 @@ import {
   susunManual,
   susunOtomatis,
 } from './susunKuis'
-import { daftarPaket } from './soal'
+import { daftarPaket, daftarPaketLombaSemua } from './soal'
+import { adalahMapelGabungan } from './lombaAkses'
 import { normalisasiKelasList } from './kelasLms'
 
 function koleksi() {
@@ -198,7 +199,11 @@ export async function buatKuisDariPaket(input: InputBuatKuis): Promise<string> {
   let soal: SoalKuis[] = input.soalSiap ?? []
 
   if (soal.length === 0) {
-    const semuaPaket = await daftarPaket(input.kelas, input.mapel)
+    const semuaPaket = input.lombaId
+      ? (await daftarPaketLombaSemua(input.lombaId)).filter(
+          (p) => adalahMapelGabungan(input.mapel) || p.mapel === input.mapel,
+        )
+      : await daftarPaket(input.kelas, input.mapel)
     const peta = new Map(semuaPaket.map((p) => [p.id, p]))
     const paketDipilih: PaketSoal[] = []
     for (const id of input.sumberPaketIds) {
@@ -314,6 +319,21 @@ export async function updateKuis(
 
 export async function hapusKuis(kuisId: string): Promise<void> {
   await deleteDoc(doc(db, 'lms_kuis', kuisId))
+}
+
+/**
+ * Semua paket yang boleh jadi sumber sebuah kuis. Kuis Lomba: paket se-lomba (kuis gabungan = semua mapel,
+ * kuis biasa = hanya mapelnya); kuis ruang kelas: paket kelas×mapel. Jangan dipakai untuk kuis Lomba dengan
+ * `daftarPaket(kuis.kelas, kuis.mapel)` — kelas «LB» tercampur antar-lomba dan ditolak rules guru pengampu.
+ */
+export async function daftarPaketUntukKuis(
+  kuis: Pick<KuisLms, 'kelas' | 'mapel' | 'lombaId'>,
+): Promise<PaketSoal[]> {
+  if (kuis.lombaId) {
+    const semua = await daftarPaketLombaSemua(kuis.lombaId)
+    return adalahMapelGabungan(kuis.mapel) ? semua : semua.filter((p) => p.mapel === kuis.mapel)
+  }
+  return daftarPaket(kuis.kelas, kuis.mapel)
 }
 
 /** Paket siap saja untuk kelas×mapel (untuk wizard). */

@@ -20,7 +20,7 @@ import {
 } from '../lib/susunKuis'
 import { teksPolos } from '../lib/html'
 import { daftarJawabanKuis } from '../lib/jawabanKuis'
-import { daftarPaketLomba, ringkasanPaket } from '../lib/soal'
+import { daftarPaketLomba, daftarPaketLombaSemua, ringkasanPaket } from '../lib/soal'
 import type { FilterSusunKuis, KuisLms, ModeSusunKuis, SoalKuis, TahapTryOutTka } from '../types/kuis'
 import {
   DAFTAR_TAHAP_TRYOUT_TKA,
@@ -37,7 +37,7 @@ import {
   normalisasiKompleksitas,
 } from '../types/soal'
 import { adalahMapelTka, LABEL_MAPEL_TKA, materiTkaUntuk, TIPE_SOAL_TKA } from '../lib/tkaAkses'
-import { KELAS_LOMBA_BANK } from '../lib/lombaAkses'
+import { adalahMapelGabungan, KELAS_LOMBA_BANK } from '../lib/lombaAkses'
 import { kelasAksenMapel, LABEL_TIPE_PENDEK, materiPaket, paketMemuatMateri } from '../lib/aksenTka'
 import KonfirmasiHapusDialog from './KonfirmasiHapusDialog'
 import BerbagiKelasDialog from './BerbagiKelasDialog'
@@ -56,6 +56,8 @@ type Props = {
   kelas: string
   mapel: string
   lombaId?: string
+  /** Mapel terkait lomba — sumber paket untuk kuis «Gabungan» (mapel = MAPEL_GABUNGAN_LOMBA). */
+  mapelGabungan?: string[]
   /** Diterima agar pemanggil (LombaDetail) seragam dengan MateriPanel/BankSoalPanel; kuis tidak memakainya (TP diambil dari paket sumber). Jangan di-destructure bila tak dipakai — TS6133. */
   tpKelas?: string
 }
@@ -108,7 +110,11 @@ function kelompokkanPerTipe(soal: SoalKuis[], urutan: readonly TipeSoal[]) {
 
 const PRESET_JUMLAH = [10, 15, 20, 25, 30]
 
-export default function KuisPanel({ kelas, mapel, lombaId }: Props) {
+export default function KuisPanel({ kelas, mapel, lombaId, mapelGabungan }: Props) {
+  /** Kuis Lomba lintas mapel: paket diambil dari semua mapel lomba (ANTIREGRESI §Lomba.13). */
+  const gabungan = Boolean(lombaId) && adalahMapelGabungan(mapel)
+  /** Kunci string stabil — array prop berganti identitas tiap render dan memicu muat ulang tanpa henti. */
+  const kunciMapelGab = (mapelGabungan ?? []).join('|')
   const { profil, user } = useAuth()
   const bolehAi = bolehGenerateSoalAi(user?.uid)
   /** Filter bentuk soal TKA hanya PG / PGK / BS — jangan regresi mapel biasa (ANTIREGRESI §88). */
@@ -154,7 +160,15 @@ export default function KuisPanel({ kelas, mapel, lombaId }: Props) {
           console.warn('daftarKuisDibuatOleh', e)
           return [] as KuisLms[]
         }),
-        (lombaId ? daftarPaketLomba(lombaId, mapel).then(ps => ps.filter(p => p.status === "siap")) : daftarPaketSiap(kelas, mapel)).catch(() => []),
+        (lombaId
+          ? (gabungan
+              ? daftarPaketLombaSemua(lombaId).then((ps) =>
+                  ps.filter((p) => !kunciMapelGab || kunciMapelGab.split('|').includes(p.mapel)),
+                )
+              : daftarPaketLomba(lombaId, mapel)
+            ).then((ps) => ps.filter((p) => p.status === 'siap' && (p.soal?.length ?? 0) > 0))
+          : daftarPaketSiap(kelas, mapel)
+        ).catch(() => []),
       ])
       // Gabung: query kelas×mapel + kuis saya di kelas yang sama (mapel sama ATAU
       // mapel beda sedikit — tetap ditampilkan agar data lama tidak hilang dari UI).
@@ -163,7 +177,8 @@ export default function KuisPanel({ kelas, mapel, lombaId }: Props) {
       // TKA: tiga mapel berbagi kelas bank «6» — kuis mapel TKA lain JANGAN ikut tampil
       // (ANTIREGRESI §120). Mapel biasa tetap toleran terhadap data lama.
       const ketatMapel = adalahMapelTka(mapel)
-      for (const item of milikSaya) {
+      // Kuis Lomba sudah lengkap dari query lombaId; jangan campur kuis kelas «LB» milik lomba/mapel lain.
+      for (const item of lombaId ? [] : milikSaya) {
         const itemKelas = String(item.kelas || '').toUpperCase()
         const diList =
           Array.isArray(item.kelasList) &&
@@ -202,7 +217,7 @@ export default function KuisPanel({ kelas, mapel, lombaId }: Props) {
       setError(e instanceof Error ? e.message : 'Gagal memuat kuis.')
       setList([])
     }
-  }, [kelas, mapel, lombaId])
+  }, [kelas, mapel, lombaId, gabungan, kunciMapelGab])
 
   useEffect(() => {
     void muat()
@@ -228,16 +243,26 @@ export default function KuisPanel({ kelas, mapel, lombaId }: Props) {
   }, [paketSiap, paketIds])
 
   const [qPaket, setQPaket] = useState('')
+  const [mapelPaketAktif, setMapelPaketAktif] = useState('')
   const [materiPaketAktif, setMateriPaketAktif] = useState('')
 
   const paketTampil = useMemo(() => {
     const kata = qPaket.trim().toLowerCase()
     return paketSiap.filter((p) => {
+      if (gabungan && mapelPaketAktif && p.mapel !== mapelPaketAktif) return false
       if (isTka && materiPaketAktif && !paketMemuatMateri(p, materiPaketAktif)) return false
       if (!kata) return true
-      return `${p.judul} ${p.tpNama ?? ''} ${materiPaket(p)}`.toLowerCase().includes(kata)
+      return `${p.judul} ${p.tpNama ?? ''} ${materiPaket(p)} ${gabungan ? p.mapel : ''}`.toLowerCase().includes(kata)
     })
-  }, [paketSiap, qPaket, materiPaketAktif, isTka])
+  }, [paketSiap, qPaket, materiPaketAktif, isTka, gabungan, mapelPaketAktif])
+
+  /** Mapel yang punya paket Siap (untuk chip saring di kuis gabungan). */
+  const mapelTersedia = useMemo(() => {
+    if (!gabungan) return [] as { mapel: string; n: number }[]
+    const peta = new Map<string, number>()
+    for (const p of paketSiap) peta.set(p.mapel, (peta.get(p.mapel) ?? 0) + 1)
+    return [...peta.entries()].map(([m, n]) => ({ mapel: m, n }))
+  }, [gabungan, paketSiap])
 
   const materiTersedia = useMemo(() => {
     if (!isTka) return [] as { materi: string; n: number }[]
@@ -437,6 +462,7 @@ export default function KuisPanel({ kelas, mapel, lombaId }: Props) {
     setPratinjau(null)
     setPeringatanDuplikat([])
     setQPaket('')
+    setMapelPaketAktif('')
     setMateriPaketAktif('')
   }
 
@@ -821,6 +847,7 @@ export default function KuisPanel({ kelas, mapel, lombaId }: Props) {
                   </h4>
                   <p className="wz-seksi-bantu">
                     Hanya paket berstatus <strong>Siap</strong> yang muncul di sini.
+                    {gabungan && ' Kuis gabungan: pilih paket dari beberapa mapel sekaligus.'}
                     {paketIds.length > 0 && ` ${paketIds.length} paket dipilih.`}
                   </p>
                 </div>
@@ -833,6 +860,30 @@ export default function KuisPanel({ kelas, mapel, lombaId }: Props) {
                 </div>
               ) : (
                 <>
+                  {gabungan && mapelTersedia.length > 0 && (
+                    <div className="pk-materi-bar" role="group" aria-label="Saring paket menurut mapel">
+                      <span className="pk-materi-label">Mapel</span>
+                      <button
+                        type="button"
+                        className={`pk-materi-chip${mapelPaketAktif === '' ? ' pk-materi-chip--on' : ''}`}
+                        aria-pressed={mapelPaketAktif === ''}
+                        onClick={() => setMapelPaketAktif('')}
+                      >
+                        Semua <i>{paketSiap.length}</i>
+                      </button>
+                      {mapelTersedia.map(({ mapel: m, n }) => (
+                        <button
+                          key={m}
+                          type="button"
+                          className={`pk-materi-chip${mapelPaketAktif === m ? ' pk-materi-chip--on' : ''}`}
+                          aria-pressed={mapelPaketAktif === m}
+                          onClick={() => setMapelPaketAktif(mapelPaketAktif === m ? '' : m)}
+                        >
+                          {m} <i>{n}</i>
+                        </button>
+                      ))}
+                    </div>
+                  )}
                   {isTka && materiTersedia.length > 1 && (
                     <div className="pk-materi-bar" role="group" aria-label="Saring paket menurut materi">
                       <span className="pk-materi-label">Materi</span>
@@ -883,7 +934,8 @@ export default function KuisPanel({ kelas, mapel, lombaId }: Props) {
                         const jk = p.jumlahPerKompleksitas ?? {}
                         const totalK = URUTAN_KOMPLEKSITAS.reduce((n, k) => n + (jk[k] ?? 0), 0)
                         const m = materiPaket(p)
-                        const label = m || (p.tpNama ? `TP ${p.tpNomor ? `${p.tpNomor} · ` : ''}${p.tpNama}` : '')
+                        const labelDasar = m || (p.tpNama ? `TP ${p.tpNomor ? `${p.tpNomor} · ` : ''}${p.tpNama}` : '')
+                        const label = gabungan ? [p.mapel, labelDasar].filter(Boolean).join(' · ') : labelDasar
                         return (
                           <label key={p.id} className={`wz-paket${on ? ' wz-paket--on' : ''}`}>
                             <input

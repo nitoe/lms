@@ -7,6 +7,7 @@ import {
   bolehKelolaKontenLomba,
   KELAS_LOMBA_BANK,
   labelStatusLomba,
+  MAPEL_GABUNGAN_LOMBA,
 } from '../../lib/lombaAkses'
 import { buatRuangId } from '../../lib/kelasLms'
 import type { Lomba } from '../../types/lomba'
@@ -100,9 +101,18 @@ export default function LombaDetail() {
   }, [muat])
 
   const kelasBank = KELAS_LOMBA_BANK
+  /**
+   * «Gabungan» (kuis lintas mapel) hanya ada di tab Kuis. Di tab Materi/Bank Soal pilihan itu
+   * diperlakukan sebagai mapel pertama lomba (ANTIREGRESI §Lomba.13).
+   */
+  const gabunganTersedia = (lomba?.mapelTerkait.length ?? 0) >= 2
+  const mapelPanel =
+    mapelAktif === MAPEL_GABUNGAN_LOMBA && (tab !== 'kuis' || !gabunganTersedia)
+      ? (lomba?.mapelTerkait[0] ?? '')
+      : mapelAktif
   const ruangId = useMemo(
-    () => (mapelAktif ? buatRuangId(kelasBank, mapelAktif) : ''),
-    [kelasBank, mapelAktif],
+    () => (mapelPanel && mapelPanel !== MAPEL_GABUNGAN_LOMBA ? buatRuangId(kelasBank, mapelPanel) : ''),
+    [kelasBank, mapelPanel],
   )
 
   if (loading) {
@@ -133,7 +143,7 @@ export default function LombaDetail() {
   }
 
   /** Aksen mengikuti mapel aktif (selaras ruang kelas); oranye Lomba bila belum ada mapel. */
-  const aksen = mapelAktif ? aksenMapel(mapelAktif).bar : '#c2410c'
+  const aksen = mapelPanel ? aksenMapel(mapelPanel).bar : '#c2410c'
 
   function onKeyTab(e: KeyboardEvent<HTMLButtonElement>, i: number) {
     let ke = -1
@@ -199,8 +209,13 @@ export default function LombaDetail() {
         <div className="kn-bar lomba-ruangbar">
           <KnChips
             label="Mapel"
-            nilai={mapelAktif}
-            opsi={lomba.mapelTerkait.map((m) => ({ v: m, teks: m }))}
+            nilai={mapelPanel}
+            opsi={[
+              ...lomba.mapelTerkait.map((m) => ({ v: m, teks: m })),
+              ...(tab === 'kuis' && gabunganTersedia
+                ? [{ v: MAPEL_GABUNGAN_LOMBA, teks: 'Gabungan (semua mapel)' }]
+                : []),
+            ]}
             onPilih={setMapelAktif}
           />
           {admin && (
@@ -293,32 +308,33 @@ export default function LombaDetail() {
         </>
       )}
 
-      {tab === 'materi' && mapelAktif && (
+      {tab === 'materi' && mapelPanel && (
         <MateriPanel
           kelas={kelasBank}
-          mapel={mapelAktif}
+          mapel={mapelPanel}
           lombaId={lomba.id}
           tpKelas={tpKelas}
         />
       )}
-      {tab === 'soal' && mapelAktif && ruangId && (
+      {tab === 'soal' && mapelPanel && ruangId && (
         <BankSoalPanel
           kelas={kelasBank}
-          mapel={mapelAktif}
+          mapel={mapelPanel}
           ruangId={ruangId}
           lombaId={lomba.id}
           tpKelas={tpKelas}
         />
       )}
-      {tab === 'kuis' && mapelAktif && (
+      {tab === 'kuis' && mapelPanel && (
         <KuisPanel
           kelas={kelasBank}
-          mapel={mapelAktif}
+          mapel={mapelPanel}
+          mapelGabungan={lomba.mapelTerkait}
           lombaId={lomba.id}
           tpKelas={tpKelas}
         />
       )}
-      {(tab === 'materi' || tab === 'soal' || tab === 'kuis') && !mapelAktif && (
+      {(tab === 'materi' || tab === 'soal' || tab === 'kuis') && !mapelPanel && (
         <div className="lomba-kosong">
           <h3>Pilih mapel terkait</h3>
           <p>Lomba ini belum punya mapel terkait. Ubah meta lomba terlebih dahulu.</p>

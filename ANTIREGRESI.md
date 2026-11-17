@@ -471,6 +471,18 @@ Regresi: `firestore.rules` di repo `nitoe/lms` tidak memuat rules Lomba (`lms_lo
 6. «Ruang Kelas» kosong di akun admin itu normal (daftar hanya dari `penugasan`/`waliKelas` profil), jangan dianggap bug dan jangan «diisi» dengan ruang LB.
 7. Uji: Lomba → Bank Soal (mapel B) → Buka paket → ← mendarat di tab Bank Soal mapel B pada lomba yang sama; ruang kelas biasa & TKA tetap kembali ke tab soal ruangnya.
 
+### §Lomba.13 Kuis gabungan lintas mapel: `mapel = 'Gabungan'`, paket se-lomba, jangan pakai `daftarPaket('LB', mapel)`
+
+1. Kuis lintas mapel disimpan dengan `mapel = MAPEL_GABUNGAN_LOMBA` (`'Gabungan'`, `lombaAkses.ts`) dan `lombaId`. Jangan mengubah nilainya (kuis lama bergantung padanya) dan jangan menjadikan «Gabungan» mapel sungguhan di tempat lain (TP, materi, bank soal, Penilaian/rekap). Rules `lms_kuis` hanya mensyaratkan `mapel` string 1–80 karakter — jangan menambah whitelist mapel di rules tanpa mengakomodasi nilai ini.
+2. Sumber paket Lomba SELALU lewat `lombaId`: `daftarPaketLomba(lombaId, mapel)` (satu mapel) atau `daftarPaketLombaSemua(lombaId)` (lintas mapel; query hanya `lombaId` agar lolos cabang rules guru pengampu). Untuk kuis yang sudah ada gunakan `daftarPaketUntukKuis(kuis)` (`kuis.ts`). **Jangan** `daftarPaket(kuis.kelas, kuis.mapel)` / `daftarPaketSiap` untuk kelas «LB»: tercampur antar-lomba dan ditolak rules bagi guru pengampu non-admin (query tidak memuat `lombaId`). Regresi lama ada di `KuisDetail` (Tambah dari bank, Perbarui TP).
+3. `KuisPanel` menerima `mapelGabungan` (array) — di dalam komponen WAJIB dipakai lewat kunci string (`kunciMapelGab = join('|')`) pada dependency `useCallback`; array prop berubah identitas tiap render dan memicu `muat()` berulang tanpa henti.
+4. Di `LombaDetail`, «Gabungan» hanya muncul di tab Kuis dan hanya bila lomba punya ≥ 2 mapel. Di tab Materi/Bank Soal pilihan itu dipetakan ke mapel pertama (`mapelPanel`); `BankSoalPanel`/`MateriPanel` tidak boleh menerima mapel «Gabungan» (ruangId `LB--Gabungan` tidak bermakna).
+5. Daftar kuis Lomba tidak boleh menggabungkan `daftarKuisDibuatOleh()` (kelas «LB» milik pembuat dari lomba lain). `KuisPanel` melewati penggabungan itu bila `lombaId` ada.
+6. Kuis gabungan tidak boleh masuk Penilaian/rekap per mapel: panel «Penilaian & TP» disembunyikan (`adalahMapelGabungan`), jenis penilaian tetap «latihan». Bila kelak ada sinkron nilai, kecualikan `mapel === 'Gabungan'`.
+7. `SoalKuis.sumberMapel` diisi `snapshotSoal` bila paket membawa `mapel`; kuis lama tidak punya field ini — kode yang membacanya harus menganggapnya opsional.
+8. Sisi siswa untuk kuis Lomba belum ada (`/siswa/lomba/:id` belum dirutekan; rules siswa membaca `lms_kuis` lewat `kelas == token.kelas`, bukan «LB»). Saat dibuat, tambahkan cabang rules baca siswa untuk `lombaId` (peserta: `request.auth.token.siswaId in lomba.siswaIds`) dan deploy rules.
+9. Uji: lomba ≥ 2 mapel → buat paket Siap di dua mapel → Kuis → Gabungan → pilih paket kedua mapel → pratinjau memuat soal campuran → simpan → buka kuis → «Tambah soal dari bank» menampilkan paket kedua mapel (juga untuk akun guru pengampu non-admin).
+
 ## §129. Template & import bank soal: «Tanpa TP» dan parser CSV
 
 129.1 Bank soal mapel biasa (termasuk Lomba, kelas bank `LB`) **boleh tanpa TP**: `tpId/tpNomor/tpNama` opsional di `lms_paket_soal` (rules tidak mewajibkannya — jangan menambah syarat TP di rules/klien). Kuis dari paket tanpa TP tetap sah (`tpIds` dihitung hanya dari paket yang punya `tpId`).

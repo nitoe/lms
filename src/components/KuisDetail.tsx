@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
-import { daftarPaketSiap, updateKuis } from '../lib/kuis'
-import { daftarPaket } from '../lib/soal'
+import { daftarPaketUntukKuis, updateKuis } from '../lib/kuis'
 import { hitungRingkasanKuis, snapshotSoal } from '../lib/susunKuis'
+import { adalahMapelGabungan } from '../lib/lombaAkses'
 import { teksPolos } from '../lib/html'
 import type { JenisPenilaianKuis, KuisLms, ModePelaksanaanKuis, SoalKuis, TahapTryOutTka } from '../types/kuis'
 import {
@@ -164,7 +164,7 @@ export default function KuisDetail({ kuis, onUpdated }: Props) {
     try {
       let list = paketSiap
       if (list.length === 0) {
-        list = await daftarPaketSiap(kuis.kelas, kuis.mapel)
+        list = (await daftarPaketUntukKuis(kuis)).filter((p) => p.status === 'siap' && (p.soal?.length ?? 0) > 0)
         setPaketSiap(list)
       }
       // Prefill paket yang sudah jadi sumber kuis (jika masih siap)
@@ -229,7 +229,7 @@ export default function KuisDetail({ kuis, onUpdated }: Props) {
       }
       const poin =
         typeof s.poin === 'number' && s.poin > 0 ? s.poin : 1
-      baru.push(snapshotSoal(s, { id: pk.id, judul: pk.judul || 'Paket' }, poin))
+      baru.push(snapshotSoal(s, { id: pk.id, judul: pk.judul || 'Paket', mapel: pk.mapel }, poin))
       paketIdsBaru.add(pk.id)
       sudah.add(ref.soalId)
     }
@@ -283,7 +283,7 @@ export default function KuisDetail({ kuis, onUpdated }: Props) {
     setBusy(true)
     setError('')
     try {
-      const semua = await daftarPaket(kuis.kelas, kuis.mapel)
+      const semua = await daftarPaketUntukKuis(kuis)
       const tpMap = new Map<string, string>()
       for (const pid of kuis.sumberPaketIds) {
         const pk = semua.find((x) => x.id === pid)
@@ -567,7 +567,7 @@ export default function KuisDetail({ kuis, onUpdated }: Props) {
       </section>
 
       {/* Penilaian & TP — hanya mapel biasa (bukan TKA); ANTIREGRESI §91 */}
-      {!isTka && (
+      {!isTka && !adalahMapelGabungan(kuis.mapel) && (
       <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
         <div className="border-b border-slate-100 bg-slate-50/80 px-4 py-2.5">
           <h4 className="text-sm font-bold text-slate-800">Penilaian & TP</h4>

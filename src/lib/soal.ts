@@ -286,6 +286,13 @@ export async function daftarPaketLomba(lombaId: string, mapel: string): Promise<
   return snap.docs.map((d) => ({ id: d.id, ...(d.data() as object) }) as PaketSoal)
 }
 
+/** Semua paket sebuah lomba (lintas mapel). Query hanya `lombaId` agar lolos rules guru pengampu. */
+export async function daftarPaketLombaSemua(lombaId: string): Promise<PaketSoal[]> {
+  if (!lombaId) return []
+  const snap = await getDocs(query(collection(db, 'lms_paket_soal'), where('lombaId', '==', lombaId)))
+  return snap.docs.map((d) => ({ id: d.id, ...(d.data() as object) }) as PaketSoal)
+}
+
 export async function buatPaket(input: {
   kelas: string
   mapel: string

@@ -20,7 +20,7 @@ function acakFisherYates<T>(arr: T[]): T[] {
 /** Salin soal bank → SoalKuis dengan poin default 1 dan jejak sumber. */
 export function snapshotSoal(
   s: Soal,
-  paket: Pick<PaketSoal, 'id' | 'judul'>,
+  paket: Pick<PaketSoal, 'id' | 'judul'> & { mapel?: string },
   poinDefault = 1,
 ): SoalKuis {
   const salin = JSON.parse(JSON.stringify(s)) as Soal
@@ -30,12 +30,13 @@ export function snapshotSoal(
     sumberPaketId: paket.id,
     sumberSoalId: s.id,
     sumberPaketJudul: paket.judul,
+    ...(paket.mapel ? { sumberMapel: paket.mapel } : {}),
   }
 }
 
 export type KandidatSoal = {
   soal: Soal
-  paket: Pick<PaketSoal, 'id' | 'judul'>
+  paket: Pick<PaketSoal, 'id' | 'judul'> & { mapel?: string }
 }
 
 /** Kumpulkan semua soal dari paket yang statusnya `siap`. */
@@ -44,7 +45,7 @@ export function kumpulkanKandidat(paketList: PaketSoal[]): KandidatSoal[] {
   for (const p of paketList) {
     if (p.status !== 'siap') continue
     for (const s of p.soal ?? []) {
-      out.push({ soal: s, paket: { id: p.id, judul: p.judul } })
+      out.push({ soal: s, paket: { id: p.id, judul: p.judul, mapel: p.mapel } })
     }
   }
   return out
