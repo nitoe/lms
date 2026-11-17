@@ -1,3 +1,13 @@
+## 2026-11-17 — Modul Lomba Tahap 1: fondasi data, akses, CRUD meta
+
+- **Koleksi `lms_lomba`:** nama, identitas, deskripsi, tingkat (sekolah→nasional), mapel terkait (multi), masa berlaku, status, guru pengampu, peserta max 20 (siswaIds + siswaList denormalisasi).
+- **Akses:** admin LMS (role admin / arif.nitoe@gmail.com) atur meta + pengampu + peserta; guru pengampu kelola konten (Tahap 2); siswa hanya lihat lomba yang diikutinya.
+- **UI staf:** menu Lomba di sidebar; daftar kartu; form buat/ubah (dropdown staf aktif, multi mapel, tambah peserta via kelas→nama).
+- **UI siswa:** menu Lomba muncul hanya jika terdaftar (≥1 lomba); dashboard daftar lomba (materi/kuis/riwayat → Tahap 3).
+- **Rules:** `match /lms_lomba` di firestore.rules (versi lengkap). Deploy rules dari repo Penilaian.
+- File: `src/types/lomba.ts`, `src/lib/lomba.ts`, `src/lib/lombaAkses.ts`, `src/pages/lomba/*`, `src/pages/siswa/SiswaLomba.tsx`, `SiswaLayout.tsx`, `SiswaIcon.tsx`, `Layout.tsx`, `App.tsx`, `firestore.rules`.
+- ANTIREGRESI §Lomba.1–§Lomba.4.
+
 ## 2026-11-15 — Export kuis: judul dokumen mengikuti jenis penilaian + semester otomatis
 
 - **Judul otomatis** dari `jenisPenilaian` kuis: Latihan → **ASESMEN TERTULIS LATIHAN** (sebelumnya «LEMBAR SOAL»); SLM → ASESMEN SUMATIF LINGKUP MATERI; STS → ASESMEN SUMATIF TENGAH SEMESTER GANJIL/GENAP; SAS → ASESMEN SUMATIF AKHIR SEMESTER GANJIL/GENAP. Jenis kosong dianggap latihan.

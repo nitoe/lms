@@ -1,5 +1,7 @@
+import { useEffect, useState } from 'react'
 import { NavLink, Navigate, Outlet, useNavigate } from 'react-router-dom'
 import { useSiswa } from '../../context/SiswaContext'
+import { daftarLombaSiswa } from '../../lib/lomba'
 import { bolehTkaSiswa } from '../../lib/tkaAkses'
 import SiswaIcon, { type SiswaIconName } from './SiswaIcon'
 
@@ -13,6 +15,9 @@ const NAV: { to: string; end: boolean; label: string; icon: SiswaIconName }[] = 
 /** Menu TKA hanya untuk siswa kelas 6 (ANTIREGRESI §76). */
 const NAV_TKA = { to: '/siswa/tka', end: false, label: 'TKA', icon: 'tka' as SiswaIconName }
 
+/** Menu Lomba hanya jika siswa terdaftar di ≥1 lomba (ANTIREGRESI §Lomba.1). */
+const NAV_LOMBA = { to: '/siswa/lomba', end: false, label: 'Lomba', icon: 'lomba' as SiswaIconName }
+
 /**
  * Shell area siswa: header + konten full-width + navigasi.
  * HP: nav bawah fixed. Tablet/PC: nav strip di bawah header (lihat siswa.css).
@@ -21,6 +26,25 @@ const NAV_TKA = { to: '/siswa/tka', end: false, label: 'TKA', icon: 'tka' as Sis
 export default function SiswaLayout() {
   const { sesi, keluar } = useSiswa()
   const navigate = useNavigate()
+  const [punyaLomba, setPunyaLomba] = useState(false)
+
+  useEffect(() => {
+    if (!sesi?.id) {
+      setPunyaLomba(false)
+      return
+    }
+    let batal = false
+    void daftarLombaSiswa(sesi.id)
+      .then((list) => {
+        if (!batal) setPunyaLomba(list.length > 0)
+      })
+      .catch(() => {
+        if (!batal) setPunyaLomba(false)
+      })
+    return () => {
+      batal = true
+    }
+  }, [sesi?.id])
 
   // Jangan memanggil navigate() saat render (lihat ANTIREGRESI §12).
   if (!sesi) return <Navigate to="/siswa/masuk" replace />
@@ -34,7 +58,9 @@ export default function SiswaLayout() {
     navigate('/siswa/masuk', { replace: true })
   }
 
-  const navItems = bolehTkaSiswa(sesi.kelas) ? [...NAV, NAV_TKA] : NAV
+  let navItems = [...NAV]
+  if (bolehTkaSiswa(sesi.kelas)) navItems = [...navItems, NAV_TKA]
+  if (punyaLomba) navItems = [...navItems, NAV_LOMBA]
 
   return (
     <div className="sw-app">

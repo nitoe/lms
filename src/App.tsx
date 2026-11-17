@@ -22,6 +22,10 @@ import SiswaTka from './pages/siswa/SiswaTka'
 import TkaBeranda from './pages/tka/TkaBeranda'
 import TkaRekap from './pages/tka/TkaRekap'
 import TkaImportRekap from './pages/tka/TkaImportRekap'
+import LombaList from './pages/lomba/LombaList'
+import LombaDetail from './pages/lomba/LombaDetail'
+import LombaForm from './pages/lomba/LombaForm'
+import SiswaLomba from './pages/siswa/SiswaLomba'
 import OrangtuaBeranda from './pages/OrangtuaBeranda'
 import { isStaf } from './lib/peran'
 import { bolehAksesTkaStaf, bolehImportRekapTka } from './lib/tkaAkses'
@@ -89,6 +93,7 @@ export default function App() {
         <Route path="tugas" element={<SiswaTugas />} />
         <Route path="kuis" element={<SiswaKuis />} />
         <Route path="tka" element={<SiswaTka />} />
+        <Route path="lomba" element={<SiswaLomba />} />
         <Route
           path="pencapaian"
           element={
@@ -162,6 +167,10 @@ export default function App() {
             </Suspense>
           }
         />
+        <Route path="lomba" element={<LombaList />} />
+        <Route path="lomba/baru" element={<LombaForm />} />
+        <Route path="lomba/:lombaId" element={<LombaDetail />} />
+        <Route path="lomba/:lombaId/edit" element={<LombaForm />} />
       </Route>
 
       <Route path="*" element={<Navigate to="/" replace />} />

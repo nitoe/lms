@@ -394,3 +394,20 @@ Tombol unduh Word wajib di `KuisKepala` (prop `aksi`) agar mudah ditemukan dari 
 
 114.3 `.tka-rekap-controls`: panel portal sudah tab; jangan memaksa `grid-template-columns: … 1fr` dua kolom jika hanya ada toolbar filter (pakai `:has(> :only-child)` / `:has(> :nth-child(2))`).
 
+## Lomba (modul baru)
+
+### §Lomba.1 Menu siswa hanya untuk peserta
+Menu **Lomba** di nav siswa hanya ditampilkan jika `daftarLombaSiswa(siswaId)` mengembalikan ≥1 dokumen (query `siswaIds` array-contains). Jangan hardcode tampil untuk semua kelas.
+
+### §Lomba.2 Peserta maksimal 20
+Validasi di client (`MAKS_PESERTA_LOMBA`) **dan** rules (`siswaIds.size() <= 20`, `siswaList.size() <= 20`). Selalu jaga `siswaIds` selaras dengan `siswaList`.
+
+### §Lomba.3 Meta hanya admin; konten admin atau pengampu
+Create/update/delete dokumen `lms_lomba` (nama, pengampu, peserta, mapel terkait, masa) = **admin saja**. Guru pengampu (`guruPengampuUid`) baru boleh menulis konten turunan (materi/bank/kuis dengan `lombaId`) di Tahap 2 — jangan izinkan guru mengubah meta lewat rules.
+
+### §Lomba.4 Mapel terkait membatasi TP
+Field `mapelTerkait: string[]` wajib ≥1. Pada Tahap 2, filter TP / mapel di form materi-bank-kuis lomba harus memakai daftar ini (admin boleh filter TP penuh per mapel terkait; guru pengampu mengikuti mapel lomba tanpa filter admin ekstra).
+
+### §Lomba.5 List users hanya admin
+Dropdown guru pengampu memakai `getDocs(users)` — rules `users` hanya `allow list: if isAdmin()`. Jangan panggil dari akun guru.
+

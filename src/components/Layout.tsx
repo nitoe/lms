@@ -9,7 +9,7 @@ type NavItem = {
   to: string
   end?: boolean
   label: string
-  icon: 'home' | 'class' | 'task' | 'quiz' | 'table' | 'tka'
+  icon: 'home' | 'class' | 'task' | 'quiz' | 'table' | 'tka' | 'lomba'
   soon?: boolean
 }
 
@@ -22,6 +22,9 @@ const NAV_UTAMA: NavItem[] = [
 
 /** Menu TKA hanya tampil untuk admin TKA dan wali kelas 6 (ANTIREGRESI §76). */
 const NAV_TKA: NavItem = { to: '/tka', label: 'TKA', icon: 'tka' }
+
+/** Menu Lomba: admin selalu; guru pengampu setelah punya lomba (lihat LombaList). */
+const NAV_LOMBA: NavItem = { to: '/lomba', label: 'Lomba', icon: 'lomba' }
 
 const LS_SIDEBAR = 'lms-sidebar-collapsed'
 
@@ -87,6 +90,16 @@ function Icon({ name }: { name: NavItem['icon'] }) {
           <line x1="22" y1="10" x2="22" y2="16" />
         </svg>
       )
+    case 'lomba':
+      return (
+        <svg {...common}>
+          <path d="M8 21h8" />
+          <path d="M12 17v4" />
+          <path d="M7 4h10v5a5 5 0 0 1-10 0V4z" />
+          <path d="M17 4h2a2 2 0 0 1 0 4h-2" />
+          <path d="M7 4H5a2 2 0 0 0 0 4h2" />
+        </svg>
+      )
     case 'quiz':
       return (
         <svg {...common}>
@@ -120,7 +133,11 @@ export default function Layout() {
     navigate('/masuk', { replace: true })
   }
 
-  const navItems = bolehAksesTkaStaf(user, profil) ? [...NAV_UTAMA, NAV_TKA] : NAV_UTAMA
+  const navItems = [
+    ...NAV_UTAMA,
+    ...(bolehAksesTkaStaf(user, profil) ? [NAV_TKA] : []),
+    NAV_LOMBA,
+  ]
 
   const judulHalaman =
     pathname.includes('/soal/') ? 'Editor soal'
@@ -130,6 +147,7 @@ export default function Layout() {
     : pathname.startsWith('/tugas') ? 'Tugas'
     : pathname.startsWith('/rekap-nilai') ? 'Rekap Nilai'
     : pathname.startsWith('/tka') ? 'TKA — Tes Kemampuan Akademik'
+    : pathname.startsWith('/lomba') ? 'Lomba'
     : 'Beranda'
 
   return (
