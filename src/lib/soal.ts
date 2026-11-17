@@ -310,6 +310,8 @@ export async function buatPaket(input: {
   const data = bersihkan({
     kelas: String(input.kelas).toUpperCase(),
     mapel: input.mapel,
+    // Modul Lomba: rules (lombaKontenBoleh) WAJIB melihat lombaId di dokumen — ANTIREGRESI §Lomba.10.
+    ...(input.lombaId ? { lombaId: input.lombaId } : {}),
     judul,
     tpId: input.tpId,
     tpNomor: input.tpNomor,

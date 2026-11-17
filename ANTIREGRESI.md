@@ -423,7 +423,7 @@ Regresi berulang: halaman modul baru (Lomba, dan kelak fitur lain) memakai `max-
 4. CSS modul baru taruh di `src/styles/{modul}.css` dan di-import di halaman; jangan mengandalkan utility Tailwind sempit untuk layout halaman.
 
 ### §Lomba.7 Konten kelas bank LB + lombaId
-Materi/paket/kuis lomba disimpan dengan `kelas == "LB"` dan field **`lombaId`**. Query wajib `where lombaId` + `mapel`. Jangan campur dengan ruang kelas biasa. Rules: `lombaKontenBoleh(lombaId)`.
+Materi/paket/kuis lomba disimpan dengan `kelas == "LB"` dan field **`lombaId`**. Query wajib `where lombaId` + `mapel`. Jangan campur dengan ruang kelas biasa. Rules: `lombaKontenBoleh(lombaId)`. **`lombaId` WAJIB benar-benar ditulis ke dokumen** pada setiap fungsi pembuat konten lomba (`buatPaket`, `tambahMateri`, `buatKuisDariPaket`) — lihat §Lomba.10.
 
 ### §Lomba.8 Prop opsional untuk panel bersama: jangan di-destructure bila tak dipakai
 Build deploy (`tsc -b`) gagal dengan `TS6133 'tpKelas' is declared but its value is never read` di `KuisPanel`. Panel bersama (`MateriPanel`, `BankSoalPanel`, `KuisPanel`) menerima `lombaId` / `tpKelas` opsional dari `LombaDetail`, tetapi **tidak semua panel memakai kedua prop**. `KuisPanel` hanya memakai `lombaId` (TP kuis berasal dari paket sumber).
@@ -442,6 +442,24 @@ Regresi: bar mapel di detail lomba tampil terhimpit (tombol mapel membulat, «TP
 3. `.rg-tabs` punya `--rg-a` bawaan ungu; aksen mapel wajib diset **inline pada elemen `.rg-tabs`** (bukan hanya pembungkus), seperti `KelasDetail`.
 4. Aksen = `aksenMapel(mapelAktif).bar` lewat `--rg-a` pada pembungkus `lomba-dash`, agar `kn-*` di dalam panel Kuis ikut berwarna mapel.
 5. Cek visual halaman baru di lebar ≤ 640 px dan ≥ 1280 px sebelum deploy; jalankan `npx tsc -b` (§Lomba.8).
+
+### §Lomba.10 `lombaId` harus ikut ditulis ke dokumen (permission denied saat import / buat paket / tambah materi)
+Regresi: **Import soal**, «+ Paket soal baru», dan tambah materi di Lomba gagal `Missing or insufficient permissions`. Penyebab: fungsi pembuat (`buatPaket` di `soal.ts`, `tambahMateri` di `materi.ts`) mendeklarasikan `lombaId?: string` di tipe input dan pemanggil (`BankSoalPanel`, `MateriPanel`) mengirimnya, tetapi objek yang ditulis ke Firestore **tidak memuat `lombaId`**. Rules `create` kelas `LB` mensyaratkan `'lombaId' in request.resource.data && lombaKontenBoleh(...)`, dan admin tidak lolos `lmsTulisMapelKelas`, jadi semua penulis ditolak. TypeScript tidak mendeteksinya (prop opsional yang diterima tapi tak dipakai tidak error).
+
+**Aturan:**
+1. Setiap fungsi pembuat konten yang menerima `lombaId` **wajib** menulisnya: `...(input.lombaId ? { lombaId: input.lombaId } : {})` (atau `payload.lombaId = …`). Mendeklarasikan di tipe saja tidak cukup. Saat menambah modul/koleksi konten lomba baru (tugas, bobot SLM, dst.), cek ketiga fungsi di atas sebagai contoh dan **grep `lombaId` pada fungsi tulisnya**.
+2. Konten kelas `LB` **tanpa** `lombaId` tidak akan pernah lolos rules (tulis maupun baca). Jangan melonggarkan rules untuk menutupi field yang hilang.
+3. Cabang **baca** Lomba harus ada di setiap koleksi yang dibaca pengampu: `lms_paket_soal` dan `lms_kuis` memakai `isGuru() && 'lombaId' in resource.data && lombaKontenBoleh(resource.data.lombaId)`. Tanpa itu guru pengampu non-admin gagal memuat daftar (kelas `LB` tidak ada di `penugasanKelasMapel`). Query klien wajib `where lombaId` + `mapel` (`daftarPaketLomba`, `daftarKuisLomba`, `daftarMateriLomba`); query hanya `kelas == 'LB'` ditolak untuk non-admin.
+4. Uji setelah perubahan: buat paket dan import soal di dalam Lomba dengan **akun admin** dan **akun guru pengampu non-admin**, lalu muat ulang tab Bank soal. Cek di Firebase Console bahwa dokumen baru punya field `lombaId`.
+5. Diketahui, belum diperbaiki: `KuisDetail` («Tambah dari bank») dan `buatKuisDariPaket` (jalur otomatis tanpa `soalSiap`) memanggil `daftarPaket`/`daftarPaketSiap` per kelas `LB` tanpa `lombaId`; aman untuk admin, tetapi ditolak untuk guru pengampu non-admin. Perbaiki (pakai `daftarPaketLomba`) sebelum pengampu non-admin menyusun kuis lomba dari jalur itu.
+
+### §Lomba.11 Salinan `firestore.rules` di repo LMS bisa basi — basis selalu dari SDM01Penilaian
+Regresi: `firestore.rules` di repo `nitoe/lms` tidak memuat rules Lomba (`lms_lomba`, `lombaKontenBoleh`, cabang `LB` pada materi/paket/kuis/tugas/bobot) walau CHANGELOG mencatatnya, sementara versi di `SDM01Penilaian` (sumber deploy `npm run deploy:rules`) memuatnya. Mengedit salinan basi lalu men-deploy akan **menghapus** rules Lomba di production.
+
+**Aturan:**
+1. Sebelum mengubah `firestore.rules`, ambil versi terbaru dari **`SDM01Penilaian`** (bukan salinan di `lms`), terapkan perubahan, lalu kirim file **utuh** untuk kedua repo dengan isi identik.
+2. Pastikan keluaran tidak kehilangan blok milik repo lain: bandingkan dengan `diff` terhadap versi Penilaian — hanya baris yang memang diubah yang boleh berbeda.
+3. Setelah mengubah rules di repo mana pun, salin ke repo satunya agar tidak berselisih lagi.
 
 ## §129. Template & import bank soal: «Tanpa TP» dan parser CSV
 

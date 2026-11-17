@@ -1,3 +1,14 @@
+## 2026-11-17 — Lomba: perbaiki «Missing or insufficient permissions» saat import soal / buat paket / tambah materi
+
+- **Gejala:** di detail Lomba → tab Bank soal, **Import soal** (dan «+ Paket soal baru») gagal dengan `Missing or insufficient permissions`. Tambah materi di tab Materi berpotensi sama.
+- **Akar utama (klien):** `buatPaket` (`soal.ts`) dan `tambahMateri` (`materi.ts`) menerima `lombaId` dari panel tetapi **tidak menuliskannya ke dokumen** (hanya `buatKuisDariPaket` yang menulis). Rules Lomba mengizinkan tulis kelas bank `LB` hanya bila `'lombaId' in request.resource.data && lombaKontenBoleh(lombaId)`; tanpa field itu admin pun ditolak (admin tidak lolos `lmsTulisMapelKelas`). Import gagal di langkah pertama (membuat paket), sebelum soal sempat disimpan.
+- **Perbaikan klien:** `lombaId` kini ikut disimpan di paket soal dan materi lomba. Paket/materi lomba lama tidak ada (semua percobaan ditolak), jadi tidak perlu migrasi data.
+- **Perbaikan rules (baca):** `lms_paket_soal` dan `lms_kuis` belum punya cabang baca untuk Lomba, sehingga **guru pengampu non-admin** tidak bisa memuat daftar paket/kuis lomba (kelas `LB` tidak ada di penugasannya). Ditambah cabang `isGuru() && 'lombaId' in resource.data && lombaKontenBoleh(resource.data.lombaId)`. Aturan tulis tidak berubah.
+- **Salinan rules di repo LMS basi:** `firestore.rules` di repo `nitoe/lms` tidak memuat satu pun rules Lomba (`lms_lomba`, `lombaKontenBoleh`, cabang `LB`), padahal versi di `SDM01Penilaian` (sumber deploy) sudah. File yang dikirim sekarang berbasis versi `SDM01Penilaian` terbaru + perbaikan di atas, dan dikirim untuk **kedua repo** dengan isi yang sama.
+- **Wajib deploy rules** (`npm run deploy:rules` dari SDM01Penilaian) **dan** Hosting; push klien saja tidak cukup untuk guru pengampu.
+- Diverifikasi `tsc -b` dan `vite build` lolos; rules diperiksa keseimbangan tanda kurung (kode tanpa komentar) terhadap versi Penilaian.
+- File: `src/lib/soal.ts`, `src/lib/materi.ts`, `firestore.rules` (utuh, kedua repo), `CHANGELOG.md`, `ANTIREGRESI.md` (§Lomba.10, §Lomba.11).
+
 ## 2026-11-17 — Bank soal: template & import «Tanpa TP» (soal gabungan) + perbaikan import CSV
 
 - **Tujuan:** admin dan guru pengampu (Lomba, juga ruang mapel biasa) bisa membuat bank soal tanpa terikat satu TP — mis. soal gabungan beberapa TP saat latihan/lomba mepet.

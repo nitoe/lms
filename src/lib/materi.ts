@@ -214,6 +214,8 @@ export async function tambahMateri(input: MateriBaruInput): Promise<string> {
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   }
+  // Modul Lomba: rules (lombaKontenBoleh) WAJIB melihat lombaId di dokumen — ANTIREGRESI §Lomba.10.
+  if (input.lombaId) payload.lombaId = input.lombaId
   if (input.deskripsi?.trim()) payload.deskripsi = input.deskripsi.trim()
   if (input.bab?.trim()) payload.bab = input.bab.trim()
   if (input.tpId) {

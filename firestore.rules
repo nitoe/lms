@@ -1201,9 +1201,12 @@ match /g7kaih/{id} {
                       && 'kelasList' in resource.data
                       && request.auth.token.kelas in resource.data.kelasList);
 
-      allow create: if lmsTulisMapelKelas(
+      allow create: if (lmsTulisMapelKelas(
                         request.resource.data.mapel,
                         request.resource.data.kelas)
+                    || (lombaKelasBank(request.resource.data.kelas)
+                        && 'lombaId' in request.resource.data
+                        && lombaKontenBoleh(request.resource.data.lombaId)))
                     && request.resource.data.keys().hasAll(
                          ['kelas', 'mapel', 'judul', 'jenis', 'urutan', 'dibuatOleh'])
                     && request.resource.data.kelas is string
@@ -1231,7 +1234,8 @@ match /g7kaih/{id} {
                         || (request.resource.data.url is string
                             && request.resource.data.url.size() <= 2000));
 
-      allow update: if lmsTulisMapelKelas(resource.data.mapel, resource.data.kelas)
+      allow update: if (lmsTulisMapelKelas(resource.data.mapel, resource.data.kelas)
+                    || ('lombaId' in resource.data && lombaKontenBoleh(resource.data.lombaId)))
                     && request.resource.data.kelas == resource.data.kelas
                     && request.resource.data.mapel == resource.data.mapel
                     && request.resource.data.dibuatOleh == resource.data.dibuatOleh
@@ -1248,7 +1252,8 @@ match /g7kaih/{id} {
                     && request.resource.data.jenis in ['pdf', 'gambar', 'video', 'youtube', 'tautan'];
 
       allow delete: if lmsTulisMapelKelas(resource.data.mapel, resource.data.kelas)
-                    || isAdmin();
+                    || isAdmin()
+                    || ('lombaId' in resource.data && lombaKontenBoleh(resource.data.lombaId));
     }
 
 
@@ -1258,11 +1263,20 @@ match /g7kaih/{id} {
     // (ANTIREGRESI §38). Fase 2b: siswa membaca salinan tanpa kunci di koleksi lain.
     // Query klien WAJIB menyertakan where kelas DAN mapel (sama seperti nilai_tp), tanpa orderBy.
     match /lms_paket_soal/{id} {
-      allow read: if lmsLihatMapelKelas(resource.data.mapel, resource.data.kelas);
+      // Baca: penugasan/wali/admin, ATAU (Lomba) admin / guru pengampu lomba pemilik paket.
+      // Cabang Lomba wajib: kelas bank «LB» tidak masuk penugasanKelasMapel guru mana pun.
+      // Query klien Lomba: where lombaId + mapel (daftarPaketLomba) — ANTIREGRESI §Lomba.10.
+      allow read: if lmsLihatMapelKelas(resource.data.mapel, resource.data.kelas)
+                  || (isGuru()
+                      && 'lombaId' in resource.data
+                      && lombaKontenBoleh(resource.data.lombaId));
 
-      allow create: if lmsTulisMapelKelas(
+      allow create: if (lmsTulisMapelKelas(
                         request.resource.data.mapel,
                         request.resource.data.kelas)
+                    || (lombaKelasBank(request.resource.data.kelas)
+                        && 'lombaId' in request.resource.data
+                        && lombaKontenBoleh(request.resource.data.lombaId)))
                     && request.resource.data.keys().hasAll(
                          ['kelas', 'mapel', 'judul', 'status', 'acakSoal', 'soal', 'dibuatOleh'])
                     && request.resource.data.dibuatOleh == request.auth.uid
@@ -1283,7 +1297,8 @@ match /g7kaih/{id} {
                         || (request.resource.data.deskripsi is string
                             && request.resource.data.deskripsi.size() <= 1000));
 
-      allow update: if lmsTulisMapelKelas(resource.data.mapel, resource.data.kelas)
+      allow update: if (lmsTulisMapelKelas(resource.data.mapel, resource.data.kelas)
+                    || ('lombaId' in resource.data && lombaKontenBoleh(resource.data.lombaId)))
                     && request.resource.data.kelas == resource.data.kelas
                     && request.resource.data.mapel == resource.data.mapel
                     && request.resource.data.dibuatOleh == resource.data.dibuatOleh
@@ -1299,7 +1314,8 @@ match /g7kaih/{id} {
                             && request.resource.data.deskripsi.size() <= 1000));
 
       allow delete: if lmsTulisMapelKelas(resource.data.mapel, resource.data.kelas)
-                    || isAdmin();
+                    || isAdmin()
+                    || ('lombaId' in resource.data && lombaKontenBoleh(resource.data.lombaId));
     }
 
     // BARU (Fase 2a). Gambar soal terkompres (data URL WebP/JPEG, maks 300.000 karakter), pola sama
@@ -1337,6 +1353,9 @@ match /g7kaih/{id} {
                   || (isGuru()
                       && 'kelasList' in resource.data
                       && lmsLihatViaKelasList(resource.data.mapel, resource.data.kelasList))
+                  || (isGuru()
+                      && 'lombaId' in resource.data
+                      && lombaKontenBoleh(resource.data.lombaId))
                   || (isSiswaLms()
                       && resource.data.aktif == true
                       && resource.data.kelas == request.auth.token.kelas)
@@ -1349,9 +1368,12 @@ match /g7kaih/{id} {
                       && resource.data.kelas == '6'
                       && request.auth.token.kelas in ['6A', '6B']);
 
-      allow create: if lmsTulisMapelKelas(
+      allow create: if (lmsTulisMapelKelas(
                         request.resource.data.mapel,
                         request.resource.data.kelas)
+                    || (lombaKelasBank(request.resource.data.kelas)
+                        && 'lombaId' in request.resource.data
+                        && lombaKontenBoleh(request.resource.data.lombaId)))
                     && request.resource.data.keys().hasAll(
                          ['kelas', 'mapel', 'judul', 'aktif', 'dibuatOleh', 'jumlahSoal'])
                     && request.resource.data.dibuatOleh == request.auth.uid
@@ -1372,7 +1394,8 @@ match /g7kaih/{id} {
                         || (request.resource.data.deskripsi is string
                             && request.resource.data.deskripsi.size() <= 1000));
 
-      allow update: if lmsTulisMapelKelas(resource.data.mapel, resource.data.kelas)
+      allow update: if (lmsTulisMapelKelas(resource.data.mapel, resource.data.kelas)
+                    || ('lombaId' in resource.data && lombaKontenBoleh(resource.data.lombaId)))
                     && request.resource.data.kelas == resource.data.kelas
                     && request.resource.data.mapel == resource.data.mapel
                     && request.resource.data.dibuatOleh == resource.data.dibuatOleh
@@ -1395,7 +1418,8 @@ match /g7kaih/{id} {
                             && request.resource.data.deskripsi.size() <= 1000));
 
       allow delete: if lmsTulisMapelKelas(resource.data.mapel, resource.data.kelas)
-                    || isAdmin();
+                    || isAdmin()
+                    || ('lombaId' in resource.data && lombaKontenBoleh(resource.data.lombaId));
     }
 
     // Soal per kuis. Kunci jawaban ada di dokumen (opsi.benar dll), jadi tidak boleh dibaca siswa.
@@ -1466,9 +1490,12 @@ match /g7kaih/{id} {
                       && 'kelasList' in resource.data
                       && request.auth.token.kelas in resource.data.kelasList);
 
-      allow create: if lmsTulisMapelKelas(
+      allow create: if (lmsTulisMapelKelas(
                         request.resource.data.mapel,
                         request.resource.data.kelas)
+                    || (lombaKelasBank(request.resource.data.kelas)
+                        && 'lombaId' in request.resource.data
+                        && lombaKontenBoleh(request.resource.data.lombaId)))
                     && request.resource.data.keys().hasAll(
                          ['kelas', 'mapel', 'judul', 'jenis', 'aktif', 'dibuatOleh'])
                     && request.resource.data.dibuatOleh == request.auth.uid
@@ -1493,7 +1520,8 @@ match /g7kaih/{id} {
                         || (request.resource.data.jumlahPengumpulan is int
                             && request.resource.data.jumlahPengumpulan >= 0));
 
-      allow update: if lmsTulisMapelKelas(resource.data.mapel, resource.data.kelas)
+      allow update: if (lmsTulisMapelKelas(resource.data.mapel, resource.data.kelas)
+                    || ('lombaId' in resource.data && lombaKontenBoleh(resource.data.lombaId)))
                     && request.resource.data.dibuatOleh == resource.data.dibuatOleh
                     && request.resource.data.kelas == resource.data.kelas
                     && request.resource.data.mapel == resource.data.mapel
@@ -1641,9 +1669,12 @@ match /g7kaih/{id} {
     match /lms_bobot_slm/{id} {
       allow read: if isGuru() || isAdmin();
 
-      allow create: if lmsTulisMapelKelas(
+      allow create: if (lmsTulisMapelKelas(
                         request.resource.data.mapel,
                         request.resource.data.kelas)
+                    || (lombaKelasBank(request.resource.data.kelas)
+                        && 'lombaId' in request.resource.data
+                        && lombaKontenBoleh(request.resource.data.lombaId)))
                     && request.resource.data.keys().hasAll(
                          ['kelas', 'mapel', 'tpId', 'sumber', 'diubahOleh'])
                     && request.resource.data.kelas is string
@@ -1659,7 +1690,8 @@ match /g7kaih/{id} {
                     && request.resource.data.sumber.size() <= 40
                     && request.resource.data.diubahOleh == request.auth.uid;
 
-      allow update: if lmsTulisMapelKelas(resource.data.mapel, resource.data.kelas)
+      allow update: if (lmsTulisMapelKelas(resource.data.mapel, resource.data.kelas)
+                    || ('lombaId' in resource.data && lombaKontenBoleh(resource.data.lombaId)))
                     && request.resource.data.kelas == resource.data.kelas
                     && request.resource.data.mapel == resource.data.mapel
                     && request.resource.data.tpId == resource.data.tpId
@@ -1668,7 +1700,8 @@ match /g7kaih/{id} {
                     && request.resource.data.diubahOleh == request.auth.uid;
 
       allow delete: if lmsTulisMapelKelas(resource.data.mapel, resource.data.kelas)
-                    || isAdmin();
+                    || isAdmin()
+                    || ('lombaId' in resource.data && lombaKontenBoleh(resource.data.lombaId));
     }
 
 
@@ -1774,6 +1807,94 @@ match /g7kaih/{id} {
       allow delete: if isAdmin();
     }
 
+
+
+    // ---- lms_lomba -----------------------------------------------------------
+    // Modul Lomba (Tahap 1): meta lomba, guru pengampu, peserta max 20.
+    // Create/update/delete meta: admin saja.
+    // Read: admin; guru pengampu (guruPengampuUid); siswa peserta (siswaIds contains claim).
+    // List: admin (semua); guru (where guruPengampuUid==uid); siswa (array-contains siswaId).
+    // ANTIREGRESI §Lomba.1–§Lomba.3.
+
+    function lombaAdmin() {
+      return isAdmin();
+    }
+
+    function lombaPengampuDoc() {
+      return resource.data.guruPengampuUid == request.auth.uid;
+    }
+
+    function lombaSiswaPeserta() {
+      return isSiswaLms()
+        && resource.data.siswaIds is list
+        && request.auth.token.siswaId in resource.data.siswaIds;
+    }
+
+
+    // Konten lomba (materi/paket/kuis): kelas bank «LB» + field lombaId.
+    function lombaKelasBank(kelas) {
+      return kelas is string && kelas == 'LB';
+    }
+    function lombaKontenBoleh(lombaId) {
+      return lombaId is string
+        && lombaId.size() > 0
+        && lombaId.size() <= 128
+        && exists(/databases/$(database)/documents/lms_lomba/$(lombaId))
+        && (
+          isAdmin()
+          || get(/databases/$(database)/documents/lms_lomba/$(lombaId)).data.guruPengampuUid == request.auth.uid
+        );
+    }
+
+    match /lms_lomba/{id} {
+      allow get: if lombaAdmin()
+                 || (isGuru() && lombaPengampuDoc())
+                 || lombaSiswaPeserta();
+
+      // List: klien admin tanpa filter; guru where guruPengampuUid; siswa array-contains.
+      // Rules mengevaluasi per dokumen yang lolos query.
+      allow list: if lombaAdmin()
+                  || (isGuru()
+                      && resource.data.guruPengampuUid == request.auth.uid)
+                  || (isSiswaLms()
+                      && resource.data.siswaIds is list
+                      && request.auth.token.siswaId in resource.data.siswaIds);
+
+      allow create: if lombaAdmin()
+                    && request.resource.data.keys().hasAll([
+                         'nama', 'tingkat', 'mapelTerkait', 'status',
+                         'guruPengampuUid', 'guruPengampuNama',
+                         'siswaIds', 'siswaList', 'dibuatOleh'])
+                    && request.resource.data.dibuatOleh == request.auth.uid
+                    && request.resource.data.nama is string
+                    && request.resource.data.nama.size() > 0
+                    && request.resource.data.nama.size() <= 120
+                    && request.resource.data.tingkat is string
+                    && request.resource.data.status in ['draf', 'aktif', 'selesai', 'arsip']
+                    && request.resource.data.mapelTerkait is list
+                    && request.resource.data.mapelTerkait.size() > 0
+                    && request.resource.data.mapelTerkait.size() <= 20
+                    && request.resource.data.guruPengampuUid is string
+                    && request.resource.data.guruPengampuUid.size() > 0
+                    && request.resource.data.siswaIds is list
+                    && request.resource.data.siswaIds.size() <= 20
+                    && request.resource.data.siswaList is list
+                    && request.resource.data.siswaList.size() <= 20;
+
+      allow update: if lombaAdmin()
+                    && request.resource.data.nama is string
+                    && request.resource.data.nama.size() > 0
+                    && request.resource.data.nama.size() <= 120
+                    && request.resource.data.status in ['draf', 'aktif', 'selesai', 'arsip']
+                    && request.resource.data.mapelTerkait is list
+                    && request.resource.data.mapelTerkait.size() > 0
+                    && request.resource.data.siswaIds is list
+                    && request.resource.data.siswaIds.size() <= 20
+                    && request.resource.data.siswaList is list
+                    && request.resource.data.siswaList.size() <= 20;
+
+      allow delete: if lombaAdmin();
+    }
 
     // ############################################################################
     // ##  REPO: BERSAMA (semua repo)
