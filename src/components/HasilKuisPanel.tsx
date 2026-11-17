@@ -63,6 +63,26 @@ type BarisHasilTka = {
   jawaban: JawabanKuis | null
 }
 
+
+/** Skor per mapel sumber (kuis Lomba Gabungan) dari detail + soal.sumberMapel. */
+function skorPerMapelSumber(
+  jawaban: JawabanKuis | null,
+  soalList: SoalKuis[],
+  mapel: string,
+): { skor: number; maks: number } {
+  let skor = 0
+  let maks = 0
+  const byId = jawaban?.detail
+    ? new Map(jawaban.detail.map((d) => [d.soalId, d]))
+    : null
+  for (const s of soalList) {
+    if ((s.sumberMapel || '') !== mapel) continue
+    maks += Number(s.poin) || 0
+    if (byId) skor += Number(byId.get(s.id)?.skor) || 0
+  }
+  return { skor, maks }
+}
+
 /** Hitung skor per domain TKA (hanya soal yang berdomain). */
 function skorPerDomain(jawaban: JawabanKuis | null, soalList: SoalKuis[]): Record<string, { skor: number; maks: number }> {
   const out: Record<string, { skor: number; maks: number }> = {
@@ -1304,6 +1324,12 @@ export default function HasilKuisPanel({ kuis, onUpdated }: Props) {
                 <tr className="border-b border-slate-200 bg-slate-50/80 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
                   <th className="px-4 py-3">Siswa</th>
                   <th className="px-3 py-3">Kelas</th>
+                  {isLomba &&
+                    mapelSumberLomba.map((m) => (
+                      <th key={m} className="px-3 py-3 normal-case tracking-normal" title={`Capaian ${m}`}>
+                        {m}
+                      </th>
+                    ))}
                   {tkaIpa && (
                     <>
                       <th className="px-3 py-3" title="Pengetahuan IPA">
@@ -1357,7 +1383,7 @@ export default function HasilKuisPanel({ kuis, onUpdated }: Props) {
                           </div>
                         </td>
                         <td className="px-3 py-3 text-xs font-medium text-slate-600">{row.kelas}</td>
-                        {Array.from({ length: (tkaIpa ? 2 : 0) + kolomTka.length + 1 }, (_, i) => (
+                        {Array.from({ length: (isLomba ? mapelSumberLomba.length : 0) + (tkaIpa ? 2 : 0) + kolomTka.length + 1 }, (_, i) => (
                           <td key={i} className="px-3 py-3 text-sm font-semibold text-slate-300">
                             —
                           </td>
@@ -1389,6 +1415,19 @@ export default function HasilKuisPanel({ kuis, onUpdated }: Props) {
                         </div>
                       </td>
                       <td className="px-3 py-3 text-xs font-medium text-slate-600">{row.kelas || j.kelas}</td>
+                      {isLomba &&
+                        mapelSumberLomba.map((m) => {
+                          const cell = skorPerMapelSumber(j, kuis.soal ?? [], m)
+                          const pct = cell.maks > 0 ? skorKe100(cell.skor, cell.maks) : null
+                          return (
+                            <td key={m} className="px-3 py-3">
+                              <span className="text-sm font-semibold tabular-nums text-slate-800">
+                                {pct == null ? '—' : formatPct(pct)}
+                              </span>
+                              {pct != null ? <span className="text-[10px] text-slate-400"> /100</span> : null}
+                            </td>
+                          )
+                        })}
                       {(() => {
                         const dom = skorPerDomain(j, kuis.soal ?? [])
                         const p = pctDomain(dom.pengetahuan)
