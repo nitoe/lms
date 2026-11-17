@@ -1,3 +1,9 @@
+## 2026-11-17 — Lomba: perbaiki permission simpan kuis (create lms_kuis)
+
+- **Gejala:** Menyusun pratinjau kuis Lomba (termasuk mode Gabungan) berhasil, tetapi saat simpan muncul «Missing or insufficient permissions.»
+- **Akar / tindakan:** Cabang create `lms_kuis` untuk konten Lomba (`kelas == 'LB'` + `lombaId` + `lombaKontenBoleh`) sudah ada; cabang Lomba **didahulukan** dalam ekspresi OR agar mapel «Gabungan» / non-penugasan jelas memakai path Lomba. **Wajib deploy firestore.rules** — deploy Hosting saja tidak cukup.
+- File: `firestore.rules`, `CHANGELOG.md`, `ANTIREGRESI.md` (§Lomba.15).
+
 ## 2026-11-17 — Lomba kuis gabungan: opsi 40/50 soal & pemilihan paket lintas mapel lebih jelas
 
 - **Opsi jumlah soal:** preset penyusunan otomatis ditambah **40** dan **50** (sebelumnya maksimal chip 30). Batas absolut tetap `BATAS_SOAL_PER_KUIS` (100). Cocok untuk lomba yang memakai 30+ soal.

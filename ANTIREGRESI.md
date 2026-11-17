@@ -492,6 +492,17 @@ Regresi: `firestore.rules` di repo `nitoe/lms` tidak memuat rules Lomba (`lms_lo
 4. Saat saring mapel aktif dan ada paket terpilih dari mapel lain, UI menampilkan ringkasan «Terpilih: …» agar pengguna tidak mengira centang hilang.
 5. Uji: Lomba ≥2 mapel → Gabungan → saring ke satu mapel → centang paket → saring ke mapel lain → centang lagi → ringkasan menunjukkan kedua mapel → Susun pratinjau → soal berasal dari kedua paket; preset 40/50 tersedia dan menghasilkan jumlah sesuai stok.
 
+
+### §Lomba.15 Simpan kuis Lomba / Gabungan: cabang create `lms_kuis` harus Lomba-first + deploy rules
+
+1. Create dokumen `lms_kuis` untuk Lomba memakai `kelas == 'LB'`, field `lombaId`, dan (untuk lintas mapel) `mapel == 'Gabungan'`. Rules **wajib** punya cabang:
+   `lombaKelasBank(kelas) && 'lombaId' in data && lombaKontenBoleh(lombaId)`.
+2. Letakkan cabang Lomba **sebelum** `lmsTulisMapelKelas` dalam ekspresi OR create, agar mapel non-penugasan («Gabungan», mapel lomba yang tidak diampu guru di ruang biasa) tidak bergantung pada urutan evaluasi.
+3. `lombaKontenBoleh` melakukan `exists` + `get` pada `lms_lomba/{lombaId}` — get harus diizinkan untuk admin dan guru pengampu (sudah diatur di match `lms_lomba`). Jika create gagal permission sementara list paket Lomba berhasil, cek apakah rules yang **ter-deploy** di proyek Firebase sudah memuat cabang Lomba pada `lms_kuis` (bukan hanya di repo).
+4. Klien (`buatKuisDariPaket`) wajib menulis `lombaId` bila `input.lombaId` ada — jangan hanya mengandalkan kelas «LB». Tanpa `lombaId` di dokumen, cabang Lomba ditolak (sengaja, agar tidak ada kuis bank LB yatim).
+5. Setelah mengubah `firestore.rules`, selalu `firebase deploy --only firestore:rules` (atau pipeline yang mem-deploy rules). Deploy Hosting saja tidak cukup.
+6. Uji: admin atau guru pengampu → Lomba → Kuis → Gabungan → pilih paket → susun → simpan → dokumen `lms_kuis` terbentuk dengan `kelas: "LB"`, `mapel: "Gabungan"`, `lombaId` terisi.
+
 ## §129. Template & import bank soal: «Tanpa TP» dan parser CSV
 
 129.1 Bank soal mapel biasa (termasuk Lomba, kelas bank `LB`) **boleh tanpa TP**: `tpId/tpNomor/tpNama` opsional di `lms_paket_soal` (rules tidak mewajibkannya — jangan menambah syarat TP di rules/klien). Kuis dari paket tanpa TP tetap sah (`tpIds` dihitung hanya dari paket yang punya `tpId`).
