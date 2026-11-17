@@ -13,6 +13,7 @@ import {
 } from '../../lib/lombaAkses'
 import type { Lomba } from '../../types/lomba'
 import { TINGKAT_LOMBA } from '../../types/lomba'
+import '../../styles/lomba.css'
 
 function formatTanggal(d: Date | null): string {
   if (!d) return '—'
@@ -21,6 +22,12 @@ function formatTanggal(d: Date | null): string {
 
 function labelTingkat(t: string): string {
   return TINGKAT_LOMBA.find((x) => x.value === t)?.label ?? t
+}
+
+function badgeClass(status: string): string {
+  if (status === 'aktif') return 'lomba-badge lomba-badge--aktif'
+  if (status === 'draf') return 'lomba-badge lomba-badge--draf'
+  return 'lomba-badge lomba-badge--selesai'
 }
 
 export default function LombaList() {
@@ -55,8 +62,6 @@ export default function LombaList() {
   }, [muat])
 
   const bolehLihat = bolehAksesLombaStaf(user, profil, list)
-  // Admin selalu boleh; guru hanya jika sudah ada lomba yang diampu (setelah muat)
-  // atau kita biarkan halaman kosong dengan pesan.
 
   async function handleHapus(l: Lomba) {
     if (!admin) return
@@ -81,12 +86,17 @@ export default function LombaList() {
 
   if (!admin && list.length === 0) {
     return (
-      <div className="lms-empty space-y-2 p-8">
-        <p className="font-medium text-slate-700">Akses Lomba terbatas</p>
-        <p className="text-sm text-slate-600">
-          Menu ini hanya untuk administrator LMS atau guru yang ditunjuk sebagai pengampu
-          sebuah lomba. Hubungi admin jika Anda seharusnya menjadi pengampu.
-        </p>
+      <div className="lomba-dash">
+        <section className="lomba-hero">
+          <div className="lomba-hero-inner">
+            <p className="lomba-eyebrow">Modul lomba</p>
+            <h1 className="lomba-judul">Akses terbatas</h1>
+            <p className="lomba-lead">
+              Menu ini hanya untuk administrator LMS atau guru yang ditunjuk sebagai pengampu
+              sebuah lomba. Hubungi admin jika Anda seharusnya menjadi pengampu.
+            </p>
+          </div>
+        </section>
       </div>
     )
   }
@@ -100,121 +110,113 @@ export default function LombaList() {
   }
 
   return (
-    <div className="space-y-6">
-      <section className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h2 className="text-lg font-semibold text-slate-900">Lomba</h2>
-          <p className="mt-0.5 text-sm text-muted">
-            {admin
-              ? 'Kelola lomba, tentukan guru pengampu dan peserta (maks. 20 siswa per lomba).'
-              : 'Lomba yang Anda ampu sebagai guru pengampu.'}
+    <div className="lomba-dash space-y-5">
+      <section className="lomba-hero">
+        <div className="lomba-hero-inner">
+          <p className="lomba-eyebrow">
+            {admin ? 'Administrator LMS' : 'Guru pengampu'}
           </p>
+          <h1 className="lomba-judul">Lomba</h1>
+          <p className="lomba-lead">
+            {admin
+              ? 'Kelola lomba, tentukan guru pengampu dan peserta (maks. 20 siswa). Materi, bank soal, dan kuis disiapkan di halaman detail tiap lomba.'
+              : 'Lomba yang Anda ampu. Buka detail untuk menyiapkan materi, bank soal, dan kuis.'}
+          </p>
+          {admin && (
+            <div className="lomba-hero-aksi">
+              <Link to="/lomba/baru" className="lomba-btn-utama">
+                <span aria-hidden>+</span> Lomba baru
+              </Link>
+            </div>
+          )}
         </div>
-        {admin && (
-          <Link
-            to="/lomba/baru"
-            className="inline-flex items-center gap-1.5 rounded-lg bg-muh-600 px-3.5 py-2 text-sm font-semibold text-white shadow-sm hover:bg-muh-700"
-          >
-            <span aria-hidden>+</span> Lomba baru
-          </Link>
-        )}
       </section>
 
-      {galat && (
-        <div className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-800">
-          {galat}
-        </div>
-      )}
+      {galat && <div className="lomba-alert">{galat}</div>}
 
       {list.length === 0 ? (
-        <div className="lms-empty rounded-xl border border-dashed border-slate-200 bg-slate-50/80 px-6 py-12 text-center">
-          <p className="font-medium text-slate-700">Belum ada lomba</p>
-          <p className="mt-1 text-sm text-muted">
+        <div className="lomba-kosong">
+          <h3>Belum ada lomba</h3>
+          <p>
             {admin
               ? 'Buat lomba pertama untuk menugaskan guru pengampu dan memilih peserta.'
               : 'Belum ada lomba yang menugaskan Anda sebagai pengampu.'}
           </p>
+          {admin && (
+            <p className="mt-4">
+              <Link to="/lomba/baru" className="lomba-btn-utama" style={{ display: 'inline-flex' }}>
+                + Buat lomba
+              </Link>
+            </p>
+          )}
         </div>
       ) : (
-        <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+        <ul className="lomba-grid">
           {list.map((l) => (
-            <li
-              key={l.id}
-              className="flex flex-col rounded-xl border border-slate-200/90 bg-white p-4 shadow-sm transition hover:border-muh-200 hover:shadow-md"
-            >
-              <div className="flex items-start justify-between gap-2">
+            <li key={l.id} className="lomba-kartu">
+              <div className="lomba-kartu-head">
                 <div className="min-w-0">
-                  <Link
-                    to={`/lomba/${l.id}`}
-                    className="block truncate text-base font-semibold text-slate-900 hover:text-muh-700"
-                  >
-                    {l.nama}
-                  </Link>
-                  {l.identitas && (
-                    <p className="mt-0.5 truncate text-xs text-muted">{l.identitas}</p>
-                  )}
+                  <h2 className="lomba-kartu-nama">
+                    <Link to={`/lomba/${l.id}`}>{l.nama}</Link>
+                  </h2>
+                  {l.identitas ? (
+                    <p className="lomba-kartu-identitas">{l.identitas}</p>
+                  ) : null}
                 </div>
-                <span
-                  className={[
-                    'shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold',
-                    l.status === 'aktif'
-                      ? 'bg-emerald-50 text-emerald-700'
-                      : l.status === 'draf'
-                        ? 'bg-amber-50 text-amber-800'
-                        : 'bg-slate-100 text-slate-600',
-                  ].join(' ')}
-                >
-                  {labelStatusLomba(l.status)}
-                </span>
+                <span className={badgeClass(l.status)}>{labelStatusLomba(l.status)}</span>
               </div>
 
-              <dl className="mt-3 space-y-1 text-xs text-slate-600">
-                <div className="flex gap-2">
-                  <dt className="w-20 shrink-0 text-muted">Tingkat</dt>
-                  <dd>{labelTingkat(l.tingkat)}</dd>
-                </div>
-                <div className="flex gap-2">
-                  <dt className="w-20 shrink-0 text-muted">Mapel</dt>
-                  <dd className="min-w-0 truncate">
-                    {l.mapelTerkait.length ? l.mapelTerkait.join(', ') : '—'}
-                  </dd>
-                </div>
-                <div className="flex gap-2">
-                  <dt className="w-20 shrink-0 text-muted">Masa</dt>
+              <dl className="lomba-kartu-meta">
+                <div>
                   <dd>
-                    {formatTanggal(l.mulai)} – {formatTanggal(l.selesai)}
+                    <span className="label">Tingkat</span>
+                    <span className="nilai">{labelTingkat(l.tingkat)}</span>
                   </dd>
                 </div>
-                <div className="flex gap-2">
-                  <dt className="w-20 shrink-0 text-muted">Pengampu</dt>
-                  <dd className="truncate">{l.guruPengampuNama || '—'}</dd>
+                <div>
+                  <dd>
+                    <span className="label">Masa</span>
+                    <span className="nilai">
+                      {formatTanggal(l.mulai)} – {formatTanggal(l.selesai)}
+                    </span>
+                  </dd>
                 </div>
-                <div className="flex gap-2">
-                  <dt className="w-20 shrink-0 text-muted">Peserta</dt>
-                  <dd>{l.siswaIds.length} / 20 siswa</dd>
+                <div>
+                  <dd>
+                    <span className="label">Pengampu</span>
+                    <span className="nilai">{l.guruPengampuNama || '—'}</span>
+                  </dd>
+                </div>
+                <div>
+                  <dd>
+                    <span className="label">Peserta</span>
+                    <span className="nilai">{l.siswaIds.length} / 20 siswa</span>
+                  </dd>
                 </div>
               </dl>
 
-              <div className="mt-4 flex flex-wrap gap-2 border-t border-slate-100 pt-3">
-                <Link
-                  to={`/lomba/${l.id}`}
-                  className="rounded-md bg-slate-100 px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-200"
-                >
-                  Buka
-                </Link>
+              {l.mapelTerkait.length > 0 && (
+                <div className="px-[1.1rem] pb-2">
+                  <div className="lomba-pill-row">
+                    {l.mapelTerkait.map((m) => (
+                      <span key={m} className="lomba-pill">
+                        {m}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div className="lomba-kartu-foot">
+                <Link to={`/lomba/${l.id}`}>Buka</Link>
                 {admin && (
                   <>
-                    <Link
-                      to={`/lomba/${l.id}/edit`}
-                      className="rounded-md bg-slate-100 px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-200"
-                    >
-                      Ubah
-                    </Link>
+                    <Link to={`/lomba/${l.id}/edit`}>Ubah</Link>
                     <button
                       type="button"
+                      className="danger"
                       disabled={hapusId === l.id}
                       onClick={() => void handleHapus(l)}
-                      className="rounded-md px-2.5 py-1.5 text-xs font-medium text-rose-700 hover:bg-rose-50 disabled:opacity-50"
                     >
                       {hapusId === l.id ? 'Menghapus…' : 'Hapus'}
                     </button>

@@ -1,5 +1,13 @@
 ## 2026-11-17 — Modul Lomba Tahap 1: fondasi data, akses, CRUD meta
 
+## 2026-11-17 — Lomba UI: lebar penuh + tampilan non-generik
+
+- **Regresi ruang kosong kiri/kanan:** form lomba memakai `max-w-3xl` → diganti layout full shell (`.lomba-form` grid 2 kolom). Daftar/detail tanpa max-width sempit.
+- **Tampilan:** hero oranye (pola TKA), kartu grid, pill mapel, badge status, panel detail — file `src/styles/lomba.css`.
+- ANTIREGRESI §6 diperkuat + §Lomba.6: halaman daftar/dashboard modul baru **wajib** full lebar shell; dilarang `max-w-3xl` / `max-w-6xl` pada wrapper halaman.
+- File: `src/styles/lomba.css`, `src/pages/lomba/*`, `src/pages/siswa/SiswaLomba.tsx`.
+
+
 - **Koleksi `lms_lomba`:** nama, identitas, deskripsi, tingkat (sekolah→nasional), mapel terkait (multi), masa berlaku, status, guru pengampu, peserta max 20 (siswaIds + siswaList denormalisasi).
 - **Akses:** admin LMS (role admin / arif.nitoe@gmail.com) atur meta + pengampu + peserta; guru pengampu kelola konten (Tahap 2); siswa hanya lihat lomba yang diikutinya.
 - **UI staf:** menu Lomba di sidebar; daftar kartu; form buat/ubah (dropdown staf aktif, multi mapel, tambah peserta via kelas→nama).

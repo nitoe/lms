@@ -9,6 +9,7 @@ import {
 } from '../../lib/lombaAkses'
 import type { Lomba } from '../../types/lomba'
 import { TINGKAT_LOMBA } from '../../types/lomba'
+import '../../styles/lomba.css'
 
 function formatTanggal(d: Date | null): string {
   if (!d) return '—'
@@ -21,6 +22,12 @@ function formatTanggal(d: Date | null): string {
 
 function labelTingkat(t: string): string {
   return TINGKAT_LOMBA.find((x) => x.value === t)?.label ?? t
+}
+
+function badgeClass(status: string): string {
+  if (status === 'aktif') return 'lomba-badge lomba-badge--aktif'
+  if (status === 'draf') return 'lomba-badge lomba-badge--draf'
+  return 'lomba-badge lomba-badge--selesai'
 }
 
 export default function LombaDetail() {
@@ -57,11 +64,13 @@ export default function LombaDetail() {
 
   if (!lomba) {
     return (
-      <div className="lms-empty space-y-2 p-8">
-        <p className="font-medium text-slate-700">{galat || 'Lomba tidak ditemukan'}</p>
-        <Link to="/lomba" className="text-sm text-muh-700 hover:underline">
-          ← Kembali ke daftar
+      <div className="lomba-dash space-y-3">
+        <Link to="/lomba" className="lomba-back">
+          ← Daftar lomba
         </Link>
+        <div className="lomba-kosong">
+          <h3>{galat || 'Lomba tidak ditemukan'}</h3>
+        </div>
       </div>
     )
   }
@@ -77,116 +86,101 @@ export default function LombaDetail() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <Link to="/lomba" className="text-sm text-muh-700 hover:underline">
-            ← Daftar lomba
-          </Link>
-          <h2 className="mt-1 text-xl font-semibold text-slate-900">{lomba.nama}</h2>
-          {lomba.identitas && (
-            <p className="mt-0.5 text-sm text-muted">{lomba.identitas}</p>
-          )}
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <span
-            className={[
-              'rounded-full px-2.5 py-0.5 text-xs font-semibold',
-              lomba.status === 'aktif'
-                ? 'bg-emerald-50 text-emerald-700'
-                : lomba.status === 'draf'
-                  ? 'bg-amber-50 text-amber-800'
-                  : 'bg-slate-100 text-slate-600',
-            ].join(' ')}
-          >
-            {labelStatusLomba(lomba.status)}
-          </span>
-          {admin && (
-            <Link
-              to={`/lomba/${lomba.id}/edit`}
-              className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
-            >
-              Ubah meta
+    <div className="lomba-dash space-y-5">
+      <section className="lomba-hero">
+        <div className="lomba-hero-inner">
+          <p className="lomba-eyebrow">{labelTingkat(lomba.tingkat)}</p>
+          <h1 className="lomba-judul">{lomba.nama}</h1>
+          {lomba.identitas ? <p className="lomba-lead">{lomba.identitas}</p> : null}
+          <div className="lomba-hero-aksi">
+            <span className={badgeClass(lomba.status)} style={{ alignSelf: 'center' }}>
+              {labelStatusLomba(lomba.status)}
+            </span>
+            {admin && (
+              <Link to={`/lomba/${lomba.id}/edit`} className="lomba-btn-ghost">
+                Ubah meta
+              </Link>
+            )}
+            <Link to="/lomba" className="lomba-btn-ghost">
+              ← Daftar
             </Link>
-          )}
+          </div>
         </div>
-      </div>
-
-      <section className="grid gap-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:grid-cols-2">
-        <dl className="space-y-2 text-sm">
-          <div>
-            <dt className="text-xs text-muted">Tingkat</dt>
-            <dd className="font-medium text-slate-800">{labelTingkat(lomba.tingkat)}</dd>
-          </div>
-          <div>
-            <dt className="text-xs text-muted">Mapel terkait</dt>
-            <dd className="font-medium text-slate-800">
-              {lomba.mapelTerkait.length ? lomba.mapelTerkait.join(', ') : '—'}
-            </dd>
-          </div>
-          <div>
-            <dt className="text-xs text-muted">Masa berlaku</dt>
-            <dd className="font-medium text-slate-800">
-              {formatTanggal(lomba.mulai)} – {formatTanggal(lomba.selesai)}
-            </dd>
-          </div>
-        </dl>
-        <dl className="space-y-2 text-sm">
-          <div>
-            <dt className="text-xs text-muted">Guru pengampu</dt>
-            <dd className="font-medium text-slate-800">
-              {lomba.guruPengampuNama || '—'}
-              {lomba.guruPengampuEmail ? (
-                <span className="ml-1 text-xs font-normal text-muted">
-                  ({lomba.guruPengampuEmail})
-                </span>
-              ) : null}
-            </dd>
-          </div>
-          <div>
-            <dt className="text-xs text-muted">Peserta</dt>
-            <dd className="font-medium text-slate-800">{lomba.siswaIds.length} / 20 siswa</dd>
-          </div>
-          {lomba.deskripsi && (
-            <div>
-              <dt className="text-xs text-muted">Deskripsi</dt>
-              <dd className="text-slate-700">{lomba.deskripsi}</dd>
-            </div>
-          )}
-        </dl>
       </section>
 
-      {lomba.siswaList.length > 0 && (
-        <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-          <h3 className="text-sm font-semibold text-slate-800">Daftar peserta</h3>
-          <ul className="mt-2 grid gap-1 sm:grid-cols-2">
-            {lomba.siswaList.map((p) => (
-              <li key={p.id} className="flex items-center gap-2 text-sm text-slate-700">
-                <span className="font-medium">{p.nama}</span>
-                <span className="text-xs text-muted">Kelas {p.kelas}</span>
-              </li>
-            ))}
-          </ul>
+      <div className="lomba-detail-grid">
+        <section className="lomba-panel">
+          <h3>Informasi</h3>
+          <dl className="lomba-dl">
+            <div>
+              <dt>Mapel terkait</dt>
+              <dd>
+                {lomba.mapelTerkait.length ? (
+                  <div className="lomba-pill-row mt-1">
+                    {lomba.mapelTerkait.map((m) => (
+                      <span key={m} className="lomba-pill">
+                        {m}
+                      </span>
+                    ))}
+                  </div>
+                ) : (
+                  '—'
+                )}
+              </dd>
+            </div>
+            <div>
+              <dt>Masa berlaku</dt>
+              <dd>
+                {formatTanggal(lomba.mulai)} – {formatTanggal(lomba.selesai)}
+              </dd>
+            </div>
+            <div>
+              <dt>Guru pengampu</dt>
+              <dd>
+                {lomba.guruPengampuNama || '—'}
+                {lomba.guruPengampuEmail ? (
+                  <span className="ml-1 text-xs font-normal text-slate-500">
+                    ({lomba.guruPengampuEmail})
+                  </span>
+                ) : null}
+              </dd>
+            </div>
+            {lomba.deskripsi ? (
+              <div>
+                <dt>Deskripsi</dt>
+                <dd className="font-medium leading-relaxed text-slate-700">{lomba.deskripsi}</dd>
+              </div>
+            ) : null}
+          </dl>
         </section>
-      )}
 
-      {/* Tahap 2: Materi · Bank Soal · Kuis */}
-      <section className="rounded-xl border border-dashed border-slate-200 bg-slate-50/80 p-6 text-center">
-        <p className="text-sm font-medium text-slate-700">Konten lomba (Tahap 2)</p>
-        <p className="mt-1 text-xs text-muted">
-          Materi, bank soal, dan kuis persiapan/lomba akan dikelola di sini. Mekanisme
-          mengikuti alur mapel; TP dibatasi ke mapel terkait lomba ini.
-        </p>
-        <div className="mt-4 flex flex-wrap justify-center gap-2">
-          <span className="rounded-full bg-white px-3 py-1 text-xs font-medium text-slate-500 ring-1 ring-slate-200">
-            Materi — segera
-          </span>
-          <span className="rounded-full bg-white px-3 py-1 text-xs font-medium text-slate-500 ring-1 ring-slate-200">
-            Bank soal — segera
-          </span>
-          <span className="rounded-full bg-white px-3 py-1 text-xs font-medium text-slate-500 ring-1 ring-slate-200">
-            Kuis — segera
-          </span>
+        <section className="lomba-panel">
+          <h3>Peserta ({lomba.siswaIds.length}/20)</h3>
+          {lomba.siswaList.length > 0 ? (
+            <ul className="lomba-peserta-list">
+              {lomba.siswaList.map((p) => (
+                <li key={p.id}>
+                  <span>{p.nama}</span>
+                  <span className="kelas">Kelas {p.kelas}</span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-sm text-slate-500">Belum ada peserta.</p>
+          )}
+        </section>
+      </div>
+
+      <section className="lomba-placeholder">
+        <p>Konten lomba (Tahap 2)</p>
+        <span>
+          Materi, bank soal, dan kuis persiapan/lomba akan dikelola di sini. TP dibatasi ke mapel
+          terkait di atas.
+        </span>
+        <div className="lomba-placeholder-pills">
+          <span>Materi — segera</span>
+          <span>Bank soal — segera</span>
+          <span>Kuis — segera</span>
         </div>
       </section>
     </div>

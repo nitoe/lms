@@ -411,3 +411,14 @@ Field `mapelTerkait: string[]` wajib ≥1. Pada Tahap 2, filter TP / mapel di fo
 ### §Lomba.5 List users hanya admin
 Dropdown guru pengampu memakai `getDocs(users)` — rules `users` hanya `allow list: if isAdmin()`. Jangan panggil dari akun guru.
 
+### §Lomba.6 Lebar & tampilan modul baru (wajib)
+
+Regresi berulang: halaman modul baru (Lomba, dan kelak fitur lain) memakai `max-w-3xl` / `max-w-6xl` + kartu generik putih, sehingga di layar lebar muncul **strip kosong kiri-kanan** dan UI terasa template kosong.
+
+**Aturan:**
+
+1. Wrapper halaman daftar/dashboard/form modul **tidak** memakai `max-w-3xl`, `max-w-4xl`, atau `max-w-6xl`. Konten mengisi `.lms-content` (sudah `max-width: 1600px`).
+2. Form panjang: gunakan **grid 2 kolom** di desktop (lihat `.lomba-form`), bukan kolom sempit di tengah.
+3. Halaman daftar wajib punya **hero** (gradient + judul + lead) dan **kartu grid** dengan meta/badge — pola referensi: `tka-dash-*` / `lomba-*`. Jangan hanya judul + daftar border generik.
+4. CSS modul baru taruh di `src/styles/{modul}.css` dan di-import di halaman; jangan mengandalkan utility Tailwind sempit untuk layout halaman.
+

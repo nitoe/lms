@@ -1,0 +1,638 @@
+/* ============================================================================
+   Modul Lomba — kelas .lomba-*
+   Pola sama TKA dashboard: hero penuh, kartu grid, form lebar shell (tanpa max-w-3xl).
+   ANTIREGRESI §6 / §Lomba.6: jangan bungkus halaman daftar/form dengan max-w-3xl/max-w-6xl.
+   ============================================================================ */
+
+.lomba-dash {
+  width: 100%;
+  max-width: none;
+}
+
+.lomba-hero {
+  position: relative;
+  overflow: hidden;
+  border-radius: 1.35rem;
+  padding: 1.45rem 1.55rem 1.55rem;
+  color: #fff;
+  background:
+    radial-gradient(ellipse 90% 120% at 100% 0%, rgba(255, 255, 255, 0.14), transparent 55%),
+    radial-gradient(circle at 0% 100%, rgba(245, 158, 11, 0.22), transparent 48%),
+    linear-gradient(135deg, #7c2d12 0%, #c2410c 42%, #ea580c 100%);
+  box-shadow: 0 12px 32px rgba(124, 45, 18, 0.22);
+}
+.lomba-hero::after {
+  content: '';
+  position: absolute;
+  right: -2.5rem;
+  top: -2.5rem;
+  width: 12rem;
+  height: 12rem;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.06);
+  pointer-events: none;
+}
+.lomba-hero-inner {
+  position: relative;
+  z-index: 1;
+  max-width: 44rem;
+}
+.lomba-eyebrow {
+  margin: 0;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  opacity: 0.82;
+}
+.lomba-judul {
+  margin: 0.35rem 0 0;
+  font-size: clamp(1.35rem, 2.5vw, 1.8rem);
+  font-weight: 800;
+  letter-spacing: -0.025em;
+  line-height: 1.2;
+}
+.lomba-lead {
+  margin: 0.5rem 0 0;
+  max-width: 40rem;
+  font-size: 0.9rem;
+  line-height: 1.55;
+  color: rgba(255, 255, 255, 0.92);
+}
+.lomba-hero-aksi {
+  margin-top: 1rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+}
+.lomba-btn-utama {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  border-radius: 0.7rem;
+  padding: 0.55rem 1rem;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #7c2d12;
+  background: #fff;
+  text-decoration: none;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+.lomba-btn-utama:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
+}
+.lomba-btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  border-radius: 0.7rem;
+  padding: 0.55rem 0.95rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.14);
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  text-decoration: none;
+}
+.lomba-btn-ghost:hover {
+  background: rgba(255, 255, 255, 0.22);
+}
+
+/* Grid kartu lomba */
+.lomba-grid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.9rem;
+  grid-template-columns: 1fr;
+  width: 100%;
+}
+@media (min-width: 640px) {
+  .lomba-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (min-width: 1100px) {
+  .lomba-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.lomba-kartu {
+  display: flex;
+  flex-direction: column;
+  border-radius: 1.1rem;
+  border: 1px solid #e8eaf0;
+  background: #fff;
+  box-shadow: 0 2px 10px rgba(23, 23, 57, 0.04);
+  overflow: hidden;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.12s ease;
+}
+.lomba-kartu:hover {
+  border-color: #fdba74;
+  box-shadow: 0 10px 28px rgba(194, 65, 12, 0.1);
+  transform: translateY(-2px);
+}
+.lomba-kartu-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.65rem;
+  padding: 1rem 1.1rem 0.65rem;
+}
+.lomba-kartu-nama {
+  margin: 0;
+  font-size: 1.02rem;
+  font-weight: 800;
+  letter-spacing: -0.015em;
+  color: #1a1d33;
+  line-height: 1.3;
+}
+.lomba-kartu-nama a {
+  color: inherit;
+  text-decoration: none;
+}
+.lomba-kartu-nama a:hover {
+  color: #c2410c;
+}
+.lomba-kartu-identitas {
+  margin: 0.2rem 0 0;
+  font-size: 0.75rem;
+  color: #64748b;
+}
+.lomba-badge {
+  flex-shrink: 0;
+  border-radius: 999px;
+  padding: 0.18rem 0.6rem;
+  font-size: 0.68rem;
+  font-weight: 700;
+}
+.lomba-badge--aktif {
+  background: #ecfdf5;
+  color: #047857;
+  box-shadow: inset 0 0 0 1px #a7f3d0;
+}
+.lomba-badge--draf {
+  background: #fffbeb;
+  color: #b45309;
+  box-shadow: inset 0 0 0 1px #fde68a;
+}
+.lomba-badge--selesai,
+.lomba-badge--arsip {
+  background: #f1f5f9;
+  color: #475569;
+  box-shadow: inset 0 0 0 1px #e2e8f0;
+}
+
+.lomba-kartu-meta {
+  margin: 0;
+  padding: 0 1.1rem 0.85rem;
+  display: grid;
+  gap: 0.35rem;
+  font-size: 0.78rem;
+  color: #475569;
+}
+.lomba-kartu-meta dt {
+  display: none;
+}
+.lomba-kartu-meta dd {
+  margin: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 0.35rem;
+  min-width: 0;
+}
+.lomba-kartu-meta .label {
+  flex-shrink: 0;
+  color: #94a3b8;
+  font-weight: 600;
+  min-width: 4.2rem;
+}
+.lomba-kartu-meta .nilai {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+  color: #334155;
+}
+.lomba-pill-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  margin-top: 0.15rem;
+}
+.lomba-pill {
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: #9a3412;
+  background: #fff7ed;
+  border-radius: 999px;
+  padding: 0.18rem 0.55rem;
+  box-shadow: inset 0 0 0 1px #fed7aa;
+}
+
+.lomba-kartu-foot {
+  margin-top: auto;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  padding: 0.75rem 1.1rem 1rem;
+  border-top: 1px solid #f1f5f9;
+}
+.lomba-kartu-foot a,
+.lomba-kartu-foot button {
+  border-radius: 0.55rem;
+  padding: 0.35rem 0.7rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  text-decoration: none;
+  background: #f1f5f9;
+  color: #334155;
+}
+.lomba-kartu-foot a:hover,
+.lomba-kartu-foot button:hover {
+  background: #e2e8f0;
+}
+.lomba-kartu-foot .danger {
+  color: #b91c1c;
+  background: transparent;
+}
+.lomba-kartu-foot .danger:hover {
+  background: #fef2f2;
+}
+
+.lomba-kosong {
+  width: 100%;
+  border-radius: 1.15rem;
+  border: 1px dashed #e2e8f0;
+  background: #f8fafc;
+  padding: 2.5rem 1.5rem;
+  text-align: center;
+}
+.lomba-kosong h3 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #334155;
+}
+.lomba-kosong p {
+  margin: 0.4rem auto 0;
+  max-width: 28rem;
+  font-size: 0.875rem;
+  color: #64748b;
+  line-height: 1.5;
+}
+
+/* Detail */
+.lomba-detail-grid {
+  display: grid;
+  gap: 1rem;
+  width: 100%;
+}
+@media (min-width: 900px) {
+  .lomba-detail-grid {
+    grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+  }
+}
+.lomba-panel {
+  border-radius: 1.1rem;
+  border: 1px solid #e8eaf0;
+  background: #fff;
+  padding: 1.15rem 1.25rem;
+  box-shadow: 0 2px 10px rgba(23, 23, 57, 0.04);
+}
+.lomba-panel h3 {
+  margin: 0 0 0.75rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #94a3b8;
+}
+.lomba-dl {
+  margin: 0;
+  display: grid;
+  gap: 0.65rem;
+}
+.lomba-dl > div {
+  display: grid;
+  gap: 0.15rem;
+}
+.lomba-dl dt {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #94a3b8;
+}
+.lomba-dl dd {
+  margin: 0;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #1e293b;
+}
+.lomba-peserta-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.35rem;
+}
+@media (min-width: 640px) {
+  .lomba-peserta-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+.lomba-peserta-list li {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.45rem 0.6rem;
+  border-radius: 0.55rem;
+  background: #f8fafc;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #334155;
+}
+.lomba-peserta-list .kelas {
+  margin-left: auto;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: #94a3b8;
+}
+
+.lomba-placeholder {
+  border-radius: 1.15rem;
+  border: 1px dashed #fdba74;
+  background: linear-gradient(180deg, #fff7ed 0%, #fff 100%);
+  padding: 1.75rem 1.25rem;
+  text-align: center;
+}
+.lomba-placeholder p {
+  margin: 0;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #9a3412;
+}
+.lomba-placeholder span {
+  display: block;
+  margin-top: 0.35rem;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: #c2410c;
+  opacity: 0.85;
+}
+.lomba-placeholder-pills {
+  margin-top: 1rem;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.4rem;
+}
+.lomba-placeholder-pills span {
+  display: inline-block;
+  margin: 0;
+  border-radius: 999px;
+  padding: 0.3rem 0.75rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #9a3412;
+  background: #fff;
+  box-shadow: inset 0 0 0 1px #fed7aa;
+  opacity: 1;
+}
+
+/* Form — full lebar shell, grid 2 kolom di desktop */
+.lomba-form {
+  width: 100%;
+  max-width: none;
+  display: grid;
+  gap: 1rem;
+}
+@media (min-width: 960px) {
+  .lomba-form {
+    grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
+    align-items: start;
+  }
+  .lomba-form-span {
+    grid-column: 1 / -1;
+  }
+}
+.lomba-form-card {
+  border-radius: 1.1rem;
+  border: 1px solid #e8eaf0;
+  background: #fff;
+  padding: 1.15rem 1.25rem;
+  box-shadow: 0 2px 10px rgba(23, 23, 57, 0.04);
+}
+.lomba-form-card h3 {
+  margin: 0 0 0.85rem;
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: #1e293b;
+  letter-spacing: -0.01em;
+}
+.lomba-form-card .hint {
+  margin: -0.4rem 0 0.85rem;
+  font-size: 0.78rem;
+  color: #64748b;
+  line-height: 1.45;
+}
+.lomba-field {
+  display: block;
+  margin-bottom: 0.75rem;
+}
+.lomba-field:last-child {
+  margin-bottom: 0;
+}
+.lomba-field > span {
+  display: block;
+  margin-bottom: 0.3rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #64748b;
+}
+.lomba-field input,
+.lomba-field select,
+.lomba-field textarea {
+  width: 100%;
+  border-radius: 0.65rem;
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  padding: 0.55rem 0.75rem;
+  font-size: 0.875rem;
+  color: #1e293b;
+}
+.lomba-field input:focus,
+.lomba-field select:focus,
+.lomba-field textarea:focus {
+  outline: none;
+  border-color: #fb923c;
+  box-shadow: 0 0 0 3px rgba(251, 146, 60, 0.18);
+}
+.lomba-field-row {
+  display: grid;
+  gap: 0.75rem;
+}
+@media (min-width: 520px) {
+  .lomba-field-row {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+.lomba-mapel-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+.lomba-mapel-chips button {
+  border-radius: 999px;
+  border: none;
+  padding: 0.35rem 0.75rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  background: #f1f5f9;
+  color: #475569;
+  transition: background 0.12s, color 0.12s;
+}
+.lomba-mapel-chips button.on {
+  background: #c2410c;
+  color: #fff;
+}
+.lomba-mapel-chips button:not(.on):hover {
+  background: #e2e8f0;
+}
+
+.lomba-add-peserta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.55rem;
+  margin-bottom: 0.85rem;
+}
+.lomba-add-peserta .lomba-field {
+  margin: 0;
+  min-width: 6.5rem;
+}
+.lomba-add-peserta .grow {
+  flex: 1 1 10rem;
+  min-width: 0;
+}
+.lomba-add-peserta .btn-add {
+  border: none;
+  border-radius: 0.65rem;
+  padding: 0.55rem 0.9rem;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #fff;
+  background: #1e293b;
+  cursor: pointer;
+}
+.lomba-add-peserta .btn-add:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.lomba-peserta-edit {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border-radius: 0.75rem;
+  border: 1px solid #f1f5f9;
+  overflow: hidden;
+}
+.lomba-peserta-edit li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.55rem 0.75rem;
+  font-size: 0.85rem;
+  border-top: 1px solid #f1f5f9;
+}
+.lomba-peserta-edit li:first-child {
+  border-top: none;
+}
+.lomba-peserta-edit .nama {
+  font-weight: 600;
+  color: #1e293b;
+}
+.lomba-peserta-edit .kelas {
+  margin-left: 0.4rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #94a3b8;
+}
+.lomba-peserta-edit button {
+  border: none;
+  background: transparent;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #b91c1c;
+  cursor: pointer;
+}
+.lomba-peserta-edit button:hover {
+  text-decoration: underline;
+}
+
+.lomba-form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  padding-top: 0.25rem;
+}
+.lomba-form-actions .primary {
+  border: none;
+  border-radius: 0.7rem;
+  padding: 0.6rem 1.15rem;
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: #fff;
+  background: #c2410c;
+  cursor: pointer;
+}
+.lomba-form-actions .primary:hover {
+  background: #9a3412;
+}
+.lomba-form-actions .primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.lomba-form-actions .secondary {
+  border-radius: 0.7rem;
+  padding: 0.6rem 1.1rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #475569;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  text-decoration: none;
+}
+.lomba-form-actions .secondary:hover {
+  background: #f8fafc;
+}
+
+.lomba-alert {
+  border-radius: 0.75rem;
+  border: 1px solid #fecaca;
+  background: #fef2f2;
+  padding: 0.65rem 0.85rem;
+  font-size: 0.85rem;
+  color: #991b1b;
+}
+
+.lomba-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #c2410c;
+  text-decoration: none;
+}
+.lomba-back:hover {
+  text-decoration: underline;
+}

@@ -16,6 +16,7 @@ import {
   STATUS_LOMBA,
   TINGKAT_LOMBA,
 } from '../../types/lomba'
+import '../../styles/lomba.css'
 
 function toInputDate(d: Date | null): string {
   if (!d) return ''
@@ -47,13 +48,10 @@ export default function LombaForm() {
   const [selesai, setSelesai] = useState('')
   const [status, setStatus] = useState<StatusLomba>('draf')
   const [guruUid, setGuruUid] = useState('')
-  const [staf, setStaf] = useState<{ uid: string; nama: string; email: string; role: string }[]>(
-    [],
-  )
+  const [staf, setStaf] = useState<{ uid: string; nama: string; email: string; role: string }[]>([])
   const [mapelOpsi, setMapelOpsi] = useState<string[]>([])
   const [peserta, setPeserta] = useState<PesertaLomba[]>([])
 
-  // Tambah peserta
   const [kelasPilih, setKelasPilih] = useState('')
   const [daftarSiswaKelas, setDaftarSiswaKelas] = useState<SiswaDasar[]>([])
   const [siswaPilih, setSiswaPilih] = useState('')
@@ -135,7 +133,6 @@ export default function LombaForm() {
   }, [kelasPilih])
 
   const idsSudah = useMemo(() => new Set(peserta.map((p) => p.id)), [peserta])
-
   const siswaTersedia = useMemo(
     () => daftarSiswaKelas.filter((s) => !idsSudah.has(s.id)),
     [daftarSiswaKelas, idsSudah],
@@ -150,10 +147,7 @@ export default function LombaForm() {
       return
     }
     if (idsSudah.has(s.id)) return
-    setPeserta((prev) => [
-      ...prev,
-      { id: s.id, nama: s.nama, kelas: s.kelas },
-    ])
+    setPeserta((prev) => [...prev, { id: s.id, nama: s.nama, kelas: s.kelas }])
     setSiswaPilih('')
     setGalat('')
   }, [siswaPilih, daftarSiswaKelas, peserta.length, idsSudah])
@@ -229,8 +223,17 @@ export default function LombaForm() {
 
   if (!admin) {
     return (
-      <div className="lms-empty p-8 text-sm text-slate-600">
-        Hanya administrator LMS yang boleh membuat atau mengubah meta lomba.
+      <div className="lomba-dash">
+        <section className="lomba-hero">
+          <div className="lomba-hero-inner">
+            <p className="lomba-eyebrow">Modul lomba</p>
+            <h1 className="lomba-judul">Hanya administrator</h1>
+            <p className="lomba-lead">
+              Membuat atau mengubah meta lomba (nama, pengampu, peserta, mapel) hanya untuk
+              administrator LMS.
+            </p>
+          </div>
+        </section>
       </div>
     )
   }
@@ -240,67 +243,60 @@ export default function LombaForm() {
   }
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div>
-          <Link to="/lomba" className="text-sm text-muh-700 hover:underline">
-            ← Daftar lomba
-          </Link>
-          <h2 className="mt-1 text-lg font-semibold text-slate-900">
-            {isEdit ? 'Ubah lomba' : 'Lomba baru'}
-          </h2>
-        </div>
+    <div className="lomba-dash space-y-4">
+      <div>
+        <Link to={isEdit && lombaId ? `/lomba/${lombaId}` : '/lomba'} className="lomba-back">
+          ← {isEdit ? 'Kembali ke detail' : 'Daftar lomba'}
+        </Link>
+        <h2 className="mt-1 text-xl font-extrabold tracking-tight text-slate-900">
+          {isEdit ? 'Ubah lomba' : 'Lomba baru'}
+        </h2>
+        <p className="mt-0.5 text-sm text-slate-500">
+          Isi identitas, mapel terkait, guru pengampu, dan peserta (maks. {MAKS_PESERTA_LOMBA}).
+        </p>
       </div>
 
-      <form onSubmit={(e) => void handleSubmit(e)} className="space-y-5">
-        {galat && (
-          <div className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-800">
-            {galat}
-          </div>
-        )}
+      {galat && <div className="lomba-alert">{galat}</div>}
 
-        <section className="space-y-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-          <h3 className="text-sm font-semibold text-slate-800">Identitas lomba</h3>
-          <label className="block">
-            <span className="text-xs font-medium text-slate-600">Nama lomba *</span>
+      <form onSubmit={(e) => void handleSubmit(e)} className="lomba-form">
+        <section className="lomba-form-card">
+          <h3>Identitas lomba</h3>
+          <label className="lomba-field">
+            <span>Nama lomba *</span>
             <input
               type="text"
               value={nama}
               onChange={(e) => setNama(e.target.value)}
               maxLength={120}
               required
-              className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
               placeholder="Contoh: Olimpiade Sains Sekolah 2026"
             />
           </label>
-          <label className="block">
-            <span className="text-xs font-medium text-slate-600">Identitas / penyelenggara</span>
+          <label className="lomba-field">
+            <span>Identitas / penyelenggara</span>
             <input
               type="text"
               value={identitas}
               onChange={(e) => setIdentitas(e.target.value)}
               maxLength={200}
-              className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
               placeholder="Opsional — e.g. Dinas Pendidikan Kota Depok"
             />
           </label>
-          <label className="block">
-            <span className="text-xs font-medium text-slate-600">Deskripsi</span>
+          <label className="lomba-field">
+            <span>Deskripsi</span>
             <textarea
               value={deskripsi}
               onChange={(e) => setDeskripsi(e.target.value)}
               maxLength={1000}
               rows={3}
-              className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
             />
           </label>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <label className="block">
-              <span className="text-xs font-medium text-slate-600">Tingkat *</span>
+          <div className="lomba-field-row">
+            <label className="lomba-field">
+              <span>Tingkat *</span>
               <select
                 value={tingkat}
                 onChange={(e) => setTingkat(e.target.value as TingkatLomba)}
-                className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
               >
                 {TINGKAT_LOMBA.map((t) => (
                   <option key={t.value} value={t.value}>
@@ -309,12 +305,11 @@ export default function LombaForm() {
                 ))}
               </select>
             </label>
-            <label className="block">
-              <span className="text-xs font-medium text-slate-600">Status *</span>
+            <label className="lomba-field">
+              <span>Status *</span>
               <select
                 value={status}
                 onChange={(e) => setStatus(e.target.value as StatusLomba)}
-                className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
               >
                 {STATUS_LOMBA.map((s) => (
                   <option key={s.value} value={s.value}>
@@ -324,68 +319,47 @@ export default function LombaForm() {
               </select>
             </label>
           </div>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <label className="block">
-              <span className="text-xs font-medium text-slate-600">Mulai</span>
-              <input
-                type="date"
-                value={mulai}
-                onChange={(e) => setMulai(e.target.value)}
-                className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-              />
+          <div className="lomba-field-row">
+            <label className="lomba-field">
+              <span>Mulai</span>
+              <input type="date" value={mulai} onChange={(e) => setMulai(e.target.value)} />
             </label>
-            <label className="block">
-              <span className="text-xs font-medium text-slate-600">Selesai</span>
-              <input
-                type="date"
-                value={selesai}
-                onChange={(e) => setSelesai(e.target.value)}
-                className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-              />
+            <label className="lomba-field">
+              <span>Selesai</span>
+              <input type="date" value={selesai} onChange={(e) => setSelesai(e.target.value)} />
             </label>
           </div>
         </section>
 
-        <section className="space-y-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-          <h3 className="text-sm font-semibold text-slate-800">Mapel terkait *</h3>
-          <p className="text-xs text-muted">
-            TP pada materi, bank soal, dan kuis lomba nanti dibatasi ke mapel yang dipilih di
-            sini.
+        <section className="lomba-form-card">
+          <h3>Mapel terkait *</h3>
+          <p className="hint">
+            TP pada materi, bank soal, dan kuis lomba dibatasi ke mapel yang dipilih di sini.
           </p>
-          <div className="flex flex-wrap gap-2">
+          <div className="lomba-mapel-chips">
             {mapelOpsi.length === 0 ? (
               <span className="text-xs text-muted">Memuat mapel…</span>
             ) : (
-              mapelOpsi.map((m) => {
-                const on = mapelTerkait.includes(m)
-                return (
-                  <button
-                    key={m}
-                    type="button"
-                    onClick={() => toggleMapel(m)}
-                    className={[
-                      'rounded-full px-3 py-1 text-xs font-medium transition',
-                      on
-                        ? 'bg-muh-600 text-white'
-                        : 'bg-slate-100 text-slate-700 hover:bg-slate-200',
-                    ].join(' ')}
-                  >
-                    {m}
-                  </button>
-                )
-              })
+              mapelOpsi.map((m) => (
+                <button
+                  key={m}
+                  type="button"
+                  className={mapelTerkait.includes(m) ? 'on' : ''}
+                  onClick={() => toggleMapel(m)}
+                >
+                  {m}
+                </button>
+              ))
             )}
           </div>
-        </section>
 
-        <section className="space-y-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-          <h3 className="text-sm font-semibold text-slate-800">Guru pengampu *</h3>
-          <label className="block">
+          <h3 className="mt-5">Guru pengampu *</h3>
+          <label className="lomba-field">
+            <span>Pilih staf aktif</span>
             <select
               value={guruUid}
               onChange={(e) => setGuruUid(e.target.value)}
               required
-              className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
             >
               <option value="">— Pilih guru —</option>
               {staf.map((s) => (
@@ -398,30 +372,27 @@ export default function LombaForm() {
           </label>
         </section>
 
-        <section className="space-y-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-          <div className="flex items-center justify-between gap-2">
-            <h3 className="text-sm font-semibold text-slate-800">
-              Peserta siswa{' '}
-              <span className="font-normal text-muted">
-                ({peserta.length}/{MAKS_PESERTA_LOMBA})
-              </span>
-            </h3>
-          </div>
-          <p className="text-xs text-muted">
-            Pilih kelas, lalu tambahkan siswa satu per satu hingga maksimal {MAKS_PESERTA_LOMBA}{' '}
-            orang. Menu Lomba di akun siswa hanya muncul bagi yang terdaftar di sini.
+        <section className="lomba-form-card lomba-form-span">
+          <h3>
+            Peserta siswa{' '}
+            <span className="font-normal text-slate-500">
+              ({peserta.length}/{MAKS_PESERTA_LOMBA})
+            </span>
+          </h3>
+          <p className="hint">
+            Pilih kelas, lalu tambahkan siswa satu per satu. Menu Lomba di akun siswa hanya muncul
+            bagi yang terdaftar di sini.
           </p>
 
-          <div className="flex flex-wrap items-end gap-2">
-            <label className="block min-w-[7rem]">
-              <span className="text-xs font-medium text-slate-600">Kelas</span>
+          <div className="lomba-add-peserta">
+            <label className="lomba-field">
+              <span>Kelas</span>
               <select
                 value={kelasPilih}
                 onChange={(e) => {
                   setKelasPilih(e.target.value)
                   setSiswaPilih('')
                 }}
-                className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
               >
                 <option value="">—</option>
                 {DAFTAR_KELAS.map((k) => (
@@ -431,16 +402,19 @@ export default function LombaForm() {
                 ))}
               </select>
             </label>
-            <label className="block min-w-0 flex-1">
-              <span className="text-xs font-medium text-slate-600">Siswa</span>
+            <label className="lomba-field grow">
+              <span>Siswa</span>
               <select
                 value={siswaPilih}
                 onChange={(e) => setSiswaPilih(e.target.value)}
                 disabled={!kelasPilih || muatSiswa}
-                className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm disabled:bg-slate-50"
               >
                 <option value="">
-                  {muatSiswa ? 'Memuat…' : siswaTersedia.length ? '— Pilih —' : 'Tidak ada / sudah semua'}
+                  {muatSiswa
+                    ? 'Memuat…'
+                    : siswaTersedia.length
+                      ? '— Pilih —'
+                      : 'Tidak ada / sudah semua'}
                 </option>
                 {siswaTersedia.map((s) => (
                   <option key={s.id} value={s.id}>
@@ -451,51 +425,40 @@ export default function LombaForm() {
             </label>
             <button
               type="button"
+              className="btn-add"
               onClick={tambahPeserta}
               disabled={!siswaPilih || peserta.length >= MAKS_PESERTA_LOMBA}
-              className="rounded-lg bg-slate-800 px-3 py-2 text-sm font-medium text-white hover:bg-slate-900 disabled:opacity-40"
             >
               + Tambah
             </button>
           </div>
 
           {peserta.length > 0 ? (
-            <ul className="divide-y divide-slate-100 rounded-lg border border-slate-100">
+            <ul className="lomba-peserta-edit">
               {peserta.map((p) => (
-                <li
-                  key={p.id}
-                  className="flex items-center justify-between gap-2 px-3 py-2 text-sm"
-                >
+                <li key={p.id}>
                   <span>
-                    <span className="font-medium text-slate-800">{p.nama}</span>
-                    <span className="ml-2 text-xs text-muted">Kelas {p.kelas}</span>
+                    <span className="nama">{p.nama}</span>
+                    <span className="kelas">Kelas {p.kelas}</span>
                   </span>
-                  <button
-                    type="button"
-                    onClick={() => hapusPeserta(p.id)}
-                    className="text-xs font-medium text-rose-600 hover:underline"
-                  >
+                  <button type="button" onClick={() => hapusPeserta(p.id)}>
                     Hapus
                   </button>
                 </li>
               ))}
             </ul>
           ) : (
-            <p className="text-xs text-muted">Belum ada peserta.</p>
+            <p className="text-xs text-slate-500">Belum ada peserta.</p>
           )}
         </section>
 
-        <div className="flex flex-wrap gap-2">
-          <button
-            type="submit"
-            disabled={simpan}
-            className="rounded-lg bg-muh-600 px-4 py-2 text-sm font-semibold text-white hover:bg-muh-700 disabled:opacity-50"
-          >
+        <div className="lomba-form-actions lomba-form-span">
+          <button type="submit" className="primary" disabled={simpan}>
             {simpan ? 'Menyimpan…' : isEdit ? 'Simpan perubahan' : 'Buat lomba'}
           </button>
           <Link
             to={isEdit && lombaId ? `/lomba/${lombaId}` : '/lomba'}
-            className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+            className="secondary"
           >
             Batal
           </Link>
