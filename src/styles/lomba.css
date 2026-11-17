@@ -1084,3 +1084,208 @@
     justify-content: space-between;
   }
 }
+
+/* ── Siswa: CTA Mulai kerjakan di daftar + detail ── */
+.lomba-kartu-foot .lomba-cta-mulai,
+a.lomba-cta-mulai,
+button.lomba-cta-mulai {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  border-radius: 0.65rem;
+  padding: 0.5rem 1rem;
+  font-size: 0.82rem;
+  font-weight: 700;
+  border: none;
+  cursor: pointer;
+  text-decoration: none;
+  color: #fff;
+  background: linear-gradient(135deg, #c2410c 0%, #ea580c 100%);
+  box-shadow: 0 2px 8px rgba(194, 65, 12, 0.28);
+  transition: transform 0.12s ease, box-shadow 0.12s ease, filter 0.12s ease;
+}
+.lomba-kartu-foot .lomba-cta-mulai:hover,
+a.lomba-cta-mulai:hover,
+button.lomba-cta-mulai:hover {
+  filter: brightness(1.05);
+  box-shadow: 0 4px 14px rgba(194, 65, 12, 0.35);
+  transform: translateY(-1px);
+  background: linear-gradient(135deg, #c2410c 0%, #ea580c 100%);
+  color: #fff;
+}
+.lomba-kuis-hint {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #c2410c;
+  background: #fff7ed;
+  border-radius: 999px;
+  padding: 0.2rem 0.65rem;
+  box-shadow: inset 0 0 0 1px #fed7aa;
+}
+
+/* ── Siswa detail: section kuis ── */
+.lomba-kuis-section {
+  margin-top: 0.25rem;
+}
+.lomba-kuis-section-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+.lomba-kuis-section-judul {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: #1a1d33;
+}
+.lomba-kuis-section-count {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #94a3b8;
+}
+
+.lomba-kuis-grid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.85rem;
+  grid-template-columns: 1fr;
+}
+@media (min-width: 720px) {
+  .lomba-kuis-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.lomba-kuis-kartu {
+  display: flex;
+  flex-direction: column;
+  border-radius: 1.1rem;
+  border: 1px solid #e8eaf0;
+  background: #fff;
+  box-shadow: 0 2px 10px rgba(23, 23, 57, 0.04);
+  overflow: hidden;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.12s ease;
+}
+.lomba-kuis-kartu:hover {
+  border-color: #fdba74;
+  box-shadow: 0 10px 28px rgba(194, 65, 12, 0.1);
+  transform: translateY(-2px);
+}
+.lomba-kuis-kartu--buka {
+  border-color: #fdba74;
+  box-shadow:
+    0 0 0 1px rgba(234, 88, 12, 0.12),
+    0 8px 24px rgba(194, 65, 12, 0.08);
+}
+.lomba-kuis-kartu--buka::before {
+  content: '';
+  display: block;
+  height: 3px;
+  background: linear-gradient(90deg, #c2410c, #f59e0b);
+}
+.lomba-kuis-kartu--selesai {
+  opacity: 0.92;
+}
+
+.lomba-kuis-kartu-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.65rem;
+  padding: 1rem 1.1rem 0.35rem;
+}
+.lomba-kuis-kartu-judul {
+  margin: 0;
+  font-size: 0.98rem;
+  font-weight: 800;
+  letter-spacing: -0.015em;
+  color: #1a1d33;
+  line-height: 1.3;
+}
+.lomba-kuis-kartu-meta {
+  margin: 0.25rem 0 0;
+  font-size: 0.75rem;
+  color: #64748b;
+  font-weight: 500;
+}
+
+.lomba-kuis-pil {
+  flex-shrink: 0;
+  border-radius: 999px;
+  padding: 0.18rem 0.6rem;
+  font-size: 0.68rem;
+  font-weight: 700;
+}
+.lomba-kuis-pil--buka {
+  background: #ecfdf5;
+  color: #047857;
+  box-shadow: inset 0 0 0 1px #a7f3d0;
+}
+.lomba-kuis-pil--belum {
+  background: #fffbeb;
+  color: #b45309;
+  box-shadow: inset 0 0 0 1px #fde68a;
+}
+.lomba-kuis-pil--tutup {
+  background: #fef2f2;
+  color: #b91c1c;
+  box-shadow: inset 0 0 0 1px #fecaca;
+}
+
+.lomba-kuis-kartu-body {
+  padding: 0.35rem 1.1rem 0.55rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+.lomba-kuis-jadwal {
+  margin: 0;
+  font-size: 0.72rem;
+  color: #64748b;
+}
+.lomba-kuis-riwayat {
+  display: grid;
+  gap: 0.1rem;
+  background: #ecfdf5;
+  border: 1px solid #d1fae5;
+  border-radius: 0.75rem;
+  padding: 0.55rem 0.75rem;
+  font-size: 0.75rem;
+  color: #065f46;
+}
+.lomba-kuis-riwayat strong {
+  font-weight: 700;
+}
+.lomba-kuis-draf {
+  display: inline-block;
+  align-self: flex-start;
+  background: #fffbeb;
+  color: #92400e;
+  border-radius: 999px;
+  padding: 0.15rem 0.65rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
+.lomba-kuis-kartu-foot {
+  margin-top: auto;
+  padding: 0.65rem 1.1rem 1rem;
+  border-top: 1px solid #f1f5f9;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+.lomba-kuis-status {
+  font-size: 0.75rem;
+  color: #94a3b8;
+  font-weight: 500;
+}

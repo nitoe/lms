@@ -380,8 +380,13 @@ export default function SiswaLombaDetail() {
         ) : null}
       </section>
 
-      <section className="space-y-3">
-        <h2 className="text-base font-semibold text-slate-800">Kuis lomba</h2>
+      <section className="lomba-kuis-section">
+        <div className="lomba-kuis-section-head">
+          <h2 className="lomba-kuis-section-judul">Kuis lomba</h2>
+          {list.length > 0 && (
+            <span className="lomba-kuis-section-count">{list.length} kuis</span>
+          )}
+        </div>
         {list.length === 0 ? (
           <div className="lomba-kosong">
             <h3>Belum ada kuis aktif</h3>
@@ -390,7 +395,7 @@ export default function SiswaLombaDetail() {
             </p>
           </div>
         ) : (
-          <ul className="tka-grid">
+          <ul className="lomba-kuis-grid">
             {list.map((k) => {
               const jadwal = statusJadwal(k, sekarang)
               const riwayat = riwayatMap[k.id] || []
@@ -403,63 +408,84 @@ export default function SiswaLombaDetail() {
               const selesaiMs = waktuMs(k.waktuSelesai)
 
               return (
-                <li key={k.id} className="tka-kartu">
-                  <div className="tka-kartu-head">
-                    <h3 className="tka-kartu-judul">{k.judul}</h3>
-                    {jadwal === 'belum' && <span className="tka-pil tka-pil--belum">Belum dibuka</span>}
-                    {jadwal === 'tutup' && <span className="tka-pil tka-pil--tutup">Sudah ditutup</span>}
-                    {jadwal === 'buka' && <span className="tka-pil tka-pil--buka">Dibuka</span>}
-                  </div>
-                  <p className="tka-kartu-meta">
-                    {NAMA_JENIS_PENILAIAN_SISWA[k.jenisPenilaian ?? 'latihan']} · {k.jumlahSoal} soal
-                    {k.durasiMenit ? ` · ${k.durasiMenit} menit` : ''}
-                    {k.mapel ? ` · ${k.mapel}` : ''}
-                  </p>
-                  {(mulaiMs > 0 || selesaiMs > 0) && (
-                    <p className="tka-kartu-meta">
-                      {mulaiMs > 0 && <>Buka {formatWaktu(mulaiMs)}</>}
-                      {mulaiMs > 0 && selesaiMs > 0 && ' · '}
-                      {selesaiMs > 0 && <>Tutup {formatWaktu(selesaiMs)}</>}
-                    </p>
-                  )}
-
-                  {sudah && terakhir && (
-                    <div className="tka-riwayat">
-                      <strong>
-                        Sudah dikerjakan
-                        {terakhir.totalPoin > 0
-                          ? ` · skor ${teksSkor(terakhir.skor, terakhir.totalPoin)}`
-                          : ''}
-                      </strong>
-                      <span>{formatWaktu(terakhir.createdAtMs)}</span>
+                <li
+                  key={k.id}
+                  className={
+                    'lomba-kuis-kartu' +
+                    (jadwal === 'buka' && !sudah ? ' lomba-kuis-kartu--buka' : '') +
+                    (sudah ? ' lomba-kuis-kartu--selesai' : '')
+                  }
+                >
+                  <div className="lomba-kuis-kartu-head">
+                    <div className="min-w-0">
+                      <h3 className="lomba-kuis-kartu-judul">{k.judul}</h3>
+                      <p className="lomba-kuis-kartu-meta">
+                        {NAMA_JENIS_PENILAIAN_SISWA[k.jenisPenilaian ?? 'latihan']}
+                        {' · '}
+                        {k.jumlahSoal} soal
+                        {k.durasiMenit ? ` · ${k.durasiMenit} menit` : ''}
+                      </p>
                     </div>
-                  )}
-                  {adaDraf && <div className="tka-draf">Draf tersimpan · {nJawab} soal terjawab</div>}
+                    {jadwal === 'belum' && (
+                      <span className="lomba-kuis-pil lomba-kuis-pil--belum">Belum dibuka</span>
+                    )}
+                    {jadwal === 'tutup' && (
+                      <span className="lomba-kuis-pil lomba-kuis-pil--tutup">Sudah ditutup</span>
+                    )}
+                    {jadwal === 'buka' && (
+                      <span className="lomba-kuis-pil lomba-kuis-pil--buka">Dibuka</span>
+                    )}
+                  </div>
 
-                  <div className="tka-kartu-aksi">
+                  <div className="lomba-kuis-kartu-body">
+                    {k.mapel ? (
+                      <span className="lomba-pill">{k.mapel}</span>
+                    ) : null}
+                    {(mulaiMs > 0 || selesaiMs > 0) && (
+                      <p className="lomba-kuis-jadwal">
+                        {mulaiMs > 0 && <>Buka {formatWaktu(mulaiMs)}</>}
+                        {mulaiMs > 0 && selesaiMs > 0 && ' · '}
+                        {selesaiMs > 0 && <>Tutup {formatWaktu(selesaiMs)}</>}
+                      </p>
+                    )}
+                    {sudah && terakhir && (
+                      <div className="lomba-kuis-riwayat">
+                        <strong>
+                          Sudah dikerjakan
+                          {terakhir.totalPoin > 0
+                            ? ` · skor ${teksSkor(terakhir.skor, terakhir.totalPoin)}`
+                            : ''}
+                        </strong>
+                        <span>{formatWaktu(terakhir.createdAtMs)}</span>
+                      </div>
+                    )}
+                    {adaDraf && (
+                      <div className="lomba-kuis-draf">Draf tersimpan · {nJawab} soal terjawab</div>
+                    )}
+                  </div>
+
+                  <div className="lomba-kuis-kartu-foot">
                     {jadwal === 'buka' && !sudah && (
                       <button
                         type="button"
-                        className="lms-btn-primary text-sm"
+                        className="lomba-cta-mulai"
                         onClick={() => {
                           if (adaDraf) void mulai(k, false)
                           else if (k.token?.trim()) setTokenUntuk(k)
                           else void mulai(k, true)
                         }}
                       >
-                        {adaDraf ? 'Lanjutkan' : 'Mulai Kerjakan'}
+                        {adaDraf ? 'Lanjutkan' : 'Mulai kerjakan'}
                       </button>
                     )}
                     {sudah && (
-                      <span className="text-xs text-slate-500">
-                        Jawaban sudah terkirim.
-                      </span>
+                      <span className="lomba-kuis-status">Jawaban sudah terkirim</span>
                     )}
                     {jadwal === 'belum' && (
-                      <span className="text-xs text-slate-500">Belum waktunya mengerjakan.</span>
+                      <span className="lomba-kuis-status">Belum waktunya mengerjakan</span>
                     )}
                     {jadwal === 'tutup' && !sudah && (
-                      <span className="text-xs text-slate-500">Waktu pengerjaan sudah berakhir.</span>
+                      <span className="lomba-kuis-status">Waktu pengerjaan sudah berakhir</span>
                     )}
                   </div>
                 </li>

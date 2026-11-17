@@ -3,8 +3,10 @@ import { Link } from 'react-router-dom'
 import { useSiswa } from '../../context/SiswaContext'
 import { daftarLombaSiswa } from '../../lib/lomba'
 import { labelStatusLomba, lombaSedangBerlangsung } from '../../lib/lombaAkses'
+import { daftarKuisLombaAktif } from '../../lib/kuis'
 import type { Lomba } from '../../types/lomba'
 import { TINGKAT_LOMBA } from '../../types/lomba'
+import type { KuisLms } from '../../types/kuis'
 import '../../styles/lomba.css'
 
 function formatTanggal(d: Date | null): string {
@@ -22,10 +24,40 @@ function badgeClass(status: string, berlangsung: boolean): string {
   return 'lomba-badge lomba-badge--selesai'
 }
 
+function waktuMs(v: unknown): number {
+  if (!v) return 0
+  if (typeof v === 'number') return v
+  if (typeof v === 'string') {
+    const t = Date.parse(v)
+    return Number.isNaN(t) ? 0 : t
+  }
+  if (typeof v === 'object' && v !== null && 'seconds' in v) {
+    return Number((v as { seconds: number }).seconds) * 1000
+  }
+  return 0
+}
+
+/** Kuis aktif yang jendela waktunya sedang terbuka (boleh dikerjakan sekarang). */
+function kuisSedangBuka(k: KuisLms, sekarang = Date.now()): boolean {
+  if (!k.aktif) return false
+  const mulai = waktuMs(k.waktuMulai)
+  const selesai = waktuMs(k.waktuSelesai)
+  if (mulai && sekarang < mulai) return false
+  if (selesai && sekarang > selesai) return false
+  return true
+}
+
+type InfoKuisLomba = {
+  adaKuisAktif: boolean
+  adaKuisBuka: boolean
+  jumlahBuka: number
+}
+
 /** Dashboard Lomba siswa — daftar lomba yang diikuti. */
 export default function SiswaLomba() {
   const { sesi } = useSiswa()
   const [list, setList] = useState<Lomba[]>([])
+  const [infoKuis, setInfoKuis] = useState<Record<string, InfoKuisLomba>>({})
   const [loading, setLoading] = useState(true)
   const [galat, setGalat] = useState('')
 
@@ -34,11 +66,32 @@ export default function SiswaLomba() {
     setLoading(true)
     setGalat('')
     try {
-      setList(await daftarLombaSiswa(sesi.id))
+      const lombas = await daftarLombaSiswa(sesi.id)
+      setList(lombas)
+
+      const map: Record<string, InfoKuisLomba> = {}
+      await Promise.all(
+        lombas.map(async (l) => {
+          try {
+            const kuis = await daftarKuisLombaAktif(l.id)
+            const buka = kuis.filter((k) => kuisSedangBuka(k))
+            map[l.id] = {
+              adaKuisAktif: kuis.length > 0,
+              adaKuisBuka: buka.length > 0,
+              jumlahBuka: buka.length,
+            }
+          } catch (e) {
+            console.warn('daftarKuisLombaAktif (daftar siswa)', l.id, e)
+            map[l.id] = { adaKuisAktif: false, adaKuisBuka: false, jumlahBuka: 0 }
+          }
+        }),
+      )
+      setInfoKuis(map)
     } catch (e) {
       console.error(e)
       setGalat(e instanceof Error ? e.message : 'Gagal memuat lomba.')
       setList([])
+      setInfoKuis({})
     } finally {
       setLoading(false)
     }
@@ -83,11 +136,15 @@ export default function SiswaLomba() {
         <ul className="lomba-grid">
           {list.map((l) => {
             const berlangsung = lombaSedangBerlangsung(l)
+            const info = infoKuis[l.id]
+            const bisaMulai = !!info?.adaKuisBuka
             return (
               <li key={l.id} className="lomba-kartu">
                 <div className="lomba-kartu-head">
                   <div className="min-w-0">
-                    <h2 className="lomba-kartu-nama">{l.nama}</h2>
+                    <h2 className="lomba-kartu-nama">
+                      <Link to={`/siswa/lomba/${l.id}`}>{l.nama}</Link>
+                    </h2>
                     {l.identitas ? (
                       <p className="lomba-kartu-identitas">{l.identitas}</p>
                     ) : null}
@@ -129,8 +186,21 @@ export default function SiswaLomba() {
                     </div>
                   </div>
                 )}
+                {bisaMulai && (
+                  <div className="px-[1.1rem] pb-1">
+                    <span className="lomba-kuis-hint">
+                      {info!.jumlahBuka} kuis siap dikerjakan
+                    </span>
+                  </div>
+                )}
                 <div className="lomba-kartu-foot">
-                  <Link to={`/siswa/lomba/${l.id}`}>Lihat detail</Link>
+                  {bisaMulai ? (
+                    <Link to={`/siswa/lomba/${l.id}`} className="lomba-cta-mulai">
+                      Mulai kerjakan
+                    </Link>
+                  ) : (
+                    <Link to={`/siswa/lomba/${l.id}`}>Lihat detail</Link>
+                  )}
                 </div>
               </li>
             )

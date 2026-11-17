@@ -559,6 +559,13 @@ Regresi: `firestore.rules` di repo `nitoe/lms` tidak memuat rules Lomba (`lms_lo
 
 
 
+
+### §Lomba.24 UI siswa Lomba: CTA daftar + kartu kuis non-generik
+
+1. Daftar lomba siswa: tombol kaki **Mulai kerjakan** jika `daftarKuisLombaAktif` menghasilkan ≥1 kuis dengan jadwal buka (aktif + dalam `waktuMulai`/`waktuSelesai`); selain itu **Lihat detail**. Jangan hardcode selalu «Lihat detail».
+2. Kartu kuis di detail memakai kelas `.lomba-kuis-*` + `.lomba-cta-mulai` (aksen oranye Lomba). Jangan mengandalkan hanya `.tka-kartu` polos di halaman Lomba — terasa template generik (§Lomba.6).
+3. Hint «N kuis siap dikerjakan» opsional di kartu daftar bila ada yang buka.
+
 ### §Lomba.23 Kuis Lomba untuk siswa: rules + daftar aktif + mesin TKA
 
 1. **Rules `lms_kuis` baca siswa Lomba** wajib ada:

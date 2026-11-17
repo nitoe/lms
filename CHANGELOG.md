@@ -1,3 +1,12 @@
+## 2026-11-17 — Lomba siswa: UI kuis tidak generik + CTA Mulai di daftar
+
+- **Gejala:** Detail lomba menampilkan kartu kuis polos (kelas `tka-grid`/`tka-kartu` tanpa aksen Lomba); daftar lomba selalu «Lihat detail» meski kuis sudah dibuka.
+- **Perbaikan:**
+  - Daftar (`SiswaLomba`): bila ada kuis aktif yang jendela waktunya terbuka → CTA **Mulai kerjakan** (oranye) + hint jumlah kuis; bila belum → **Lihat detail**.
+  - Detail: section kuis memakai kartu `.lomba-kuis-*` (strip aksen oranye saat dibuka, pill status, foot CTA primer) — selaras pola hero/kartu Lomba (§Lomba.6), bukan template generik.
+  - CSS: `.lomba-cta-mulai`, `.lomba-kuis-section`, `.lomba-kuis-kartu`, dll. di `lomba.css`.
+- File: `src/pages/siswa/SiswaLomba.tsx`, `src/pages/siswa/SiswaLombaDetail.tsx`, `src/styles/lomba.css`, `CHANGELOG.md`, `ANTIREGRESI.md`.
+
 ## 2026-11-17 — Lomba siswa: daftar kuis aktif + Mulai Kerjakan (mesin TKA)
 
 - **Gejala:** Siswa peserta melihat detail lomba generik (hanya meta + «Lihat detail»); tidak ada tombol mulai kuis meski lomba sedang berlangsung dan kuis sudah aktif.
