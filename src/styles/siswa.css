@@ -1913,3 +1913,74 @@ button.sw-kat-card {
     bottom: calc(5.5rem + env(safe-area-inset-bottom));
   }
 }
+
+
+/* ═══════════════════════════════════════════════════════════
+   Tahap 3 (2026-11-17): harmonisasi Lomba, TKA, daftar Tugas/Kuis
+   Semua di-scope `.sw-app` — `.lomba-*` / `.tka-*` juga dipakai area guru.
+   ═══════════════════════════════════════════════════════════ */
+
+/* Lomba siswa: hero & kartu senada beranda; hapus padding ganda (sudah ada di .sw-main) */
+.sw-app .lomba-dash { padding: 0; }
+.sw-app .lomba-hero {
+  border-radius: 1.6rem;
+  box-shadow: 0 14px 34px rgba(124, 45, 18, 0.28);
+}
+.sw-app .lomba-judul { font-weight: 900; letter-spacing: -0.02em; }
+.sw-app .lomba-kartu {
+  border-radius: 1.35rem;
+  border-color: rgba(226, 228, 238, 0.95);
+  box-shadow: 0 4px 14px rgba(23, 23, 57, 0.07);
+}
+.sw-app .lomba-kartu:hover {
+  box-shadow: 0 14px 28px rgba(23, 23, 57, 0.12);
+  transform: translateY(-2px);
+}
+.sw-app .lomba-kartu-nama { font-weight: 800; }
+
+/* TKA siswa */
+.sw-app .tka-hero {
+  border-radius: 1.6rem;
+  box-shadow: 0 14px 34px rgba(49, 48, 131, 0.26);
+}
+.sw-app .tka-hero-judul { font-weight: 900; }
+.sw-app .tka-kartu {
+  border-radius: 1.35rem;
+  border-color: rgba(226, 228, 238, 0.95);
+  box-shadow: 0 4px 14px rgba(23, 23, 57, 0.07);
+}
+.sw-app .tka-kartu:hover {
+  box-shadow: 0 14px 28px rgba(23, 23, 57, 0.12);
+  transform: translateY(-2px);
+}
+.sw-app .tka-bagian { font-weight: 900; }
+
+/* Soal bertumpu stimulus (2 kolom, PC): kepala kerja kini terlihat di bawah header,
+   jadi stimulus lengket harus turun agar tidak tertutup (ANTIREGRESI §131.14). */
+@media (min-width: 1024px) {
+  .sw-app .tka-isi--dua .tka-stimulus {
+    top: calc(var(--sw-header-h) + 4.75rem);
+    max-height: calc(100dvh - var(--sw-header-h) - 9rem);
+  }
+}
+
+/* Daftar Tugas & Kuis: judul mapel & lencana lebih tegas, kartu mengangkat saat disentuh */
+.sw-app .sw-kat-section-title { font-size: 1.02rem; font-weight: 900; }
+.sw-app .sw-kat-section-bar { height: 1.35rem; width: 0.32rem; }
+.sw-app .sw-kat-section-count { font-weight: 800; }
+.sw-app .sw-kat-badge { padding: 0.25rem 0.65rem; font-size: 0.7rem; font-weight: 800; }
+.sw-app .sw-kat-card-icon { border-radius: 0.9rem; }
+.sw-app .sw-kat-card:hover { transform: translateY(-2px); }
+.sw-app .sw-kat-card-note { border-radius: 0.85rem; font-weight: 600; }
+.sw-app .sw-kat-nilai { border-radius: 1.35rem; }
+.sw-app .sw-kat-empty { border-radius: 1.35rem; }
+.sw-app .sw-kat-empty-title { font-weight: 800; }
+
+@media (prefers-reduced-motion: reduce) {
+  .sw-app .lomba-kartu,
+  .sw-app .tka-kartu,
+  .sw-app .sw-kat-card { transition: none; }
+  .sw-app .lomba-kartu:hover,
+  .sw-app .tka-kartu:hover,
+  .sw-app .sw-kat-card:hover { transform: none; }
+}

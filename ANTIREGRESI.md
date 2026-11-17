@@ -674,3 +674,7 @@ Regresi: `firestore.rules` di repo `nitoe/lms` tidak memuat rules Lomba (`lms_lo
 131.11 **Input form di HP = 16px** (`font-size: 1rem`). Ukuran <16px membuat iOS Safari zoom otomatis saat fokus dan layout bergeser. Jangan kembali ke 0.875rem pada `.auth-field input/select` siswa.
 
 131.12 **Viewer materi di bawah nav melayang.** `.mh-viewer-nav` sticky bottom harus `calc(5.5rem + env(safe-area-inset-bottom))` pada <1024px (hanya di `.sw-app`). Bila tinggi nav HP berubah, sesuaikan angka ini. Override viewer selalu di-scope `.sw-app` agar tampilan guru (editor/pratinjau) tidak ikut berubah.
+
+131.13 **`.lomba-*` dan `.tka-*` juga dipakai area guru** (dasbor/rekap). Penyesuaian untuk siswa wajib di-scope `.sw-app`; jangan mengubah aturan globalnya di `lomba.css`/`tka.css`.
+
+131.14 **Offset sticky di dalam mode kerjakan** (stimulus TKA 2 kolom, navigasi soal) harus dihitung dari `--sw-header-h` **ditambah tinggi kepala kerja** (±4.75rem). Jika kepala kerja diubah tingginya, sesuaikan `.sw-app .tka-isi--dua .tka-stimulus { top }`. Gejala bila salah: stimulus/nomor soal tertutup kepala saat gulir.

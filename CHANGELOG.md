@@ -1,3 +1,11 @@
+## 2026-11-17 — Area siswa tahap 3: Lomba, TKA, daftar Tugas/Kuis
+
+- Lomba & TKA siswa: hero dan kartu dibulatkan, bayangan lembut, judul lebih tegas — senada Beranda. Padding ganda halaman Lomba dihapus (sudah ditangani `.sw-main`).
+- Daftar Tugas/Kuis: judul mapel, lencana status, dan kartu lebih tegas.
+- Perbaikan: stimulus soal TKA (2 kolom, PC) diturunkan agar tidak tertutup kepala mode kerjakan yang kini terlihat di bawah header.
+- File: `src/styles/siswa.css` (hanya CSS, tanpa perubahan logika).
+- Antiregresi: ANTIREGRESI.md §131.13–131.14.
+
 ## 2026-11-17 — Area siswa tahap 2: halaman masuk, Tugas/Kuis, viewer materi
 
 - Halaman masuk siswa: tampilan lebih berwarna & ramah anak (kartu bulat, tombol pil, pil fitur tiga warna, font Nunito). Kolom isian kini 16px agar iPhone tidak zoom otomatis saat fokus. Halaman masuk staf **tidak** berubah.
