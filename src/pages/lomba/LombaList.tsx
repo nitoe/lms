@@ -8,6 +8,7 @@ import {
 } from '../../lib/lomba'
 import {
   adalahAdminLms,
+  labelPengampuLomba,
   bolehAksesLombaStaf,
   labelStatusLomba,
 } from '../../lib/lombaAkses'
@@ -119,7 +120,7 @@ export default function LombaList() {
           <h1 className="lomba-judul">Lomba</h1>
           <p className="lomba-lead">
             {admin
-              ? 'Kelola lomba, tentukan guru pengampu dan peserta (maks. 20 siswa). Materi, bank soal, dan kuis disiapkan di halaman detail tiap lomba.'
+              ? 'Kelola lomba, tentukan satu atau lebih guru pengampu dan peserta (maks. 20 siswa). Materi, bank soal, dan kuis disiapkan di halaman detail tiap lomba.'
               : 'Lomba yang Anda ampu. Buka detail untuk menyiapkan materi, bank soal, dan kuis.'}
           </p>
           {admin && (
@@ -184,7 +185,7 @@ export default function LombaList() {
                 <div>
                   <dd>
                     <span className="label">Pengampu</span>
-                    <span className="nilai">{l.guruPengampuNama || '—'}</span>
+                    <span className="nilai">{labelPengampuLomba(l)}</span>
                   </dd>
                 </div>
                 <div>

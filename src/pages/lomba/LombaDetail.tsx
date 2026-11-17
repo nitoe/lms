@@ -268,12 +268,26 @@ export default function LombaDetail() {
                 <div>
                   <dt>Guru pengampu</dt>
                   <dd>
-                    {lomba.guruPengampuNama || '—'}
-                    {lomba.guruPengampuEmail ? (
-                      <span className="ml-1 text-xs font-normal text-slate-500">
-                        ({lomba.guruPengampuEmail})
+                    {(lomba.guruPengampuList?.length
+                      ? lomba.guruPengampuList
+                      : lomba.guruPengampuUid
+                        ? [
+                            {
+                              uid: lomba.guruPengampuUid,
+                              nama: lomba.guruPengampuNama,
+                              email: lomba.guruPengampuEmail,
+                            },
+                          ]
+                        : []
+                    ).map((p, i) => (
+                      <span key={p.uid}>
+                        {i > 0 ? ' · ' : ''}
+                        {p.nama || '—'}
+                        {p.email ? (
+                          <span className="ml-1 text-xs font-normal text-slate-500">({p.email})</span>
+                        ) : null}
                       </span>
-                    ) : null}
+                    )) || '—'}
                   </dd>
                 </div>
                 {lomba.deskripsi ? (

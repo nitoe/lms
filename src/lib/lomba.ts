@@ -1,6 +1,7 @@
 /**
  * CRUD koleksi `lms_lomba`.
- * Peserta maks 20 (MAKS_PESERTA_LOMBA). Hanya admin yang boleh create/update meta.
+ * Peserta maks 20 (MAKS_PESERTA_LOMBA). Pengampu maks 10 (MAKS_PENGAMPU_LOMBA).
+ * Hanya admin yang boleh create/update meta (termasuk daftar pengampu).
  */
 
 import {
@@ -20,11 +21,12 @@ import {
 import { db, isFirebaseConfigured } from './firebase'
 import type {
   Lomba,
+  PengampuLomba,
   PesertaLomba,
   StatusLomba,
   TingkatLomba,
 } from '../types/lomba'
-import { MAKS_PESERTA_LOMBA } from '../types/lomba'
+import { MAKS_PESERTA_LOMBA, MAKS_PENGAMPU_LOMBA } from '../types/lomba'
 import type { AppUser } from '../types/user'
 
 function koleksi() {
@@ -45,6 +47,67 @@ function tsKeDate(v: unknown): Date | null {
   return null
 }
 
+/** Normalisasi pengampu: array baru + fallback field tunggal lama. */
+function bacaPengampu(data: DocumentData): {
+  uids: string[]
+  list: PengampuLomba[]
+  primaryUid: string
+  primaryNama: string
+  primaryEmail?: string
+} {
+  const listRaw = Array.isArray(data.guruPengampuList) ? data.guruPengampuList : []
+  let list: PengampuLomba[] = listRaw
+    .map((p: DocumentData) => ({
+      uid: String(p?.uid || ''),
+      nama: String(p?.nama || ''),
+      email: typeof p?.email === 'string' ? p.email : undefined,
+    }))
+    .filter((p: PengampuLomba) => p.uid)
+
+  let uids = Array.isArray(data.guruPengampuUids)
+    ? (data.guruPengampuUids as string[]).map(String).filter(Boolean)
+    : list.map((p) => p.uid)
+
+  // Legacy single field
+  const legacyUid = String(data.guruPengampuUid || '')
+  if (legacyUid && !uids.includes(legacyUid)) {
+    uids = [legacyUid, ...uids]
+  }
+  if (legacyUid && !list.some((p) => p.uid === legacyUid)) {
+    list = [
+      {
+        uid: legacyUid,
+        nama: String(data.guruPengampuNama || ''),
+        email: typeof data.guruPengampuEmail === 'string' ? data.guruPengampuEmail : undefined,
+      },
+      ...list,
+    ]
+  }
+
+  // Selaraskan list ke urutan uids
+  const byUid = new Map(list.map((p) => [p.uid, p]))
+  list = uids.map(
+    (uid) =>
+      byUid.get(uid) || {
+        uid,
+        nama: uid === legacyUid ? String(data.guruPengampuNama || '') : uid,
+        email:
+          uid === legacyUid && typeof data.guruPengampuEmail === 'string'
+            ? data.guruPengampuEmail
+            : undefined,
+      },
+  )
+
+  const primary = list[0]
+  return {
+    uids,
+    list,
+    primaryUid: primary?.uid || legacyUid,
+    primaryNama: primary?.nama || String(data.guruPengampuNama || ''),
+    primaryEmail: primary?.email,
+  }
+}
+
 function dariDoc(id: string, data: DocumentData): Lomba {
   const siswaListRaw = Array.isArray(data.siswaList) ? data.siswaList : []
   const siswaList: PesertaLomba[] = siswaListRaw
@@ -60,6 +123,8 @@ function dariDoc(id: string, data: DocumentData): Lomba {
     ? (data.siswaIds as string[]).map(String).filter(Boolean)
     : siswaList.map((p) => p.id)
 
+  const pengampu = bacaPengampu(data)
+
   return {
     id,
     nama: String(data.nama || ''),
@@ -72,10 +137,11 @@ function dariDoc(id: string, data: DocumentData): Lomba {
     mulai: tsKeDate(data.mulai),
     selesai: tsKeDate(data.selesai),
     status: (data.status as StatusLomba) || 'draf',
-    guruPengampuUid: String(data.guruPengampuUid || ''),
-    guruPengampuNama: String(data.guruPengampuNama || ''),
-    guruPengampuEmail:
-      typeof data.guruPengampuEmail === 'string' ? data.guruPengampuEmail : undefined,
+    guruPengampuUid: pengampu.primaryUid,
+    guruPengampuNama: pengampu.primaryNama,
+    guruPengampuEmail: pengampu.primaryEmail,
+    guruPengampuUids: pengampu.uids,
+    guruPengampuList: pengampu.list,
     siswaIds,
     siswaList,
     dibuatOleh: String(data.dibuatOleh || ''),
@@ -98,12 +164,27 @@ export async function daftarSemuaLomba(): Promise<Lomba[]> {
   return list
 }
 
-/** Lomba di mana uid adalah guru pengampu. */
+/**
+ * Lomba di mana uid adalah guru pengampu.
+ * Query: array-contains guruPengampuUids + legacy guruPengampuUid==uid, digabung unik.
+ */
 export async function daftarLombaPengampu(uid: string): Promise<Lomba[]> {
   if (!isFirebaseConfigured || !uid) return []
-  const q = query(koleksi(), where('guruPengampuUid', '==', uid))
-  const snap = await getDocs(q)
-  return snap.docs.map((d) => dariDoc(d.id, d.data()))
+  const [snapArr, snapLegacy] = await Promise.all([
+    getDocs(query(koleksi(), where('guruPengampuUids', 'array-contains', uid))),
+    getDocs(query(koleksi(), where('guruPengampuUid', '==', uid))),
+  ])
+  const map = new Map<string, Lomba>()
+  for (const d of [...snapArr.docs, ...snapLegacy.docs]) {
+    map.set(d.id, dariDoc(d.id, d.data()))
+  }
+  const list = [...map.values()]
+  list.sort((a, b) => {
+    const ta = a.createdAt?.getTime() ?? 0
+    const tb = b.createdAt?.getTime() ?? 0
+    return tb - ta
+  })
+  return list
 }
 
 /**
@@ -115,7 +196,6 @@ export async function daftarLombaSiswa(siswaId: string): Promise<Lomba[]> {
   const q = query(koleksi(), where('siswaIds', 'array-contains', siswaId))
   const snap = await getDocs(q)
   const list = snap.docs.map((d) => dariDoc(d.id, d.data()))
-  // Sembunyikan arsip dari siswa kecuali perlu
   return list.filter((l) => l.status !== 'arsip')
 }
 
@@ -135,9 +215,8 @@ export type InputLombaBaru = {
   mulai: Date | null
   selesai: Date | null
   status: StatusLomba
-  guruPengampuUid: string
-  guruPengampuNama: string
-  guruPengampuEmail?: string
+  /** Daftar pengampu (≥1). Field single diisi otomatis dari elemen pertama. */
+  guruPengampuList: PengampuLomba[]
   siswaIds: string[]
   siswaList: PesertaLomba[]
   dibuatOleh: string
@@ -156,11 +235,49 @@ function validasiPeserta(siswaIds: string[], siswaList: PesertaLomba[]) {
   }
 }
 
-function payloadDasar(input: InputLombaBaru | (Partial<InputLombaBaru> & { nama?: string })) {
+function validasiPengampu(list: PengampuLomba[]) {
+  if (!list.length) throw new Error('Minimal satu guru pengampu.')
+  if (list.length > MAKS_PENGAMPU_LOMBA) {
+    throw new Error(`Pengampu maksimal ${MAKS_PENGAMPU_LOMBA} guru per lomba.`)
+  }
+  const uids = list.map((p) => p.uid).filter(Boolean)
+  if (uids.length !== list.length) throw new Error('Setiap pengampu wajib punya uid.')
+  if (new Set(uids).size !== uids.length) throw new Error('Pengampu duplikat.')
+}
+
+function normalisasiPengampu(list: PengampuLomba[]): {
+  guruPengampuUids: string[]
+  guruPengampuList: { uid: string; nama: string; email: string | null }[]
+  guruPengampuUid: string
+  guruPengampuNama: string
+  guruPengampuEmail: string | null
+} {
+  const clean = list.map((p) => ({
+    uid: p.uid,
+    nama: (p.nama || '').trim() || p.uid,
+    email: p.email?.trim() || null,
+  }))
+  const first = clean[0]
+  return {
+    guruPengampuUids: clean.map((p) => p.uid),
+    guruPengampuList: clean,
+    guruPengampuUid: first.uid,
+    guruPengampuNama: first.nama,
+    guruPengampuEmail: first.email,
+  }
+}
+
+function payloadDasar(
+  input: InputLombaBaru | (Partial<InputLombaBaru> & { nama?: string }),
+  pengampuOverride?: ReturnType<typeof normalisasiPengampu>,
+) {
   const mapel = Array.isArray(input.mapelTerkait)
     ? [...new Set(input.mapelTerkait.map((m) => m.trim()).filter(Boolean))]
     : []
-  return {
+  const pengampu =
+    pengampuOverride ||
+    (input.guruPengampuList ? normalisasiPengampu(input.guruPengampuList) : null)
+  const base: DocumentData = {
     nama: String(input.nama || '').trim(),
     deskripsi: input.deskripsi?.trim() || null,
     identitas: input.identitas?.trim() || null,
@@ -169,24 +286,26 @@ function payloadDasar(input: InputLombaBaru | (Partial<InputLombaBaru> & { nama?
     mulai: input.mulai ? Timestamp.fromDate(input.mulai) : null,
     selesai: input.selesai ? Timestamp.fromDate(input.selesai) : null,
     status: input.status || 'draf',
-    guruPengampuUid: String(input.guruPengampuUid || ''),
-    guruPengampuNama: String(input.guruPengampuNama || ''),
-    guruPengampuEmail: input.guruPengampuEmail?.trim() || null,
     siswaIds: input.siswaIds || [],
     siswaList: input.siswaList || [],
   }
+  if (pengampu) {
+    Object.assign(base, pengampu)
+  }
+  return base
 }
 
 export async function buatLomba(input: InputLombaBaru): Promise<string> {
   if (!isFirebaseConfigured) throw new Error('Firebase belum dikonfigurasi.')
   const nama = input.nama.trim()
   if (!nama) throw new Error('Nama lomba wajib diisi.')
-  if (!input.guruPengampuUid) throw new Error('Guru pengampu wajib dipilih.')
+  validasiPengampu(input.guruPengampuList)
   if (!input.mapelTerkait?.length) throw new Error('Minimal satu mapel terkait.')
   validasiPeserta(input.siswaIds, input.siswaList)
 
+  const pengampu = normalisasiPengampu(input.guruPengampuList)
   const ref = await addDoc(koleksi(), {
-    ...payloadDasar(input),
+    ...payloadDasar(input, pengampu),
     dibuatOleh: input.dibuatOleh,
     dibuatOlehNama: input.dibuatOlehNama,
     createdAt: serverTimestamp(),
@@ -203,6 +322,9 @@ export async function perbaruiLomba(
   if (input.siswaIds || input.siswaList) {
     validasiPeserta(input.siswaIds || [], input.siswaList || [])
   }
+  if (input.guruPengampuList) {
+    validasiPengampu(input.guruPengampuList)
+  }
   const data: DocumentData = {
     updatedAt: serverTimestamp(),
   }
@@ -217,10 +339,9 @@ export async function perbaruiLomba(
   if (input.selesai !== undefined)
     data.selesai = input.selesai ? Timestamp.fromDate(input.selesai) : null
   if (input.status !== undefined) data.status = input.status
-  if (input.guruPengampuUid !== undefined) data.guruPengampuUid = input.guruPengampuUid
-  if (input.guruPengampuNama !== undefined) data.guruPengampuNama = input.guruPengampuNama
-  if (input.guruPengampuEmail !== undefined)
-    data.guruPengampuEmail = input.guruPengampuEmail?.trim() || null
+  if (input.guruPengampuList !== undefined) {
+    Object.assign(data, normalisasiPengampu(input.guruPengampuList))
+  }
   if (input.siswaIds !== undefined) data.siswaIds = input.siswaIds
   if (input.siswaList !== undefined) data.siswaList = input.siswaList
 
@@ -232,7 +353,7 @@ export async function hapusLomba(id: string): Promise<void> {
   await deleteDoc(doc(db, 'lms_lomba', id))
 }
 
-/** Daftar staf aktif untuk dropdown guru pengampu (hanya admin yang boleh list users). */
+/** Daftar staf aktif untuk pemilihan guru pengampu (hanya admin yang boleh list users). */
 export async function daftarStafAktif(): Promise<
   { uid: string; nama: string; email: string; role: string }[]
 > {

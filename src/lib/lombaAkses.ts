@@ -3,8 +3,9 @@
  * Penegak sebenarnya: firestore.rules (lms_lomba). Ubah keduanya bersamaan.
  *
  * Admin LMS = role admin (arif.nitoe@gmail.com dan admin lain).
- * Guru pengampu = uid yang tercantum di dokumen lomba.guruPengampuUid.
+ * Guru pengampu = uid tercantum di lomba.guruPengampuUids (atau guruPengampuUid legacy).
  * Siswa peserta = siswaId ada di lomba.siswaIds.
+ * Hanya admin yang boleh create/update meta lomba (termasuk daftar pengampu).
  */
 
 import type { User } from 'firebase/auth'
@@ -18,10 +19,9 @@ export const EMAIL_ADMIN_LMS = 'arif.nitoe@gmail.com'
 /** Kelas kanonik bank konten lomba (materi / paket / kuis), pola mirip TKA «6». */
 export const KELAS_LOMBA_BANK = 'LB'
 
-
 /**
  * Nilai `mapel` untuk kuis Lomba yang menggabungkan soal dari beberapa mapel dalam satu kuis.
- * Disimpan di field `mapel` dokumen `lms_kuis` (rules hanya mewajibkan string 1–80 karakter, jadi tanpa
+ * Disimpan di field string `mapel` dokumen `lms_kuis` (rules hanya mewajibkan string 1–80 karakter, jadi tanpa
  * perubahan rules). Asal mapel tiap soal ada di `SoalKuis.sumberMapel`. ANTIREGRESI §Lomba.13.
  */
 export const MAPEL_GABUNGAN_LOMBA = 'Gabungan'
@@ -57,7 +57,15 @@ export function bolehAturMetaLomba(user: User | null, profil: AppUser | null): b
   return adalahAdminLms(user, profil)
 }
 
-/** Boleh kelola konten (materi/bank/kuis) di dalam lomba: admin atau pengampu lomba itu. */
+/** Apakah uid termasuk pengampu lomba (multi + legacy single). */
+export function adalahPengampuLomba(lomba: Lomba | null, uid: string | null | undefined): boolean {
+  if (!lomba || !uid) return false
+  if (lomba.guruPengampuUids?.includes(uid)) return true
+  if (lomba.guruPengampuUid === uid) return true
+  return false
+}
+
+/** Boleh kelola konten (materi/bank/kuis) di dalam lomba: admin atau salah satu pengampu. */
 export function bolehKelolaKontenLomba(
   user: User | null,
   profil: AppUser | null,
@@ -66,7 +74,7 @@ export function bolehKelolaKontenLomba(
   if (!lomba) return false
   if (adalahAdminLms(user, profil)) return true
   if (!user) return false
-  return lomba.guruPengampuUid === user.uid
+  return adalahPengampuLomba(lomba, user.uid)
 }
 
 /** Siswa boleh melihat menu Lomba jika terdaftar di ≥1 lomba (status aktif/draf/selesai). */
@@ -95,4 +103,17 @@ export function lombaSedangBerlangsung(l: Lomba, sekarang = new Date()): boolean
   if (l.mulai && sekarang < l.mulai) return false
   if (l.selesai && sekarang > l.selesai) return false
   return true
+}
+
+/** Label ringkas daftar pengampu untuk kartu/daftar. */
+export function labelPengampuLomba(l: Lomba): string {
+  const list = l.guruPengampuList?.length
+    ? l.guruPengampuList
+    : l.guruPengampuUid
+      ? [{ uid: l.guruPengampuUid, nama: l.guruPengampuNama || '—' }]
+      : []
+  if (list.length === 0) return '—'
+  if (list.length === 1) return list[0].nama || '—'
+  if (list.length === 2) return `${list[0].nama} · ${list[1].nama}`
+  return `${list[0].nama} +${list.length - 1} pengampu`
 }

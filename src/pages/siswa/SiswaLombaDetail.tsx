@@ -370,7 +370,10 @@ export default function SiswaLombaDetail() {
               <strong>Masa</strong> {formatTanggal(lomba.mulai)} – {formatTanggal(lomba.selesai)}
             </span>
             <span>
-              <strong>Pengampu</strong> {lomba.guruPengampuNama || '—'}
+              <strong>Pengampu</strong>{' '}
+              {lomba.guruPengampuList?.length
+                ? lomba.guruPengampuList.map((p) => p.nama).filter(Boolean).join(' · ')
+                : lomba.guruPengampuNama || '—'}
             </span>
             <span>
               <strong>Peserta</strong> {lomba.siswaIds.length} siswa

@@ -35,6 +35,13 @@ export interface PesertaLomba {
   nisn?: string
 }
 
+/** Satu guru pengampu (denormalisasi). */
+export interface PengampuLomba {
+  uid: string
+  nama: string
+  email?: string
+}
+
 /** Dokumen `lms_lomba/{id}`. */
 export interface Lomba {
   id: string
@@ -47,9 +54,17 @@ export interface Lomba {
   mulai: Date | null
   selesai: Date | null
   status: StatusLomba
+  /**
+   * Pengampu utama (pertama di daftar) — kompatibilitas query/tampilan lama.
+   * Selalu selaras dengan `guruPengampuUids[0]` / `guruPengampuList[0]`.
+   */
   guruPengampuUid: string
   guruPengampuNama: string
   guruPengampuEmail?: string
+  /** Semua UID pengampu (maks MAKS_PENGAMPU_LOMBA). Query guru: array-contains. */
+  guruPengampuUids: string[]
+  /** Denormalisasi nama/email pengampu, urutan sama dengan uids. */
+  guruPengampuList: PengampuLomba[]
   /** Maks 20. */
   siswaIds: string[]
   siswaList: PesertaLomba[]
@@ -60,3 +75,5 @@ export interface Lomba {
 }
 
 export const MAKS_PESERTA_LOMBA = 20
+/** Maks guru pengampu per lomba (admin menunjuk; pengampu tidak bisa buat lomba baru). */
+export const MAKS_PENGAMPU_LOMBA = 10

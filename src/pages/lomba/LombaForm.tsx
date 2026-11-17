@@ -11,9 +11,10 @@ import { adalahAdminLms } from '../../lib/lombaAkses'
 import { getDaftarMapel } from '../../lib/mapelData'
 import { aksenMapel, inisialMapel } from '../../lib/uiAksen'
 import { DAFTAR_KELAS, muatSiswaKelas, type SiswaDasar } from '../../lib/siswaAuth'
-import type { PesertaLomba, StatusLomba, TingkatLomba } from '../../types/lomba'
+import type { PengampuLomba, PesertaLomba, StatusLomba, TingkatLomba } from '../../types/lomba'
 import {
   MAKS_PESERTA_LOMBA,
+  MAKS_PENGAMPU_LOMBA,
   STATUS_LOMBA,
   TINGKAT_LOMBA,
 } from '../../types/lomba'
@@ -48,7 +49,7 @@ export default function LombaForm() {
   const [mulai, setMulai] = useState('')
   const [selesai, setSelesai] = useState('')
   const [status, setStatus] = useState<StatusLomba>('draf')
-  const [guruUid, setGuruUid] = useState('')
+  const [pengampu, setPengampu] = useState<PengampuLomba[]>([])
   const [guruCari, setGuruCari] = useState('')
   const [staf, setStaf] = useState<{ uid: string; nama: string; email: string; role: string }[]>([])
   const [mapelOpsi, setMapelOpsi] = useState<string[]>([])
@@ -97,7 +98,13 @@ export default function LombaForm() {
         setMulai(toInputDate(l.mulai))
         setSelesai(toInputDate(l.selesai))
         setStatus(l.status)
-        setGuruUid(l.guruPengampuUid)
+        setPengampu(
+          l.guruPengampuList?.length
+            ? l.guruPengampuList
+            : l.guruPengampuUid
+              ? [{ uid: l.guruPengampuUid, nama: l.guruPengampuNama, email: l.guruPengampuEmail }]
+              : [],
+        )
         setPeserta(l.siswaList)
       } catch (e) {
         setGalat(e instanceof Error ? e.message : 'Gagal memuat lomba.')
@@ -175,10 +182,19 @@ export default function LombaForm() {
     )
   }, [staf, guruCari])
 
-  const guruTerpilih = useMemo(
-    () => staf.find((s) => s.uid === guruUid) || null,
-    [staf, guruUid],
-  )
+  const pengampuIds = useMemo(() => new Set(pengampu.map((p) => p.uid)), [pengampu])
+
+  function togglePengampu(s: { uid: string; nama: string; email: string }) {
+    setPengampu((prev) => {
+      if (prev.some((p) => p.uid === s.uid)) return prev.filter((p) => p.uid !== s.uid)
+      if (prev.length >= MAKS_PENGAMPU_LOMBA) {
+        setGalat(`Maksimal ${MAKS_PENGAMPU_LOMBA} guru pengampu per lomba.`)
+        return prev
+      }
+      setGalat('')
+      return [...prev, { uid: s.uid, nama: s.nama, email: s.email || undefined }]
+    })
+  }
 
   function inisialNama(nama: string): string {
     const parts = nama.trim().split(/\s+/).filter(Boolean)
@@ -204,8 +220,8 @@ export default function LombaForm() {
       setGalat('Nama lomba wajib diisi.')
       return
     }
-    if (!guruUid) {
-      setGalat('Pilih guru pengampu.')
+    if (pengampu.length === 0) {
+      setGalat('Pilih minimal satu guru pengampu.')
       return
     }
     if (mapelTerkait.length === 0) {
@@ -216,8 +232,6 @@ export default function LombaForm() {
       setGalat(`Peserta maksimal ${MAKS_PESERTA_LOMBA}.`)
       return
     }
-
-    const guru = staf.find((s) => s.uid === guruUid)
     const siswaIds = peserta.map((p) => p.id)
     const payload = {
       nama: namaTrim,
@@ -228,9 +242,7 @@ export default function LombaForm() {
       mulai: fromInputDate(mulai),
       selesai: fromInputDate(selesai),
       status,
-      guruPengampuUid: guruUid,
-      guruPengampuNama: guru?.nama || '',
-      guruPengampuEmail: guru?.email,
+      guruPengampuList: pengampu,
       siswaIds,
       siswaList: peserta,
       dibuatOleh: user.uid,
@@ -285,7 +297,7 @@ export default function LombaForm() {
           {isEdit ? 'Ubah lomba' : 'Lomba baru'}
         </h2>
         <p className="mt-0.5 text-sm text-slate-500">
-          Isi identitas, mapel terkait, guru pengampu, dan peserta (maks. {MAKS_PESERTA_LOMBA}).
+          Isi identitas, mapel terkait, guru pengampu (boleh lebih dari satu), dan peserta (maks. {MAKS_PESERTA_LOMBA}).
         </p>
       </div>
 
@@ -412,8 +424,16 @@ export default function LombaForm() {
         </section>
 
         <section className="lomba-form-card lomba-form-span">
-          <h3>Guru pengampu *</h3>
-          <p className="hint">Cari nama atau email, lalu pilih satu staf aktif sebagai pengampu lomba.</p>
+          <h3>
+            Guru pengampu *{' '}
+            <span className="font-normal text-slate-500">
+              ({pengampu.length}/{MAKS_PENGAMPU_LOMBA})
+            </span>
+          </h3>
+          <p className="hint">
+            Pilih satu atau lebih staf aktif. Mereka dapat mengelola materi, bank soal, dan kuis
+            lomba ini — tetapi tidak dapat membuat lomba baru (hanya admin).
+          </p>
           <div className="lomba-guru-search">
             <span className="ikon" aria-hidden>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
@@ -436,7 +456,7 @@ export default function LombaForm() {
               </li>
             ) : (
               stafTerfilter.map((s) => {
-                const on = guruUid === s.uid
+                const on = pengampuIds.has(s.uid)
                 return (
                   <li key={s.uid}>
                     <button
@@ -444,7 +464,7 @@ export default function LombaForm() {
                       role="option"
                       aria-selected={on}
                       className={`lomba-guru-row${on ? ' on' : ''}`}
-                      onClick={() => setGuruUid(s.uid)}
+                      onClick={() => togglePengampu(s)}
                     >
                       <span className="lomba-guru-avatar" aria-hidden>
                         {inisialNama(s.nama)}
@@ -454,20 +474,32 @@ export default function LombaForm() {
                         {s.email ? <span className="lomba-guru-email">{s.email}</span> : null}
                       </span>
                       <span className="lomba-guru-role">{labelRole(s.role)}</span>
-                      <span className="lomba-guru-radio" aria-hidden />
+                      <span className="lomba-guru-check" aria-hidden />
                     </button>
                   </li>
                 )
               })
             )}
           </ul>
-          {guruTerpilih ? (
-            <div className="lomba-guru-terpilih">
-              <span>Pengampu:</span>
-              <strong>{guruTerpilih.nama}</strong>
-              {guruTerpilih.email ? (
-                <span className="text-slate-500">· {guruTerpilih.email}</span>
-              ) : null}
+          {pengampu.length > 0 ? (
+            <div className="lomba-guru-terpilih lomba-guru-terpilih--multi">
+              <span>Pengampu ({pengampu.length}):</span>
+              <ul className="lomba-pengampu-chips">
+                {pengampu.map((p) => (
+                  <li key={p.uid}>
+                    <strong>{p.nama}</strong>
+                    {p.email ? <span className="text-slate-500"> · {p.email}</span> : null}
+                    <button
+                      type="button"
+                      className="lomba-pengampu-chip-x"
+                      aria-label={`Hapus ${p.nama}`}
+                      onClick={() => togglePengampu({ uid: p.uid, nama: p.nama, email: p.email || '' })}
+                    >
+                      ×
+                    </button>
+                  </li>
+                ))}
+              </ul>
             </div>
           ) : null}
         </section>

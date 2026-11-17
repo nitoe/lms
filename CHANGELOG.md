@@ -1,3 +1,13 @@
+## 2026-11-17 — Lomba: multi guru pengampu
+
+- Admin dapat menunjuk **hingga 10 guru** sebagai pengampu satu lomba (bukan hanya 1).
+- Field baru: `guruPengampuUids[]`, `guruPengampuList[]`; field lama `guruPengampuUid`/`Nama` tetap diisi dari pengampu pertama (kompatibilitas).
+- Query guru: `array-contains` + legacy equality, digabung di klien.
+- Rules: `lombaPengampuDoc` / `lombaKontenBoleh` / list mengakui array UID.
+- Pengampu mengelola materi, bank soal, kuis; **hanya admin** yang membuat/ubah meta lomba & daftar pengampu.
+- CF `resetJawabanKuisLms`: pengampu mana pun di array boleh reset.
+- File: types/lomba, lomba.ts, lombaAkses.ts, LombaForm, LombaList, LombaDetail, lomba.css, SiswaLombaDetail, firestore.rules, resetJawabanKuisLms.js, CHANGELOG, ANTIREGRESI §Lomba.28.
+
 ## 2026-11-17 — Lomba siswa: skor disembunyikan sampai publikasi (pola TKA)
 
 - Setelah submit, siswa **tidak** melihat skor; layar «Jawaban terkirim» + narasi nilai belum dipublikasikan (selaras TKA).

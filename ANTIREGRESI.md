@@ -563,6 +563,15 @@ Regresi: `firestore.rules` di repo `nitoe/lms` tidak memuat rules Lomba (`lms_lo
 
 
 
+
+### §Lomba.28 Multi guru pengampu
+
+1. Dokumen `lms_lomba` menyimpan `guruPengampuUids: string[]` + `guruPengampuList: {uid,nama,email?}[]` (maks 10). Field `guruPengampuUid`/`Nama`/`Email` = elemen pertama (legacy).
+2. **Hanya admin** create/update meta & daftar pengampu. Pengampu **tidak** boleh membuat lomba baru.
+3. Akses konten (materi/bank/kuis/hasil/reset): admin **atau** uid ∈ `guruPengampuUids` (fallback `guruPengampuUid`).
+4. List guru: query `array-contains` pada `guruPengampuUids` **dan** `guruPengampuUid == uid`, hasil digabung unik di klien. Rules list mengakui kedua predikat.
+5. Form admin: multi-pilih staf (bukan radio tunggal).
+
 ### §Lomba.27 Skor kuis Lomba ke siswa hanya setelah publikasi
 
 1. Setelah submit, UI siswa **jangan** menampilkan skor — pakai pola TKA: «Jawaban terkirim» + kotak amber «Nilai belum dipublikasikan».

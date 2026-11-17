@@ -1338,3 +1338,55 @@ button.lomba-cta-mulai:hover {
 .lomba-kuis-kartu-body .lomba-pill {
   align-self: flex-start;
 }
+
+
+/* Multi-pengampu */
+.lomba-guru-check {
+  width: 1.1rem;
+  height: 1.1rem;
+  border-radius: 0.3rem;
+  border: 1.5px solid #cbd5e1;
+  background: #fff;
+  flex-shrink: 0;
+}
+.lomba-guru-row.on .lomba-guru-check {
+  background: #c2410c;
+  border-color: #c2410c;
+  box-shadow: inset 0 0 0 2px #fff;
+}
+.lomba-guru-terpilih--multi {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+.lomba-pengampu-chips {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+.lomba-pengampu-chips li {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.25rem 0.55rem;
+  border-radius: 999px;
+  background: #fff7ed;
+  border: 1px solid #fdba74;
+  font-size: 0.8rem;
+  color: #9a3412;
+}
+.lomba-pengampu-chip-x {
+  border: 0;
+  background: transparent;
+  color: #c2410c;
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 0.15rem;
+}
+.lomba-pengampu-chip-x:hover {
+  color: #7c2d12;
+}
