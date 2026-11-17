@@ -23,7 +23,7 @@ const MENU: MenuItem[] = [
   { to: '/siswa/materi', label: 'Materi', deskripsi: 'Baca & tonton pelajaran', icon: 'book', tone: 'sky', segera: false },
   { to: '/siswa/tugas', label: 'Tugas', deskripsi: 'Kerjakan & kumpulkan', icon: 'pencil', tone: 'amber', segera: false },
   { to: '/siswa/kuis', label: 'Kuis', deskripsi: 'Latihan soal', icon: 'target', tone: 'violet', segera: false },
-  { to: '/siswa/pencapaian', label: 'Pencapaian', deskripsi: 'Bintang & lencana', icon: 'star', tone: 'emerald', segera: true },
+  { to: '/siswa/pencapaian', label: 'Pencapaian', deskripsi: 'Bintang & lencana', icon: 'star', tone: 'emerald', segera: false },
 ]
 
 const MENU_TKA: MenuItem = {
@@ -182,11 +182,12 @@ export default function SiswaBeranda() {
   const { tugas, mapel } = useBerandaSiswa()
   const namaPanggil = sesi?.nama?.split(' ')[0] || 'Siswa'
 
-  let menu: MenuItem[] = MENU.filter((m) => !m.segera)
+  // Urutan: Materi, Tugas, Kuis, [TKA], [Lomba], Pencapaian (selalu paling akhir).
+  const pencapaian = MENU.find((m) => m.to === '/siswa/pencapaian')
+  let menu: MenuItem[] = MENU.filter((m) => m.to !== '/siswa/pencapaian')
   if (bolehTkaSiswa(sesi?.kelas)) menu = [...menu, MENU_TKA]
   if (daftarLomba.length > 0) menu = [...menu, MENU_LOMBA]
-  // «Pencapaian» (Segera) tetap paling akhir.
-  menu = [...menu, ...MENU.filter((m) => m.segera)]
+  if (pencapaian) menu = [...menu, pencapaian]
 
   const tanggalTeks = new Date().toLocaleDateString('id-ID', {
     weekday: 'long',

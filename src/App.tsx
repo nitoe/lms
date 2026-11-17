@@ -15,7 +15,7 @@ import SiswaMasuk from './pages/siswa/SiswaMasuk'
 import SiswaLayout from './pages/siswa/SiswaLayout'
 import SiswaBeranda from './pages/siswa/SiswaBeranda'
 import SiswaMateri from './pages/siswa/SiswaMateri'
-import SiswaPlaceholder from './pages/siswa/SiswaPlaceholder'
+import SiswaPencapaian from './pages/siswa/SiswaPencapaian'
 import SiswaTugas from './pages/siswa/SiswaTugas'
 import SiswaKuis from './pages/siswa/SiswaKuis'
 import SiswaTka from './pages/siswa/SiswaTka'
@@ -96,17 +96,7 @@ export default function App() {
         <Route path="tka" element={<SiswaTka />} />
         <Route path="lomba" element={<SiswaLomba />} />
         <Route path="lomba/:lombaId" element={<SiswaLombaDetail />} />
-        <Route
-          path="pencapaian"
-          element={
-            <SiswaPlaceholder
-              judul="Pencapaian"
-              icon="star"
-              deskripsi="Bintang, lencana, dan catatan belajarmu akan dikumpulkan di sini. Terus semangat!"
-              tone="bg-emerald-50 text-emerald-700"
-            />
-          }
-        />
+        <Route path="pencapaian" element={<SiswaPencapaian />} />
         {/* Alias lama */}
         <Route path="kelas" element={<Navigate to="/siswa/materi" replace />} />
       </Route>

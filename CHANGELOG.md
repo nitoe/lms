@@ -1,10 +1,10 @@
-## 2026-11-17 — Area siswa tahap 3: Lomba, TKA, daftar Tugas/Kuis
+## 2026-11-17 — Area siswa: halaman Pencapaian (bintang & lencana) aktif
 
-- Lomba & TKA siswa: hero dan kartu dibulatkan, bayangan lembut, judul lebih tegas — senada Beranda. Padding ganda halaman Lomba dihapus (sudah ditangani `.sw-main`).
-- Daftar Tugas/Kuis: judul mapel, lencana status, dan kartu lebih tegas.
-- Perbaikan: stimulus soal TKA (2 kolom, PC) diturunkan agar tidak tertutup kepala mode kerjakan yang kini terlihat di bawah header.
-- File: `src/styles/siswa.css` (hanya CSS, tanpa perubahan logika).
-- Antiregresi: ANTIREGRESI.md §131.13–131.14.
+- Menu «Pencapaian» yang sebelumnya «Segera» kini aktif. **Bintang** = 1 per kuis yang sudah dikerjakan + 1 per tugas yang sudah dinilai. **8 lencana** dengan bilah progres (kuis 1/5/10, skor ≥80, skor 100, tugas dinilai 1/5, 3 tugas bernilai ≥80). Ringkasan: kuis selesai, rata-rata skor kuis, tugas dinilai, rata-rata nilai tugas.
+- Dihitung di klien dari data yang sudah ada (`lms_jawaban` milik siswa, `lms_nilai_tugas`) — **tanpa koleksi, field, rules, atau index baru**; halaman hanya membaca.
+- Catatan: skor kuis memakai `skorOtomatis`; soal uraian yang dinilai manual tidak ikut terhitung (tertulis di halaman).
+- File: `src/lib/pencapaianSiswa.ts` (baru), `src/pages/siswa/SiswaPencapaian.tsx` (baru), `src/App.tsx`, `src/pages/siswa/SiswaBeranda.tsx`, `src/styles/siswa.css`.
+- Antiregresi: ANTIREGRESI.md §131.15–131.16.
 
 ## 2026-11-17 — Area siswa tahap 2: halaman masuk, Tugas/Kuis, viewer materi
 
