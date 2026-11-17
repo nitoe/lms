@@ -1,3 +1,14 @@
+## 2026-11-17 — Lomba: rules isAdmin selaras email admin LMS (perbaiki simpan kuis)
+
+- **Gejala:** Admin LMS (`arif.nitoe@gmail.com`) bisa membuka paket/bank Lomba dan menyusun pratinjau kuis Gabungan, tetapi **simpan** gagal «Missing or insufficient permissions.»
+- **Akar:** UI (`adalahAdminLms`) menganggap akun admin jika `role == 'admin'` **atau** email = `arif.nitoe@gmail.com`. Rules hanya `myRole() == 'admin'`. Jika dokumen `users/{uid}` belum / tidak ber-role `admin`, `isAdmin()` dan `lombaKontenBoleh` di rules gagal → create `lms_kuis` (kelas `LB` + `lombaId`) ditolak.
+- **Perbaikan rules:**
+  1. `isAdminEmail()` — email token = `arif.nitoe@gmail.com` (selaras `EMAIL_ADMIN_LMS`).
+  2. `isAdmin()` = `(akunAktif && role == admin) || isAdminEmail()`.
+  3. Cabang create Lomba didahulukan pada `lms_kuis`, `lms_paket_soal`, `lms_materi` (mapel «Gabungan» tidak ada di penugasan).
+- **Wajib:** `firebase deploy --only firestore:rules` (Hosting saja tidak cukup). Opsional: pastikan dokumen `users` akun ini punya `role: "admin"`.
+- File: `firestore.rules`, `CHANGELOG.md`, `ANTIREGRESI.md` (§Lomba.16).
+
 ## 2026-11-17 — Lomba: perbaiki permission simpan kuis (create lms_kuis)
 
 - **Gejala:** Menyusun pratinjau kuis Lomba (termasuk mode Gabungan) berhasil, tetapi saat simpan muncul «Missing or insufficient permissions.»

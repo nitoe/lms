@@ -503,6 +503,15 @@ Regresi: `firestore.rules` di repo `nitoe/lms` tidak memuat rules Lomba (`lms_lo
 5. Setelah mengubah `firestore.rules`, selalu `firebase deploy --only firestore:rules` (atau pipeline yang mem-deploy rules). Deploy Hosting saja tidak cukup.
 6. Uji: admin atau guru pengampu → Lomba → Kuis → Gabungan → pilih paket → susun → simpan → dokumen `lms_kuis` terbentuk dengan `kelas: "LB"`, `mapel: "Gabungan"`, `lombaId` terisi.
 
+
+### §Lomba.16 Admin LMS di rules = role admin ATAU email arif.nitoe@gmail.com
+
+1. Klien (`adalahAdminLms` di `lombaAkses.ts`) mengizinkan admin lewat `peranDari === 'admin'` **atau** email `arif.nitoe@gmail.com`. Rules sebelumnya hanya `myRole() == 'admin'`. Ketidakselarasan ini menyebabkan UI admin tetapi create/update konten Lomba (`lms_kuis` / paket / materi kelas `LB`) ditolak permission.
+2. Rules wajib punya `isAdminEmail()` (token email lower-case == `arif.nitoe@gmail.com`) dan `isAdmin() = (akunAktif && role == 'admin') || isAdminEmail()`. Semua pemakaian `isAdmin()` / `lombaAdmin()` / `lombaKontenBoleh` otomatis ikut.
+3. Setelah mengubah definisi `isAdmin`, deploy **firestore.rules** ke proyek `sdm01kukusan-2e735`. Jangan mengandalkan hanya deploy Hosting.
+4. Idealnya dokumen `users/{uid}` untuk akun itu juga `role: "admin"` (sumber kebenaran Penilaian); email fallback melindungi bila role belum tersinkron.
+5. Uji: login `arif.nitoe@gmail.com` → Lomba → Kuis → Gabungan → pilih paket → susun pratinjau → **Simpan** → dokumen `lms_kuis` terbentuk (`kelas: "LB"`, `mapel: "Gabungan"`, `lombaId` terisi).
+
 ## §129. Template & import bank soal: «Tanpa TP» dan parser CSV
 
 129.1 Bank soal mapel biasa (termasuk Lomba, kelas bank `LB`) **boleh tanpa TP**: `tpId/tpNomor/tpNama` opsional di `lms_paket_soal` (rules tidak mewajibkannya — jangan menambah syarat TP di rules/klien). Kuis dari paket tanpa TP tetap sah (`tpIds` dihitung hanya dari paket yang punya `tpId`).
