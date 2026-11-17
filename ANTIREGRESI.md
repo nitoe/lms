@@ -647,3 +647,24 @@ Regresi: `firestore.rules` di repo `nitoe/lms` tidak memuat rules Lomba (`lms_lo
 130.4 **Pesan galat parse harus menunjuk lokasi** (baris/kolom + cuplikan, dari `position N` pada pesan `JSON.parse`). Jangan kembali ke pesan datar «File JSON tidak valid.» tanpa petunjuk.
 
 130.5 Uji setelah mengubah `importSoal.ts` (tambahan atas §129.7): JSON ber-BOM, berpagar kode, koma sisa, komentar, baris baru mentah, teks pembuka; daftar polos tanpa `mapel` di mode Tanpa TP (lolos) dan di mode pilih TP (ditolak «tidak memuat mata pelajaran»); JSON rusak → **tepat satu** galat; `null`/angka → pesan «harus berupa objek… atau daftar».
+
+
+## §131. Area siswa v2: shell, Beranda, font (2026-11-17)
+
+131.1 **Kontrak DOM dengan halaman kerjakan.** `SiswaKuis`, `SiswaTka`, `SiswaLombaDetail` memakai `document.querySelector('.sw-nav')` (diberi `display:none` saat mengerjakan) dan `'.sw-main'` (+ kelas `.sw-main--kuis`). Jangan mengganti nama class itu, jangan memecah `.sw-nav` menjadi beberapa elemen (sidebar PC dan nav HP adalah **satu** elemen `.sw-nav`; yang berubah hanya CSS-nya), dan jangan memindahkan `.sw-main` ke luar `.sw-body`. Saat `.sw-nav` disembunyikan di PC, `.sw-body` (flex:1) otomatis melebar penuh.
+
+131.2 **Beranda tidak boleh menambah koleksi/query baru.** `useBerandaSiswa` hanya memakai `daftarTugasAktifKelas`, query `lms_nilai_tugas` (siswaId+kelas), dan `daftarMateriKelas` — query yang sama dengan halaman Tugas/Materi sehingga rules siswa sudah cukup (§0, §124.3). Tiap bagian gagal-sendiri (`catch` → console.warn → bagian disembunyikan); jangan mengubah menjadi `throw`/layar error yang menghalangi menu Beranda.
+
+131.3 **Daftar materi berat.** Dokumen `lms_materi` (jenis `halaman`) memuat seluruh halaman. Beranda memuatnya **ditunda 300 ms setelah tugas** dan **di-cache di memori 5 menit per kelas**. Jangan memanggil `daftarMateriKelas` di Beranda tanpa cache, dan jangan menjadikannya syarat tampilnya menu.
+
+131.4 **Font Nunito di-scope `.sw-app`.** `@font-face` ada di `siswa.css`, file `public/fonts/nunito-latin-wght-normal.woff2` harus ikut ter-push (biner). Bila file hilang, tampilan jatuh ke Inter tanpa galat. Jangan menerapkan Nunito ke `body`/area guru.
+
+131.5 **Offset sticky mode kerjakan** memakai variabel `--sw-header-h` (3.75rem) pada `.sw-app` (`.sw-kuis-kerja-head`, `.sw-kuis-nav`). Bila tinggi header diubah, ubah variabel itu — jangan mengembalikan `top: 0` / `4.25rem` literal (kepala kuis tertutup header).
+
+131.6 **Override visual halaman siswa selalu di-scope `.sw-app`** (`.sw-app .lms-card`, `.sw-app .kelas-hero`, dst.). `.lms-card`/`.kelas-hero` juga dipakai area guru; jangan mengubah aturan globalnya untuk kebutuhan siswa.
+
+131.7 **Kontras ubin berwarna.** Teks di ubin menu/nav aktif berwarna **putih** di atas gradien `--t-from → --t-to`. Jangan memakai warna awal terang (kuning/oranye muda) tanpa uji kontras; palet saat ini sudah disesuaikan (`.sw-tone-*`).
+
+131.8 **Penamaan menu/aktivitas tetap polos-deskriptif** (Materi, Tugas, Kuis, Pekan ini, Tugas untukmu, Pelajaranmu). Jangan memakai tagline/julukan («Detektif…», «Petualang…», «Agen…») — preferensi pemilik proyek.
+
+131.9 **Tanda «Pekan ini»** (titik oranye) = tenggat tugas **belum dinilai** pada hari itu; bukan jadwal pelajaran. Cincin hero = tugas berstatus `dinilai` / seluruh tugas aktif kelas.

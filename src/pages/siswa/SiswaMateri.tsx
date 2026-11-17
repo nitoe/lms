@@ -12,6 +12,7 @@ import {
   toneJenis,
 } from '../../lib/materiUi'
 import { aksenMapel, inisialMapel } from '../../lib/uiAksen'
+import SiswaIcon from './SiswaIcon'
 import type { MateriLms } from '../../types/materi'
 
 type Muat =
@@ -174,8 +175,14 @@ export default function SiswaMateri() {
   /* —— Daftar pelajaran —— */
   return (
     <div className="space-y-5">
-      <div className="flex flex-wrap items-center gap-2.5">
-        <h1 className="text-lg font-bold text-slate-900">Materi Pelajaran</h1>
+      <div className="sw-page-head sw-tone-sky">
+        <span className="sw-page-ico" aria-hidden>
+          <SiswaIcon name="book" size={26} />
+        </span>
+        <div className="min-w-0">
+          <h1 className="sw-page-title">Materi Pelajaran</h1>
+          <p className="sw-page-sub">Pilih pelajaran yang mau kamu buka</p>
+        </div>
         <span className="lms-count-pill">{perMapel.length} pelajaran</span>
       </div>
       <div className="sw-mapel-grid">
