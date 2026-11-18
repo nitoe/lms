@@ -1,3 +1,13 @@
+## 2026-11-18 — Lomba: cetak kartu peserta (A4, 8 kartu per lembar)
+
+- **Admin / guru pengampu:** tombol «Cetak kartu peserta» di panel Peserta (tab Ringkasan, detail lomba) → dialog opsi (pilih peserta, pelaksanaan opsional, tahun pelajaran, kotak foto 2×3) → jendela cetak berisi pratinjau + tombol «Cetak / Simpan PDF».
+- **Tata letak:** A4 portrait, 2 kolom × 4 baris = 8 kartu per lembar (tiap kartu 97 × 70,1 mm), garis potong putus-putus; 20 peserta = 3 lembar. Nomor kartu urut kelas lalu nama dan tetap sama walau mencetak sebagian peserta.
+- **Isi kartu:** logo sekolah (`public/logo-sdm.png`), nama lomba, penyelenggara, tingkat, nomor, nama, kelas, **NISN (kata sandi login)**, pelaksanaan (atau masa lomba), mapel, alamat `lms.sdmuhammadiyah01kks.sch.id/siswa/masuk` + tiga langkah masuk, tahun pelajaran.
+- NISN dibaca dari `siswa/{id}` saat cetak dan **tidak disimpan** ke `lms_lomba`. Peringatan di jendela cetak bila NISN belum terdaftar atau siswa nonaktif.
+- Tanpa perubahan koleksi, field, rules, index, atau functions — **tidak perlu deploy rules**.
+- File: `src/lib/kartuLomba.ts` (baru), `src/components/KartuPesertaDialog.tsx` (baru), `src/styles/kartuLomba.css` (baru), `src/pages/lomba/LombaDetail.tsx`.
+- Antiregresi: ANTIREGRESI.md §Lomba.29.
+
 ## 2026-11-17 — Pengumpulan tugas oleh siswa (foto) + tab «Pengumpulan» guru
 
 - **Siswa:** di detail tugas, tombol «Ambil / pilih foto» (maks. 3 foto, dikecilkan otomatis di perangkat), catatan opsional, «Kumpulkan». Bisa «Kirim ulang» selama belum dinilai; setelah dinilai terkunci. Kartu tugas menampilkan lencana «Terkumpul».

@@ -15,6 +15,7 @@ import { TINGKAT_LOMBA } from '../../types/lomba'
 import MateriPanel from '../../components/MateriPanel'
 import BankSoalPanel from '../../components/BankSoalPanel'
 import KuisPanel from '../../components/KuisPanel'
+import KartuPesertaDialog from '../../components/KartuPesertaDialog'
 import { KnChips } from '../../components/KuisNav'
 import { IkonBankSoal, IkonDaftar, IkonKuis, IkonMateri } from '../../components/ikonRuang'
 import { aksenMapel } from '../../lib/uiAksen'
@@ -69,6 +70,8 @@ export default function LombaDetail() {
   const [mapelAktif, setMapelAktif] = useState('')
   /** Kelas untuk memuat TP (admin boleh ganti). Default: kelas peserta pertama atau 6A. */
   const [tpKelas, setTpKelas] = useState('6A')
+  /** Dialog cetak kartu peserta (hook di atas early return — ANTIREGRESI §108.4). */
+  const [kartuBuka, setKartuBuka] = useState(false)
 
   const muat = useCallback(async () => {
     if (!lombaId) return
@@ -313,6 +316,13 @@ export default function LombaDetail() {
               ) : (
                 <p className="text-sm text-slate-500">Belum ada peserta.</p>
               )}
+              {lomba.siswaList.length > 0 && (
+                <div className="kp-aksi">
+                  <button type="button" className="kp-btn" onClick={() => setKartuBuka(true)}>
+                    Cetak kartu peserta
+                  </button>
+                </div>
+              )}
             </section>
           </div>
           <p className="text-sm text-slate-500">
@@ -355,6 +365,7 @@ export default function LombaDetail() {
         </div>
       )}
       </div>
+      {kartuBuka && <KartuPesertaDialog lomba={lomba} onTutup={() => setKartuBuka(false)} />}
     </div>
   )
 }

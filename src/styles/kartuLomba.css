@@ -1,0 +1,179 @@
+/* Dialog cetak kartu peserta Lomba. Kartu yang dicetak memakai CSS inline di lib/kartuLomba.ts. */
+.kp-aksi {
+  margin-top: 0.9rem;
+}
+.kp-btn {
+  border: 0;
+  border-radius: 999px;
+  padding: 0.55rem 1.1rem;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #fff;
+  background: #c2410c;
+  cursor: pointer;
+}
+.kp-btn:hover:not(:disabled) {
+  background: #9a3412;
+}
+.kp-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.kp-btn--sek {
+  color: #475569;
+  background: #f1f5f9;
+}
+.kp-btn--sek:hover:not(:disabled) {
+  background: #e2e8f0;
+}
+.kp-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background: rgba(15, 23, 42, 0.5);
+}
+.kp-dialog {
+  width: min(34rem, 100%);
+  max-height: calc(100dvh - 2rem);
+  overflow-y: auto;
+  border-radius: 1.1rem;
+  background: #fff;
+  padding: 1.25rem 1.35rem;
+  box-shadow: 0 20px 50px rgba(15, 23, 42, 0.3);
+}
+.kp-judul {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: #0f172a;
+}
+.kp-sub {
+  margin: 0.25rem 0 0.9rem;
+  font-size: 0.8rem;
+  color: #64748b;
+  line-height: 1.45;
+}
+.kp-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.7rem;
+  align-items: end;
+}
+.kp-span {
+  grid-column: 1 / -1;
+}
+.kp-field {
+  display: grid;
+  gap: 0.2rem;
+}
+.kp-field span {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #64748b;
+}
+.kp-field input {
+  width: 100%;
+  border: 1px solid #cbd5e1;
+  border-radius: 0.6rem;
+  padding: 0.5rem 0.65rem;
+  font-size: 1rem;
+  color: #0f172a;
+}
+.kp-field input:focus {
+  outline: 2px solid #fdba74;
+  border-color: #c2410c;
+}
+.kp-cek {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #334155;
+  padding-bottom: 0.5rem;
+}
+.kp-peserta-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 1rem 0 0.4rem;
+  font-size: 0.82rem;
+  color: #334155;
+}
+.kp-link {
+  border: 0;
+  background: none;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #c2410c;
+  cursor: pointer;
+}
+.kp-peserta {
+  list-style: none;
+  margin: 0;
+  padding: 0.25rem;
+  max-height: 14rem;
+  overflow-y: auto;
+  border: 1px solid #e8eaf0;
+  border-radius: 0.7rem;
+}
+.kp-peserta label {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.3rem 0.5rem;
+  border-radius: 0.45rem;
+  font-size: 0.85rem;
+  color: #1e293b;
+  cursor: pointer;
+}
+.kp-peserta label:hover {
+  background: #fff7ed;
+}
+.kp-peserta .no {
+  width: 1.4rem;
+  font-weight: 700;
+  color: #9a3412;
+  font-variant-numeric: tabular-nums;
+}
+.kp-peserta .nm {
+  flex: 1;
+  min-width: 0;
+  font-weight: 600;
+}
+.kp-peserta .kl {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #94a3b8;
+}
+.kp-galat {
+  margin: 0.8rem 0 0;
+  padding: 0.55rem 0.75rem;
+  border-radius: 0.6rem;
+  background: #fef2f2;
+  color: #b91c1c;
+  font-size: 0.82rem;
+}
+.kp-info {
+  margin: 0.8rem 0 0;
+  padding: 0.55rem 0.75rem;
+  border-radius: 0.6rem;
+  background: #f0fdf4;
+  color: #166534;
+  font-size: 0.82rem;
+}
+.kp-aksi-dialog {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+@media (max-width: 480px) {
+  .kp-grid {
+    grid-template-columns: 1fr;
+  }
+}
