@@ -199,6 +199,7 @@ export default function SiswaLombaDetail() {
   const [lomba, setLomba] = useState<Lomba | null>(null)
   const [kuisList, setKuisList] = useState<KuisLms[] | null>(null)
   const [materiList, setMateriList] = useState<MateriLms[] | null>(null)
+  const [materiGalat, setMateriGalat] = useState('')
   const [bacaMateri, setBacaMateri] = useState<MateriLms | null>(null)
   const [riwayatMap, setRiwayatMap] = useState<Record<string, Riwayat[]>>({})
   const [memuat, setMemuat] = useState(true)
@@ -226,18 +227,27 @@ export default function SiswaLombaDetail() {
         if (!l || !l.siswaIds.includes(sesi.id)) {
           setKuisList([])
           setMateriList([])
+          setMateriGalat('')
           return
         }
-        const [list, materi] = await Promise.all([
+        setMateriGalat('')
+        const [list, materiHasil] = await Promise.all([
           daftarKuisLombaAktif(lombaId),
-          daftarMateriLombaSiswa(lombaId).catch((e) => {
-            console.warn('daftarMateriLombaSiswa', e)
-            return [] as MateriLms[]
-          }),
+          daftarMateriLombaSiswa(lombaId)
+            .then((m) => ({ ok: true as const, m }))
+            .catch((e) => {
+              console.warn('daftarMateriLombaSiswa', e)
+              return { ok: false as const, m: [] as MateriLms[], e }
+            }),
         ])
         if (batal) return
         setKuisList(list)
-        setMateriList(materi)
+        setMateriList(materiHasil.m)
+        if (!materiHasil.ok) {
+          setMateriGalat(
+            'Materi belum bisa dimuat. Coba refresh, atau minta guru/admin memastikan kamu terdaftar peserta.',
+          )
+        }
         const map: Record<string, Riwayat[]> = {}
         await Promise.all(
           list.map(async (k) => {
@@ -439,10 +449,15 @@ export default function SiswaLombaDetail() {
         </div>
         {materiList === null ? (
           <p className="text-sm text-slate-500">Memuat materi…</p>
+        ) : materiGalat ? (
+          <div className="lomba-kosong">
+            <h3>Materi belum bisa dibuka</h3>
+            <p>{materiGalat}</p>
+          </div>
         ) : materiList.length === 0 ? (
           <div className="lomba-kosong">
             <h3>Belum ada materi</h3>
-            <p>Gurumu belum menambahkan materi untuk lomba ini.</p>
+            <p>Gurumu belum menambahkan materi untuk lomba ini. Materi HTML/file muncul di sini setelah guru menambahkannya di tab Materi lomba.</p>
           </div>
         ) : (
           <ul className="lomba-kuis-grid">

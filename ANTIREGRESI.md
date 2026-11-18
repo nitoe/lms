@@ -1306,3 +1306,13 @@ Jangan memaksa satu kolom sempit di desktop.
 
 86.5 **IPA materi** mencakup Fase B dan Fase C di `MATERI_TKA['TKA IPA']`.
 
+## §Lomba.MateriAksesSiswa (2026-11-18)
+
+1. Kartu daftar lomba siswa **wajib** punya tautan ke detail (`/siswa/lomba/:id`) tanpa `?mulai=1` — jangan hanya «Mulai kerjakan».
+2. Section «Materi lomba» di detail: tampilkan galat permission terpisah dari «belum ada materi».
+
+## §MateriHtml.LocalStoragePolyfill (2026-11-18)
+
+1. Iframe sandbox **tanpa** `allow-same-origin` → `localStorage` sering melempar SecurityError.
+2. `siapkanHtmlDokumen` wajib menyisipkan polyfill memori di `<head>` sebelum skrip modul.
+3. Jangan mengandalkan `allow-same-origin` hanya agar storage jalan (XSS ke parent).

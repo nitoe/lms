@@ -193,14 +193,15 @@ export default function SiswaLomba() {
                     </span>
                   </div>
                 )}
-                <div className="lomba-kartu-foot">
+                <div className="lomba-kartu-foot lomba-kartu-foot--multi">
+                  <Link to={`/siswa/lomba/${l.id}`} className="lomba-cta-detail">
+                    Materi &amp; kuis
+                  </Link>
                   {bisaMulai ? (
                     <Link to={`/siswa/lomba/${l.id}?mulai=1`} className="lomba-cta-mulai">
                       Mulai kerjakan
                     </Link>
-                  ) : (
-                    <Link to={`/siswa/lomba/${l.id}`}>Lihat detail</Link>
-                  )}
+                  ) : null}
                 </div>
               </li>
             )

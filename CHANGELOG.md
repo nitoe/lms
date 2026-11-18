@@ -1,3 +1,12 @@
+## 2026-11-18 — Lomba siswa: akses materi + HTML interaktif (localStorage)
+
+- **Akses materi:** di daftar lomba siswa, tombol «Materi & kuis» selalu ada (selain «Mulai kerjakan») agar siswa tidak loncat langsung ke kuis tanpa melihat materi.
+- **Detail lomba:** pesan jelas bila materi gagal dimuat (permission/rules) vs benar-benar kosong.
+- **HTML interaktif:** polyfill `localStorage`/`sessionStorage` disisipkan di dokumen iframe. Modul seperti MIPA Quest sebelumnya crash di baris pertama (SecurityError origin opaque) → semua tombol/filter/kuis mati. Sekarang skrip lanjut jalan.
+- File: `src/pages/siswa/SiswaLomba.tsx`, `src/pages/siswa/SiswaLombaDetail.tsx`, `src/styles/lomba.css`, `src/lib/html.ts`.
+- Materi HTML yang disimpan **sebelum** fix simpan-utuh masih perlu diunggah ulang jika script-nya ter-strip.
+- Antiregresi: §Lomba.MateriAksesSiswa, §MateriHtml.LocalStoragePolyfill.
+
 ## 2026-11-18 — Materi HTML: iframe dokumen penuh (modul interaktif)
 
 - **Masalah:** Pratinjau/simpan memakai DOMPurify + body-only → modul seperti *MIPA Quest* (CSS, script, details, SVG, kuis, progress) hancur/ tampil jelek.

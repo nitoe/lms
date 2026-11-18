@@ -364,28 +364,43 @@ export function siapkanHtmlDokumen(raw: string | undefined): string {
   const t = (raw ?? '').trim()
   if (!t) return ''
 
-  // Sudah dokumen lengkap
+  /**
+   * Polyfill localStorage/sessionStorage di origin opaque iframe (sandbox tanpa
+   * allow-same-origin). Tanpa ini, modul seperti MIPA Quest melempar SecurityError
+   * di baris pertama dan **semua** tombol/filter/kuis mati.
+   */
+  const polyfill = `<script>(function(){function memStore(){var m={};return{getItem:function(k){return Object.prototype.hasOwnProperty.call(m,k)?m[k]:null},setItem:function(k,v){m[k]=String(v)},removeItem:function(k){delete m[k]},clear:function(){for(var k in m)delete m[k]},key:function(i){return Object.keys(m)[i]||null},get length(){return Object.keys(m).length}};};function ensure(name){try{var s=window[name];var k='__lms_ls_t__';s.setItem(k,'1');s.removeItem(k);}catch(e){try{Object.defineProperty(window,name,{value:memStore(),configurable:true});}catch(e2){window[name]=memStore();}}}ensure('localStorage');ensure('sessionStorage');})();</script>`
+
+  let doc: string
   if (/<!DOCTYPE/i.test(t) || /<\s*html[\s>]/i.test(t)) {
-    return t
+    doc = t
+  } else {
+    const body = t.match(/<body[^>]*>([\s\S]*?)<\/body>/i)
+    const head = t.match(/<head[^>]*>([\s\S]*?)<\/head>/i)
+    if (body) {
+      const headInner = head
+        ? head[1]
+        : '<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">'
+      doc = `<!DOCTYPE html><html lang="id"><head>${headInner}</head><body>${body[1]}</body></html>`
+    } else {
+      doc =
+        '<!DOCTYPE html><html lang="id"><head>' +
+        '<meta charset="utf-8">' +
+        '<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">' +
+        '</head><body>' +
+        t +
+        '</body></html>'
+    }
   }
 
-  // Ada <body>…</body> (mungkin + head/style di luar)
-  const body = t.match(/<body[^>]*>([\s\S]*?)<\/body>/i)
-  const head = t.match(/<head[^>]*>([\s\S]*?)<\/head>/i)
-  if (body) {
-    const headInner = head ? head[1] : '<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">'
-    return `<!DOCTYPE html><html lang="id"><head>${headInner}</head><body>${body[1]}</body></html>`
+  // Sisipkan polyfill sedini mungkin di <head> (atau sebelum </body>).
+  if (/<head[^>]*>/i.test(doc)) {
+    return doc.replace(/<head[^>]*>/i, (m) => m + polyfill)
   }
-
-  // Fragmen: bungkus minimal agar CSS/JS relatif tetap punya dokumen
-  return (
-    '<!DOCTYPE html><html lang="id"><head>'
-    + '<meta charset="utf-8">'
-    + '<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">'
-    + '</head><body>'
-    + t
-    + '</body></html>'
-  )
+  if (/<body[^>]*>/i.test(doc)) {
+    return doc.replace(/<body[^>]*>/i, (m) => m + polyfill)
+  }
+  return polyfill + doc
 }
 
 /**

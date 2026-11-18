@@ -1390,3 +1390,38 @@ button.lomba-cta-mulai:hover {
 .lomba-pengampu-chip-x:hover {
   color: #7c2d12;
 }
+
+/* ── Siswa: dual CTA (Materi & kuis + Mulai kerjakan) ── */
+.lomba-kartu-foot--multi {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: stretch;
+}
+.lomba-kartu-foot--multi > a {
+  flex: 1 1 auto;
+  min-width: 7.5rem;
+  text-align: center;
+  justify-content: center;
+}
+.lomba-kartu-foot .lomba-cta-detail,
+a.lomba-cta-detail {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.65rem;
+  padding: 0.5rem 1rem;
+  font-size: 0.82rem;
+  font-weight: 700;
+  text-decoration: none;
+  color: #9a3412;
+  background: #fff7ed;
+  border: 1px solid #fdba74;
+  box-shadow: none;
+}
+.lomba-kartu-foot .lomba-cta-detail:hover,
+a.lomba-cta-detail:hover {
+  background: #ffedd5;
+  color: #7c2d12;
+  border-color: #fb923c;
+}
