@@ -1,3 +1,8 @@
+## 2026-11-18 — Fix TS: React.Touch vs Touch di MateriGambarZoom
+
+- `distTouches` memakai tipe `{ clientX; clientY }` agar cocok dengan `React.Touch` (DOM `Touch` punya field ekstra di lib.dom).
+- File: `src/components/materi/MateriGambarZoom.tsx`.
+
 ## 2026-11-18 — Viewer materi: pinch-zoom gambar + panduan ukuran
 
 - **Zoom gambar:** ketuk gambar di viewer halaman (guru & siswa) membuka overlay layar penuh.
