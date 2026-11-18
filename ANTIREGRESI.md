@@ -706,6 +706,16 @@ Regresi: `firestore.rules` di repo `nitoe/lms` tidak memuat rules Lomba (`lms_lo
 8. **CSS:** gaya dialog di `styles/kartuLomba.css` (`kp-*`); gaya kartu cetak inline di `kartuLomba.ts` (konstanta `CSS`). Jangan menambah aturan ke `lomba.css` untuk ini dan jangan memakai ulang nama kelas `kp-*`/`kartu`/`lembar` di tempat lain (§Lomba.9). State dialog di `LombaDetail` (`kartuBuka`) dideklarasikan di atas `return` bersyarat (§108.4).
 9. **Uji sebelum deploy:** (a) lomba 20 peserta → 3 lembar, tidak ada lembar kosong di Chrome print preview (A4, skala 100%, margin None); (b) siswa tanpa NISN → kartu menampilkan «Belum terdaftar» + peringatan di atas pratinjau; (c) nama panjang (±40 huruf) dan nama lomba panjang tidak memotong baris «Cara masuk LMS»; (d) cetak sebagian peserta → nomor tidak bergeser; (e) pop-up diblokir → pesan jelas di dialog; (f) akun guru pengampu non-admin dapat mencetak.
 
+## §Materi.ViewerGambarBesar (2026-11-18)
+
+1. Jangan kembalikan `max-height` tetap kecil (22–30rem) pada `.mh-blok--gambar img` — membuat poster portrait kecil di PC.
+2. Di desktop **jangan** `width: auto` saja tanpa lebar kartu; pakai `width: 100%` + `object-fit: contain` agar mengisi kartu.
+3. Halaman hanya gambar → class `mh-page--poster` (padding tipis). Deteksi di `MateriHalamanViewer`, bukan di data.
+4. Di area siswa (`.sw-app`) cadangkan ruang nav bawah HP saat hitung `max-height` (≈14rem).
+5. Tetap `object-fit: contain` — jangan `cover` (memotong isi materi).
+
+---
+
 ## §Materi.MediaPreview (2026-11-18)
 
 1. Pratinjau form File memakai `URL.createObjectURL` — **wajib** `URL.revokeObjectURL` saat viewer ditutup agar tidak bocor memori.

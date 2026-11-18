@@ -1,3 +1,16 @@
+## 2026-11-18 — Viewer materi: gambar/poster lebih besar di PC & HP
+
+- **Masalah:** materi dari unggah gambar (halaman poster) tampil kecil di tengah layar PC (banyak ruang kosong) dan kurang maksimal di HP.
+- **Akar:** `max-height` gambar dibatasi 22–30rem dan di desktop `width: auto` → poster portrait mengecil.
+- **Perbaikan CSS** (`materi-halaman.css`):
+  - Gambar memakai hampir penuh viewport: `max-height: min(78–86vh, calc(100dvh − …))`, lebar 100% kartu.
+  - Mode **`mh-page--poster`** bila halaman hanya berisi blok gambar (padding tipis, tinggi minimum, bayangan lembut).
+  - Cadangan ruang nav melayang siswa di HP (`.sw-app`).
+- **Viewer:** `MateriHalamanViewer` menandai halaman poster otomatis.
+- Berlaku guru & siswa, mapel / TKA / lomba (komponen viewer sama).
+- File: `src/styles/materi-halaman.css`, `src/components/materi/MateriHalamanViewer.tsx`.
+- Antiregresi: §Materi.ViewerGambarBesar.
+
 ## 2026-11-18 — Materi: pratinjau file, YouTube, dan tautan
 
 - Form tambah materi (File / YouTube / Tautan): tombol **Pratinjau** sebelum simpan.

@@ -32,6 +32,12 @@ export default function MateriHalamanViewer({ materi, awal = 0, onTutup, mode = 
   const page: MateriHalaman | undefined = pages[idx]
   const total = pages.length
 
+  /** Halaman hanya berisi gambar (poster/slide) — layout lebih penuh. */
+  const halamanPoster = useMemo(() => {
+    if (!page || !Array.isArray(page.blok) || page.blok.length === 0) return false
+    return page.blok.every((b) => b.tipe === 'gambar')
+  }, [page])
+
   /** Muat KaTeX hanya jika halaman aktif (atau materi) memuat tanda rumus. */
   const butuhKatex = useMemo(() => {
     if (!page) return false
@@ -79,7 +85,10 @@ export default function MateriHalamanViewer({ materi, awal = 0, onTutup, mode = 
         </div>
       </header>
 
-      <article className="mh-page" key={page?.id || idx}>
+      <article
+        className={`mh-page${halamanPoster ? ' mh-page--poster' : ''}`}
+        key={page?.id || idx}
+      >
         {page?.blok.map((b) => {
           if (b.tipe === 'teks') {
             const bersih = bersihHtmlMateri(b.html)
