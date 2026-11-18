@@ -1,3 +1,14 @@
+## 2026-11-18 — Materi halaman: tempel gambar dari clipboard
+
+- **Masalah:** Menyelipkan gambar ke materi halaman hanya lewat unggah file atau generate AI — harus simpan file dulu.
+- **Perbaikan:** Di editor halaman (mode edit), **Ctrl+V / Cmd+V** (atau tempel di HP) menempel gambar dari clipboard langsung ke blok.
+  - Prioritas target: blok yang dipilih «Unggah/Ganti» → blok gambar kosong (petunjuk AI) → blok gambar baru.
+  - Beberapa gambar di clipboard diunggah berurutan.
+  - Tetap lewat `unggahGambarHalaman` (kompres + Storage), batas ukuran sama.
+  - Teks di clipboard tidak diganggu jika tidak ada gambar.
+- File: `src/components/materi/MateriHalamanEditor.tsx`.
+- Antiregresi: §Materi.TempelGambar.
+
 ## 2026-11-18 — Materi: dukung lebih dari satu TP per materi
 
 - **Masalah:** Form buat/edit materi hanya mengizinkan **satu** Tujuan Pembelajaran. Materi satu tema/bab sering mencakup beberapa TP.

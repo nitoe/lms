@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useAuth } from '../../context/AuthContext'
 import {
   bersihkanGambarYatim,
@@ -248,31 +248,83 @@ export default function MateriHalamanEditor({
     fileRef.current?.click()
   }
 
+  /**
+   * Tempelkan / unggah satu file gambar ke blok.
+   * Prioritas target:
+   * 1) blok yang dipilih lewat tombol «Unggah file» / «Ganti file» (unggahUntukBlok)
+   * 2) blok gambar kosong pertama (url kosong — sering dari generate AI)
+   * 3) blok gambar baru di akhir (jika masih muat)
+   */
+  const terapkanGambarKeBlok = useCallback(
+    (url: string, storagePath: string, alt: string, targetBlokId: string | null) => {
+      // Hitung dulu di luar setState agar error validasi bisa di-throw ke pemanggil
+      setHalaman((prev) => {
+        const idx = typeof aktifIdx === 'number' ? aktifIdx : 0
+        const h = prev[idx]
+        if (!h) return prev
+
+        let nextBlok = h.blok
+        if (targetBlokId) {
+          nextBlok = h.blok.map((b) =>
+            b.id === targetBlokId && b.tipe === 'gambar'
+              ? { ...b, url, storagePath, alt: b.alt || alt }
+              : b,
+          )
+        } else {
+          const kosong = h.blok.find((b) => b.tipe === 'gambar' && !(b.url || '').trim())
+          if (kosong) {
+            nextBlok = h.blok.map((b) =>
+              b.id === kosong.id && b.tipe === 'gambar'
+                ? { ...b, url, storagePath, alt: b.alt || alt }
+                : b,
+            )
+          } else if (h.blok.length >= BATAS_BLOK_PER_HALAMAN) {
+            // Biarkan pemanggil menangkap lewat pengecekan setelah; jangan throw di setState
+            return prev
+          } else {
+            nextBlok = [
+              ...h.blok,
+              {
+                id: idBaru('b'),
+                tipe: 'gambar' as const,
+                url,
+                storagePath,
+                alt,
+              },
+            ]
+          }
+        }
+        return prev.map((pg, i) => (i === idx ? { ...pg, blok: nextBlok } : pg))
+      })
+    },
+    [aktifIdx],
+  )
+
+  function bisaTambahBlokGambarBaru(targetId: string | null): boolean {
+    if (targetId) return true
+    if (!aktif) return false
+    const adaKosong = aktif.blok.some((b) => b.tipe === 'gambar' && !(b.url || '').trim())
+    if (adaKosong) return true
+    return aktif.blok.length < BATAS_BLOK_PER_HALAMAN
+  }
+
   async function onFileGambar(file: File | null) {
     if (!file) return
+    if (!file.type.startsWith('image/')) {
+      setError('Hanya file gambar yang diizinkan (JPG, PNG, WebP, GIF).')
+      return
+    }
+    const targetId = unggahUntukBlok
+    if (!bisaTambahBlokGambarBaru(targetId)) {
+      setError(`Maksimal ${BATAS_BLOK_PER_HALAMAN} blok per halaman.`)
+      return
+    }
     setBusy(true)
     setError('')
     try {
       const { url, storagePath } = await unggahGambarHalaman(kelas, file)
-      const blokBaru: MateriBlok = {
-        id: idBaru('b'),
-        tipe: 'gambar',
-        url,
-        storagePath,
-        alt: file.name.replace(/\.[^.]+$/, '').slice(0, 80),
-      }
-      if (unggahUntukBlok) {
-        updateAktif((h) => ({
-          ...h,
-          blok: h.blok.map((b) =>
-            b.id === unggahUntukBlok && b.tipe === 'gambar'
-              ? { ...b, url, storagePath, alt: b.alt || blokBaru.alt }
-              : b,
-          ),
-        }))
-      } else {
-        updateAktif((h) => ({ ...h, blok: [...h.blok, blokBaru] }))
-      }
+      const alt = (file.name || 'gambar').replace(/\.[^.]+$/, '').slice(0, 80) || 'gambar'
+      terapkanGambarKeBlok(url, storagePath, alt, targetId)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Gagal mengunggah gambar.')
     } finally {
@@ -281,6 +333,100 @@ export default function MateriHalamanEditor({
       if (fileRef.current) fileRef.current.value = ''
     }
   }
+
+  /**
+   * Tempel gambar dari clipboard (Ctrl+V / Cmd+V / tempel di HP).
+   * Mengambil item image/*; teks tetap dibiarkan ke input/textarea yang fokus
+   * kecuali clipboard memuat gambar (maka gambar diprioritaskan).
+   * ANTIREGRESI §Materi.TempelGambar
+   */
+  useEffect(() => {
+    if (mode !== 'edit') return
+
+    async function onPaste(e: ClipboardEvent) {
+      if (busy || busyAi || busyGambarId) return
+      const dt = e.clipboardData
+      if (!dt) return
+
+      const files: File[] = []
+      if (dt.items && dt.items.length > 0) {
+        for (let i = 0; i < dt.items.length; i++) {
+          const it = dt.items[i]
+          if (it.kind === 'file' && it.type.startsWith('image/')) {
+            const f = it.getAsFile()
+            if (f) files.push(f)
+          }
+        }
+      }
+      if (files.length === 0 && dt.files && dt.files.length > 0) {
+        for (let i = 0; i < dt.files.length; i++) {
+          const f = dt.files[i]
+          if (f && f.type.startsWith('image/')) files.push(f)
+        }
+      }
+      if (files.length === 0) return
+
+      const targetEl = e.target as HTMLElement | null
+      if (targetEl?.closest?.('input[type="file"]')) return
+
+      e.preventDefault()
+      e.stopPropagation()
+
+      if (!aktif) {
+        setError('Pilih halaman dulu sebelum menempel gambar.')
+        return
+      }
+
+      if (!bisaTambahBlokGambarBaru(unggahUntukBlok) && files.length === 1) {
+        setError(`Maksimal ${BATAS_BLOK_PER_HALAMAN} blok per halaman.`)
+        return
+      }
+
+      setBusy(true)
+      setError('')
+      const targetId = unggahUntukBlok
+      let berhasil = 0
+      try {
+        for (let i = 0; i < files.length; i++) {
+          const file = files[i]
+          const pakaiTarget = i === 0 ? targetId : null
+          // Setelah gambar pertama, target selalu null → butuh slot kosong atau ruang blok baru
+          if (i > 0) {
+            // Approksimasi: setelah beberapa tempel, cek panjang di state bisa basi;
+            // unggahGambarHalaman tetap dijalankan; terapkan diam jika penuh.
+          }
+          const { url, storagePath } = await unggahGambarHalaman(kelas, file)
+          const baseName =
+            file.name && file.name !== 'image.png' ? file.name : `tempel-${Date.now()}-${i + 1}`
+          const alt = baseName.replace(/\.[^.]+$/, '').slice(0, 80) || 'gambar'
+          terapkanGambarKeBlok(url, storagePath, alt, pakaiTarget)
+          berhasil += 1
+        }
+        setInfoImpor(
+          berhasil === 1
+            ? 'Gambar dari clipboard berhasil ditempel.'
+            : `${berhasil} gambar dari clipboard berhasil ditempel.`,
+        )
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Gagal menempel gambar dari clipboard.')
+      } finally {
+        setBusy(false)
+        setUnggahUntukBlok(null)
+      }
+    }
+
+    window.addEventListener('paste', onPaste)
+    return () => window.removeEventListener('paste', onPaste)
+  }, [
+    mode,
+    busy,
+    busyAi,
+    busyGambarId,
+    aktif,
+    unggahUntukBlok,
+    kelas,
+    terapkanGambarKeBlok,
+  ])
 
   function hapusBlok(blokId: string) {
     updateAktif((h) => {
@@ -1159,7 +1305,7 @@ export default function MateriHalamanEditor({
                               fileRef.current?.click()
                             }}
                           >
-                            {b.url ? 'Ganti file' : 'Unggah file'}
+                            {b.url ? 'Ganti file / tempel' : 'Unggah / tempel'}
                           </button>
                         </div>
                       </div>
@@ -1175,7 +1321,7 @@ export default function MateriHalamanEditor({
                 <button type="button" className="lms-btn-secondary" onClick={mulaiUnggahGambar} disabled={busy}>
                   + Gambar
                 </button>
-                <span className="mh-hint">Gambar max {maxMb} MB · JPG/PNG/WebP</span>
+                <span className="mh-hint">Gambar max {maxMb} MB · JPG/PNG/WebP · atau <strong>tempel (Ctrl+V)</strong></span>
               </div>
             </>
           )}

@@ -27,6 +27,16 @@ Bila error tetap permission setelah rules 300 ter-deploy: cek penugasan `penugas
 
 ---
 
+
+## §Materi.TempelGambar — Paste clipboard ke blok gambar (2026-11-18)
+
+1. Listener `paste` hanya aktif di mode **edit** editor halaman (`MateriHalamanEditor`).
+2. Hanya menangani item/file `image/*`. Clipboard teks murni dibiarkan ke input/textarea.
+3. Unggah **wajib** lewat `unggahGambarHalaman` (kompres + Storage) — jangan simpan data-URL mentah di dokumen materi.
+4. Target blok: `unggahUntukBlok` (tombol Ganti) → blok gambar `url` kosong → blok baru (cek `BATAS_BLOK_PER_HALAMAN`).
+5. Jangan `preventDefault` jika tidak ada gambar di clipboard.
+
+
 ## §Materi.MultiTp — Satu materi boleh lebih dari satu TP (2026-11-18)
 
 **Jangan kembalikan ke single-select TP.** Materi tema/bab sering mencakup beberapa Tujuan Pembelajaran.
