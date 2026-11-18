@@ -719,3 +719,9 @@ Regresi: `firestore.rules` di repo `nitoe/lms` tidak memuat rules Lomba (`lms_lo
 4. Rules: `jenis` **wajib** memuat `'halaman'` **dan** `'html'`. Deploy rules setelah ubah (file utuh ke SDM01Penilaian). Tanpa itu create/update HTML & halaman ditolak permission.
 5. Viewer: selalu lewat `MateriHtmlViewer` + `dangerouslySetInnerHTML` **setelah** `bersihHtmlLengkap`. Jangan render `kontenHtml` mentah.
 6. Lomba: setiap create materi (file/youtube/tautan/html/**halaman**) di scope lomba **wajib** menyertakan `lombaId` di dokumen (rules `lombaKontenBoleh`).
+
+### §MateriHtml.7–.9 Optimasi URL gambar (2026-11-18)
+
+7. Setelah DOMPurify, **wajib** `optimasiGambarEksternal` (jangan skip). Drive share-link tanpa normalisasi sering gagal load di `<img>`.
+8. Jangan mengizinkan `style` / `onerror` / `onload` pada img demi keamanan. `referrerpolicy="no-referrer"` cukup untuk banyak host hotlink.
+9. Materi HTML yang **sudah tersimpan** sebelum optimasi: viewer memanggil `bersihHtmlLengkap` lagi saat tampil, jadi URL Drive lama ikut dinormalisasi tanpa migrasi data.

@@ -1,3 +1,16 @@
+## 2026-11-18 — Optimasi sanitasi gambar eksternal (materi HTML)
+
+- Pipeline `bersihHtmlLengkap`: DOMPurify → **`optimasiGambarEksternal`**.
+- Normalisasi URL:
+  - Google Drive (`/file/d/ID/view`, `open?id=`, `uc?id=`) → `https://drive.google.com/uc?export=view&id=…`
+  - Dropbox `?dl=0` → `?raw=1`
+  - `//host/…` dan `http://` → `https://`
+  - Tolak `javascript:` / `data:` / `blob:`
+- Atribut otomatis pada `<img>`: `loading="lazy"`, `decoding="async"`, `referrerpolicy="no-referrer"` (bantu hotlink imgbb/postimg), `alt=""` bila kosong.
+- `srcset` ikut dinormalisasi per URL.
+- File: `src/lib/html.ts` saja. **Tidak perlu deploy rules.**
+- Antiregresi: §MateriHtml.7–.9.
+
 ## 2026-11-18 — Materi: dukungan sumber HTML (paste kode / file .html) + gambar eksternal
 
 - Guru (termasuk di modul **Lomba**) dapat menambah materi jenis **HTML**: tempel kode HTML atau unggah file `.html` / `.htm`.
