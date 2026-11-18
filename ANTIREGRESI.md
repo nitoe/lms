@@ -734,3 +734,11 @@ Regresi: `firestore.rules` di repo `nitoe/lms` tidak memuat rules Lomba (`lms_lo
 3. Klien `SiswaLombaDetail`: muat materi **hanya** setelah `l.siswaIds.includes(sesi.id)`.
 4. `daftarMateriKelas` (halaman Materi mapel) wajib skip `m.lombaId` agar materi lomba tidak muncul di kurikulum kelas.
 5. Pratinjau HTML guru: `bersihHtmlLengkap` + `MateriHtmlViewer` sebelum simpan; id lokal `pratinjau-lokal` tidak ditulis ke Firestore.
+
+## §MateriHtml.Iframe (2026-11-18)
+
+1. Jangan DOMPurify-kan modul interaktif (style/script/details/svg) saat **simpan** — gunakan `siapkanSimpanHtml`.
+2. Tampil dokumen penuh hanya lewat **iframe srcdoc** + sandbox **tanpa** `allow-same-origin`. Jangan `dangerouslySetInnerHTML` untuk dokumen penuh.
+3. `allow-scripts` boleh; jangan tambah `allow-same-origin` (bocor ke parent).
+4. Cuplikan sederhana tetap `bersihHtmlLengkap` + inline.
+5. Materi yang sudah ter-strip di Firestore harus diunggah ulang oleh guru.

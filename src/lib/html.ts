@@ -336,3 +336,70 @@ export function bersihHtmlLengkap(html: string | undefined): string {
   })
   return optimasiGambarEksternal(sanitized)
 }
+
+
+/**
+ * Apakah konten butuh dokumen penuh di iframe (modul interaktif).
+ * Deteksi: doctype/html, style, script, details/summary, svg, form input/button.
+ * Contoh nyata: MIPA Quest (CSS + JS + progress + kuis).
+ */
+export function htmlButuhDokumenPenuh(raw: string | undefined): boolean {
+  if (!raw) return false
+  const t = raw.slice(0, 200_000)
+  return /<!DOCTYPE\s+html/i.test(t)
+    || /<\s*html[\s>]/i.test(t)
+    || /<\s*style[\s>]/i.test(t)
+    || /<\s*script[\s>]/i.test(t)
+    || /<\s*details[\s>]/i.test(t)
+    || /<\s*svg[\s>]/i.test(t)
+    || /<\s*(?:button|input|select|textarea|label)\b/i.test(t)
+}
+
+/**
+ * Siapkan dokumen HTML utuh untuk iframe (srcdoc).
+ * Mempertahankan style, script, SVG, details, form — tidak lewat DOMPurify.
+ * Keamanan di lapisan viewer: sandbox iframe tanpa allow-same-origin.
+ */
+export function siapkanHtmlDokumen(raw: string | undefined): string {
+  const t = (raw ?? '').trim()
+  if (!t) return ''
+
+  // Sudah dokumen lengkap
+  if (/<!DOCTYPE/i.test(t) || /<\s*html[\s>]/i.test(t)) {
+    return t
+  }
+
+  // Ada <body>…</body> (mungkin + head/style di luar)
+  const body = t.match(/<body[^>]*>([\s\S]*?)<\/body>/i)
+  const head = t.match(/<head[^>]*>([\s\S]*?)<\/head>/i)
+  if (body) {
+    const headInner = head ? head[1] : '<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">'
+    return `<!DOCTYPE html><html lang="id"><head>${headInner}</head><body>${body[1]}</body></html>`
+  }
+
+  // Fragmen: bungkus minimal agar CSS/JS relatif tetap punya dokumen
+  return (
+    '<!DOCTYPE html><html lang="id"><head>'
+    + '<meta charset="utf-8">'
+    + '<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">'
+    + '</head><body>'
+    + t
+    + '</body></html>'
+  )
+}
+
+/**
+ * Simpan materi HTML: jaga konten interaktif (style/script) agar modul seperti
+ * MIPA Quest tetap utuh. Hanya tolak kosong & protokol berbahaya kasar di URL.
+ * Sanitasi agresif (DOMPurify) hanya untuk mode cuplikan sederhana — lihat bersihHtmlLengkap.
+ */
+export function siapkanSimpanHtml(raw: string | undefined): string {
+  const t = (raw ?? '').trim()
+  if (!t) return ''
+  // Tolak javascript: di atribut umum (bukan menghapus <script> internal modul)
+  const aman = t.replace(
+    /\s(href|src|xlink:href)\s*=\s*(["'])\s*javascript:[^"']*\2/gi,
+    ' $1=$2#$2',
+  )
+  return aman
+}

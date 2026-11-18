@@ -1,3 +1,16 @@
+## 2026-11-18 — Materi HTML: iframe dokumen penuh (modul interaktif)
+
+- **Masalah:** Pratinjau/simpan memakai DOMPurify + body-only → modul seperti *MIPA Quest* (CSS, script, details, SVG, kuis, progress) hancur/ tampil jelek.
+- **Simpan:** `siapkanSimpanHtml` menyimpan dokumen HTML utuh (style/script tetap). Batas tetap 400.000 karakter. Cuplikan kosong tetap ditolak.
+- **Tampil:**
+  - Dokumen interaktif (`htmlButuhDokumenPenuh`) → **iframe** `srcdoc` + `sandbox="allow-scripts allow-forms allow-modals allow-popups allow-downloads"` **tanpa** `allow-same-origin` (skrip tidak menyentuh parent).
+  - Cuplikan sederhana → tetap DOMPurify + optimasi gambar eksternal (inline).
+- **CSS:** `.mh-html-iframe` tinggi ~viewport agar modul full-page nyaman dibaca.
+- File: `src/lib/html.ts`, `src/lib/materi.ts`, `src/components/materi/MateriHtmlViewer.tsx`, `src/styles/materi-halaman.css`.
+- Materi HTML yang sudah tersimpan **setelah strip lama** perlu diunggah ulang agar interaktif.
+- Tidak perlu ubah firestore.rules (batas kontenHtml 400k sudah cukup untuk ~90 KB).
+- Antiregresi: §MateriHtml.Iframe.
+
 ## 2026-11-18 — Materi HTML: pratinjau + materi lomba hanya untuk peserta
 
 - **Pratinjau HTML (guru):** tombol «Pratinjau» di form + HTML sebelum simpan — menampilkan `MateriHtmlViewer` dari kode yang sedang diedit (termasuk gambar eksternal setelah sanitasi). Mencegah siswa mendapat halaman rusak.

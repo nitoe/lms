@@ -1008,3 +1008,42 @@
   border: 1px solid #e2e8f0;
   padding: 0.35rem 0.5rem;
 }
+
+/* ── Materi HTML dokumen penuh (iframe sandboxed) ── */
+.mh-viewer--html-full {
+  display: flex;
+  flex-direction: column;
+  min-height: calc(100dvh - 1rem);
+  max-width: none;
+}
+.mh-viewer--html-full .mh-viewer-head {
+  flex: 0 0 auto;
+}
+.mh-html-frame-wrap {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  margin: 0;
+  padding: 0 0.5rem 0.75rem;
+}
+.mh-html-iframe {
+  width: 100%;
+  flex: 1 1 auto;
+  min-height: min(85dvh, 1200px);
+  height: calc(100dvh - 7.5rem);
+  border: 1px solid #e2e8f0;
+  border-radius: 0.85rem;
+  background: #fff;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
+}
+@media (max-width: 640px) {
+  .mh-html-iframe {
+    min-height: 75dvh;
+    height: calc(100dvh - 6.25rem);
+    border-radius: 0.6rem;
+  }
+  .mh-html-frame-wrap {
+    padding-inline: 0.25rem;
+  }
+}

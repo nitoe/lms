@@ -30,7 +30,7 @@ import {
   BATAS_KONTEN_HTML,
   BATAS_UKURAN,
 } from '../types/materi'
-import { bersihHtmlLengkap, bersihHtmlMateri, htmlKosong } from './html'
+import { bersihHtmlLengkap, bersihHtmlMateri, htmlKosong, siapkanSimpanHtml, htmlButuhDokumenPenuh } from './html'
 import { normalisasiKelasList } from './kelasLms'
 
 function koleksi() {
@@ -197,34 +197,36 @@ export async function tambahMateri(input: MateriBaruInput): Promise<string> {
   let kontenHtml: string | undefined
 
   // 1) Paste / kode HTML langsung
+  // Modul interaktif (style/script/details/svg) disimpan utuh via siapkanSimpanHtml.
+  // Cuplikan sederhana tetap bisa lewat jalur yang sama — viewer pilih iframe vs inline.
   if (input.kontenHtml && input.kontenHtml.trim()) {
     jenis = 'html'
-    const bersih = bersihHtmlLengkap(input.kontenHtml)
-    if (!bersih || htmlKosong(bersih)) {
-      throw new Error('Konten HTML kosong setelah dibersihkan. Pastikan ada teks atau gambar.')
+    const simpan = siapkanSimpanHtml(input.kontenHtml)
+    if (!simpan || (!htmlButuhDokumenPenuh(simpan) && htmlKosong(bersihHtmlLengkap(simpan)))) {
+      throw new Error('Konten HTML kosong. Pastikan ada teks, gambar, atau struktur materi.')
     }
-    if (bersih.length > BATAS_KONTEN_HTML) {
+    if (simpan.length > BATAS_KONTEN_HTML) {
       throw new Error(
         `Konten HTML terlalu panjang (maks. ~${Math.round(BATAS_KONTEN_HTML / 1000)} KB karakter).`,
       )
     }
-    kontenHtml = bersih
+    kontenHtml = simpan
   } else if (input.file) {
     jenis = jenisDariFile(input.file)
     cekUkuran(input.file, jenis)
     if (jenis === 'html') {
       // Baca teks file HTML, jangan unggah biner ke Storage
       const teks = await input.file.text()
-      const bersih = bersihHtmlLengkap(teks)
-      if (!bersih || htmlKosong(bersih)) {
-        throw new Error('File HTML kosong atau tidak berisi konten yang diizinkan.')
+      const simpan = siapkanSimpanHtml(teks)
+      if (!simpan || (!htmlButuhDokumenPenuh(simpan) && htmlKosong(bersihHtmlLengkap(simpan)))) {
+        throw new Error('File HTML kosong atau tidak berisi konten yang dapat ditampilkan.')
       }
-      if (bersih.length > BATAS_KONTEN_HTML) {
+      if (simpan.length > BATAS_KONTEN_HTML) {
         throw new Error(
           `File HTML terlalu panjang (maks. ~${Math.round(BATAS_KONTEN_HTML / 1000)} KB karakter).`,
         )
       }
-      kontenHtml = bersih
+      kontenHtml = simpan
       fileName = input.file.name
       contentType = 'text/html'
       ukuran = input.file.size
