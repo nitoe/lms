@@ -27,6 +27,18 @@ Bila error tetap permission setelah rules 300 ter-deploy: cek penugasan `penugas
 
 ---
 
+## §Materi.MultiTp — Satu materi boleh lebih dari satu TP (2026-11-18)
+
+**Jangan kembalikan ke single-select TP.** Materi tema/bab sering mencakup beberapa Tujuan Pembelajaran.
+
+1. Field dokumen: `tpIds: string[]` (semua TP) + `tpId`/`tpNomor`/`tpNama` (utama = urut nomor terkecil).
+2. UI form materi & editor halaman: multi-select (toggle). Validasi: minimal 1 TP kecuali Lomba/TKA (`tanpaTpWajib`).
+3. Simpan lewat `normalisasiTpFields` di `lib/materi.ts` — jangan tulis hanya `tpId` tanpa `tpIds`.
+4. Dokumen lama tanpa `tpIds` tetap dibaca sebagai `[tpId]`.
+5. Batas: `BATAS_TP_PER_MATERI = 12` di `types/materi.ts`.
+6. Grouping daftar tetap by `tpId` utama; label boleh menampilkan «(+N TP lain)».
+
+
 ## §128. Query kelasList array-contains (berbagi paralel) — permission list
 
 128.1 Query sekunder `where('kelasList','array-contains', kelas)` di `daftarTugas`, `daftarKuis`, `daftarMateri` **wajib** didukung rules **dan** menyertakan constraint `mapel`.

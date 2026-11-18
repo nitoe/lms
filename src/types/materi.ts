@@ -60,11 +60,19 @@ export interface MateriLms {
   ukuran?: number
   /** Nama bab / unit (bebas), dihubungkan ke TP. */
   bab?: string
-  /** ID dokumen `tp_kktp/{id}`. */
+  /**
+   * ID dokumen `tp_kktp/{id}` — TP utama (kompatibilitas, pengelompokan daftar, AI).
+   * Selalu = elemen pertama `tpIds` bila ada.
+   */
   tpId?: string
   tpNomor?: number
-  /** Nama TP (denormalisasi untuk tampilan). */
+  /** Nama TP utama (denormalisasi untuk tampilan). */
   tpNama?: string
+  /**
+   * Semua TP yang dihubungkan ke materi ini (satu tema/bab bisa mencakup >1 TP).
+   * Dokumen lama tanpa field ini = dianggap `[tpId]` bila tpId ada.
+   */
+  tpIds?: string[]
   urutan: number
   dibuatOleh: string
   dibuatOlehNama?: string
@@ -111,3 +119,6 @@ export const BATAS_BLOK_PER_HALAMAN = 30
 
 /** Batas karakter konten HTML (paste / file .html) — ~400 KB. */
 export const BATAS_KONTEN_HTML = 400_000
+
+/** Maksimal TP yang bisa dihubungkan ke satu materi (ANTIREGRESI §Materi.MultiTp). */
+export const BATAS_TP_PER_MATERI = 12

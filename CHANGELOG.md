@@ -1,3 +1,17 @@
+## 2026-11-18 — Materi: dukung lebih dari satu TP per materi
+
+- **Masalah:** Form buat/edit materi hanya mengizinkan **satu** Tujuan Pembelajaran. Materi satu tema/bab sering mencakup beberapa TP.
+- **Perbaikan:**
+  - Field baru `tpIds: string[]` di dokumen `lms_materi` (semua TP terhubung).
+  - `tpId` / `tpNomor` / `tpNama` tetap ada sebagai **TP utama** (elemen pertama, diurut nomor) — kompatibilitas grouping daftar & AI.
+  - UI form (File/YouTube/Tautan/HTML) dan editor Halaman: pilih TP dengan **multi-select** (klik lagi untuk batal).
+  - Label grup daftar: «TP 3. … (+2 TP lain)» bila lebih dari satu.
+  - Batas: `BATAS_TP_PER_MATERI = 12`.
+  - Dokumen lama tanpa `tpIds` tetap valid (dianggap `[tpId]`).
+- File: `src/types/materi.ts`, `src/lib/materi.ts`, `src/components/MateriPanel.tsx`, `src/components/materi/MateriHalamanEditor.tsx`.
+- Antiregresi: §Materi.MultiTp.
+- Tidak perlu ubah firestore.rules (field opsional, tidak ada constraint size pada tpIds).
+
 ## 2026-11-18 — Fix TS: React.Touch vs Touch di MateriGambarZoom
 
 - `distTouches` memakai tipe `{ clientX; clientY }` agar cocok dengan `React.Touch` (DOM `Touch` punya field ekstra di lib.dom).

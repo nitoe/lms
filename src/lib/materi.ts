@@ -28,6 +28,7 @@ import {
   BATAS_BLOK_PER_HALAMAN,
   BATAS_HALAMAN_PER_MATERI,
   BATAS_KONTEN_HTML,
+  BATAS_TP_PER_MATERI,
   BATAS_UKURAN,
 } from '../types/materi'
 import { bersihHtmlLengkap, bersihHtmlMateri, htmlKosong, siapkanSimpanHtml, htmlButuhDokumenPenuh } from './html'
@@ -36,6 +37,49 @@ import { normalisasiKelasList } from './kelasLms'
 function koleksi() {
   return collection(db, 'lms_materi')
 }
+
+
+/**
+ * Normalisasi field TP untuk simpan.
+ * - Menerima tpIds (preferensi) atau tpId tunggal (kompatibilitas).
+ * - Primary = elemen pertama (untuk grouping & denormalisasi).
+ * - Dokumen lama tanpa tpIds tetap valid (klien baca tpId saja).
+ */
+export function normalisasiTpFields(input: {
+  tpId?: string
+  tpIds?: string[]
+  tpNomor?: number
+  tpNama?: string
+  tpList?: { id: string; nomorTp: number; namaTp: string }[]
+}): {
+  tpId?: string
+  tpIds?: string[]
+  tpNomor?: number
+  tpNama?: string
+} {
+  let ids: string[] = []
+  if (Array.isArray(input.tpIds) && input.tpIds.length > 0) {
+    ids = [...new Set(input.tpIds.map(String).filter(Boolean))]
+  } else if (input.tpId) {
+    ids = [String(input.tpId)]
+  }
+  if (ids.length > BATAS_TP_PER_MATERI) {
+    throw new Error(`Maksimal ${BATAS_TP_PER_MATERI} Tujuan Pembelajaran per materi.`)
+  }
+  if (ids.length === 0) {
+    return {}
+  }
+  const primaryId = ids[0]
+  const list = input.tpList || []
+  const primary = list.find((t) => t.id === primaryId)
+  return {
+    tpId: primaryId,
+    tpIds: ids,
+    tpNomor: primary ? primary.nomorTp : input.tpNomor,
+    tpNama: primary ? primary.namaTp : input.tpNama,
+  }
+}
+
 
 export async function daftarMateri(kelas: string, mapel: string): Promise<MateriLms[]> {
   const k = String(kelas).toUpperCase()
@@ -160,9 +204,12 @@ export type MateriBaruInput = {
   judul: string
   deskripsi?: string
   bab?: string
+  /** TP utama (kompatibilitas). Lebih baik isi tpIds. */
   tpId?: string
   tpNomor?: number
   tpNama?: string
+  /** Semua TP yang dihubungkan (satu tema/bab bisa >1 TP). */
+  tpIds?: string[]
   urutan?: number
   /** Untuk youtube / tautan */
   url?: string
@@ -274,10 +321,14 @@ export async function tambahMateri(input: MateriBaruInput): Promise<string> {
   if (input.lombaId) payload.lombaId = input.lombaId
   if (input.deskripsi?.trim()) payload.deskripsi = input.deskripsi.trim()
   if (input.bab?.trim()) payload.bab = input.bab.trim()
-  if (input.tpId) {
-    payload.tpId = input.tpId
-    if (typeof input.tpNomor === 'number') payload.tpNomor = input.tpNomor
-    if (input.tpNama) payload.tpNama = input.tpNama
+  {
+    const tp = normalisasiTpFields(input)
+    if (tp.tpId) {
+      payload.tpId = tp.tpId
+      payload.tpIds = tp.tpIds
+      if (typeof tp.tpNomor === 'number') payload.tpNomor = tp.tpNomor
+      if (tp.tpNama) payload.tpNama = tp.tpNama
+    }
   }
   if (url) payload.url = url
   if (storagePath) payload.storagePath = storagePath
@@ -378,9 +429,12 @@ export type MateriHalamanInput = {
   judul: string
   deskripsi?: string
   bab?: string
+  /** TP utama (kompatibilitas). Lebih baik isi tpIds. */
   tpId?: string
   tpNomor?: number
   tpNama?: string
+  /** Semua TP yang dihubungkan (satu tema/bab bisa >1 TP). */
+  tpIds?: string[]
   urutan?: number
   namaGuru?: string
   halaman: MateriHalaman[]
@@ -398,7 +452,9 @@ export async function tambahMateriHalaman(input: MateriHalamanInput): Promise<st
   const judul = input.judul.trim()
   if (!judul) throw new Error('Judul wajib diisi.')
   // TP wajib hanya di mapel kelas biasa. Lomba (lombaId) / konteks tanpa TP: boleh kosong.
-  if (!input.lombaId && !input.tpId) {
+  // Minimal satu TP: tpIds atau tpId.
+  const adaTp = (Array.isArray(input.tpIds) && input.tpIds.length > 0) || Boolean(input.tpId)
+  if (!input.lombaId && !adaTp) {
     throw new Error('Tujuan Pembelajaran wajib dipilih.')
   }
 
@@ -419,11 +475,17 @@ export async function tambahMateriHalaman(input: MateriHalamanInput): Promise<st
   }
   // Modul Lomba: rules (lombaKontenBoleh) WAJIB melihat lombaId di dokumen — ANTIREGRESI §Lomba.10.
   if (input.lombaId) payload.lombaId = input.lombaId
-  if (input.tpId) payload.tpId = input.tpId
   if (input.deskripsi?.trim()) payload.deskripsi = input.deskripsi.trim()
   if (input.bab?.trim()) payload.bab = input.bab.trim()
-  if (typeof input.tpNomor === 'number') payload.tpNomor = input.tpNomor
-  if (input.tpNama) payload.tpNama = input.tpNama
+  {
+    const tp = normalisasiTpFields(input)
+    if (tp.tpId) {
+      payload.tpId = tp.tpId
+      payload.tpIds = tp.tpIds
+      if (typeof tp.tpNomor === 'number') payload.tpNomor = tp.tpNomor
+      if (tp.tpNama) payload.tpNama = tp.tpNama
+    }
+  }
 
   const refDoc = await addDoc(koleksi(), payload)
   return refDoc.id
@@ -444,6 +506,7 @@ export async function tambahMateriGambarBerurutan(input: {
   tpId?: string
   tpNomor?: number
   tpNama?: string
+  tpIds?: string[]
   urutan?: number
   namaGuru?: string
   files: File[]
@@ -470,7 +533,8 @@ export async function tambahMateriGambarBerurutan(input: {
   const mapel = input.mapel.trim()
   const judul = input.judul.trim()
   if (!judul) throw new Error('Judul wajib diisi.')
-  if (!input.lombaId && !input.tpId) {
+  const adaTp = (Array.isArray(input.tpIds) && input.tpIds.length > 0) || Boolean(input.tpId)
+  if (!input.lombaId && !adaTp) {
     throw new Error('Tujuan Pembelajaran wajib dipilih.')
   }
 
@@ -504,6 +568,7 @@ export async function tambahMateriGambarBerurutan(input: {
     tpId: input.tpId,
     tpNomor: input.tpNomor,
     tpNama: input.tpNama,
+    tpIds: input.tpIds,
     urutan: input.urutan,
     namaGuru: input.namaGuru,
     halaman,
@@ -535,14 +600,24 @@ export async function simpanMateriHalaman(
     halaman,
     updatedAt: serverTimestamp(),
   }
-  if (input.tpId) payload.tpId = input.tpId
-  else payload.tpId = null
   if (input.deskripsi?.trim()) payload.deskripsi = input.deskripsi.trim()
   else payload.deskripsi = null
   if (input.bab?.trim()) payload.bab = input.bab.trim()
   else payload.bab = null
-  if (typeof input.tpNomor === 'number') payload.tpNomor = input.tpNomor
-  if (input.tpNama) payload.tpNama = input.tpNama
+  {
+    const tp = normalisasiTpFields(input)
+    if (tp.tpId) {
+      payload.tpId = tp.tpId
+      payload.tpIds = tp.tpIds
+      if (typeof tp.tpNomor === 'number') payload.tpNomor = tp.tpNomor
+      if (tp.tpNama) payload.tpNama = tp.tpNama
+    } else {
+      payload.tpId = null
+      payload.tpIds = null
+      payload.tpNomor = null
+      payload.tpNama = null
+    }
+  }
 
   await updateDoc(doc(db, 'lms_materi', id), payload)
 }

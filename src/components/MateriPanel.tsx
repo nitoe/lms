@@ -153,7 +153,7 @@ export default function MateriPanel({ kelas, mapel, lombaId, tpKelas }: Props) {
   const [judul, setJudul] = useState('')
   const [deskripsi, setDeskripsi] = useState('')
   const [bab, setBab] = useState('')
-  const [tpId, setTpId] = useState('')
+  const [tpIds, setTpIds] = useState<string[]>([])
   const [url, setUrl] = useState('')
   const [file, setFile] = useState<File | null>(null)
   /** Mode file: bisa beberapa gambar → materi halaman berurutan. */
@@ -230,9 +230,11 @@ export default function MateriPanel({ kelas, mapel, lombaId, tpKelas }: Props) {
       let label = 'Lainnya'
       if (key.startsWith('tp:')) {
         const first = items[0]
-        label = first.tpNomor
+        const nExtra = Array.isArray(first.tpIds) ? Math.max(0, first.tpIds.length - 1) : 0
+        const baseLabel = first.tpNomor
           ? `TP ${first.tpNomor}. ${first.tpNama || ''}`.trim()
           : first.tpNama || 'Tujuan Pembelajaran'
+        label = nExtra > 0 ? `${baseLabel} (+${nExtra} TP lain)` : baseLabel
       } else if (key.startsWith('bab:')) {
         label = key.slice(4)
       }
@@ -250,7 +252,7 @@ export default function MateriPanel({ kelas, mapel, lombaId, tpKelas }: Props) {
     setJudul('')
     setDeskripsi('')
     setBab('')
-    setTpId('')
+    setTpIds([])
     setUrl('')
     setFile(null)
     setFiles([])
@@ -266,12 +268,17 @@ export default function MateriPanel({ kelas, mapel, lombaId, tpKelas }: Props) {
       if (!mapel || mapel === 'Wali kelas') {
         throw new Error('Pilih ruang kelas dengan mata pelajaran yang valid, bukan «Wali kelas».')
       }
-      const tp = tpId ? tpList.find((t) => t.id === tpId) : undefined
-      if (!tanpaTpWajib && !tp) {
+      const selectedTps = tpIds
+        .map((id) => tpList.find((t) => t.id === id))
+        .filter((t): t is NonNullable<typeof t> => Boolean(t))
+      if (!tanpaTpWajib && selectedTps.length === 0) {
         throw new Error(
-          'Tujuan Pembelajaran wajib dipilih. Buat TP di aplikasi Penilaian jika daftar kosong.',
+          'Tujuan Pembelajaran wajib dipilih (boleh lebih dari satu). Buat TP di aplikasi Penilaian jika daftar kosong.',
         )
       }
+      // Primary = pertama terpilih (urut nomor TP agar stabil)
+      const ordered = [...selectedTps].sort((a, b) => a.nomorTp - b.nomorTp)
+      const primary = ordered[0]
       const base = {
         kelas: lombaId ? KELAS_LOMBA_BANK : kelas,
         mapel,
@@ -279,9 +286,10 @@ export default function MateriPanel({ kelas, mapel, lombaId, tpKelas }: Props) {
         judul,
         deskripsi: deskripsi || undefined,
         bab: bab || undefined,
-        tpId: tp?.id,
-        tpNomor: tp?.nomorTp,
-        tpNama: tp?.namaTp,
+        tpId: primary?.id,
+        tpNomor: primary?.nomorTp,
+        tpNama: primary?.namaTp,
+        tpIds: ordered.map((t) => t.id),
         namaGuru: profil?.nama,
       }
 
@@ -606,10 +614,18 @@ export default function MateriPanel({ kelas, mapel, lombaId, tpKelas }: Props) {
             <div className="flex items-center justify-between gap-2">
               <span className="text-xs font-semibold text-slate-800">
                 Tujuan Pembelajaran <span className="text-red-600">*</span>
+                <span className="font-normal text-slate-500"> (boleh lebih dari satu)</span>
               </span>
-              {tpId && (
+              {tpIds.length > 0 && (
                 <span className="text-[11px] font-medium text-muh-700">
-                  Terpilih: TP {tpList.find((x) => x.id === tpId)?.nomorTp ?? '—'}
+                  Terpilih: {tpIds.length} TP
+                  {tpIds.length === 1
+                    ? ` (TP ${tpList.find((x) => x.id === tpIds[0])?.nomorTp ?? '—'})`
+                    : ` (${tpIds
+                        .map((id) => tpList.find((x) => x.id === id)?.nomorTp)
+                        .filter(Boolean)
+                        .sort((a, b) => Number(a) - Number(b))
+                        .join(', ')})`}
                 </span>
               )}
             </div>
@@ -621,11 +637,12 @@ export default function MateriPanel({ kelas, mapel, lombaId, tpKelas }: Props) {
             ) : (
               <div
                 role="listbox"
-                aria-label="Pilih Tujuan Pembelajaran"
+                aria-multiselectable="true"
+                aria-label="Pilih Tujuan Pembelajaran (boleh lebih dari satu)"
                 className="materi-tp-list"
               >
                 {tpList.map((t) => {
-                  const aktif = tpId === t.id
+                  const aktif = tpIds.includes(t.id)
                   return (
                     <button
                       key={t.id}
@@ -633,7 +650,12 @@ export default function MateriPanel({ kelas, mapel, lombaId, tpKelas }: Props) {
                       role="option"
                       aria-selected={aktif}
                       onClick={() => {
-                        setTpId(t.id)
+                        setTpIds((prev) => {
+                          if (prev.includes(t.id)) {
+                            return prev.filter((id) => id !== t.id)
+                          }
+                          return [...prev, t.id]
+                        })
                         if (!bab) setBab(`TP ${t.nomorTp}`)
                       }}
                       className={`materi-tp-item ${aktif ? 'materi-tp-item--on' : ''}`}
@@ -647,7 +669,7 @@ export default function MateriPanel({ kelas, mapel, lombaId, tpKelas }: Props) {
                 })}
               </div>
             )}
-            <input type="hidden" value={tpId} required={!tanpaTpWajib} readOnly />
+            <input type="hidden" value={tpIds.join(',')} required={!tanpaTpWajib} readOnly />
           </div>
           )}
 
@@ -783,7 +805,7 @@ export default function MateriPanel({ kelas, mapel, lombaId, tpKelas }: Props) {
               className="lms-btn-primary"
               disabled={
                 busy ||
-                (!tanpaTpWajib && !tpId) ||
+                (!tanpaTpWajib && tpIds.length === 0) ||
                 (mode === 'html' && !kontenHtml.trim() && !file) ||
                 (mode === 'file' && files.length === 0 && !file) ||
                 (mode === 'youtube' && !url.trim()) ||

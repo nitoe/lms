@@ -50,7 +50,8 @@ type Meta = {
   judul: string
   deskripsi: string
   bab: string
-  tpId: string
+  /** Semua TP terpilih (boleh >1). Primary = urut nomor terkecil saat simpan. */
+  tpIds: string[]
 }
 
 function salinHalaman(list: MateriHalaman[]): MateriHalaman[] {
@@ -91,12 +92,20 @@ export default function MateriHalamanEditor({
 }: Props) {
   const { user } = useAuth()
   const bolehAi = bolehGenerateMateriAi(user?.uid)
-  const [meta, setMeta] = useState<Meta>(() => ({
-    judul: materiAwal?.judul || '',
-    deskripsi: materiAwal?.deskripsi || '',
-    bab: materiAwal?.bab || '',
-    tpId: materiAwal?.tpId || '',
-  }))
+  const [meta, setMeta] = useState<Meta>(() => {
+    const awalIds =
+      Array.isArray(materiAwal?.tpIds) && materiAwal!.tpIds!.length > 0
+        ? [...materiAwal!.tpIds!]
+        : materiAwal?.tpId
+          ? [materiAwal.tpId]
+          : []
+    return {
+      judul: materiAwal?.judul || '',
+      deskripsi: materiAwal?.deskripsi || '',
+      bab: materiAwal?.bab || '',
+      tpIds: awalIds,
+    }
+  })
   const [petunjukAi, setPetunjukAi] = useState('')
   const [busyAi, setBusyAi] = useState(false)
   /** id blok gambar yang sedang digenerate AI */
@@ -132,7 +141,7 @@ export default function MateriHalamanEditor({
    * Panel pengaturan (judul, TP, …).
    * Buka otomatis jika materi baru atau metadata belum lengkap.
    */
-  const metaAwalLengkap = Boolean(materiAwal?.judul && (lombaId || materiAwal?.tpId))
+  const metaAwalLengkap = Boolean(materiAwal?.judul && (lombaId || materiAwal?.tpId || (materiAwal?.tpIds && materiAwal.tpIds.length > 0)))
   const [panelMeta, setPanelMeta] = useState(!metaAwalLengkap)
   /** Panel unduh template / impor JSON halaman. */
   const [panelImpor, setPanelImpor] = useState(false)
@@ -141,8 +150,12 @@ export default function MateriHalamanEditor({
   const importRef = useRef<HTMLInputElement>(null)
 
   const aktif = halaman[aktifIdx] ?? halaman[0]
-  const tpTerpilih = tpList.find((t) => t.id === meta.tpId)
-  const metaLengkap = Boolean(meta.judul.trim() && (lombaId || meta.tpId))
+  const tpTerpilihList = meta.tpIds
+    .map((id) => tpList.find((t) => t.id === id))
+    .filter((t): t is NonNullable<typeof t> => Boolean(t))
+    .sort((a, b) => a.nomorTp - b.nomorTp)
+  const tpTerpilih = tpTerpilihList[0]
+  const metaLengkap = Boolean(meta.judul.trim() && (lombaId || meta.tpIds.length > 0))
 
   const updateAktif = useCallback(
     (fn: (h: MateriHalaman) => MateriHalaman) => {
@@ -298,7 +311,7 @@ export default function MateriHalamanEditor({
     setBusyAi(true)
     setError('')
     try {
-      const tp = tpList.find((t) => t.id === meta.tpId)
+      const tp = tpTerpilihList[0] ?? tpList.find((t) => meta.tpIds.includes(t.id))
       const draf = await generateMateriHalamanAi({
         mapel,
         kelas,
@@ -432,7 +445,7 @@ export default function MateriHalamanEditor({
         judul: meta.judul,
         deskripsi: meta.deskripsi,
         bab: meta.bab,
-        tpId: meta.tpId || undefined,
+        tpId: tpTerpilih?.id || undefined,
         tpNomor: tpTerpilih?.nomorTp,
         tpNama: tpTerpilih?.namaTp,
       },
@@ -473,24 +486,24 @@ export default function MateriHalamanEditor({
 
       // Meta kosong saja yang diisi dari file
       setMeta((m) => {
-        let tpId = m.tpId
-        if (!tpId) {
+        let tpIds = [...m.tpIds]
+        if (tpIds.length === 0) {
           if (hasil.metadata.tpId && tpList.some((t) => t.id === hasil.metadata.tpId)) {
-            tpId = hasil.metadata.tpId
+            tpIds = [hasil.metadata.tpId]
           } else if (typeof hasil.metadata.tpNomor === 'number') {
             const hit = tpList.find((t) => t.nomorTp === hasil.metadata.tpNomor)
-            if (hit) tpId = hit.id
+            if (hit) tpIds = [hit.id]
           } else if (hasil.metadata.tpNama) {
             const nama = hasil.metadata.tpNama.trim().toLowerCase()
             const hit = tpList.find((t) => (t.namaTp || '').trim().toLowerCase() === nama)
-            if (hit) tpId = hit.id
+            if (hit) tpIds = [hit.id]
           }
         }
         return {
           judul: m.judul.trim() ? m.judul : hasil.metadata.judul || m.judul,
           deskripsi: m.deskripsi.trim() ? m.deskripsi : hasil.metadata.deskripsi || m.deskripsi,
           bab: m.bab.trim() ? m.bab : hasil.metadata.bab || m.bab,
-          tpId,
+          tpIds,
         }
       })
 
@@ -547,10 +560,11 @@ export default function MateriHalamanEditor({
         setPanelMeta(true)
         throw new Error('Judul wajib diisi.')
       }
-      const tp = meta.tpId ? tpList.find((t) => t.id === meta.tpId) : undefined
+      const ordered = [...tpTerpilihList]
+      const tp = ordered[0]
       if (!lombaId && !tp) {
         setPanelMeta(true)
-        throw new Error('Tujuan Pembelajaran wajib dipilih.')
+        throw new Error('Tujuan Pembelajaran wajib dipilih (boleh lebih dari satu).')
       }
 
       const payload = {
@@ -562,6 +576,7 @@ export default function MateriHalamanEditor({
         tpId: tp?.id,
         tpNomor: tp?.nomorTp,
         tpNama: tp?.namaTp,
+        tpIds: ordered.map((t) => t.id),
         namaGuru,
         halaman,
         ...(lombaId ? { lombaId } : {}),
@@ -592,9 +607,10 @@ export default function MateriHalamanEditor({
       halaman,
       urutan: 0,
       dibuatOleh: '',
-      tpId: meta.tpId,
+      tpId: tpTerpilih?.id,
+      tpIds: meta.tpIds,
     }),
-    [materiAwal?.id, kelas, mapel, meta, halaman],
+    [materiAwal?.id, kelas, mapel, meta, halaman, tpTerpilih],
   )
 
   const maxMb = Math.round(BATAS_UKURAN.gambarHalaman / (1024 * 1024))
@@ -816,10 +832,14 @@ export default function MateriHalamanEditor({
               <div className="flex items-center justify-between gap-2">
                 <span className="text-xs font-semibold text-slate-800">
                   Tujuan Pembelajaran <span className="text-red-600">*</span>
+                  <span className="font-normal text-slate-500"> (boleh lebih dari satu)</span>
                 </span>
-                {tpTerpilih && (
+                {tpTerpilihList.length > 0 && (
                   <span className="text-[11px] font-medium text-emerald-700">
-                    Terpilih: TP {tpTerpilih.nomorTp}
+                    Terpilih: {tpTerpilihList.length} TP
+                    {tpTerpilihList.length === 1
+                      ? ` (TP ${tpTerpilihList[0].nomorTp})`
+                      : ` (${tpTerpilihList.map((t) => t.nomorTp).join(', ')})`}
                   </span>
                 )}
               </div>
@@ -828,9 +848,14 @@ export default function MateriHalamanEditor({
                   Belum ada TP di Penilaian untuk <strong>{mapel}</strong> · {kelas}.
                 </div>
               ) : (
-                <div role="listbox" aria-label="Pilih Tujuan Pembelajaran" className="materi-tp-list">
+                <div
+                  role="listbox"
+                  aria-multiselectable="true"
+                  aria-label="Pilih Tujuan Pembelajaran (boleh lebih dari satu)"
+                  className="materi-tp-list"
+                >
                   {tpList.map((t) => {
-                    const on = meta.tpId === t.id
+                    const on = meta.tpIds.includes(t.id)
                     return (
                       <button
                         key={t.id}
@@ -838,7 +863,14 @@ export default function MateriHalamanEditor({
                         role="option"
                         aria-selected={on}
                         className={`materi-tp-item ${on ? 'materi-tp-item--on' : ''}`}
-                        onClick={() => setMeta((m) => ({ ...m, tpId: t.id }))}
+                        onClick={() =>
+                          setMeta((m) => ({
+                            ...m,
+                            tpIds: m.tpIds.includes(t.id)
+                              ? m.tpIds.filter((id) => id !== t.id)
+                              : [...m.tpIds, t.id],
+                          }))
+                        }
                       >
                         <span className={`materi-tp-num ${on ? 'materi-tp-num--on' : ''}`}>
                           {t.nomorTp}
