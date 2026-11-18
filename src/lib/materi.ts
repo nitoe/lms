@@ -429,6 +429,88 @@ export async function tambahMateriHalaman(input: MateriHalamanInput): Promise<st
   return refDoc.id
 }
 
+/**
+ * Buat materi multi-gambar berurutan (jenis `halaman`).
+ * Setiap file gambar menjadi satu halaman dengan satu blok gambar.
+ * Urutan = urutan file yang dipilih pengguna.
+ * Dipakai dari form File saat >1 gambar dipilih — seragam untuk mapel, TKA, lomba.
+ */
+export async function tambahMateriGambarBerurutan(input: {
+  kelas: string
+  mapel: string
+  judul: string
+  deskripsi?: string
+  bab?: string
+  tpId?: string
+  tpNomor?: number
+  tpNama?: string
+  urutan?: number
+  namaGuru?: string
+  files: File[]
+  lombaId?: string
+}): Promise<string> {
+  const uid = auth.currentUser?.uid
+  if (!uid) throw new Error('Anda harus masuk terlebih dahulu.')
+
+  const files = input.files.filter((f) => f && f.type.startsWith('image/'))
+  if (files.length === 0) {
+    throw new Error('Pilih minimal satu file gambar.')
+  }
+  if (files.length > BATAS_HALAMAN_PER_MATERI) {
+    throw new Error(`Maksimal ${BATAS_HALAMAN_PER_MATERI} gambar per materi.`)
+  }
+  // Pastikan semua yang dikirim adalah gambar (bukan PDF/video tercampur).
+  if (files.length !== input.files.length) {
+    throw new Error(
+      'Mode beberapa gambar hanya untuk file gambar. Untuk PDF/video unggah satu per satu.',
+    )
+  }
+
+  const kelas = String(input.kelas).toUpperCase()
+  const mapel = input.mapel.trim()
+  const judul = input.judul.trim()
+  if (!judul) throw new Error('Judul wajib diisi.')
+  if (!input.lombaId && !input.tpId) {
+    throw new Error('Tujuan Pembelajaran wajib dipilih.')
+  }
+
+  const halaman: MateriHalaman[] = []
+  for (let i = 0; i < files.length; i++) {
+    const file = files[i]
+    const { url, storagePath } = await unggahGambarHalaman(kelas, file)
+    const nama = file.name.replace(/\.[^.]+$/, '').slice(0, 80)
+    halaman.push({
+      id: idBaru('h'),
+      judul: nama || `Halaman ${i + 1}`,
+      urutan: i,
+      blok: [
+        {
+          id: idBaru('b'),
+          tipe: 'gambar',
+          url,
+          storagePath,
+          alt: nama || `Gambar ${i + 1}`,
+        },
+      ],
+    })
+  }
+
+  return tambahMateriHalaman({
+    kelas,
+    mapel,
+    judul,
+    deskripsi: input.deskripsi,
+    bab: input.bab,
+    tpId: input.tpId,
+    tpNomor: input.tpNomor,
+    tpNama: input.tpNama,
+    urutan: input.urutan,
+    namaGuru: input.namaGuru,
+    halaman,
+    lombaId: input.lombaId,
+  })
+}
+
 /** Perbarui metadata + halaman materi jenis halaman. */
 export async function simpanMateriHalaman(
   id: string,

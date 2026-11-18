@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useAuth } from '../context/AuthContext'
-import { aturBerbagiMateri, daftarMateri, daftarMateriLomba, hapusMateri, tambahMateri } from '../lib/materi'
+import { aturBerbagiMateri, daftarMateri, daftarMateriLomba, hapusMateri, tambahMateri, tambahMateriGambarBerurutan } from '../lib/materi'
 import { KELAS_LOMBA_BANK } from '../lib/lombaAkses'
 import { adalahMapelTka } from '../lib/tkaAkses'
 import BerbagiKelasDialog from './BerbagiKelasDialog'
@@ -11,6 +11,11 @@ import type { TpRingkas } from '../types/materi'
 import MateriHalamanEditor from './materi/MateriHalamanEditor'
 import MateriHalamanViewer from './materi/MateriHalamanViewer'
 import MateriHtmlViewer from './materi/MateriHtmlViewer'
+import MateriMediaViewer, {
+  jenisDariFileLokal,
+  type MediaJenisPreview,
+} from './materi/MateriMediaViewer'
+import { ekstrakYoutubeId } from '../lib/materi'
 import { jumlahHalaman } from '../lib/materiUi'
 
 type Props = {
@@ -151,6 +156,8 @@ export default function MateriPanel({ kelas, mapel, lombaId, tpKelas }: Props) {
   const [tpId, setTpId] = useState('')
   const [url, setUrl] = useState('')
   const [file, setFile] = useState<File | null>(null)
+  /** Mode file: bisa beberapa gambar → materi halaman berurutan. */
+  const [files, setFiles] = useState<File[]>([])
   /** Kode / isi HTML (mode html). */
   const [kontenHtml, setKontenHtml] = useState('')
   /** Materi halaman yang sedang diedit (null = buat baru). */
@@ -159,6 +166,17 @@ export default function MateriPanel({ kelas, mapel, lombaId, tpKelas }: Props) {
   const [bacaHalaman, setBacaHalaman] = useState<MateriLms | null>(null)
   /** Materi HTML yang dibuka pratinjau di panel guru. */
   const [bacaHtml, setBacaHtml] = useState<MateriLms | null>(null)
+  /** Pratinjau file / YouTube / tautan (form atau daftar). */
+  const [bacaMedia, setBacaMedia] = useState<{
+    judul: string
+    deskripsi?: string
+    jenis: MediaJenisPreview
+    url: string
+    fileName?: string
+    lokal?: boolean
+    /** Object URL yang perlu di-revoke saat tutup. */
+    revokeUrl?: string
+  } | null>(null)
   const [berbagiTarget, setBerbagiTarget] = useState<MateriLms | null>(null)
 
   const muat = useCallback(async () => {
@@ -235,6 +253,7 @@ export default function MateriPanel({ kelas, mapel, lombaId, tpKelas }: Props) {
     setTpId('')
     setUrl('')
     setFile(null)
+    setFiles([])
     setKontenHtml('')
     setMode('tutup')
   }
@@ -253,7 +272,7 @@ export default function MateriPanel({ kelas, mapel, lombaId, tpKelas }: Props) {
           'Tujuan Pembelajaran wajib dipilih. Buat TP di aplikasi Penilaian jika daftar kosong.',
         )
       }
-      await tambahMateri({
+      const base = {
         kelas: lombaId ? KELAS_LOMBA_BANK : kelas,
         mapel,
         ...(lombaId ? { lombaId } : {}),
@@ -263,12 +282,29 @@ export default function MateriPanel({ kelas, mapel, lombaId, tpKelas }: Props) {
         tpId: tp?.id,
         tpNomor: tp?.nomorTp,
         tpNama: tp?.namaTp,
-        file: mode === 'file' || mode === 'html' ? file || undefined : undefined,
-        kontenHtml: mode === 'html' && kontenHtml.trim() ? kontenHtml : undefined,
-        url: mode === 'youtube' || mode === 'tautan' ? url : undefined,
-        jenisTautan: mode === 'youtube' ? 'youtube' : mode === 'tautan' ? 'tautan' : undefined,
         namaGuru: profil?.nama,
-      })
+      }
+
+      if (mode === 'file' && files.length > 1) {
+        // Beberapa gambar → materi jenis halaman, satu gambar per halaman (berurutan)
+        await tambahMateriGambarBerurutan({
+          ...base,
+          files,
+        })
+      } else {
+        await tambahMateri({
+          ...base,
+          file:
+            mode === 'file'
+              ? files[0] || file || undefined
+              : mode === 'html'
+                ? file || undefined
+                : undefined,
+          kontenHtml: mode === 'html' && kontenHtml.trim() ? kontenHtml : undefined,
+          url: mode === 'youtube' || mode === 'tautan' ? url : undefined,
+          jenisTautan: mode === 'youtube' ? 'youtube' : mode === 'tautan' ? 'tautan' : undefined,
+        })
+      }
       resetForm()
       await muat()
     } catch (err) {
@@ -328,6 +364,29 @@ export default function MateriPanel({ kelas, mapel, lombaId, tpKelas }: Props) {
         materi={bacaHtml}
         mode="guru"
         onTutup={() => setBacaHtml(null)}
+      />
+    )
+  }
+
+  if (bacaMedia) {
+    return (
+      <MateriMediaViewer
+        judul={bacaMedia.judul}
+        deskripsi={bacaMedia.deskripsi}
+        jenis={bacaMedia.jenis}
+        url={bacaMedia.url}
+        fileName={bacaMedia.fileName}
+        lokal={bacaMedia.lokal}
+        onTutup={() => {
+          if (bacaMedia.revokeUrl) {
+            try {
+              URL.revokeObjectURL(bacaMedia.revokeUrl)
+            } catch {
+              /* ignore */
+            }
+          }
+          setBacaMedia(null)
+        }}
       />
     )
   }
@@ -462,11 +521,31 @@ export default function MateriPanel({ kelas, mapel, lombaId, tpKelas }: Props) {
                 <span>File (PDF / gambar / video)</span>
                 <input
                   type="file"
-                  required
+                  required={files.length === 0}
+                  multiple
                   accept=".pdf,image/*,video/*"
-                  onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+                  onChange={(e) => {
+                    const list = e.target.files ? Array.from(e.target.files) : []
+                    setFiles(list)
+                    setFile(list[0] ?? null)
+                  }}
                 />
-                <span className="materi-hint">PDF & gambar max 10 MB · video max 50 MB</span>
+                <span className="materi-hint">
+                  PDF & gambar max 10 MB · video max 50 MB.
+                  {files.length > 1
+                    ? ` ${files.length} gambar dipilih → akan ditampilkan berurutan seperti halaman.`
+                    : ' Pilih beberapa gambar sekaligus untuk materi berurutan (satu gambar = satu halaman).'}
+                </span>
+                {files.length > 0 && (
+                  <ul className="materi-file-list mt-1 text-[12px] text-slate-600">
+                    {files.map((f, i) => (
+                      <li key={`${f.name}-${i}`}>
+                        {i + 1}. {f.name}
+                        {f.type.startsWith('image/') ? '' : ' (bukan gambar — multi hanya untuk gambar)'}
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </label>
             )}
             {(mode === 'youtube' || mode === 'tautan') && (
@@ -604,10 +683,112 @@ export default function MateriPanel({ kelas, mapel, lombaId, tpKelas }: Props) {
                 Pratinjau
               </button>
             )}
+            {mode === 'youtube' && (
+              <button
+                type="button"
+                className="lms-btn-secondary"
+                disabled={busy || !url.trim() || !ekstrakYoutubeId(url)}
+                title={
+                  ekstrakYoutubeId(url)
+                    ? 'Pratinjau video YouTube sebelum menyimpan'
+                    : 'Masukkan URL YouTube yang valid'
+                }
+                onClick={() => {
+                  setBacaMedia({
+                    judul: judul.trim() || 'Pratinjau YouTube',
+                    deskripsi: deskripsi || undefined,
+                    jenis: 'youtube',
+                    url: url.trim(),
+                    lokal: true,
+                  })
+                }}
+              >
+                Pratinjau
+              </button>
+            )}
+            {mode === 'tautan' && (
+              <button
+                type="button"
+                className="lms-btn-secondary"
+                disabled={busy || !url.trim()}
+                title={url.trim() ? 'Pratinjau tautan sebelum menyimpan' : 'Isi URL terlebih dahulu'}
+                onClick={() => {
+                  setBacaMedia({
+                    judul: judul.trim() || 'Pratinjau tautan',
+                    deskripsi: deskripsi || undefined,
+                    jenis: 'tautan',
+                    url: url.trim(),
+                    lokal: true,
+                  })
+                }}
+              >
+                Pratinjau
+              </button>
+            )}
+            {mode === 'file' && files.length === 1 && (() => {
+              const f = files[0]
+              const j = jenisDariFileLokal(f)
+              if (!j) return null
+              return (
+                <button
+                  type="button"
+                  className="lms-btn-secondary"
+                  disabled={busy}
+                  title="Pratinjau file sebelum menyimpan"
+                  onClick={() => {
+                    const objectUrl = URL.createObjectURL(f)
+                    setBacaMedia({
+                      judul: judul.trim() || f.name || 'Pratinjau file',
+                      deskripsi: deskripsi || undefined,
+                      jenis: j,
+                      url: objectUrl,
+                      fileName: f.name,
+                      lokal: true,
+                      revokeUrl: objectUrl,
+                    })
+                  }}
+                >
+                  Pratinjau
+                </button>
+              )
+            })()}
+            {mode === 'file' && files.length > 1 && files.every((f) => f.type.startsWith('image/')) && (
+              <button
+                type="button"
+                className="lms-btn-secondary"
+                disabled={busy}
+                title="Pratinjau urutan gambar sebelum menyimpan"
+                onClick={() => {
+                  // Pratinjau gambar pertama; pesan jumlah di deskripsi
+                  const f = files[0]
+                  const objectUrl = URL.createObjectURL(f)
+                  setBacaMedia({
+                    judul: judul.trim() || 'Pratinjau gambar berurutan',
+                    deskripsi:
+                      (deskripsi ? deskripsi + ' · ' : '') +
+                      `${files.length} gambar akan menjadi ${files.length} halaman berurutan. Menampilkan gambar 1/${files.length}.`,
+                    jenis: 'gambar',
+                    url: objectUrl,
+                    fileName: f.name,
+                    lokal: true,
+                    revokeUrl: objectUrl,
+                  })
+                }}
+              >
+                Pratinjau
+              </button>
+            )}
             <button
               type="submit"
               className="lms-btn-primary"
-              disabled={busy || (!tanpaTpWajib && !tpId) || (mode === 'html' && !kontenHtml.trim() && !file)}
+              disabled={
+                busy ||
+                (!tanpaTpWajib && !tpId) ||
+                (mode === 'html' && !kontenHtml.trim() && !file) ||
+                (mode === 'file' && files.length === 0 && !file) ||
+                (mode === 'youtube' && !url.trim()) ||
+                (mode === 'tautan' && !url.trim())
+              }
             >
               {busy ? 'Menyimpan…' : 'Simpan materi'}
             </button>
@@ -689,6 +870,27 @@ export default function MateriPanel({ kelas, mapel, lombaId, tpKelas }: Props) {
                       type="button"
                       className="lms-btn-secondary"
                       onClick={() => setBacaHtml(m)}
+                    >
+                      Baca
+                    </button>
+                  ) : m.url &&
+                    (m.jenis === 'youtube' ||
+                      m.jenis === 'gambar' ||
+                      m.jenis === 'video' ||
+                      m.jenis === 'pdf' ||
+                      m.jenis === 'tautan') ? (
+                    <button
+                      type="button"
+                      className="lms-btn-secondary"
+                      onClick={() =>
+                        setBacaMedia({
+                          judul: m.judul,
+                          deskripsi: m.deskripsi,
+                          jenis: m.jenis as MediaJenisPreview,
+                          url: m.url!,
+                          fileName: m.fileName,
+                        })
+                      }
                     >
                       Baca
                     </button>

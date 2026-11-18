@@ -7,6 +7,7 @@ import App from './App'
 import './index.css'
 import './styles/siswa.css'
 import './styles/materi-halaman.css'
+import './styles/materi-media.css'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

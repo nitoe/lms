@@ -1,3 +1,28 @@
+## 2026-11-18 — Materi: pratinjau file, YouTube, dan tautan
+
+- Form tambah materi (File / YouTube / Tautan): tombol **Pratinjau** sebelum simpan.
+  - YouTube: embed video jika URL valid.
+  - Gambar / video / PDF (satu file): tampil dari Object URL lokal.
+  - Beberapa gambar: pratinjau gambar pertama + keterangan jumlah halaman yang akan dibuat.
+  - Tautan: tampil URL + tombol buka.
+- Daftar materi guru: jenis `gambar` / `video` / `pdf` / `youtube` / `tautan` punya tombol **Baca** (inline) selain tetap bisa dibuka di tab baru dari dalam viewer.
+- Komponen baru: `MateriMediaViewer` + `styles/materi-media.css` (diimpor di `main.tsx`).
+- File: `src/components/materi/MateriMediaViewer.tsx`, `src/styles/materi-media.css`, `src/components/MateriPanel.tsx`, `src/main.tsx`.
+- Tidak menyentuh rules / Storage / functions.
+- Antiregresi: §Materi.MediaPreview.
+
+## 2026-11-18 — Materi: unggah beberapa gambar → ditampilkan berurutan (halaman)
+
+- Di form **File** (mapel kelas, TKA, dan Lomba), input file mendukung **multiple**.
+- Jika pengguna memilih **lebih dari satu file gambar**, sistem membuat materi jenis `halaman`: setiap gambar menjadi satu halaman (satu blok gambar), urutan = urutan pemilihan.
+- Satu gambar / PDF / video tetap seperti sebelumnya (jenis `gambar` / `pdf` / `video`).
+- Campuran gambar + PDF/video dalam satu pemilihan ditolak dengan pesan jelas.
+- Reuse infrastruktur halaman yang sudah ada (viewer navigasi Sebelumnya/Berikutnya, batas 20 halaman, kompresi gambar HP via `unggahGambarHalaman`).
+- Fungsi baru: `tambahMateriGambarBerurutan` di `src/lib/materi.ts`.
+- File: `src/lib/materi.ts`, `src/components/MateriPanel.tsx`.
+- Tidak perlu ubah firestore.rules (jenis `halaman` + `halaman.size() <= 20` sudah ada).
+- Antiregresi: §Materi.GambarBerurutan.
+
 ## 2026-11-18 — Lomba siswa: akses materi + HTML interaktif (localStorage)
 
 - **Akses materi:** di daftar lomba siswa, tombol «Materi & kuis» selalu ada (selain «Mulai kerjakan») agar siswa tidak loncat langsung ke kuis tanpa melihat materi.

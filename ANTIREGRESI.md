@@ -706,6 +706,27 @@ Regresi: `firestore.rules` di repo `nitoe/lms` tidak memuat rules Lomba (`lms_lo
 8. **CSS:** gaya dialog di `styles/kartuLomba.css` (`kp-*`); gaya kartu cetak inline di `kartuLomba.ts` (konstanta `CSS`). Jangan menambah aturan ke `lomba.css` untuk ini dan jangan memakai ulang nama kelas `kp-*`/`kartu`/`lembar` di tempat lain (§Lomba.9). State dialog di `LombaDetail` (`kartuBuka`) dideklarasikan di atas `return` bersyarat (§108.4).
 9. **Uji sebelum deploy:** (a) lomba 20 peserta → 3 lembar, tidak ada lembar kosong di Chrome print preview (A4, skala 100%, margin None); (b) siswa tanpa NISN → kartu menampilkan «Belum terdaftar» + peringatan di atas pratinjau; (c) nama panjang (±40 huruf) dan nama lomba panjang tidak memotong baris «Cara masuk LMS»; (d) cetak sebagian peserta → nomor tidak bergeser; (e) pop-up diblokir → pesan jelas di dialog; (f) akun guru pengampu non-admin dapat mencetak.
 
+## §Materi.MediaPreview (2026-11-18)
+
+1. Pratinjau form File memakai `URL.createObjectURL` — **wajib** `URL.revokeObjectURL` saat viewer ditutup agar tidak bocor memori.
+2. YouTube: hanya embed jika `ekstrakYoutubeId` berhasil; jangan iframe URL mentah.
+3. PDF lokal (blob) sering gagal di iframe (Chrome); tampilkan hint + «Buka di tab baru» setelah simpan (URL Storage).
+4. Jangan mengganti tombol Baca halaman/HTML; media viewer terpisah (`MateriMediaViewer`).
+5. Siswa tetap boleh «Buka» eksternal di `SiswaMateri` (perubahan ini fokus panel guru); boleh diseragamkan nanti.
+
+---
+
+## §Materi.GambarBerurutan (2026-11-18)
+
+1. Form File mendukung `multiple`. Jika **>1 file** dan **semua image/** → `tambahMateriGambarBerurutan` → jenis `halaman`, satu blok gambar per halaman, urutan = urutan FileList.
+2. Satu file gambar tetap `tambahMateri` → jenis `gambar` (buka di tab baru), bukan dipaksa ke halaman.
+3. Campuran gambar + PDF/video dalam satu pemilihan: tolak di klien dengan pesan jelas (jangan diam-diam ambil hanya gambar).
+4. Batas: `BATAS_HALAMAN_PER_MATERI` (20). Kompresi lewat `unggahGambarHalaman` (target HP).
+5. Viewer siswa/guru: sudah ada `MateriHalamanViewer` — tidak perlu jenis baru di rules.
+6. Berlaku seragam di MateriPanel (mapel kelas, TKA `adalahMapelTka`, Lomba `lombaId`).
+
+---
+
 ## §MateriHtml — Materi jenis HTML + gambar eksternal (2026-11-18)
 
 1. **Jenis `'html'`** dan field **`kontenHtml`** (string, maks. 400_000 karakter). Jangan menyimpan HTML mentah tanpa `bersihHtmlLengkap`.
