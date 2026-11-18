@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import AdminDashboardPanel from '../components/AdminDashboardPanel'
 import RuangCard from '../components/RuangCard'
 import {
   IkonCari,
@@ -120,6 +121,9 @@ export default function Beranda() {
           </Link>
         </div>
       </section>
+
+      {/* Dashboard khusus admin / wakil kurikulum */}
+      <AdminDashboardPanel aktif={sebagaiAdmin} />
 
       <div className="rg-bgrid">
         {/* Ruang kelas */}

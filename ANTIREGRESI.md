@@ -28,6 +28,18 @@ Bila error tetap permission setelah rules 300 ter-deploy: cek penugasan `penugas
 ---
 
 
+## §Admin.Dashboard — Panel kurikulum di Beranda (2026-11-19)
+
+1. Panel hanya di-render bila `profil.role === 'admin' || profil.peranLms === 'admin'` (`sebagaiAdmin`). Guru biasa tidak memuat query agregat.
+2. Query full-collection `lms_materi` / `lms_kuis` / `lms_tugas` / `users` / `siswa` **hanya aman untuk admin** (rules `isAdmin()` pada read). Jangan panggil `muatAdminDashboard` dari peran guru.
+3. Konten Lomba (`lombaId` terisi) **dikecualikan** dari statistik materi & kuis agar tidak mencampur bank LB dengan pembelajaran reguler.
+4. Aktivitas hari ini memakai `createdAt >= awal hari lokal` + `orderBy createdAt desc` + `limit(500)` pada `lms_jawaban` dan `lms_pengumpulan`. Bila indeks belum ada / query gagal, panel tetap tampil dengan angka 0 (error di-console, tidak merusak Beranda).
+5. Cakupan mapel memakai master koleksi `mapel` + set mapel yang punya materi per kelas (termasuk `kelasList`). Mapel «Wali kelas» diabaikan.
+6. Nama guru di ranking diambil dari `dibuatOlehNama` (fallback uid). Dokumen lama tanpa nama tetap masuk baris «Tanpa nama» / uid.
+7. Tombol «Muat ulang» memanggil ulang agregat; tidak ada cache lokal yang menyesatkan.
+8. CSS memakai prefix `.ad-*` di `ruang.css` agar tidak bentrok kelas `.rg-*`.
+
+
 ## §Materi.TempelGambar — Paste clipboard ke blok gambar (2026-11-18)
 
 1. Listener `paste` hanya aktif di mode **edit** editor halaman (`MateriHalamanEditor`).

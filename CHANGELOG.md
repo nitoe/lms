@@ -1,3 +1,17 @@
+## 2026-11-19 — Dashboard admin: performa guru, cakupan materi, aktivitas siswa
+
+- **Masalah:** Beranda admin hanya menampilkan ruang pribadi & agenda tugas/kuis — tidak memberi gambaran performa guru dan cakupan LMS yang bisa ditindaklanjuti wakil kepala kurikulum.
+- **Perbaikan:** Panel **Dashboard Kurikulum** di Beranda (hanya tampil untuk admin):
+  - Ringkasan: total materi, kuis aktif/total, tugas aktif/total, siswa aktif, guru yang sudah membuat konten, siswa unik aktif hari ini.
+  - **Aktivitas siswa hari ini:** jawaban kuis, pengumpulan tugas, ranking kelas terbanyak memanfaatkan LMS.
+  - **Temuan:** alert otomatis (kelas tanpa materi, mapel kosong, tidak ada aktivitas hari ini).
+  - **Tabel performa guru:** jumlah materi / kuis / tugas yang dibuat (dari `dibuatOleh` / `dibuatOlehNama`; konten Lomba dikecualikan).
+  - **Cakupan per kelas:** jumlah materi/kuis/tugas + mapel master yang sudah/belum punya materi (termasuk share `kelasList`).
+- File baru: `src/lib/adminDashboard.ts`, `src/components/AdminDashboardPanel.tsx`.
+- File diubah: `src/pages/Beranda.tsx`, `src/styles/ruang.css`.
+- Tidak mengubah firestore.rules / indexes — admin sudah boleh list koleksi terkait.
+- Antiregresi: §Admin.Dashboard.
+
 ## 2026-11-18 — Materi halaman: tempel gambar dari clipboard
 
 - **Masalah:** Menyelipkan gambar ke materi halaman hanya lewat unggah file atau generate AI — harus simpan file dulu.

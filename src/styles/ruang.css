@@ -255,3 +255,129 @@ a.rg-hero-stat:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
 
 .rg-pintas-item:last-child:nth-child(odd) { grid-column: 1 / -1; }
 @media (min-width: 640px) and (max-width: 1099px) { .rg-pintas-item:last-child:nth-child(odd) { grid-column: auto; } }
+
+/* —— Dashboard admin / kurikulum —— */
+.ad-panel {
+  display: flex; flex-direction: column; gap: 1rem;
+  padding: 1rem 1.1rem 1.15rem; border-radius: 1rem;
+  border: 1px solid #e2e6f0; background: linear-gradient(180deg, #f8f9fd 0%, #fff 48%);
+  box-shadow: 0 1px 2px rgba(26, 29, 51, 0.04);
+}
+.ad-kepala {
+  display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between;
+  gap: 0.65rem 1rem;
+}
+.ad-judul { margin: 0; font-size: 1.05rem; font-weight: 800; letter-spacing: -0.02em; color: #1a1d33; }
+.ad-sub { margin: 0.25rem 0 0; font-size: 0.8rem; line-height: 1.45; color: var(--color-muted); max-width: 40rem; }
+.ad-galat {
+  margin: 0; padding: 0.55rem 0.75rem; border-radius: 0.55rem;
+  background: #fef2f2; color: #b91c1c; font-size: 0.8rem; border: 1px solid #fecaca;
+}
+.ad-skel { display: flex; flex-direction: column; gap: 0.45rem; }
+
+.ad-stats {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(7.5rem, 1fr)); gap: 0.55rem;
+}
+.ad-stat {
+  display: flex; flex-direction: column; gap: 0.15rem; padding: 0.65rem 0.75rem;
+  border-radius: 0.7rem; background: #fff; border: 1px solid #e8ebf3;
+}
+.ad-stat b {
+  font-size: 1.25rem; font-weight: 800; letter-spacing: -0.03em; color: #1a1d33; line-height: 1.15;
+}
+.ad-stat b small { font-size: 0.72rem; font-weight: 600; color: #9aa3b5; margin-left: 0.1rem; }
+.ad-stat span { font-size: 0.7rem; font-weight: 600; color: var(--color-muted); text-transform: uppercase; letter-spacing: 0.02em; }
+.ad-stat--aksi { border-color: #c7d2fe; background: #eef2ff; }
+.ad-stat--aksi b { color: #3730a3; }
+
+.ad-grid2 {
+  display: grid; grid-template-columns: 1fr; gap: 0.75rem;
+}
+@media (min-width: 800px) {
+  .ad-grid2 { grid-template-columns: 1fr 1fr; }
+}
+
+.ad-kartu {
+  padding: 0.85rem 0.95rem 1rem; border-radius: 0.8rem;
+  background: #fff; border: 1px solid #e8ebf3;
+}
+.ad-kartu-judul {
+  margin: 0 0 0.35rem; font-size: 0.88rem; font-weight: 800; color: #1a1d33;
+}
+.ad-bantuan {
+  margin: 0 0 0.65rem; font-size: 0.75rem; line-height: 1.45; color: var(--color-muted);
+}
+.ad-list-angka {
+  list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.35rem;
+}
+.ad-list-angka li {
+  display: flex; align-items: center; justify-content: space-between; gap: 0.5rem;
+  padding: 0.35rem 0; border-bottom: 1px solid #f0f2f7; font-size: 0.82rem;
+}
+.ad-list-angka li:last-child { border-bottom: 0; }
+.ad-list-angka span { color: #4b5563; }
+.ad-list-angka b { font-weight: 800; color: #1a1d33; }
+.ad-muted { color: #9aa3b5; font-weight: 600; }
+
+.ad-label {
+  margin: 0.75rem 0 0.4rem; font-size: 0.72rem; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.03em; color: var(--color-muted);
+}
+.ad-ranking {
+  list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.3rem;
+}
+.ad-ranking li {
+  display: grid; grid-template-columns: 1.4rem 1fr auto; align-items: center; gap: 0.45rem;
+  font-size: 0.82rem;
+}
+.ad-rank {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 1.35rem; height: 1.35rem; border-radius: 999px;
+  background: #eef2ff; color: #4338ca; font-size: 0.7rem; font-weight: 800;
+}
+.ad-rank-nama { font-weight: 700; color: #1a1d33; }
+.ad-rank-nilai { font-size: 0.75rem; color: var(--color-muted); font-weight: 600; }
+
+.ad-alert {
+  list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.35rem;
+}
+.ad-alert li {
+  position: relative; padding: 0.45rem 0.55rem 0.45rem 0.85rem;
+  border-radius: 0.5rem; background: #fffbeb; border: 1px solid #fde68a;
+  font-size: 0.78rem; line-height: 1.4; color: #92400e;
+}
+.ad-alert li::before {
+  content: ''; position: absolute; left: 0.35rem; top: 0.7rem;
+  width: 0.28rem; height: 0.28rem; border-radius: 999px; background: #d97706;
+}
+
+.ad-kosong-kecil {
+  margin: 0.35rem 0 0; font-size: 0.8rem; color: var(--color-muted);
+}
+
+.ad-tabel-wrap {
+  overflow-x: auto; -webkit-overflow-scrolling: touch; margin: 0 -0.15rem;
+}
+.ad-tabel {
+  width: 100%; border-collapse: collapse; font-size: 0.78rem; min-width: 28rem;
+}
+.ad-tabel th, .ad-tabel td {
+  padding: 0.4rem 0.5rem; text-align: left; border-bottom: 1px solid #eef0f5;
+  vertical-align: top;
+}
+.ad-tabel th {
+  font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em;
+  color: var(--color-muted); background: #f8f9fc; white-space: nowrap;
+}
+.ad-tabel .ad-num { text-align: right; font-variant-numeric: tabular-nums; }
+.ad-tabel .ad-num--kuat { font-weight: 800; color: #1a1d33; }
+.ad-tabel .ad-nama { font-weight: 650; color: #1a1d33; }
+.ad-row--bahaya td { background: #fef2f2; }
+.ad-row--peringatan td { background: #fffbeb; }
+.ad-ok { color: #047857; font-weight: 700; font-size: 0.75rem; }
+.ad-warn { color: #b45309; font-weight: 600; }
+
+@media (max-width: 639px) {
+  .ad-stats { grid-template-columns: repeat(2, 1fr); }
+  .ad-panel { padding: 0.85rem 0.8rem 1rem; }
+}
