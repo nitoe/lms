@@ -46,7 +46,8 @@ import {
 } from '../lib/tkaAkses'
 import { muatSiswaKelas, type SiswaDasar } from '../lib/siswaAuth'
 import { getLomba } from '../lib/lomba'
-import type { PesertaLomba } from '../types/lomba'
+import type { Lomba, PesertaLomba } from '../types/lomba'
+import { cetakHasilLomba } from '../lib/cetakHasilLomba'
 
 type Props = {
   kuis: KuisLms
@@ -221,6 +222,9 @@ export default function HasilKuisPanel({ kuis, onUpdated }: Props) {
   const isTka = adalahMapelTka(kuis.mapel)
   const isLomba = !!kuis.lombaId
   const [rosterLomba, setRosterLomba] = useState<PesertaLomba[] | null>(null)
+  /** Meta lomba untuk cetak rekap (hanya diisi bila isLomba). */
+  const [metaLomba, setMetaLomba] = useState<Lomba | null>(null)
+  const [busyCetakHasil, setBusyCetakHasil] = useState(false)
   const adminTka = adalahAdminTka(user, profil)
   const [hasilDipublish, setHasilDipublish] = useState(!!kuis.hasilDipublish)
   const [busyPublish, setBusyPublish] = useState(false)
@@ -263,12 +267,14 @@ export default function HasilKuisPanel({ kuis, onUpdated }: Props) {
         setList(data)
         setRosterTka(null)
         setRosterLomba(lomba?.siswaList ?? [])
+        setMetaLomba(lomba)
       } else if (isTka) {
         const izin = kelasHasilTkaBolehDilihat(user, profil)
         if (izin.length === 0) {
           setList([])
           setRosterTka([])
           setRosterLomba(null)
+          setMetaLomba(null)
           setError('Anda tidak punya akses melihat hasil TKA untuk rombel mana pun.')
           return
         }
@@ -279,16 +285,21 @@ export default function HasilKuisPanel({ kuis, onUpdated }: Props) {
         setList(data)
         setRosterTka(siswaBatches.flat().sort((a, b) => a.nama.localeCompare(b.nama, 'id')))
         setRosterLomba(null)
+        setMetaLomba(null)
       } else {
         const data = await daftarJawabanKuis(kuis.id, kuis.kelas, kuis.mapel)
         setList(data)
         setRosterTka(null)
         setRosterLomba(null)
+        setMetaLomba(null)
       }
     } catch (e) {
       setList([])
       if (isTka) setRosterTka([])
-      if (isLomba) setRosterLomba([])
+      if (isLomba) {
+        setRosterLomba([])
+        setMetaLomba(null)
+      }
       const msg = e instanceof Error ? e.message : String(e)
       setError(
         msg.includes('permission') || msg.includes('Permission')
@@ -307,10 +318,12 @@ export default function HasilKuisPanel({ kuis, onUpdated }: Props) {
   }, [kuis.id, kuis.hasilDipublish])
 
   async function togglePublishHasil() {
-    if (!isTka) return
+    if (!isTka && !isLomba) return
     const next = !hasilDipublish
     const msg = next
-      ? 'Publikasikan skor ke siswa? Siswa yang sudah mengerjakan akan melihat nilai dan rinciannya.'
+      ? isLomba
+        ? 'Publikasikan skor ke peserta lomba? Peserta yang sudah mengerjakan akan melihat nilai kuis ini.'
+        : 'Publikasikan skor ke siswa? Siswa yang sudah mengerjakan akan melihat nilai dan rinciannya.'
       : 'Sembunyikan skor dari siswa? Siswa hanya akan melihat status «jawaban terkirim» tanpa angka.'
     if (!confirm(msg)) return
     setBusyPublish(true)
@@ -325,6 +338,46 @@ export default function HasilKuisPanel({ kuis, onUpdated }: Props) {
       setError(e instanceof Error ? e.message : 'Gagal mengubah status publikasi.')
     } finally {
       setBusyPublish(false)
+    }
+  }
+
+  /** Cetak rekap peringkat A4 — jendela dibuka sinkron agar tidak diblokir (ANTIREGRESI §Lomba.30). */
+  async function cetakRekapHasilLomba() {
+    if (!isLomba || !metaLomba) {
+      setError('Data lomba belum siap. Muat ulang hasil, lalu coba lagi.')
+      return
+    }
+    const win = window.open('about:blank', '_blank')
+    setBusyCetakHasil(true)
+    setError('')
+    setInfo('')
+    try {
+      const baris = barisLomba.map((b) => ({
+        siswaId: b.siswaId,
+        nama: b.siswaNama,
+        kelas: b.kelas,
+        jawaban: b.jawaban,
+      }))
+      const hasil = await cetakHasilLomba(win, {
+        lomba: metaLomba,
+        kuis,
+        baris,
+        opsi: {
+          dicetakOleh: profil?.nama || user?.email || '',
+        },
+      })
+      setInfo(
+        `Rekap dibuka di jendela baru (${hasil.jumlahMengerjakan}/${hasil.jumlahPeserta} mengerjakan). Gunakan «Cetak / Simpan PDF».`,
+      )
+    } catch (e) {
+      try {
+        win?.close()
+      } catch {
+        /* ignore */
+      }
+      setError(e instanceof Error ? e.message : 'Gagal menyiapkan cetak rekap.')
+    } finally {
+      setBusyCetakHasil(false)
     }
   }
 
@@ -1028,18 +1081,31 @@ export default function HasilKuisPanel({ kuis, onUpdated }: Props) {
                   : 'Siswa hanya melihat status «jawaban terkirim». Skor disembunyikan sampai Anda mempublikasikan.'}
             </p>
           </div>
-          <button
-            type="button"
-            className={hasilDipublish ? 'lms-btn-secondary text-xs' : 'lms-btn-primary text-xs'}
-            disabled={busyPublish}
-            onClick={() => void togglePublishHasil()}
-          >
-            {busyPublish
-              ? 'Menyimpan…'
-              : hasilDipublish
-                ? 'Sembunyikan dari siswa'
-                : 'Publikasikan hasil ke siswa'}
-          </button>
+          <div className="flex flex-wrap items-center gap-2">
+            {isLomba && (
+              <button
+                type="button"
+                className="lms-btn-secondary text-xs"
+                disabled={busyCetakHasil || !metaLomba || rosterLomba === null}
+                onClick={() => void cetakRekapHasilLomba()}
+                title="Cetak rekapitulasi peringkat peserta (A4)"
+              >
+                {busyCetakHasil ? 'Menyiapkan…' : 'Cetak rekap hasil'}
+              </button>
+            )}
+            <button
+              type="button"
+              className={hasilDipublish ? 'lms-btn-secondary text-xs' : 'lms-btn-primary text-xs'}
+              disabled={busyPublish}
+              onClick={() => void togglePublishHasil()}
+            >
+              {busyPublish
+                ? 'Menyimpan…'
+                : hasilDipublish
+                  ? 'Sembunyikan dari siswa'
+                  : 'Publikasikan hasil ke siswa'}
+            </button>
+          </div>
         </div>
       )}
 
