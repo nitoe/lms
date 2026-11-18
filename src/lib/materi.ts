@@ -27,9 +27,10 @@ import type {
 import {
   BATAS_BLOK_PER_HALAMAN,
   BATAS_HALAMAN_PER_MATERI,
+  BATAS_KONTEN_HTML,
   BATAS_UKURAN,
 } from '../types/materi'
-import { bersihHtmlMateri, htmlKosong } from './html'
+import { bersihHtmlLengkap, bersihHtmlMateri, htmlKosong } from './html'
 import { normalisasiKelasList } from './kelasLms'
 
 function koleksi() {
@@ -119,10 +120,26 @@ function jenisDariFile(file: File): JenisMateri {
   if (file.type === 'application/pdf') return 'pdf'
   if (file.type.startsWith('image/')) return 'gambar'
   if (file.type.startsWith('video/')) return 'video'
-  throw new Error('Jenis file tidak didukung. Gunakan PDF, gambar, atau video.')
+  const nama = (file.name || '').toLowerCase()
+  if (
+    file.type === 'text/html' ||
+    file.type === 'application/xhtml+xml' ||
+    nama.endsWith('.html') ||
+    nama.endsWith('.htm')
+  ) {
+    return 'html'
+  }
+  throw new Error('Jenis file tidak didukung. Gunakan PDF, gambar, video, atau HTML.')
 }
 
 function cekUkuran(file: File, jenis: JenisMateri | 'gambarHalaman') {
+  if (jenis === 'html') {
+    // Batas karakter setelah dibaca sebagai teks; cek kasar di sini
+    if (file.size > BATAS_KONTEN_HTML * 2) {
+      throw new Error(`File HTML melebihi batas praktis (~${Math.round(BATAS_KONTEN_HTML / 1000)} KB karakter).`)
+    }
+    return
+  }
   const batas =
     jenis === 'video'
       ? BATAS_UKURAN.video
@@ -150,8 +167,13 @@ export type MateriBaruInput = {
   /** Untuk youtube / tautan */
   url?: string
   jenisTautan?: 'youtube' | 'tautan'
-  /** Untuk unggah file */
+  /** Untuk unggah file (PDF/gambar/video/HTML) */
   file?: File
+  /**
+   * Konten HTML mentah (paste) — diprioritaskan jika diisi.
+   * Akan dibersihkan dengan bersihHtmlLengkap (gambar eksternal tetap utuh).
+   */
+  kontenHtml?: string
   namaGuru?: string
   /** Scope modul Lomba — disimpan di dokumen untuk query & rules. */
   lombaId?: string
@@ -172,19 +194,51 @@ export async function tambahMateri(input: MateriBaruInput): Promise<string> {
   let fileName: string | undefined
   let contentType: string | undefined
   let ukuran: number | undefined
+  let kontenHtml: string | undefined
 
-  if (input.file) {
+  // 1) Paste / kode HTML langsung
+  if (input.kontenHtml && input.kontenHtml.trim()) {
+    jenis = 'html'
+    const bersih = bersihHtmlLengkap(input.kontenHtml)
+    if (!bersih || htmlKosong(bersih)) {
+      throw new Error('Konten HTML kosong setelah dibersihkan. Pastikan ada teks atau gambar.')
+    }
+    if (bersih.length > BATAS_KONTEN_HTML) {
+      throw new Error(
+        `Konten HTML terlalu panjang (maks. ~${Math.round(BATAS_KONTEN_HTML / 1000)} KB karakter).`,
+      )
+    }
+    kontenHtml = bersih
+  } else if (input.file) {
     jenis = jenisDariFile(input.file)
     cekUkuran(input.file, jenis)
-    const aman = input.file.name.replace(/[^\w.\-()+ ]/g, '_').slice(0, 80)
-    const stamp = Date.now()
-    storagePath = `lms/materi/${kelas}/${stamp}_${aman}`
-    const r = ref(storage, storagePath)
-    await uploadBytes(r, input.file, { contentType: input.file.type })
-    url = await getDownloadURL(r)
-    fileName = input.file.name
-    contentType = input.file.type
-    ukuran = input.file.size
+    if (jenis === 'html') {
+      // Baca teks file HTML, jangan unggah biner ke Storage
+      const teks = await input.file.text()
+      const bersih = bersihHtmlLengkap(teks)
+      if (!bersih || htmlKosong(bersih)) {
+        throw new Error('File HTML kosong atau tidak berisi konten yang diizinkan.')
+      }
+      if (bersih.length > BATAS_KONTEN_HTML) {
+        throw new Error(
+          `File HTML terlalu panjang (maks. ~${Math.round(BATAS_KONTEN_HTML / 1000)} KB karakter).`,
+        )
+      }
+      kontenHtml = bersih
+      fileName = input.file.name
+      contentType = 'text/html'
+      ukuran = input.file.size
+    } else {
+      const aman = input.file.name.replace(/[^\w.\-()+ ]/g, '_').slice(0, 80)
+      const stamp = Date.now()
+      storagePath = `lms/materi/${kelas}/${stamp}_${aman}`
+      const r = ref(storage, storagePath)
+      await uploadBytes(r, input.file, { contentType: input.file.type })
+      url = await getDownloadURL(r)
+      fileName = input.file.name
+      contentType = input.file.type
+      ukuran = input.file.size
+    }
   } else if (input.url && input.jenisTautan === 'youtube') {
     const yt = ekstrakYoutubeId(input.url)
     if (!yt) throw new Error('Tautan YouTube tidak dikenali.')
@@ -199,7 +253,7 @@ export async function tambahMateri(input: MateriBaruInput): Promise<string> {
       throw new Error('URL tidak valid.')
     }
   } else {
-    throw new Error('Unggah file atau isi tautan.')
+    throw new Error('Unggah file, isi tautan, atau tempel kode HTML.')
   }
 
   const payload: Record<string, unknown> = {
@@ -228,6 +282,7 @@ export async function tambahMateri(input: MateriBaruInput): Promise<string> {
   if (fileName) payload.fileName = fileName
   if (contentType) payload.contentType = contentType
   if (typeof ukuran === 'number') payload.ukuran = ukuran
+  if (kontenHtml) payload.kontenHtml = kontenHtml
 
   const refDoc = await addDoc(koleksi(), payload)
   return refDoc.id
@@ -327,6 +382,8 @@ export type MateriHalamanInput = {
   urutan?: number
   namaGuru?: string
   halaman: MateriHalaman[]
+  /** Scope modul Lomba — WAJIB bila kelas bank LB (ANTIREGRESI §Lomba.10). */
+  lombaId?: string
 }
 
 /** Buat materi jenis halaman (konten multi-halaman). */
@@ -356,6 +413,8 @@ export async function tambahMateriHalaman(input: MateriHalamanInput): Promise<st
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   }
+  // Modul Lomba: rules (lombaKontenBoleh) WAJIB melihat lombaId di dokumen — ANTIREGRESI §Lomba.10.
+  if (input.lombaId) payload.lombaId = input.lombaId
   if (input.deskripsi?.trim()) payload.deskripsi = input.deskripsi.trim()
   if (input.bab?.trim()) payload.bab = input.bab.trim()
   if (typeof input.tpNomor === 'number') payload.tpNomor = input.tpNomor

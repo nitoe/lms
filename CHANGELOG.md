@@ -1,3 +1,15 @@
+## 2026-11-18 — Materi: dukungan sumber HTML (paste kode / file .html) + gambar eksternal
+
+- Guru (termasuk di modul **Lomba**) dapat menambah materi jenis **HTML**: tempel kode HTML atau unggah file `.html` / `.htm`.
+- Gambar/ilustrasi dari sumber eksternal (imgbb, Postimages, Google Drive, CDN, dll.) **tetap ter-load** lewat `<img src="https://…">` setelah sanitasi.
+- Sanitasi: `bersihHtmlLengkap` (DOMPurify) — mengizinkan `img`/`a`/`figure`/heading/table, membuang script & event handler; dokumen penuh diekstrak isi `<body>`.
+- Field baru `kontenHtml` di `lms_materi` (inline, maks. ~400 KB karakter). Jenis baru `'html'`.
+- Viewer guru & siswa: `MateriHtmlViewer` (inline Baca, bukan buka tab baru).
+- Rules: `jenis` mengizinkan `'halaman'` dan `'html'`; validasi `kontenHtml` & `halaman` size. **Wajib deploy firestore.rules** (salin utuh ke SDM01Penilaian → `npm run deploy:rules`).
+- Bonus anti-regresi Lomba: `tambahMateriHalaman` + editor menerima `lombaId` (sebelumnya materi halaman di lomba bisa gagal permission).
+- File: `src/types/materi.ts`, `src/lib/html.ts`, `src/lib/materi.ts`, `src/lib/materiUi.ts`, `src/components/MateriPanel.tsx`, `src/components/materi/MateriHtmlViewer.tsx` (baru), `src/components/materi/MateriHalamanEditor.tsx`, `src/components/JenisIcon.tsx`, `src/pages/siswa/SiswaMateri.tsx`, `src/styles/materi-halaman.css`, `src/index.css`, `firestore.rules`.
+- Antiregresi: ANTIREGRESI.md §MateriHtml.
+
 ## 2026-11-18 — Lomba: cetak kartu peserta (A4, 8 kartu per lembar)
 
 - **Admin / guru pengampu:** tombol «Cetak kartu peserta» di panel Peserta (tab Ringkasan, detail lomba) → dialog opsi (pilih peserta, pelaksanaan opsional, tahun pelajaran, kotak foto 2×3) → jendela cetak berisi pratinjau + tombol «Cetak / Simpan PDF».

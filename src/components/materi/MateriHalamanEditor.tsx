@@ -40,6 +40,8 @@ type Props = {
   namaGuru?: string
   /** null = buat baru */
   materiAwal: MateriLms | null
+  /** Scope Lomba — diteruskan ke tambahMateriHalaman (ANTIREGRESI §Lomba.10). */
+  lombaId?: string
   onSelesai: () => void
   onBatal: () => void
 }
@@ -83,6 +85,7 @@ export default function MateriHalamanEditor({
   tpList,
   namaGuru,
   materiAwal,
+  lombaId,
   onSelesai,
   onBatal,
 }: Props) {
@@ -561,6 +564,7 @@ export default function MateriHalamanEditor({
         tpNama: tp.namaTp,
         namaGuru,
         halaman,
+        ...(lombaId ? { lombaId } : {}),
       }
 
       if (materiAwal?.id) {

@@ -93,3 +93,100 @@ export function materiPunyaRumus(html: string | undefined): boolean {
 export function materiPunyaTabel(html: string | undefined): boolean {
   return typeof html === 'string' && /<\s*table[\s>]/i.test(html)
 }
+
+/**
+ * HTML materi jenis «html» (paste kode / file .html).
+ * Mengizinkan gambar eksternal (imgbb, Postimages, Google Drive, CDN, dll.)
+ * lewat <img src="https://…"> agar ilustrasi ter-load.
+ *
+ * Keamanan (ANTIREGRESI §9 + §MateriHtml):
+ * - Tidak ada script, event handler, style inline berbahaya, object/embed.
+ * - src/href hanya http(s) (DOMPurify default + ALLOWED_URI_REGEXP).
+ * - Jika input dokumen penuh (<html>…), ambil isi <body>.
+ */
+const TAG_HTML_LENGKAP = [
+  ...TAG_MATERI,
+  'h1',
+  'h4',
+  'h5',
+  'h6',
+  'img',
+  'a',
+  'figure',
+  'figcaption',
+  'blockquote',
+  'div',
+  'span',
+  'pre',
+  'code',
+  'hr',
+  'section',
+  'article',
+  'header',
+  'footer',
+  'main',
+  'aside',
+  'nav',
+  'ul',
+  'ol',
+  'li',
+  'p',
+  'br',
+  'strong',
+  'b',
+  'em',
+  'i',
+  'u',
+  's',
+  'sub',
+  'sup',
+]
+
+const ATTR_HTML_LENGKAP = [
+  'colspan',
+  'rowspan',
+  'scope',
+  'src',
+  'alt',
+  'title',
+  'width',
+  'height',
+  'loading',
+  'decoding',
+  'href',
+  'target',
+  'rel',
+  'class',
+  'id',
+]
+
+/** Ekstrak isi body jika string berupa dokumen HTML lengkap. */
+export function ekstrakIsiHtml(raw: string): string {
+  const t = (raw ?? '').trim()
+  if (!t) return ''
+  const body = t.match(/<body[^>]*>([\s\S]*?)<\/body>/i)
+  if (body) return body[1].trim()
+  // Hilangkan doctype / html / head bila ada tanpa body eksplisit
+  return t
+    .replace(/<!DOCTYPE[^>]*>/gi, '')
+    .replace(/<\/?html[^>]*>/gi, '')
+    .replace(/<head[\s\S]*?<\/head>/gi, '')
+    .trim()
+}
+
+/**
+ * Bersihkan HTML untuk materi jenis «html».
+ * Gambar eksternal (https://i.ibb.co, postimg, drive.google, dll.) tetap utuh
+ * selama src valid http(s).
+ */
+export function bersihHtmlLengkap(html: string | undefined): string {
+  if (!html) return ''
+  const isi = ekstrakIsiHtml(html)
+  return DOMPurify.sanitize(isi, {
+    ALLOWED_TAGS: TAG_HTML_LENGKAP,
+    ALLOWED_ATTR: ATTR_HTML_LENGKAP,
+    ALLOW_DATA_ATTR: false,
+    // Hanya protokol aman untuk src/href
+    ALLOWED_URI_REGEXP: /^(?:(?:https?|mailto):|[^a-z]|[a-z+.\-]+(?:[^a-z+.\-:]|$))/i,
+  })
+}

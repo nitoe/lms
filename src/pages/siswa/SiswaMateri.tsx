@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom'
 import { useSiswa } from '../../context/SiswaContext'
 import JenisIcon from '../../components/JenisIcon'
 import MateriHalamanViewer from '../../components/materi/MateriHalamanViewer'
+import MateriHtmlViewer from '../../components/materi/MateriHtmlViewer'
 import { daftarMateriKelas, pesanGagalMuatMateri } from '../../lib/materiSiswa'
 import {
   formatUkuran,
@@ -69,6 +70,15 @@ export default function SiswaMateri() {
   }
 
   if (baca) {
+    if (baca.jenis === 'html') {
+      return (
+        <MateriHtmlViewer
+          materi={baca}
+          mode="siswa"
+          onTutup={() => setBaca(null)}
+        />
+      )
+    }
     return (
       <MateriHalamanViewer
         materi={baca}
@@ -154,7 +164,7 @@ export default function SiswaMateri() {
                       {m.ukuran ? <span>{formatUkuran(m.ukuran)}</span> : null}
                     </div>
                   </div>
-                  {m.jenis === 'halaman' ? (
+                  {m.jenis === 'halaman' || (m.jenis === 'html' && m.kontenHtml) ? (
                     <button type="button" className="sw-btn-buka" onClick={() => setBaca(m)}>
                       Baca
                     </button>

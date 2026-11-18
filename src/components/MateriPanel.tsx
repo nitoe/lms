@@ -9,6 +9,7 @@ import type { MateriLms } from '../types/materi'
 import type { TpRingkas } from '../types/materi'
 import MateriHalamanEditor from './materi/MateriHalamanEditor'
 import MateriHalamanViewer from './materi/MateriHalamanViewer'
+import MateriHtmlViewer from './materi/MateriHtmlViewer'
 import { jumlahHalaman } from '../lib/materiUi'
 
 type Props = {
@@ -20,7 +21,7 @@ type Props = {
   tpKelas?: string
 }
 
-type ModeForm = 'tutup' | 'file' | 'youtube' | 'tautan' | 'halaman'
+type ModeForm = 'tutup' | 'file' | 'youtube' | 'tautan' | 'halaman' | 'html'
 
 function labelJenis(jenis: string): string {
   switch (jenis) {
@@ -34,6 +35,8 @@ function labelJenis(jenis: string): string {
       return 'YouTube'
     case 'halaman':
       return 'Halaman'
+    case 'html':
+      return 'HTML'
     default:
       return 'Tautan'
   }
@@ -90,6 +93,13 @@ function JenisIcon({ jenis }: { jenis: string }) {
           <line x1="8" y1="11" x2="14" y2="11" />
         </svg>
       )
+    case 'html':
+      return (
+        <svg {...common}>
+          <polyline points="16 18 22 12 16 6" />
+          <polyline points="8 6 2 12 8 18" />
+        </svg>
+      )
     default:
       return (
         <svg {...common}>
@@ -112,6 +122,8 @@ function toneJenis(jenis: string): string {
       return 'materi-tone--yt'
     case 'halaman':
       return 'materi-tone--hal'
+    case 'html':
+      return 'materi-tone--html'
     default:
       return 'materi-tone--url'
   }
@@ -132,10 +144,14 @@ export default function MateriPanel({ kelas, mapel, lombaId, tpKelas }: Props) {
   const [tpId, setTpId] = useState('')
   const [url, setUrl] = useState('')
   const [file, setFile] = useState<File | null>(null)
+  /** Kode / isi HTML (mode html). */
+  const [kontenHtml, setKontenHtml] = useState('')
   /** Materi halaman yang sedang diedit (null = buat baru). */
   const [editHalaman, setEditHalaman] = useState<MateriLms | null | undefined>(undefined)
   /** Materi halaman yang dibuka pratinjau/baca di panel guru. */
   const [bacaHalaman, setBacaHalaman] = useState<MateriLms | null>(null)
+  /** Materi HTML yang dibuka pratinjau di panel guru. */
+  const [bacaHtml, setBacaHtml] = useState<MateriLms | null>(null)
   const [berbagiTarget, setBerbagiTarget] = useState<MateriLms | null>(null)
 
   const muat = useCallback(async () => {
@@ -212,6 +228,7 @@ export default function MateriPanel({ kelas, mapel, lombaId, tpKelas }: Props) {
     setTpId('')
     setUrl('')
     setFile(null)
+    setKontenHtml('')
     setMode('tutup')
   }
 
@@ -239,7 +256,8 @@ export default function MateriPanel({ kelas, mapel, lombaId, tpKelas }: Props) {
         tpId: tp?.id,
         tpNomor: tp?.nomorTp,
         tpNama: tp?.namaTp,
-        file: mode === 'file' ? file || undefined : undefined,
+        file: mode === 'file' || mode === 'html' ? file || undefined : undefined,
+        kontenHtml: mode === 'html' && kontenHtml.trim() ? kontenHtml : undefined,
         url: mode === 'youtube' || mode === 'tautan' ? url : undefined,
         jenisTautan: mode === 'youtube' ? 'youtube' : mode === 'tautan' ? 'tautan' : undefined,
         namaGuru: profil?.nama,
@@ -272,11 +290,12 @@ export default function MateriPanel({ kelas, mapel, lombaId, tpKelas }: Props) {
   if (editHalaman !== undefined) {
     return (
       <MateriHalamanEditor
-        kelas={kelas}
+        kelas={lombaId ? KELAS_LOMBA_BANK : kelas}
         mapel={mapel}
         tpList={tpList}
         namaGuru={profil?.nama}
         materiAwal={editHalaman}
+        lombaId={lombaId}
         onBatal={() => setEditHalaman(undefined)}
         onSelesai={() => {
           setEditHalaman(undefined)
@@ -292,6 +311,16 @@ export default function MateriPanel({ kelas, mapel, lombaId, tpKelas }: Props) {
         materi={bacaHalaman}
         mode="guru"
         onTutup={() => setBacaHalaman(null)}
+      />
+    )
+  }
+
+  if (bacaHtml) {
+    return (
+      <MateriHtmlViewer
+        materi={bacaHtml}
+        mode="guru"
+        onTutup={() => setBacaHtml(null)}
       />
     )
   }
@@ -356,6 +385,19 @@ export default function MateriPanel({ kelas, mapel, lombaId, tpKelas }: Props) {
           >
             + Halaman
           </button>
+          <button
+            type="button"
+            disabled={tpList.length === 0}
+            title={
+              tpList.length === 0
+                ? 'Buat TP di Penilaian terlebih dahulu'
+                : 'Tempel kode HTML atau unggah file .html (gambar eksternal didukung)'
+            }
+            className={`lms-btn-secondary ${mode === 'html' ? 'ring-2 ring-muh-300' : ''}`}
+            onClick={() => setMode(mode === 'html' ? 'tutup' : 'html')}
+          >
+            + HTML
+          </button>
         </div>
       </div>
 
@@ -373,6 +415,7 @@ export default function MateriPanel({ kelas, mapel, lombaId, tpKelas }: Props) {
               {mode === 'file' && 'Unggah file materi'}
               {mode === 'youtube' && 'Tambah video YouTube'}
               {mode === 'tautan' && 'Tambah tautan'}
+              {mode === 'html' && 'Materi dari kode / file HTML'}
             </h3>
             <button type="button" className="lms-btn-ghost" onClick={resetForm}>
               Batal
@@ -434,6 +477,41 @@ export default function MateriPanel({ kelas, mapel, lombaId, tpKelas }: Props) {
                   }
                 />
               </label>
+            )}
+            {mode === 'html' && (
+              <>
+                <label className="materi-field materi-field--full">
+                  <span>Tempel kode HTML</span>
+                  <textarea
+                    rows={8}
+                    value={kontenHtml}
+                    onChange={(e) => setKontenHtml(e.target.value)}
+                    placeholder={'<p>Teks materi…</p>\n<img src="https://i.ibb.co/…/gambar.png" alt="Ilustrasi" />'}
+                    className="font-mono text-[12px]"
+                  />
+                  <span className="materi-hint">
+                    Gambar dari imgbb, Postimages, Google Drive, atau CDN lain akan dimuat jika URL
+                    https valid. Skrip dan event handler dibuang otomatis demi keamanan.
+                  </span>
+                </label>
+                <label className="materi-field materi-field--full">
+                  <span>Atau unggah file .html / .htm (opsional jika sudah tempel)</span>
+                  <input
+                    type="file"
+                    accept=".html,.htm,text/html"
+                    onChange={(e) => {
+                      const f = e.target.files?.[0] ?? null
+                      setFile(f)
+                      if (f) {
+                        void f.text().then((t) => setKontenHtml(t)).catch(() => {})
+                      }
+                    }}
+                  />
+                  <span className="materi-hint">
+                    Maks. ~400 KB karakter setelah dibersihkan. Isi file akan mengisi kotak di atas.
+                  </span>
+                </label>
+              </>
             )}
           </div>
 
@@ -504,7 +582,7 @@ export default function MateriPanel({ kelas, mapel, lombaId, tpKelas }: Props) {
         <div className="lms-empty">
           <p className="font-medium text-slate-700">Belum ada materi</p>
           <p className="mt-1">
-            Buat materi halaman (teks + gambar), unggah file, YouTube, atau tautan — lalu hubungkan ke Tujuan Pembelajaran.
+            Buat materi halaman (teks + gambar), unggah file, kode HTML, YouTube, atau tautan — lalu hubungkan ke Tujuan Pembelajaran.
           </p>
         </div>
       )}
@@ -563,6 +641,14 @@ export default function MateriPanel({ kelas, mapel, lombaId, tpKelas }: Props) {
                         Edit
                       </button>
                     </>
+                  ) : m.jenis === 'html' && m.kontenHtml ? (
+                    <button
+                      type="button"
+                      className="lms-btn-secondary"
+                      onClick={() => setBacaHtml(m)}
+                    >
+                      Baca
+                    </button>
                   ) : m.url ? (
                     <a
                       href={m.url}

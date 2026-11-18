@@ -976,3 +976,35 @@
   outline: 2px solid #6366f1;
   outline-offset: 1px;
 }
+
+/* ── Materi jenis HTML (eksternal img) ── */
+.mh-viewer--html .mh-html-content img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 0.5rem;
+  display: block;
+  margin: 0.75rem 0;
+}
+.mh-viewer--html .mh-html-content figure {
+  margin: 1rem 0;
+}
+.mh-viewer--html .mh-html-content figcaption {
+  font-size: 0.85rem;
+  color: #64748b;
+  margin-top: 0.35rem;
+}
+.mh-viewer--html .mh-html-content a {
+  color: #1d4ed8;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.mh-viewer--html .mh-html-content table {
+  width: max-content;
+  min-width: 100%;
+  border-collapse: collapse;
+}
+.mh-viewer--html .mh-html-content th,
+.mh-viewer--html .mh-html-content td {
+  border: 1px solid #e2e8f0;
+  padding: 0.35rem 0.5rem;
+}

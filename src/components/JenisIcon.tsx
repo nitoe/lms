@@ -42,6 +42,13 @@ export default function JenisIcon({ jenis, size = 22 }: Props) {
           <line x1="9" y1="12" x2="15" y2="12" />
         </svg>
       )
+    case 'html':
+      return (
+        <svg {...common}>
+          <polyline points="16 18 22 12 16 6" />
+          <polyline points="8 6 2 12 8 18" />
+        </svg>
+      )
     case 'video':
     case 'youtube':
       return (

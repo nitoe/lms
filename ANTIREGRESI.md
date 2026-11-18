@@ -710,3 +710,12 @@ Regresi: `firestore.rules` di repo `nitoe/lms` tidak memuat rules Lomba (`lms_lo
 7. **Hanya admin/pengampu** (halaman `LombaDetail` sudah dibatasi `bolehKelolaKontenLomba`). Bila rules koleksi `siswa` kelak diperketat (saat ini `get`/`list` terbuka), pastikan admin LMS dan guru pengampu non-admin tetap boleh `get siswa/{id}` — jika tidak, kartu tercetak dengan «NISN belum terdaftar».
 8. **CSS:** gaya dialog di `styles/kartuLomba.css` (`kp-*`); gaya kartu cetak inline di `kartuLomba.ts` (konstanta `CSS`). Jangan menambah aturan ke `lomba.css` untuk ini dan jangan memakai ulang nama kelas `kp-*`/`kartu`/`lembar` di tempat lain (§Lomba.9). State dialog di `LombaDetail` (`kartuBuka`) dideklarasikan di atas `return` bersyarat (§108.4).
 9. **Uji sebelum deploy:** (a) lomba 20 peserta → 3 lembar, tidak ada lembar kosong di Chrome print preview (A4, skala 100%, margin None); (b) siswa tanpa NISN → kartu menampilkan «Belum terdaftar» + peringatan di atas pratinjau; (c) nama panjang (±40 huruf) dan nama lomba panjang tidak memotong baris «Cara masuk LMS»; (d) cetak sebagian peserta → nomor tidak bergeser; (e) pop-up diblokir → pesan jelas di dialog; (f) akun guru pengampu non-admin dapat mencetak.
+
+## §MateriHtml — Materi jenis HTML + gambar eksternal (2026-11-18)
+
+1. **Jenis `'html'`** dan field **`kontenHtml`** (string, maks. 400_000 karakter). Jangan menyimpan HTML mentah tanpa `bersihHtmlLengkap`.
+2. **Sanitasi terpisah** dari `bersihHtmlMateri` (blok halaman). `bersihHtmlLengkap` mengizinkan `img` (src/alt/…), `a` (href/target/rel), `figure`, heading, table, dll. — **tanpa** script, on*, style berbahaya, data: URI jahat.
+3. Gambar eksternal (imgbb, postimages, drive.google.com/uc, CDN) **sengaja** diizinkan agar URL di kode HTML guru tetap ter-load. Hotlink/CORS adalah tanggung jawab sumber; LMS tidak mem-proxy.
+4. Rules: `jenis` **wajib** memuat `'halaman'` **dan** `'html'`. Deploy rules setelah ubah (file utuh ke SDM01Penilaian). Tanpa itu create/update HTML & halaman ditolak permission.
+5. Viewer: selalu lewat `MateriHtmlViewer` + `dangerouslySetInnerHTML` **setelah** `bersihHtmlLengkap`. Jangan render `kontenHtml` mentah.
+6. Lomba: setiap create materi (file/youtube/tautan/html/**halaman**) di scope lomba **wajib** menyertakan `lombaId` di dokumen (rules `lombaKontenBoleh`).

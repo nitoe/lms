@@ -13,6 +13,8 @@ export function labelJenis(jenis: string): string {
       return 'YouTube'
     case 'halaman':
       return 'Halaman'
+    case 'html':
+      return 'HTML'
     default:
       return 'Tautan'
   }
@@ -31,6 +33,8 @@ export function toneJenis(jenis: string): string {
       return 'materi-tone--yt'
     case 'halaman':
       return 'materi-tone--hal'
+    case 'html':
+      return 'materi-tone--html'
     default:
       return 'materi-tone--url'
   }

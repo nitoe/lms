@@ -6,6 +6,8 @@ export type JenisMateri =
   | 'youtube'
   | 'tautan'
   | 'halaman'
+  /** Konten HTML (paste kode atau unggah .html) — gambar eksternal (imgbb, Postimages, Drive, dll.) didukung. */
+  | 'html'
 
 /** Blok konten di dalam satu halaman materi (V1: teks + gambar). */
 export type MateriBlok =
@@ -73,6 +75,14 @@ export interface MateriLms {
    * Disimpan inline di dokumen materi agar satu baca cukup untuk siswa.
    */
   halaman?: MateriHalaman[]
+  /**
+   * Konten HTML penuh (hanya jika `jenis === 'html'`).
+   * Sudah dibersihkan (DOMPurify) di klien; gambar eksternal diizinkan lewat `<img src="https://…">`.
+   * Batas praktis ~400 KB karakter (ANTIREGRESI).
+   */
+  kontenHtml?: string
+  /** Scope modul Lomba (kelas bank LB). */
+  lombaId?: string
 }
 
 /** TP ringkas dari koleksi `tp_kktp` (Penilaian). */
@@ -98,3 +108,6 @@ export const BATAS_UKURAN = {
 /** Batas praktis materi halaman (ANTIREGRESI). */
 export const BATAS_HALAMAN_PER_MATERI = 20
 export const BATAS_BLOK_PER_HALAMAN = 30
+
+/** Batas karakter konten HTML (paste / file .html) — ~400 KB. */
+export const BATAS_KONTEN_HTML = 400_000
