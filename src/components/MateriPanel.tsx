@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { aturBerbagiMateri, daftarMateri, daftarMateriLomba, hapusMateri, tambahMateri } from '../lib/materi'
 import { KELAS_LOMBA_BANK } from '../lib/lombaAkses'
+import { adalahMapelTka } from '../lib/tkaAkses'
 import BerbagiKelasDialog from './BerbagiKelasDialog'
 import { labelKelasDibagikan } from '../lib/kelasLms'
 import { getTpMapelKelas } from '../lib/tpData'
@@ -131,6 +132,12 @@ function toneJenis(jenis: string): string {
 
 export default function MateriPanel({ kelas, mapel, lombaId, tpKelas }: Props) {
   const { profil } = useAuth()
+  /**
+   * TP wajib hanya di ruang mapel kelas biasa.
+   * Lomba (lombaId) dan mapel TKA: TP opsional / tidak ditampilkan sebagai syarat.
+   * Selaras BankSoalPanel (isTka / tanpa TP) — ANTIREGRESI §MateriHtml / §Lomba.
+   */
+  const tanpaTpWajib = Boolean(lombaId) || adalahMapelTka(mapel)
   const [list, setList] = useState<MateriLms[] | null>(null)
   const [tpList, setTpList] = useState<TpRingkas[]>([])
   const [error, setError] = useState('')
@@ -240,8 +247,8 @@ export default function MateriPanel({ kelas, mapel, lombaId, tpKelas }: Props) {
       if (!mapel || mapel === 'Wali kelas') {
         throw new Error('Pilih ruang kelas dengan mata pelajaran yang valid, bukan «Wali kelas».')
       }
-      const tp = tpList.find((t) => t.id === tpId)
-      if (!tp) {
+      const tp = tpId ? tpList.find((t) => t.id === tpId) : undefined
+      if (!tanpaTpWajib && !tp) {
         throw new Error(
           'Tujuan Pembelajaran wajib dipilih. Buat TP di aplikasi Penilaian jika daftar kosong.',
         )
@@ -350,8 +357,8 @@ export default function MateriPanel({ kelas, mapel, lombaId, tpKelas }: Props) {
         <div className="flex flex-wrap gap-1.5">
           <button
             type="button"
-            disabled={tpList.length === 0}
-            title={tpList.length === 0 ? 'Buat TP di Penilaian terlebih dahulu' : undefined}
+            disabled={!tanpaTpWajib && tpList.length === 0}
+            title={!tanpaTpWajib && tpList.length === 0 ? 'Buat TP di Penilaian terlebih dahulu' : undefined}
             className={`lms-btn-primary ${mode === 'file' ? 'ring-2 ring-muh-300' : ''}`}
             onClick={() => setMode(mode === 'file' ? 'tutup' : 'file')}
           >
@@ -359,7 +366,7 @@ export default function MateriPanel({ kelas, mapel, lombaId, tpKelas }: Props) {
           </button>
           <button
             type="button"
-            disabled={tpList.length === 0}
+            disabled={!tanpaTpWajib && tpList.length === 0}
             className={`lms-btn-secondary ${mode === 'youtube' ? 'ring-2 ring-muh-300' : ''}`}
             onClick={() => setMode(mode === 'youtube' ? 'tutup' : 'youtube')}
           >
@@ -367,7 +374,7 @@ export default function MateriPanel({ kelas, mapel, lombaId, tpKelas }: Props) {
           </button>
           <button
             type="button"
-            disabled={tpList.length === 0}
+            disabled={!tanpaTpWajib && tpList.length === 0}
             className={`lms-btn-secondary ${mode === 'tautan' ? 'ring-2 ring-muh-300' : ''}`}
             onClick={() => setMode(mode === 'tautan' ? 'tutup' : 'tautan')}
           >
@@ -375,8 +382,8 @@ export default function MateriPanel({ kelas, mapel, lombaId, tpKelas }: Props) {
           </button>
           <button
             type="button"
-            disabled={tpList.length === 0}
-            title={tpList.length === 0 ? 'Buat TP di Penilaian terlebih dahulu' : 'Buat materi multi-halaman (teks + gambar)'}
+            disabled={!tanpaTpWajib && tpList.length === 0}
+            title={!tanpaTpWajib && tpList.length === 0 ? 'Buat TP di Penilaian terlebih dahulu' : 'Buat materi multi-halaman (teks + gambar)'}
             className="lms-btn-primary"
             onClick={() => {
               setMode('tutup')
@@ -387,9 +394,9 @@ export default function MateriPanel({ kelas, mapel, lombaId, tpKelas }: Props) {
           </button>
           <button
             type="button"
-            disabled={tpList.length === 0}
+            disabled={!tanpaTpWajib && tpList.length === 0}
             title={
-              tpList.length === 0
+              !tanpaTpWajib && tpList.length === 0
                 ? 'Buat TP di Penilaian terlebih dahulu'
                 : 'Tempel kode HTML atau unggah file .html (gambar eksternal didukung)'
             }
@@ -515,6 +522,7 @@ export default function MateriPanel({ kelas, mapel, lombaId, tpKelas }: Props) {
             )}
           </div>
 
+          {!tanpaTpWajib && (
           <div className="materi-tp-block">
             <div className="flex items-center justify-between gap-2">
               <span className="text-xs font-semibold text-slate-800">
@@ -560,14 +568,19 @@ export default function MateriPanel({ kelas, mapel, lombaId, tpKelas }: Props) {
                 })}
               </div>
             )}
-            <input type="hidden" value={tpId} required readOnly />
+            <input type="hidden" value={tpId} required={!tanpaTpWajib} readOnly />
           </div>
+          )}
 
           <div className="flex justify-end gap-2 pt-1">
             <button type="button" className="lms-btn-secondary" onClick={resetForm} disabled={busy}>
               Batal
             </button>
-            <button type="submit" className="lms-btn-primary" disabled={busy || !tpId}>
+            <button
+              type="submit"
+              className="lms-btn-primary"
+              disabled={busy || (!tanpaTpWajib && !tpId)}
+            >
               {busy ? 'Menyimpan…' : 'Simpan materi'}
             </button>
           </div>
@@ -582,7 +595,9 @@ export default function MateriPanel({ kelas, mapel, lombaId, tpKelas }: Props) {
         <div className="lms-empty">
           <p className="font-medium text-slate-700">Belum ada materi</p>
           <p className="mt-1">
-            Buat materi halaman (teks + gambar), unggah file, kode HTML, YouTube, atau tautan — lalu hubungkan ke Tujuan Pembelajaran.
+            {tanpaTpWajib
+            ? 'Buat materi halaman, unggah file, kode HTML, YouTube, atau tautan.'
+            : 'Buat materi halaman (teks + gambar), unggah file, kode HTML, YouTube, atau tautan — lalu hubungkan ke Tujuan Pembelajaran.'}
           </p>
         </div>
       )}

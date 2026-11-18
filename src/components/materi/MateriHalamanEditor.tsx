@@ -132,7 +132,7 @@ export default function MateriHalamanEditor({
    * Panel pengaturan (judul, TP, …).
    * Buka otomatis jika materi baru atau metadata belum lengkap.
    */
-  const metaAwalLengkap = Boolean(materiAwal?.judul && materiAwal?.tpId)
+  const metaAwalLengkap = Boolean(materiAwal?.judul && (lombaId || materiAwal?.tpId))
   const [panelMeta, setPanelMeta] = useState(!metaAwalLengkap)
   /** Panel unduh template / impor JSON halaman. */
   const [panelImpor, setPanelImpor] = useState(false)
@@ -142,7 +142,7 @@ export default function MateriHalamanEditor({
 
   const aktif = halaman[aktifIdx] ?? halaman[0]
   const tpTerpilih = tpList.find((t) => t.id === meta.tpId)
-  const metaLengkap = Boolean(meta.judul.trim() && meta.tpId)
+  const metaLengkap = Boolean(meta.judul.trim() && (lombaId || meta.tpId))
 
   const updateAktif = useCallback(
     (fn: (h: MateriHalaman) => MateriHalaman) => {
@@ -543,14 +543,14 @@ export default function MateriHalamanEditor({
       if (!mapel || mapel === 'Wali kelas') {
         throw new Error('Pilih ruang kelas dengan mata pelajaran yang valid.')
       }
-      const tp = tpList.find((t) => t.id === meta.tpId)
-      if (!tp) {
-        setPanelMeta(true)
-        throw new Error('Tujuan Pembelajaran wajib dipilih.')
-      }
       if (!meta.judul.trim()) {
         setPanelMeta(true)
         throw new Error('Judul wajib diisi.')
+      }
+      const tp = meta.tpId ? tpList.find((t) => t.id === meta.tpId) : undefined
+      if (!lombaId && !tp) {
+        setPanelMeta(true)
+        throw new Error('Tujuan Pembelajaran wajib dipilih.')
       }
 
       const payload = {
@@ -559,9 +559,9 @@ export default function MateriHalamanEditor({
         judul: meta.judul,
         deskripsi: meta.deskripsi || undefined,
         bab: meta.bab || undefined,
-        tpId: tp.id,
-        tpNomor: tp.nomorTp,
-        tpNama: tp.namaTp,
+        tpId: tp?.id,
+        tpNomor: tp?.nomorTp,
+        tpNama: tp?.namaTp,
         namaGuru,
         halaman,
         ...(lombaId ? { lombaId } : {}),
@@ -811,6 +811,7 @@ export default function MateriHalamanEditor({
                 placeholder="Petunjuk untuk siswa"
               />
             </label>
+            {!lombaId && (
             <div className="materi-tp-block materi-field--full">
               <div className="flex items-center justify-between gap-2">
                 <span className="text-xs font-semibold text-slate-800">
@@ -849,6 +850,7 @@ export default function MateriHalamanEditor({
                 </div>
               )}
             </div>
+            )}
           </div>
           {metaLengkap && (
             <div className="mh-meta-panel-foot">

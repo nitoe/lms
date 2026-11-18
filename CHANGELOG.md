@@ -1,15 +1,12 @@
-## 2026-11-18 — Optimasi sanitasi gambar eksternal (materi HTML)
+## 2026-11-18 — Materi Lomba/TKA: TP tidak wajib (termasuk HTML)
 
-- Pipeline `bersihHtmlLengkap`: DOMPurify → **`optimasiGambarEksternal`**.
-- Normalisasi URL:
-  - Google Drive (`/file/d/ID/view`, `open?id=`, `uc?id=`) → `https://drive.google.com/uc?export=view&id=…`
-  - Dropbox `?dl=0` → `?raw=1`
-  - `//host/…` dan `http://` → `https://`
-  - Tolak `javascript:` / `data:` / `blob:`
-- Atribut otomatis pada `<img>`: `loading="lazy"`, `decoding="async"`, `referrerpolicy="no-referrer"` (bantu hotlink imgbb/postimg), `alt=""` bila kosong.
-- `srcset` ikut dinormalisasi per URL.
-- File: `src/lib/html.ts` saja. **Tidak perlu deploy rules.**
-- Antiregresi: §MateriHtml.7–.9.
+- **Mapel kelas biasa:** Tujuan Pembelajaran tetap wajib saat menambah materi (file/YouTube/tautan/HTML/halaman).
+- **Lomba** (`lombaId` terisi) dan **mapel TKA** (`adalahMapelTka`): form materi **tidak** menampilkan blok TP, tombol tambah tidak terkunci karena daftar TP kosong, simpan tanpa `tpId`.
+- `tambahMateriHalaman` / editor halaman: TP opsional bila `lombaId` ada.
+- Selaras pola Bank Soal (TKA filter materi, bukan TP; paket boleh tanpa TP).
+- File: `src/components/MateriPanel.tsx`, `src/components/materi/MateriHalamanEditor.tsx`, `src/lib/materi.ts`.
+- Tidak perlu ubah rules.
+- Antiregresi: §Materi.TpOpsionalLombaTka.
 
 ## 2026-11-18 — Materi: dukungan sumber HTML (paste kode / file .html) + gambar eksternal
 

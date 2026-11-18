@@ -720,8 +720,9 @@ Regresi: `firestore.rules` di repo `nitoe/lms` tidak memuat rules Lomba (`lms_lo
 5. Viewer: selalu lewat `MateriHtmlViewer` + `dangerouslySetInnerHTML` **setelah** `bersihHtmlLengkap`. Jangan render `kontenHtml` mentah.
 6. Lomba: setiap create materi (file/youtube/tautan/html/**halaman**) di scope lomba **wajib** menyertakan `lombaId` di dokumen (rules `lombaKontenBoleh`).
 
-### §MateriHtml.7–.9 Optimasi URL gambar (2026-11-18)
+## §Materi.TpOpsionalLombaTka (2026-11-18)
 
-7. Setelah DOMPurify, **wajib** `optimasiGambarEksternal` (jangan skip). Drive share-link tanpa normalisasi sering gagal load di `<img>`.
-8. Jangan mengizinkan `style` / `onerror` / `onload` pada img demi keamanan. `referrerpolicy="no-referrer"` cukup untuk banyak host hotlink.
-9. Materi HTML yang **sudah tersimpan** sebelum optimasi: viewer memanggil `bersihHtmlLengkap` lagi saat tampil, jadi URL Drive lama ikut dinormalisasi tanpa migrasi data.
+1. `MateriPanel`: `tanpaTpWajib = Boolean(lombaId) || adalahMapelTka(mapel)`. Jangan mengembalikan `disabled={tpList.length === 0}` tanpa guard ini — di Lomba daftar TP sering kosong → seluruh tombol mati.
+2. Jangan mewajibkan `tpId` di `tambahMateri` / `tambahMateriHalaman` bila `lombaId` terisi. Field `tpId` opsional di rules.
+3. Mapel kelas (tanpa `lombaId`, bukan TKA): tetap wajib TP — jangan longgarkan global.
+4. UI: sembunyikan blok «Tujuan Pembelajaran *» saat `tanpaTpWajib`; tombol Simpan tidak bergantung `tpId`.

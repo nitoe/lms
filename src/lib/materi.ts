@@ -395,7 +395,10 @@ export async function tambahMateriHalaman(input: MateriHalamanInput): Promise<st
   const mapel = input.mapel.trim()
   const judul = input.judul.trim()
   if (!judul) throw new Error('Judul wajib diisi.')
-  if (!input.tpId) throw new Error('Tujuan Pembelajaran wajib dipilih.')
+  // TP wajib hanya di mapel kelas biasa. Lomba (lombaId) / konteks tanpa TP: boleh kosong.
+  if (!input.lombaId && !input.tpId) {
+    throw new Error('Tujuan Pembelajaran wajib dipilih.')
+  }
 
   const halaman = normalisasiHalaman(input.halaman)
 
@@ -409,12 +412,12 @@ export async function tambahMateriHalaman(input: MateriHalamanInput): Promise<st
     urutan: typeof input.urutan === 'number' ? input.urutan : Date.now(),
     dibuatOleh: uid,
     dibuatOlehNama: input.namaGuru || '',
-    tpId: input.tpId,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   }
   // Modul Lomba: rules (lombaKontenBoleh) WAJIB melihat lombaId di dokumen — ANTIREGRESI §Lomba.10.
   if (input.lombaId) payload.lombaId = input.lombaId
+  if (input.tpId) payload.tpId = input.tpId
   if (input.deskripsi?.trim()) payload.deskripsi = input.deskripsi.trim()
   if (input.bab?.trim()) payload.bab = input.bab.trim()
   if (typeof input.tpNomor === 'number') payload.tpNomor = input.tpNomor
@@ -437,7 +440,8 @@ export async function simpanMateriHalaman(
 
   const judul = input.judul.trim()
   if (!judul) throw new Error('Judul wajib diisi.')
-  if (!input.tpId) throw new Error('Tujuan Pembelajaran wajib dipilih.')
+  // Saat update: TP boleh kosong jika dokumen Lomba (tidak punya kewajiban TP).
+  // Klien mengirim tpId hanya bila dipilih; jangan paksa di sini.
 
   const halaman = normalisasiHalaman(input.halaman)
 
@@ -445,9 +449,10 @@ export async function simpanMateriHalaman(
     judul,
     jenis: 'halaman',
     halaman,
-    tpId: input.tpId,
     updatedAt: serverTimestamp(),
   }
+  if (input.tpId) payload.tpId = input.tpId
+  else payload.tpId = null
   if (input.deskripsi?.trim()) payload.deskripsi = input.deskripsi.trim()
   else payload.deskripsi = null
   if (input.bab?.trim()) payload.bab = input.bab.trim()
