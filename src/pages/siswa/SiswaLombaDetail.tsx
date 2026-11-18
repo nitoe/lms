@@ -7,6 +7,11 @@ import { useSiswa } from '../../context/SiswaContext'
 import { getLomba } from '../../lib/lomba'
 import { labelStatusLomba, lombaSedangBerlangsung } from '../../lib/lombaAkses'
 import { daftarKuisLombaAktif } from '../../lib/kuis'
+import { daftarMateriLombaSiswa, pesanGagalMuatMateri } from '../../lib/materiSiswa'
+import { labelJenis, formatUkuran, jumlahHalaman } from '../../lib/materiUi'
+import MateriHalamanViewer from '../../components/materi/MateriHalamanViewer'
+import MateriHtmlViewer from '../../components/materi/MateriHtmlViewer'
+import type { MateriLms } from '../../types/materi'
 import type { Lomba } from '../../types/lomba'
 import { TINGKAT_LOMBA } from '../../types/lomba'
 import type { KuisLms, SoalKuis } from '../../types/kuis'
@@ -193,6 +198,8 @@ export default function SiswaLombaDetail() {
   const autoMulaiRef = useRef(autoMulai)
   const [lomba, setLomba] = useState<Lomba | null>(null)
   const [kuisList, setKuisList] = useState<KuisLms[] | null>(null)
+  const [materiList, setMateriList] = useState<MateriLms[] | null>(null)
+  const [bacaMateri, setBacaMateri] = useState<MateriLms | null>(null)
   const [riwayatMap, setRiwayatMap] = useState<Record<string, Riwayat[]>>({})
   const [memuat, setMemuat] = useState(true)
   const [galat, setGalat] = useState('')
@@ -218,11 +225,19 @@ export default function SiswaLombaDetail() {
         setLomba(l)
         if (!l || !l.siswaIds.includes(sesi.id)) {
           setKuisList([])
+          setMateriList([])
           return
         }
-        const list = await daftarKuisLombaAktif(lombaId)
+        const [list, materi] = await Promise.all([
+          daftarKuisLombaAktif(lombaId),
+          daftarMateriLombaSiswa(lombaId).catch((e) => {
+            console.warn('daftarMateriLombaSiswa', e)
+            return [] as MateriLms[]
+          }),
+        ])
         if (batal) return
         setKuisList(list)
+        setMateriList(materi)
         const map: Record<string, Riwayat[]> = {}
         await Promise.all(
           list.map(async (k) => {
@@ -328,6 +343,25 @@ export default function SiswaLombaDetail() {
     )
   }
 
+  if (bacaMateri && bacaMateri.jenis === 'html') {
+    return (
+      <MateriHtmlViewer
+        materi={bacaMateri}
+        mode="siswa"
+        onTutup={() => setBacaMateri(null)}
+      />
+    )
+  }
+  if (bacaMateri && bacaMateri.jenis === 'halaman') {
+    return (
+      <MateriHalamanViewer
+        materi={bacaMateri}
+        mode="siswa"
+        onTutup={() => setBacaMateri(null)}
+      />
+    )
+  }
+
   if (hasil) {
     return (
       <HasilLomba
@@ -394,6 +428,67 @@ export default function SiswaLombaDetail() {
       {lomba.deskripsi ? (
         <p className="lomba-deskripsi">{lomba.deskripsi}</p>
       ) : null}
+
+      {/* Materi hanya untuk peserta (sudah dicek siswaIds + rules). */}
+      <section className="lomba-kuis-section">
+        <div className="lomba-kuis-section-head">
+          <h2 className="lomba-kuis-section-judul">Materi lomba</h2>
+          {(materiList?.length ?? 0) > 0 && (
+            <span className="lomba-kuis-section-count">{materiList!.length} materi</span>
+          )}
+        </div>
+        {materiList === null ? (
+          <p className="text-sm text-slate-500">Memuat materi…</p>
+        ) : materiList.length === 0 ? (
+          <div className="lomba-kosong">
+            <h3>Belum ada materi</h3>
+            <p>Gurumu belum menambahkan materi untuk lomba ini.</p>
+          </div>
+        ) : (
+          <ul className="lomba-kuis-grid">
+            {materiList.map((m) => (
+              <li key={m.id} className="lomba-kuis-kartu">
+                <div className="lomba-kuis-kartu-head">
+                  <div className="min-w-0">
+                    <h3 className="lomba-kuis-kartu-judul">{m.judul}</h3>
+                    <p className="lomba-kuis-kartu-meta">
+                      {labelJenis(m.jenis)}
+                      {m.jenis === 'halaman' ? ` · ${jumlahHalaman(m)} halaman` : ''}
+                      {m.ukuran ? ` · ${formatUkuran(m.ukuran)}` : ''}
+                      {m.mapel ? ` · ${m.mapel}` : ''}
+                    </p>
+                    {m.deskripsi ? (
+                      <p className="mt-1 text-[12px] text-slate-500 line-clamp-2">{m.deskripsi}</p>
+                    ) : null}
+                  </div>
+                </div>
+                <div className="lomba-kuis-kartu-foot">
+                  {m.jenis === 'halaman' || (m.jenis === 'html' && m.kontenHtml) ? (
+                    <button
+                      type="button"
+                      className="lomba-kuis-btn lomba-kuis-btn--primary"
+                      onClick={() => setBacaMateri(m)}
+                    >
+                      Baca
+                    </button>
+                  ) : m.url ? (
+                    <a
+                      href={m.url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="lomba-kuis-btn lomba-kuis-btn--primary"
+                    >
+                      Buka
+                    </a>
+                  ) : (
+                    <span className="text-[12px] text-slate-400">Belum bisa dibuka</span>
+                  )}
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
 
       <section className="lomba-kuis-section">
         <div className="lomba-kuis-section-head">

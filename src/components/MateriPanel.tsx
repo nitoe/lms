@@ -572,14 +572,42 @@ export default function MateriPanel({ kelas, mapel, lombaId, tpKelas }: Props) {
           </div>
           )}
 
-          <div className="flex justify-end gap-2 pt-1">
+          <div className="flex flex-wrap justify-end gap-2 pt-1">
             <button type="button" className="lms-btn-secondary" onClick={resetForm} disabled={busy}>
               Batal
             </button>
+            {mode === 'html' && (
+              <button
+                type="button"
+                className="lms-btn-secondary"
+                disabled={busy || !kontenHtml.trim()}
+                title={
+                  kontenHtml.trim()
+                    ? 'Lihat pratinjau sebelum menyimpan — pastikan gambar dan tampilan benar'
+                    : 'Isi atau unggah HTML terlebih dahulu'
+                }
+                onClick={() => {
+                  const judulPratinjau = judul.trim() || 'Pratinjau HTML'
+                  setBacaHtml({
+                    id: 'pratinjau-lokal',
+                    kelas: lombaId ? 'LB' : kelas,
+                    mapel,
+                    judul: judulPratinjau,
+                    deskripsi: deskripsi || undefined,
+                    jenis: 'html',
+                    kontenHtml,
+                    urutan: 0,
+                    dibuatOleh: '',
+                  })
+                }}
+              >
+                Pratinjau
+              </button>
+            )}
             <button
               type="submit"
               className="lms-btn-primary"
-              disabled={busy || (!tanpaTpWajib && !tpId)}
+              disabled={busy || (!tanpaTpWajib && !tpId) || (mode === 'html' && !kontenHtml.trim() && !file)}
             >
               {busy ? 'Menyimpan…' : 'Simpan materi'}
             </button>

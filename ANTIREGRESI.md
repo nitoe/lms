@@ -726,3 +726,11 @@ Regresi: `firestore.rules` di repo `nitoe/lms` tidak memuat rules Lomba (`lms_lo
 2. Jangan mewajibkan `tpId` di `tambahMateri` / `tambahMateriHalaman` bila `lombaId` terisi. Field `tpId` opsional di rules.
 3. Mapel kelas (tanpa `lombaId`, bukan TKA): tetap wajib TP — jangan longgarkan global.
 4. UI: sembunyikan blok «Tujuan Pembelajaran *» saat `tanpaTpWajib`; tombol Simpan tidak bergantung `tpId`.
+
+## §Lomba.Materi — Materi lomba hanya peserta (2026-11-18)
+
+1. Dokumen `lms_materi` dengan field `lombaId` **tidak** boleh dibaca lewat cabang `kelas == token.kelas` / `kelasList`. Rules wajib menolak non-peserta.
+2. Query siswa: `where('lombaId','==', lombaId)` saja. Jangan query kelas `LB` tanpa filter lombaId.
+3. Klien `SiswaLombaDetail`: muat materi **hanya** setelah `l.siswaIds.includes(sesi.id)`.
+4. `daftarMateriKelas` (halaman Materi mapel) wajib skip `m.lombaId` agar materi lomba tidak muncul di kurikulum kelas.
+5. Pratinjau HTML guru: `bersihHtmlLengkap` + `MateriHtmlViewer` sebelum simpan; id lokal `pratinjau-lokal` tidak ditulis ke Firestore.

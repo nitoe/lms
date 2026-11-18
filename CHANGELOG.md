@@ -1,3 +1,14 @@
+## 2026-11-18 — Materi HTML: pratinjau + materi lomba hanya untuk peserta
+
+- **Pratinjau HTML (guru):** tombol «Pratinjau» di form + HTML sebelum simpan — menampilkan `MateriHtmlViewer` dari kode yang sedang diedit (termasuk gambar eksternal setelah sanitasi). Mencegah siswa mendapat halaman rusak.
+- **Visibilitas materi lomba (siswa):**
+  - Rules `lms_materi`: siswa hanya boleh baca dokumen dengan `lombaId` jika `token.siswaId` ∈ `lms_lomba/{id}.siswaIds`. Cabang baca kelas biasa **tidak** berlaku bila ada `lombaId` (mencegah bocor ke materi mapel/LB).
+  - `daftarMateriKelas` mengecualikan dokumen ber-`lombaId` (defense in depth).
+  - `daftarMateriLombaSiswa(lombaId)` + section «Materi lomba» di `SiswaLombaDetail` (hanya setelah cek peserta).
+- **Wajib deploy `firestore.rules`** (file utuh ke SDM01Penilaian → `npm run deploy:rules`).
+- File: `src/components/MateriPanel.tsx`, `src/lib/materiSiswa.ts`, `src/pages/siswa/SiswaLombaDetail.tsx`, `firestore.rules`.
+- Antiregresi: §Lomba.Materi.
+
 ## 2026-11-18 — Materi Lomba/TKA: TP tidak wajib (termasuk HTML)
 
 - **Mapel kelas biasa:** Tujuan Pembelajaran tetap wajib saat menambah materi (file/YouTube/tautan/HTML/halaman).
