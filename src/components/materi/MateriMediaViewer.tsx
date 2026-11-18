@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { ekstrakYoutubeId } from '../../lib/materi'
+import MateriGambarZoom from './MateriGambarZoom'
 
 export type MediaJenisPreview = 'youtube' | 'gambar' | 'video' | 'pdf' | 'tautan'
 
@@ -84,18 +85,21 @@ export default function MateriMediaViewer({
         )}
 
         {jenis === 'gambar' && (
-          <figure className="mm-figure">
+          <div className="mm-figure">
             {!gagal ? (
-              <img
-                src={url}
-                alt={judul}
-                className="mm-img"
-                onError={() => setGagal(true)}
-              />
+              <MateriGambarZoom src={url} alt={judul} />
             ) : (
               <p className="lms-empty">Gambar tidak dapat dimuat.</p>
             )}
-          </figure>
+            {/* deteksi error lewat img tersembunyi jika perlu — overlay zoom memakai src yang sama */}
+            <img
+              src={url}
+              alt=""
+              className="sr-only"
+              aria-hidden
+              onError={() => setGagal(true)}
+            />
+          </div>
         )}
 
         {jenis === 'video' && (

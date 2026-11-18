@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { bersihHtmlMateri, materiPunyaRumus } from '../../lib/html'
 import { htmlDenganRumus, useKatexSiap } from '../../lib/matematika'
 import type { MateriHalaman, MateriLms } from '../../types/materi'
+import MateriGambarZoom from './MateriGambarZoom'
 
 type Props = {
   materi: MateriLms
@@ -105,10 +106,12 @@ export default function MateriHalamanViewer({ materi, awal = 0, onTutup, mode = 
           }
           if (b.tipe === 'gambar' && b.url) {
             return (
-              <figure key={b.id} className="mh-blok mh-blok--gambar">
-                <img src={b.url} alt={b.alt || b.caption || 'Gambar materi'} loading="lazy" />
-                {b.caption && <figcaption>{b.caption}</figcaption>}
-              </figure>
+              <MateriGambarZoom
+                key={b.id}
+                src={b.url}
+                alt={b.alt || b.caption || 'Gambar materi'}
+                caption={b.caption}
+              />
             )
           }
           return null

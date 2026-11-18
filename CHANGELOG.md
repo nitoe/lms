@@ -1,3 +1,13 @@
+## 2026-11-18 — Viewer materi: pinch-zoom gambar + panduan ukuran
+
+- **Zoom gambar:** ketuk gambar di viewer halaman (guru & siswa) membuka overlay layar penuh.
+  - Cubit (pinch) di HP, gulir roda mouse di PC, tombol + / − / 1×, ketuk dua kali, seret saat diperbesar, Esc untuk tutup.
+  - Badge «Ketuk untuk perbesar» di sudut gambar.
+- Berlaku juga di pratinjau media jenis gambar (`MateriMediaViewer`).
+- **Panduan:** `docs/PANDUAN_GAMBAR_MATERI.md` — kanvas disarankan **1080×1350 (4∶5)**, font isi ≥28–36 px, hindari satu lembar B5 padat sebagai satu slide.
+- File: `src/components/materi/MateriGambarZoom.tsx` (baru), `MateriHalamanViewer.tsx`, `MateriMediaViewer.tsx`, `src/styles/materi-halaman.css`, `docs/PANDUAN_GAMBAR_MATERI.md`.
+- Antiregresi: §Materi.GambarZoom.
+
 ## 2026-11-18 — Viewer materi: gambar/poster lebih besar di PC & HP
 
 - **Masalah:** materi dari unggah gambar (halaman poster) tampil kecil di tengah layar PC (banyak ruang kosong) dan kurang maksimal di HP.

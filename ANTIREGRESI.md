@@ -706,6 +706,16 @@ Regresi: `firestore.rules` di repo `nitoe/lms` tidak memuat rules Lomba (`lms_lo
 8. **CSS:** gaya dialog di `styles/kartuLomba.css` (`kp-*`); gaya kartu cetak inline di `kartuLomba.ts` (konstanta `CSS`). Jangan menambah aturan ke `lomba.css` untuk ini dan jangan memakai ulang nama kelas `kp-*`/`kartu`/`lembar` di tempat lain (§Lomba.9). State dialog di `LombaDetail` (`kartuBuka`) dideklarasikan di atas `return` bersyarat (§108.4).
 9. **Uji sebelum deploy:** (a) lomba 20 peserta → 3 lembar, tidak ada lembar kosong di Chrome print preview (A4, skala 100%, margin None); (b) siswa tanpa NISN → kartu menampilkan «Belum terdaftar» + peringatan di atas pratinjau; (c) nama panjang (±40 huruf) dan nama lomba panjang tidak memotong baris «Cara masuk LMS»; (d) cetak sebagian peserta → nomor tidak bergeser; (e) pop-up diblokir → pesan jelas di dialog; (f) akun guru pengampu non-admin dapat mencetak.
 
+## §Materi.GambarZoom (2026-11-18)
+
+1. Zoom memakai overlay `position: fixed` + `transform: scale/translate` — **jangan** ubah `src` gambar atau unduh ulang.
+2. Saat overlay terbuka: `body { overflow: hidden }`; restore saat tutup.
+3. Touch: `touch-action: none` di stage; pinch dihitung dari jarak dua jari. Jangan pasang library zoom berat tanpa kebutuhan.
+4. Inline tetap `object-fit: contain` + max-height viewport; detail dibaca di overlay, bukan dengan memaksa gambar inline selebar mungkin hingga merusak layout.
+5. Panduan ukuran: `docs/PANDUAN_GAMBAR_MATERI.md` (1080×1350). B5 cetak ≠ kanvas LMS.
+
+---
+
 ## §Materi.ViewerGambarBesar (2026-11-18)
 
 1. Jangan kembalikan `max-height` tetap kecil (22–30rem) pada `.mh-blok--gambar img` — membuat poster portrait kecil di PC.
