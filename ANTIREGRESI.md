@@ -1,3 +1,13 @@
+## §Import.Tka2026 — Import ekspor bank soal website lama (2026-11-19)
+
+1. **Jangan menolak `pgk-cat`.** Tipe ini di tka2026 = BS kategori 2 kolom. Map ke `bs` lewat `rows`/`cols`/`kunciJawaban`. Soal dengan `cols.length !== 2` boleh ditolak + dilaporkan; yang 2 kolom wajib masuk.
+2. **Kunci tka2026 adalah teks opsi, bukan huruf A/B/C.** `cariOpsi` harus mencocokkan teks persis sebelum fallback huruf. Memakai hanya `raw.kunci` (tanpa `kunciJawaban`) membuat semua soal PG/PGK gagal import.
+3. **Satu file = banyak materi.** Ekspor BI/MTK berisi 3 `tipeMateri`. Jangan memaksa `tipeMateri` tunggal di metadata root untuk format tka2026; pecah paket per materi di UI (`hasil.multiMateri`).
+4. **Gambar bacaan di `stimulusImage` (base64).** Jangan membuang field ini saat parse; unggah ke `lms_gambar` di alur import (`prosesGambarStimulusImport`) lalu set `gambarId`. Batas karakter dokumen gambar tetap 300.000 (kompres lewat `unggahGambar`).
+5. **Kompleksitas berlabel.** `L1-Pemahaman` dll. harus dinormalisasi ke `L1`/`L2`/`L3` (`normalisasiKompleksitasImport`); membiarkan string penuh membuat filter analisis TKA kosong.
+6. **Mapel dari subjectId.** `bahasa-indonesia` → `TKA Bahasa Indonesia`, `matematika` → `TKA Matematika`. Validasi mapel memakai nama kanonis ruang TKA, bukan slug.
+7. **Jangan menandai duplikat agresif pada file tka2026 besar.** Soal lintas materi bisa berbagi stem mirip; cek duplikat ketat hanya untuk template LMS biasa.
+
 ## §Soal.Ganda — Deteksi & penghapusan soal ganda (2026-11-19)
 
 1. **Duplikat ditentukan menurut ISI, bukan ID.** Soal hasil salin/gabung/snapshot kuis selalu berID baru (`salinSoal`, `snapshotSoal`), jadi membandingkan `id`/`sumberSoalId` tidak pernah menemukan soal yang sama dari paket berbeda. Gunakan `cariSoalGanda` / `sidikJariSoal` (`src/lib/soalGanda.ts`); jangan membuat pembanding sendiri di komponen.

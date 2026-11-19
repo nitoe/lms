@@ -38,6 +38,7 @@ import {
   VALUE_TANPA_TP,
 } from '../lib/importSoal'
 import { kelasAksenMapel, LABEL_TIPE_PENDEK, materiPaket, paketMemuatMateri } from '../lib/aksenTka'
+import { unggahGambar } from '../lib/gambar'
 import '../styles/soal.css'
 import '../styles/tka-bank.css'
 
@@ -381,6 +382,34 @@ export default function BankSoalPanel({ kelas, mapel, ruangId, lombaId, tpKelas 
     setTpIdExport('')
   }
 
+  /**
+   * Unggah gambar base64 dari ekspor tka2026 (`_stimulusImage`) ke lms_gambar,
+   * set gambarId, hapus field sementara. Gagal unggah satu soal tidak membatalkan sisanya.
+   */
+  async function prosesGambarStimulusImport(soalList: Partial<Soal>[]): Promise<Partial<Soal>[]> {
+    const hasil: Partial<Soal>[] = []
+    for (const s of soalList) {
+      const dataUrl = (s as any)._stimulusImage as string | undefined
+      if (dataUrl && dataUrl.startsWith('data:image/')) {
+        try {
+          const res = await fetch(dataUrl)
+          const blob = await res.blob()
+          const gambarId = await unggahGambar(blob)
+          const { _stimulusImage: _, ...rest } = s as any
+          hasil.push({ ...rest, gambarId })
+        } catch (err) {
+          console.warn('Gagal unggah gambar stimulus:', err)
+          const { _stimulusImage: _, ...rest } = s as any
+          hasil.push(rest)
+        }
+      } else {
+        const { _stimulusImage: _, ...rest } = s as any
+        hasil.push(rest)
+      }
+    }
+    return hasil
+  }
+
   async function prosesImport(e: React.FormEvent) {
     e.preventDefault()
     if (!fileImport || !judulImport.trim()) return
@@ -396,7 +425,10 @@ export default function BankSoalPanel({ kelas, mapel, ruangId, lombaId, tpKelas 
       const tpDipilih = !isTka && !tanpaTp ? (tpList.find((t) => t.id === tpIdImport) || null) : null
       const materiDipilih = isTka ? materiIdImport.trim() : ''
       const galatMeta = isTka
-        ? validasiMetadataTka(hasil.metadata, mapel, materiDipilih || null)
+        ? validasiMetadataTka(hasil.metadata, mapel, materiDipilih || null, {
+            multiMateri: hasil.multiMateri,
+            formatSumber: hasil.formatSumber,
+          })
         : tanpaTp
           ? validasiMetadataTanpaTp(hasil.metadata, mapel)
           : validasiMetadata(hasil.metadata, mapel, tpDipilih)
@@ -413,14 +445,56 @@ export default function BankSoalPanel({ kelas, mapel, ruangId, lombaId, tpKelas 
         return
       }
 
-      // Buat paket baru dengan soal hasil import (ganti soal awal)
+      // Unggah gambar stimulus (ekspor tka2026) sebelum simpan
+      const soalDenganGambar = await prosesGambarStimulusImport(hasil.soal)
+
+      // Multi-materi tka2026: pecah satu paket per tipeMateri (ANTIREGRESI §Import.Tka2026)
+      if (isTka && hasil.multiMateri) {
+        const kelompok = new Map<string, Partial<Soal>[]>()
+        for (const s of soalDenganGambar) {
+          const m = (s.tipeMateri || 'Tanpa materi').trim() || 'Tanpa materi'
+          if (!kelompok.has(m)) kelompok.set(m, [])
+          kelompok.get(m)!.push(s)
+        }
+        const idPaket: string[] = []
+        let total = 0
+        for (const [materi, daftar] of kelompok) {
+          const judul = `${judulImport.trim()} — ${materi}`
+          const id = await buatPaket({
+            kelas: KELAS_TKA_BANK,
+            mapel,
+            judul,
+            tipeMateri: materi === 'Tanpa materi' ? undefined : materi,
+            namaGuru: profil?.nama,
+          })
+          await simpanPaket(id, {
+            soal: daftar as any,
+            ...(materi !== 'Tanpa materi' ? { tipeMateri: materi } : {}),
+          })
+          idPaket.push(id)
+          total += daftar.length
+        }
+        setInfoImport(
+          `Berhasil mengimpor ${total} soal ke ${idPaket.length} paket (per materi).` +
+            (hasil.diperbaiki ? ' (Format JSON dirapikan otomatis.)' : '') +
+            (hasil.formatSumber === 'tka2026' ? ' Format tka2026 dikonversi otomatis.' : ''),
+        )
+        setFormImport(false)
+        setJudulImport('')
+        setTpIdImport('')
+        setMateriIdImport('')
+        setFileImport(null)
+        await muat()
+        return
+      }
+
+      // Satu paket (mapel biasa / TKA satu materi)
       const materiPaket = isTka
         ? (materiDipilih || hasil.metadata.tipeMateri || '').trim()
         : undefined
-      // Warisi materi paket ke setiap soal TKA
       const soalImpor = isTka && materiPaket
-        ? hasil.soal.map((s) => ({ ...s, tipeMateri: s.tipeMateri || materiPaket }))
-        : hasil.soal
+        ? soalDenganGambar.map((s) => ({ ...s, tipeMateri: s.tipeMateri || materiPaket }))
+        : soalDenganGambar
       const id = await buatPaket({
         kelas: lombaId ? KELAS_LOMBA_BANK : isTka ? KELAS_TKA_BANK : kelas,
         mapel,
@@ -432,10 +506,13 @@ export default function BankSoalPanel({ kelas, mapel, ruangId, lombaId, tpKelas 
         tipeMateri: materiPaket,
         namaGuru: profil?.nama,
       })
-      // Simpan soal hasil import (buatPaket membuat 1 soal kosong; kita timpa)
       await simpanPaket(id, { soal: soalImpor as any, ...(materiPaket ? { tipeMateri: materiPaket } : {}) })
 
-      setInfoImport(`Berhasil mengimpor ${hasil.soal.length} soal ke paket baru.${hasil.diperbaiki ? ' (Format JSON dirapikan otomatis.)' : ''}`)
+      setInfoImport(
+        `Berhasil mengimpor ${soalImpor.length} soal ke paket baru.` +
+          (hasil.diperbaiki ? ' (Format JSON dirapikan otomatis.)' : '') +
+          (hasil.formatSumber === 'tka2026' ? ' Format tka2026 dikonversi otomatis.' : ''),
+      )
       setFormImport(false)
       setJudulImport('')
       setTpIdImport('')
@@ -462,8 +539,19 @@ export default function BankSoalPanel({ kelas, mapel, ruangId, lombaId, tpKelas 
       const paketTanpaTp = !isTka && !paketTargetImport.tpId
       const tpPaket = !isTka ? (tpList.find((t) => t.id === paketTargetImport.tpId) || null) : null
       const materiPaket = isTka ? (paketTargetImport.tipeMateri || '').trim() : ''
+      // Import ke paket existing: multi-materi tka2026 ditolak (harus import paket baru)
+      if (hasil.multiMateri) {
+        setError(
+          'File memuat beberapa materi (ekspor tka2026). Gunakan «Import paket baru» agar sistem memecah per materi, atau saring file per materi terlebih dahulu.',
+        )
+        setBusy(false)
+        return
+      }
       const galatMeta = isTka
-        ? validasiMetadataTka(hasil.metadata, mapel, materiPaket || null)
+        ? validasiMetadataTka(hasil.metadata, mapel, materiPaket || null, {
+            multiMateri: false,
+            formatSumber: hasil.formatSumber,
+          })
         : paketTanpaTp
           ? validasiMetadataTanpaTp(hasil.metadata, mapel)
           : validasiMetadata(hasil.metadata, mapel, tpPaket)
@@ -480,13 +568,18 @@ export default function BankSoalPanel({ kelas, mapel, ruangId, lombaId, tpKelas 
         return
       }
 
+      const soalDenganGambar = await prosesGambarStimulusImport(hasil.soal)
       const tambahan = isTka && materiPaket
-        ? hasil.soal.map((s) => ({ ...s, tipeMateri: s.tipeMateri || materiPaket }))
-        : hasil.soal
+        ? soalDenganGambar.map((s) => ({ ...s, tipeMateri: s.tipeMateri || materiPaket }))
+        : soalDenganGambar
       const soalBaru = [...(paketTargetImport.soal || []), ...tambahan]
       await simpanPaket(paketTargetImport.id, { soal: soalBaru as any })
 
-      setInfoImport(`Berhasil menambahkan ${hasil.soal.length} soal ke paket «${paketTargetImport.judul}».${hasil.diperbaiki ? ' (Format JSON dirapikan otomatis.)' : ''}`)
+      setInfoImport(
+        `Berhasil menambahkan ${tambahan.length} soal ke paket «${paketTargetImport.judul}».` +
+          (hasil.diperbaiki ? ' (Format JSON dirapikan otomatis.)' : '') +
+          (hasil.formatSumber === 'tka2026' ? ' Format tka2026 dikonversi otomatis.' : ''),
+      )
       setPaketTargetImport(null)
       setFileImportKePaket(null)
       await muat()

@@ -1,3 +1,20 @@
+## 2026-11-19 — Import bank soal TKA: dukungan penuh ekspor tka2026 (BI & Matematika)
+
+- **Kebutuhan:** mengimpor 300 soal Bahasa Indonesia dan 300 soal Matematika dari ekspor website lama (`tka2026`) ke bank soal TKA LMS tanpa soal tertinggal.
+- **Konversi otomatis** di `parseJsonImport` / `normalisasiSoalDariImport`:
+  - Deteksi format lewat `_meta.app === "tka2026"` atau field khas (`subjectId`, `kunciJawaban`, `pertanyaan`).
+  - `pg` / `pgk` → sama; `kunciJawaban` (teks opsi penuh atau array) dicocokkan ke opsi.
+  - `pgk-cat` (2 kolom) → `bs` dengan `rows` → pernyataan, `cols` → `labelBenar`/`labelSalah`, `kunciJawaban` → benar/salah per baris.
+  - `kompleksitas` `L1-Pemahaman` / `L2-Aplikasi` / `L3-Penalaran` → `L1` / `L2` / `L3`.
+  - `pertanyaan` → `teks`, `skor` → `poin`, `stimulus` → `stimulus`, `rumus=true` otomatis.
+  - `subjectId` / `_meta.scope` → mapel kanonis (`TKA Bahasa Indonesia`, `TKA Matematika`, `TKA IPA`).
+  - `stimulusImage` (data URL base64) → diunggah ke `lms_gambar` saat import, menjadi `gambarId`.
+- **Multi-materi:** satu file ekspor memuat beberapa `tipeMateri` → UI memecah otomatis menjadi **satu paket per materi** (judul «… — {materi}»).
+- **Validasi:** `validasiMetadataTka` longgar untuk multi-materi / format tka2026 (tidak memaksa `tipeMateri` tunggal di root).
+- Import ke paket yang sudah ada menolak file multi-materi (pakai «Import paket baru»).
+- File: `src/lib/importSoal.ts`, `src/components/BankSoalPanel.tsx`.
+- Antiregresi: §Import.Tka2026.
+
 ## 2026-11-19 — Bank Soal: tombol «Cek ganda» di kartu paket & «Cek soal ganda» di toolbar
 
 - **Gejala:** fitur periksa soal ganda baru ada di editor paket dan detail kuis; di daftar paket bank soal (kartu paket) belum ada.

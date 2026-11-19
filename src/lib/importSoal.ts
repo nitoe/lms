@@ -27,6 +27,14 @@ export interface HasilParseImport {
   gagalParse?: boolean
   /** true bila JSON hanya terbaca setelah dirapikan otomatis (BOM, ```json, koma sisa, komentar, dst.). */
   diperbaiki?: boolean
+  /**
+   * true bila file adalah ekspor tka2026 yang memuat beberapa tipeMateri.
+   * Pemanggil (BankSoalPanel) wajib memecah menjadi satu paket per materi;
+   * validasi tipeMateri tunggal dilonggarkan (ANTIREGRESI §Import.Tka2026).
+   */
+  multiMateri?: boolean
+  /** Sumber format: «tka2026» bila terdeteksi dari _meta.app atau field khas. */
+  formatSumber?: 'tka2026' | 'lms'
 }
 
 /** Nilai pilihan «Tanpa TP» pada dropdown unduh template / import (bukan id TP sungguhan). */
@@ -95,12 +103,33 @@ function normalisasiTeksUntukDuplikat(teks: string): string {
     .trim()
 }
 
+/** Mapel kanonis TKA dari subjectId / scope ekspor tka2026. */
+const MAP_SUBJECT_TKA: Record<string, string> = {
+  'bahasa-indonesia': 'TKA Bahasa Indonesia',
+  'bahasa indonesia': 'TKA Bahasa Indonesia',
+  bi: 'TKA Bahasa Indonesia',
+  matematika: 'TKA Matematika',
+  mtk: 'TKA Matematika',
+  ipa: 'TKA IPA',
+}
+
+/** Kompleksitas tka2026 «L1-Pemahaman» / «L2-Aplikasi» / «L3-Penalaran» → L1|L2|L3. */
+export function normalisasiKompleksitasImport(v: unknown): 'L1' | 'L2' | 'L3' {
+  const s = String(v ?? '').trim()
+  if (/^L1/i.test(s)) return 'L1'
+  if (/^L2/i.test(s)) return 'L2'
+  if (/^L3/i.test(s)) return 'L3'
+  return normalisasiKompleksitas(v)
+}
+
 /** Ubah baris data mentah menjadi soal yang valid. Tolak jika tidak lengkap. */
 export function normalisasiSoalDariImport(raw: Record<string, unknown>, index: number): { soal?: Partial<Soal>; galat?: string } {
   const tipeRaw = String(raw.tipe || raw.bentuk || raw.jenis || '').toLowerCase().trim()
+  // pgk-cat (tka2026) → bs (benar/salah kategori 2 kolom)
   const mapTipe: Record<string, TipeSoal> = {
     pg: 'pg', 'pilihan ganda': 'pg', 'pilihan-ganda': 'pg',
     pgk: 'pgk', 'pg kompleks': 'pgk', 'pilihan ganda kompleks': 'pgk',
+    'pgk-cat': 'bs', 'pgk_cat': 'bs', kategori: 'bs',
     jodoh: 'jodoh', menjodohkan: 'jodoh',
     bs: 'bs', 'benar salah': 'bs', 'benar/salah': 'bs',
     isian: 'isian', 'isian singkat': 'isian',
@@ -112,21 +141,32 @@ export function normalisasiSoalDariImport(raw: Record<string, unknown>, index: n
   const stimulusRaw = String(raw.stimulus || raw.bacaan || '').trim()
   const teks = String(raw.teks || raw.narasi || raw.pertanyaan || '').trim()
   // Kompatibilitas lama: jika hanya ada stimulus, anggap itu teks soal (mapel biasa).
-  const teksFinal = teks || (!stimulusRaw ? '' : '')
-  if (!teksFinal && !stimulusRaw) return { galat: `Baris ${index + 1}: narasi/teks soal kosong.` }
+  // tka2026: stimulus boleh kosong bila hanya ada stimulusImage (gambar bacaan).
+  const adaGambarStimulus =
+    typeof raw.stimulusImage === 'string' &&
+    (raw.stimulusImage as string).startsWith('data:image/')
+  const teksFinal = teks || (!stimulusRaw && !adaGambarStimulus ? '' : '')
+  if (!teksFinal && !stimulusRaw && !adaGambarStimulus) {
+    return { galat: `Baris ${index + 1}: narasi/teks soal kosong.` }
+  }
 
   const dasar = soalBaru(tipe)
+  const skor = Number(raw.poin ?? raw.skor)
   const soal: Partial<Soal> = {
     ...dasar,
-    teks: teksFinal || (stimulusRaw ? 'Berdasarkan bacaan di atas, pilihlah jawaban yang tepat.' : ''),
-    kompleksitas: normalisasiKompleksitas(raw.kompleksitas),
-    poin: Number(raw.poin) > 0 ? Number(raw.poin) : dasar.poin,
+    teks: teksFinal || (stimulusRaw || adaGambarStimulus ? 'Berdasarkan bacaan di atas, pilihlah jawaban yang tepat.' : ''),
+    kompleksitas: normalisasiKompleksitasImport(raw.kompleksitas),
+    poin: skor > 0 ? skor : dasar.poin,
     waktuMenit: Number(raw.waktuMenit) > 0 ? Number(raw.waktuMenit) : dasar.waktuMenit,
     pembahasan: String(raw.pembahasan || raw.penjelasan || '').trim() || undefined,
     ...(stimulusRaw ? { stimulus: stimulusRaw } : {}),
     ...(String(raw.tipeMateri || raw.materi || '').trim()
       ? { tipeMateri: String(raw.tipeMateri || raw.materi).trim() }
       : {}),
+  }
+  // Gambar bacaan base64 dari ekspor tka2026 — diunggah pemanggil (BankSoalPanel) → gambarId
+  if (adaGambarStimulus) {
+    ;(soal as any)._stimulusImage = String(raw.stimulusImage)
   }
 
   // --- PG / PGK ---
@@ -156,8 +196,14 @@ export function normalisasiSoalDariImport(raw: Record<string, unknown>, index: n
     ;(soal as any).acakOpsi = raw.acakOpsi !== false
     ;(soal as any).opsiGambar = false
 
-    const kunciRaw = String(raw.kunci || raw.jawaban || '').trim()
-    if (!kunciRaw) return { galat: `Baris ${index + 1}: soal ${tipe.toUpperCase()} tidak memiliki kunci jawaban.` }
+    // tka2026 memakai kunciJawaban (teks opsi atau array teks); template LMS memakai kunci / jawaban
+    const kunciSumber = raw.kunciJawaban ?? raw.kunci ?? raw.jawaban
+    const kunciRaw = Array.isArray(kunciSumber)
+      ? ''
+      : String(kunciSumber ?? '').trim()
+    if (!kunciRaw && !Array.isArray(kunciSumber)) {
+      return { galat: `Baris ${index + 1}: soal ${tipe.toUpperCase()} tidak memiliki kunci jawaban.` }
+    }
 
     // Normalisasi ID opsi menjadi huruf A, B, C, D jika memungkinkan
     const huruf = 'abcdefghijklmnopqrstuvwxyz'
@@ -173,7 +219,7 @@ export function normalisasiSoalDariImport(raw: Record<string, unknown>, index: n
       // 2. Cocokkan huruf di awal (A., A), B)
       m = opsi.find((o) => o.id.toLowerCase() === k.replace(/[^a-z]/g, ''))
       if (m) return m
-      // 3. Cocokkan teks persis
+      // 3. Cocokkan teks persis (penting untuk ekspor tka2026: kunci = teks opsi penuh)
       m = opsi.find((o) => o.teks.toLowerCase() === k)
       if (m) return m
       // 4. Cocokkan teks yang mengandung kunci (hati-hati)
@@ -183,10 +229,14 @@ export function normalisasiSoalDariImport(raw: Record<string, unknown>, index: n
 
     if (tipe === 'pg') {
       const match = cariOpsi(kunciRaw)
-      if (!match) return { galat: `Baris ${index + 1}: kunci «${kunciRaw}» tidak cocok dengan opsi manapun.` }
+      if (!match) return { galat: `Baris ${index + 1}: kunci «${kunciRaw.slice(0, 80)}» tidak cocok dengan opsi manapun.` }
       ;(soal as any).kunci = match.id
     } else {
-      const daftarKunci = Array.isArray(raw.kunci) ? raw.kunci.map(String) : kunciRaw.split(/[,;]/).map((s) => s.trim()).filter(Boolean)
+      const daftarKunci = Array.isArray(kunciSumber)
+        ? kunciSumber.map(String)
+        : Array.isArray(raw.kunci)
+          ? (raw.kunci as unknown[]).map(String)
+          : kunciRaw.split(/[,;]/).map((s) => s.trim()).filter(Boolean)
       const kunciIds: string[] = []
       for (const k of daftarKunci) {
         const match = cariOpsi(k)
@@ -195,7 +245,8 @@ export function normalisasiSoalDariImport(raw: Record<string, unknown>, index: n
       if (kunciIds.length === 0) return { galat: `Baris ${index + 1}: tidak ada kunci yang cocok dengan opsi.` }
       if (kunciIds.length > 2) return { galat: `Baris ${index + 1}: PG kompleks untuk SD idealnya hanya 1–2 jawaban benar.` }
       ;(soal as any).kunci = kunciIds
-      ;(soal as any).nilaiParsial = raw.nilaiParsial !== false
+      // tka2026 PGK: harus benar semua (nilaiParsial=false); template LMS default true
+      ;(soal as any).nilaiParsial = raw.nilaiParsial === true
     }
   }
 
@@ -229,7 +280,7 @@ export function normalisasiSoalDariImport(raw: Record<string, unknown>, index: n
     ;(soal as any).nilaiParsial = raw.nilaiParsial !== false
   }
 
-  // --- Benar/Salah ---
+  // --- Benar/Salah (termasuk konversi pgk-cat tka2026: rows + cols + kunciJawaban) ---
   if (tipe === 'bs') {
     const pernyataan: PernyataanBs[] = []
     if (Array.isArray(raw.pernyataan)) {
@@ -242,10 +293,42 @@ export function normalisasiSoalDariImport(raw: Record<string, unknown>, index: n
           })
         }
       }
+    } else if (Array.isArray(raw.rows) && raw.rows.length > 0) {
+      // Format tka2026 pgk-cat: rows = pernyataan, cols = [labelBenar, labelSalah], kunciJawaban = label per baris
+      const cols = Array.isArray(raw.cols) ? (raw.cols as unknown[]).map(String) : ['Benar', 'Salah']
+      if (cols.length !== 2) {
+        return {
+          galat: `Baris ${index + 1}: pgk-cat / BS kategori hanya mendukung 2 kolom (sekarang ${cols.length}). Soal dilewati.`,
+        }
+      }
+      const labelBenar = cols[0].trim() || 'Benar'
+      const labelSalah = cols[1].trim() || 'Salah'
+      const kunciArr = Array.isArray(raw.kunciJawaban)
+        ? (raw.kunciJawaban as unknown[]).map(String)
+        : Array.isArray(raw.kunci)
+          ? (raw.kunci as unknown[]).map(String)
+          : []
+      for (let ri = 0; ri < raw.rows.length; ri++) {
+        const teksP = String((raw.rows as unknown[])[ri] ?? '').trim()
+        if (!teksP) continue
+        const kunciBaris = (kunciArr[ri] ?? '').trim()
+        // Cocokkan ke labelBenar (case-insensitive); selain itu = salah
+        const benar =
+          kunciBaris.toLowerCase() === labelBenar.toLowerCase() ||
+          kunciBaris.toLowerCase() === 'benar' ||
+          kunciBaris.toLowerCase() === 'sesuai' ||
+          kunciBaris === 'true' ||
+          kunciBaris === '1'
+        pernyataan.push({ id: idAcak(), teks: teksP, benar })
+      }
+      ;(soal as any).labelBenar = labelBenar
+      ;(soal as any).labelSalah = labelSalah
     }
     if (pernyataan.length < 1) return { galat: `Baris ${index + 1}: soal benar/salah minimal harus punya 1 pernyataan.` }
     ;(soal as any).pernyataan = pernyataan
     ;(soal as any).nilaiParsial = raw.nilaiParsial !== false
+    if (raw.labelBenar) (soal as any).labelBenar = String(raw.labelBenar).trim()
+    if (raw.labelSalah) (soal as any).labelSalah = String(raw.labelSalah).trim()
   }
 
   // --- Uraian ---
@@ -377,16 +460,51 @@ export function parseJsonImport(teks: string): HasilParseImport {
       gagalParse: true,
     }
   }
+  // Deteksi ekspor tka2026 (_meta.app atau field khas subjectId / kunciJawaban + pertanyaan)
+  const metaApp = data._meta && typeof data._meta === 'object' ? String((data._meta as any).app || '') : ''
+  const daftarMentah = Array.isArray(data.soal) ? data.soal : Array.isArray(data) ? data : []
+  const sample = daftarMentah.find((x: any) => x && typeof x === 'object') as Record<string, unknown> | undefined
+  const formatTka2026 =
+    metaApp === 'tka2026' ||
+    Boolean(
+      sample &&
+        (sample.subjectId || sample.kunciJawaban !== undefined) &&
+        (sample.pertanyaan !== undefined || sample.tipeMateri !== undefined),
+    )
+
+  // Mapel: field langsung, atau subjectId / _meta.scope dari tka2026
+  let mapelMeta = String(data.mapel || data.mataPelajaran || '').trim()
+  if (!mapelMeta && formatTka2026) {
+    const scope = data._meta && typeof data._meta === 'object' ? String((data._meta as any).scope || '') : ''
+    const subj = sample ? String(sample.subjectId || '') : ''
+    mapelMeta =
+      MAP_SUBJECT_TKA[scope.toLowerCase()] ||
+      MAP_SUBJECT_TKA[subj.toLowerCase()] ||
+      ''
+  }
+
+  // Materi: tunggal di root, atau kumpulkan dari soal (multi-materi tka2026)
+  const materiRoot = data.tipeMateri || data.materi ? String(data.tipeMateri || data.materi).trim() : ''
+  const materiDariSoal = new Set<string>()
+  if (formatTka2026) {
+    for (const item of daftarMentah) {
+      if (item && typeof item === 'object' && (item as any).tipeMateri) {
+        const m = String((item as any).tipeMateri).trim()
+        if (m) materiDariSoal.add(m)
+      }
+    }
+  }
+  const multiMateri = formatTka2026 && materiDariSoal.size > 1
+  const tipeMateriMeta = materiRoot || (materiDariSoal.size === 1 ? [...materiDariSoal][0] : undefined)
+
   const meta: MetadataImport = {
-    mapel: String(data.mapel || data.mataPelajaran || '').trim(),
+    mapel: mapelMeta,
     tpId: data.tpId || data.tujuanPembelajaranId || undefined,
     tpNomor: typeof data.tpNomor === 'number' ? data.tpNomor : undefined,
     tpNama: data.tpNama || data.tujuanPembelajaran || undefined,
-    tipeMateri: data.tipeMateri || data.materi
-      ? String(data.tipeMateri || data.materi).trim()
-      : undefined,
+    tipeMateri: tipeMateriMeta,
   }
-  const daftar = Array.isArray(data.soal) ? data.soal : Array.isArray(data) ? data : []
+  const daftar = daftarMentah
   const soal: Partial<Soal>[] = []
   const teksTerlihat = new Set<string>()
 
@@ -401,17 +519,28 @@ export function parseJsonImport(teks: string): HasilParseImport {
       return
     }
     if (r.soal) {
+      // Duplikat: abaikan untuk ekspor tka2026 besar (banyak soal mirip lintas materi);
+      // tetap cegah salinan identik berurutan pada template LMS biasa.
       const normal = normalisasiTeksUntukDuplikat(r.soal.teks || '')
-      if (normal && teksTerlihat.has(normal)) {
+      if (!formatTka2026 && normal && teksTerlihat.has(normal)) {
         galat.push(`Baris ${i + 1}: soal duplikat (teks hampir sama dengan soal sebelumnya).`)
         return
       }
       if (normal) teksTerlihat.add(normal)
+      // Rumus KaTeX otomatis aktif untuk soal TKA hasil migrasi/import tka2026
+      if (formatTka2026) (r.soal as any).rumus = true
       soal.push(r.soal)
     }
   })
   if (soal.length === 0 && galat.length === 0) galat.push('Tidak ada soal yang berhasil diparse.')
-  return { metadata: meta, soal, galat, ...(diperbaiki ? { diperbaiki } : {}) }
+  return {
+    metadata: meta,
+    soal,
+    galat,
+    ...(diperbaiki ? { diperbaiki } : {}),
+    ...(multiMateri ? { multiMateri: true } : {}),
+    ...(formatTka2026 ? { formatSumber: 'tka2026' as const } : { formatSumber: 'lms' as const }),
+  }
 }
 
 /**
@@ -631,6 +760,7 @@ export function validasiMetadataTka(
   meta: MetadataImport,
   mapelDiharapkan: string,
   materiDiharapkan?: string | null,
+  opts?: { multiMateri?: boolean; formatSumber?: string },
 ): string[] {
   const galat: string[] = []
   if (!meta.mapel || !meta.mapel.trim()) {
@@ -638,8 +768,15 @@ export function validasiMetadataTka(
   } else if (meta.mapel.trim().toLowerCase() !== mapelDiharapkan.trim().toLowerCase()) {
     galat.push(`Mata pelajaran di file («${meta.mapel}») tidak cocok dengan ruang TKA («${mapelDiharapkan}»).`)
   }
+  // Ekspor tka2026 multi-materi: materi dipecah per paket di UI — tidak wajib tipeMateri tunggal di root
+  if (opts?.multiMateri) {
+    return galat
+  }
   if (!meta.tipeMateri || !meta.tipeMateri.trim()) {
-    galat.push('File import TKA wajib memuat materi (tipeMateri). Import dibatalkan.')
+    // Format tka2026 kadang tanpa root tipeMateri tapi tiap soal punya — UI akan isi dari soal
+    if (opts?.formatSumber !== 'tka2026') {
+      galat.push('File import TKA wajib memuat materi (tipeMateri). Import dibatalkan.')
+    }
   }
   if (materiDiharapkan && meta.tipeMateri && meta.tipeMateri.trim() !== materiDiharapkan.trim()) {
     galat.push(
