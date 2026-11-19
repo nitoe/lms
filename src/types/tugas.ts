@@ -51,7 +51,35 @@ export interface KategoriPenilaian {
    * Jika semua kosong/0, dihitung rata-rata.
    */
   bobot?: number
+  /**
+   * Mapel pemilik aspek ini (untuk tugas proyek lintas mapel, mis. «IPAS» atau
+   * «Bahasa Indonesia»). Kosong = berlaku umum / mapel utama.
+   */
+  mapel?: string
 }
+
+/**
+ * Satu «bukti pengumpulan» yang diminta guru: satu foto berlabel (mis. «Data sebelum aktivitas»).
+ * Tiap bukti memegang satu slot foto (`slot` 1..3 = akhiran ID `lms_pengumpulan_foto`,
+ * ANTIREGRESI §132 & §Tugas.Bukti). Slot TIDAK berubah walau bukti diurutkan ulang atau bukti lain dihapus.
+ */
+export interface BuktiTugas {
+  /** ID stabil (tidak berubah walau label/urutan diedit). */
+  id: string
+  /** Slot foto 1..3 yang dipakai bukti ini (unik per tugas). */
+  slot: number
+  /** Nama bukti yang tampil ke siswa, mis. «Foto catatan hasil sebelum aktivitas». */
+  label: string
+  /** Petunjuk singkat: apa yang harus terlihat di foto. */
+  petunjuk?: string
+  /** Wajib dikumpulkan? Bukti opsional boleh dikosongkan siswa. */
+  wajib: boolean
+  /** ID kategori rubrik (`KategoriPenilaian.id`) yang dinilai dari bukti ini. */
+  kategoriIds?: string[]
+}
+
+/** Jumlah bukti/foto maksimum per tugas — dibatasi aturan Firestore (slot foto '1'..'3'). */
+export const BATAS_BUKTI_TUGAS = 3
 
 /**
  * Pengaturan penilaian tugas (tab Input Nilai → Pengaturan penilaian).
@@ -105,6 +133,11 @@ export interface TugasLms {
   dibuatOlehNama?: string
   jumlahPengumpulan?: number
   pengaturanPenilaian?: PengaturanPenilaianTugas
+  /**
+   * Bukti pengumpulan berlabel (1–3). Kosong/tidak ada = mode lama: siswa mengunggah 1–3 foto
+   * tanpa label. Dokumen lama tanpa field ini tetap bekerja.
+   */
+  buktiList?: BuktiTugas[]
   createdAt?: unknown
   updatedAt?: unknown
 }
@@ -123,6 +156,7 @@ export type TugasInput = {
   tenggat?: Date | null
   aktif?: boolean
   pengaturanPenilaian?: PengaturanPenilaianTugas
+  buktiList?: BuktiTugas[]
   namaGuru?: string
 }
 

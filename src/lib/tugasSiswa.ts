@@ -2,6 +2,7 @@ import { collection, getDocs, query, where } from 'firebase/firestore'
 import { db } from './firebase'
 import type { TugasLms } from '../types/tugas'
 import type { NilaiTugasDok } from './nilaiTugas'
+import { rapikanBuktiList } from './buktiTugas'
 
 /** Status tugas dari sudut pandang siswa (tanpa pengumpulan file dulu). */
 export type StatusTugasSiswa = 'belum' | 'dinilai' | 'lewat'
@@ -48,6 +49,10 @@ function docKeTugas(id: string, data: Record<string, unknown>): TugasLms {
       data.pengaturanPenilaian && typeof data.pengaturanPenilaian === 'object'
         ? (data.pengaturanPenilaian as TugasLms['pengaturanPenilaian'])
         : undefined,
+    buktiList: (() => {
+      const b = rapikanBuktiList(data.buktiList)
+      return b.length ? b : undefined
+    })(),
     createdAt: data.createdAt,
     updatedAt: data.updatedAt,
   }

@@ -13,6 +13,7 @@ import {
 import { db } from './firebase'
 import { kompresGambar, BATAS_KARAKTER_GAMBAR } from './gambar'
 import type { TugasLms } from '../types/tugas'
+import { adaBukti } from './buktiTugas'
 
 /**
  * Pengumpulan tugas siswa (foto) — ANTIREGRESI §132.
@@ -49,6 +50,16 @@ export function idPengumpulan(tugasId: string, siswaId: string): string {
 
 export function idFoto(tugasId: string, siswaId: string, slot: number): string {
   return `${tugasId}_${siswaId}_${SLOT[slot]}`
+}
+
+/**
+ * Nomor slot foto (1..3) dari ID dokumen foto (akhiran `_1`..`_3`); 0 bila tak dikenali.
+ * Bukti berlabel memakai slot TETAP (ANTIREGRESI §Tugas.Bukti), jadi slot dibaca dari ID,
+ * bukan dari urutan di `fotoIds`.
+ */
+export function slotDariFotoId(id: string): number {
+  const m = /_([1-3])$/.exec(id)
+  return m ? Number(m[1]) : 0
 }
 
 /** Hanya data URL gambar yang boleh dipasang di <img src>. */
@@ -111,6 +122,34 @@ export async function muatFoto(fotoIds: string[]): Promise<string[]> {
   return hasil
 }
 
+/** Muat foto per slot (1..3 → data URL). Slot yang gagal/tak valid dilewati. */
+export async function muatFotoBerslot(fotoIds: string[]): Promise<Record<number, string>> {
+  const hasil: Record<number, string> = {}
+  for (const id of fotoIds.slice(0, BATAS_FOTO_PENGUMPULAN)) {
+    const slot = slotDariFotoId(id)
+    if (!slot) continue
+    try {
+      const s = await getDoc(doc(db, 'lms_pengumpulan_foto', id))
+      const data = s.exists() ? s.data().data : null
+      if (dataUrlGambarAman(data)) hasil[slot] = data
+    } catch (e) {
+      console.warn('Foto pengumpulan gagal dimuat', id, e)
+    }
+  }
+  return hasil
+}
+
+/** Label bukti wajib yang belum terisi (kosong = lengkap atau tugas tanpa bukti berlabel). */
+export function buktiWajibKurang(
+  tugas: Pick<TugasLms, 'buktiList'>,
+  fotoSlot: Record<number, string>,
+): string[] {
+  if (!adaBukti(tugas)) return []
+  return (tugas.buktiList ?? [])
+    .filter((b) => b.wajib && !dataUrlGambarAman(fotoSlot[b.slot]))
+    .map((b) => b.label)
+}
+
 export async function siapkanFoto(file: File): Promise<string> {
   const r = await kompresGambar(file)
   return r.dataUrl
@@ -121,8 +160,13 @@ export type KirimInput = {
   siswaId: string
   siswaNama: string
   kelas: string
-  /** Foto final (data URL) sesuai urutan tampil; 1–3. */
-  foto: string[]
+  /** Foto final (data URL) sesuai urutan tampil; 1–3. Dipakai tugas TANPA bukti berlabel. */
+  foto?: string[]
+  /**
+   * Foto per slot (1..3 → data URL). Dipakai tugas dengan bukti berlabel: slot tetap,
+   * bukti opsional boleh kosong (ANTIREGRESI §Tugas.Bukti).
+   */
+  fotoSlot?: Record<number, string>
   catatan: string
   /** Dokumen meta yang sudah ada (kirim ulang) atau null (pertama kali). */
   ada: PengumpulanDok | null
@@ -134,26 +178,41 @@ export type KirimInput = {
  */
 export async function kirimPengumpulan(input: KirimInput): Promise<PengumpulanDok> {
   const { tugas, siswaId, siswaNama, kelas, ada } = input
-  const foto = input.foto.filter(dataUrlGambarAman).slice(0, BATAS_FOTO_PENGUMPULAN)
-  if (foto.length === 0) throw new Error('Tambahkan minimal satu foto.')
+  let entri: { slot: number; src: string }[]
+  if (adaBukti(tugas)) {
+    const slotMap = input.fotoSlot ?? {}
+    const kurang = buktiWajibKurang(tugas, slotMap)
+    if (kurang.length > 0) {
+      throw new Error(`Bukti wajib belum lengkap: ${kurang.join(', ')}.`)
+    }
+    entri = [1, 2, 3]
+      .filter((n) => dataUrlGambarAman(slotMap[n]))
+      .map((n) => ({ slot: n, src: slotMap[n] }))
+  } else {
+    entri = (input.foto ?? [])
+      .filter(dataUrlGambarAman)
+      .slice(0, BATAS_FOTO_PENGUMPULAN)
+      .map((src, i) => ({ slot: i + 1, src }))
+  }
+  if (entri.length === 0) throw new Error('Tambahkan minimal satu foto.')
   const catatan = input.catatan.trim().slice(0, BATAS_CATATAN)
   const mapel = tugas.mapel
 
   const fotoIds: string[] = []
-  for (let i = 0; i < foto.length; i++) {
-    const id = idFoto(tugas.id, siswaId, i)
+  for (const { slot, src } of entri) {
+    const id = idFoto(tugas.id, siswaId, slot - 1)
     const ref = doc(db, 'lms_pengumpulan_foto', id)
     const sudah = !!ada && ada.fotoIds.includes(id)
     if (sudah) {
-      await updateDoc(ref, { data: foto[i], updatedAt: serverTimestamp() })
+      await updateDoc(ref, { data: src, updatedAt: serverTimestamp() })
     } else {
       await setDoc(ref, {
         tugasId: tugas.id,
         siswaId,
         kelas,
         mapel,
-        slot: SLOT[i],
-        data: foto[i],
+        slot: SLOT[slot - 1],
+        data: src,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       })

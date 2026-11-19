@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   daftarPengumpulanTugas,
-  muatFoto,
+  muatFotoBerslot,
+  slotDariFotoId,
   type PengumpulanDok,
 } from '../lib/pengumpulan'
+import { adaBukti, namaKategoriBukti } from '../lib/buktiTugas'
 import { tenggatMs } from '../lib/tugasSiswa'
 import type { TugasLms } from '../types/tugas'
 
@@ -22,12 +24,14 @@ function waktuTeks(ms: number): string {
 /**
  * Tab «Pengumpulan» guru: daftar siswa yang sudah mengumpulkan foto.
  * Daftar memuat meta saja (ringan); foto dimuat HANYA saat baris dibuka (ANTIREGRESI §132.3).
+ * Tugas dengan bukti berlabel: tiap foto diberi nama bukti, bukti yang belum dikirim ditandai,
+ * dan status «Bukti kurang» muncul di baris (ANTIREGRESI §Tugas.Bukti).
  */
 export default function PengumpulanPanel({ tugas }: Props) {
   const [list, setList] = useState<PengumpulanDok[] | null>(null)
   const [galat, setGalat] = useState('')
   const [buka, setBuka] = useState<string | null>(null)
-  const [foto, setFoto] = useState<Record<string, string[] | 'memuat'>>({})
+  const [foto, setFoto] = useState<Record<string, Record<number, string> | 'memuat'>>({})
 
   const muat = useCallback(async () => {
     setGalat('')
@@ -60,8 +64,19 @@ export default function PengumpulanPanel({ tugas }: Props) {
     setBuka(d.id)
     if (foto[d.id]) return
     setFoto((p) => ({ ...p, [d.id]: 'memuat' }))
-    const hasil = await muatFoto(d.fotoIds)
+    const hasil = await muatFotoBerslot(d.fotoIds)
     setFoto((p) => ({ ...p, [d.id]: hasil }))
+  }
+
+  const bukti = tugas.buktiList ?? []
+  const modeBukti = adaBukti(tugas)
+  const kategori = tugas.pengaturanPenilaian?.kategori
+
+  /** Label bukti wajib yang belum ada di pengumpulan siswa ini. */
+  function buktiKurang(d: PengumpulanDok): string[] {
+    if (!modeBukti) return []
+    const terisi = new Set(d.fotoIds.map(slotDariFotoId))
+    return bukti.filter((b) => b.wajib && !terisi.has(b.slot)).map((b) => b.label)
   }
 
   return (
@@ -94,6 +109,7 @@ export default function PengumpulanPanel({ tugas }: Props) {
           <ul className="td-kumpul-list">
             {list.map((d) => {
               const terlambat = batas > 0 && d.diubahMs > batas
+              const kurang = buktiKurang(d)
               const f = foto[d.id]
               return (
                 <li key={d.id} className="td-kumpul-item">
@@ -108,6 +124,11 @@ export default function PengumpulanPanel({ tugas }: Props) {
                       {d.kelas} · {d.jumlahFoto} foto · {waktuTeks(d.diubahMs)}
                     </span>
                     {terlambat && <span className="td-kumpul-late">Terlambat</span>}
+                    {kurang.length > 0 && (
+                      <span className="td-kumpul-late" title={`Belum ada: ${kurang.join(', ')}`}>
+                        Bukti kurang
+                      </span>
+                    )}
                     <span className="td-kumpul-chev" aria-hidden>
                       {buka === d.id ? '▲' : '▼'}
                     </span>
@@ -121,13 +142,50 @@ export default function PengumpulanPanel({ tugas }: Props) {
                       )}
                       {f === 'memuat' || f === undefined ? (
                         <p className="td-kumpul-kosong">Memuat foto…</p>
-                      ) : f.length === 0 ? (
+                      ) : Object.keys(f).length === 0 ? (
                         <p className="td-kumpul-kosong">Foto tidak bisa dimuat.</p>
+                      ) : modeBukti ? (
+                        <div className="td-kumpul-foto">
+                          {bukti.map((b) => {
+                            const src = f[b.slot]
+                            const dinilai = namaKategoriBukti(b, kategori)
+                            return (
+                              <figure key={b.id} className="td-kumpul-fig">
+                                {src ? (
+                                  <img src={src} alt={`${b.label} — ${d.siswaNama}`} />
+                                ) : (
+                                  <div className="td-kumpul-fig-kosong">
+                                    {b.wajib ? 'Belum dikirim' : 'Tidak dikirim (opsional)'}
+                                  </div>
+                                )}
+                                <figcaption>
+                                  <strong>{b.label}</strong>
+                                  {b.wajib ? '' : ' · opsional'}
+                                  {dinilai.length > 0 && (
+                                    <span className="td-kumpul-fig-nilai">Dinilai pada: {dinilai.join(', ')}</span>
+                                  )}
+                                </figcaption>
+                              </figure>
+                            )
+                          })}
+                          {[1, 2, 3]
+                            .filter((n) => f[n] && !bukti.some((b) => b.slot === n))
+                            .map((n) => (
+                              <figure key={`lain-${n}`} className="td-kumpul-fig">
+                                <img src={f[n]} alt={`Foto lain dari ${d.siswaNama}`} />
+                                <figcaption>
+                                  <strong>Foto lain</strong>
+                                </figcaption>
+                              </figure>
+                            ))}
+                        </div>
                       ) : (
                         <div className="td-kumpul-foto">
-                          {f.map((src, i) => (
-                            <img key={i} src={src} alt={`Foto ${i + 1} dari ${d.siswaNama}`} />
-                          ))}
+                          {[1, 2, 3]
+                            .filter((n) => f[n])
+                            .map((n, i) => (
+                              <img key={n} src={f[n]} alt={`Foto ${i + 1} dari ${d.siswaNama}`} />
+                            ))}
                         </div>
                       )}
                     </div>

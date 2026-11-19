@@ -1,3 +1,17 @@
+## 2026-11-19 — Tugas: instruksi siswa terbaca rapi + bukti pengumpulan berlabel yang terkait rubrik
+
+- **Gejala:** (1) instruksi tugas di tampilan siswa menyatu menjadi satu paragraf panjang (judul bagian, langkah «1. 2. 3.», dan poin «-» tidak terbedakan); (2) pengumpulan hanya «Ambil / pilih foto» tanpa keterangan foto untuk tahap/bukti apa, dan kriteria penilaian (rubrik) tidak terlihat siswa maupun terhubung ke foto.
+- **Akar masalah:** instruksi tersimpan sebagai teks polos (textarea / keluaran AI), tetapi `SiswaTugas` langsung memasukkannya ke HTML lewat `bersihHtml` sehingga seluruh baris baru runtuh. Pengumpulan memakai slot foto anonim 1–3 tanpa label; rubrik hanya dipakai guru di Daftar nilai.
+- **Instruksi terformat:** `lib/instruksiTugas.ts` (`instruksiKeHtml` + `bersihHtmlInstruksi`) mengubah teks polos/markdown ringan menjadi judul bagian (baris berakhiran «:»), daftar bernomor, poin bertingkat di bawah langkah, paragraf, dan **tebal**. Instruksi lama otomatis rapi tanpa migrasi data; teks yang tersimpan «rata» (tanpa baris baru) dipulihkan dengan heuristik terbatas. Tab Isi Tugas guru kini punya petunjuk format dan **Pratinjau tampilan siswa**.
+- **Bukti pengumpulan berlabel (baru):** guru mengatur 1–3 «bukti» di tab Isi Tugas (`BuktiTugasEditor`): nama bukti, petunjuk, Wajib/opsional, urutan, dan kategori rubrik yang dinilai dari bukti itu. Disimpan di `lms_tugas.buktiList`.
+  - **Siswa:** satu kartu per bukti (nomor, nama, petunjuk, label Wajib/Boleh dikosongkan, «Dinilai pada: …»), foto per kartu dengan Ganti/Hapus; tombol Kumpulkan aktif setelah semua bukti wajib terisi dan ringkasan menyebut bukti yang masih kurang. Tugas tanpa `buktiList` tetap memakai mode lama (1–3 foto bebas).
+  - **Guru:** tab Pengumpulan menampilkan tiap foto dengan nama bukti + kategori rubriknya, bukti yang belum dikirim ditandai, dan baris siswa diberi lencana «Bukti kurang».
+  - **Rubrik:** kategori rubrik punya field `mapel` (pilihan «Umum» / mapel tugas proyek, mis. IPAS vs Bahasa Indonesia). Siswa melihat panel «Yang akan dinilai gurumu» (nama kategori + mapel + deskripsi).
+- **Tidak mengubah:** `firestore.rules`, `storage.rules`, Cloud Functions, skema `lms_pengumpulan` / `lms_pengumpulan_foto` (slot foto tetap `1..3`; `lms_tugas` tidak membatasi daftar kunci). Tidak perlu deploy rules/functions — cukup deploy hosting LMS.
+- **Batasan:** maksimal 3 bukti per tugas (batas aturan Firestore saat ini). Prompt AI `generateIsiTugasLmsAi` (repo SDM01Penilaian) belum diarahkan menghasilkan format berstruktur / daftar bukti.
+- File: `src/lib/instruksiTugas.ts` (baru), `src/lib/buktiTugas.ts` (baru), `src/components/BuktiTugasEditor.tsx` (baru), `src/types/tugas.ts`, `src/lib/tugas.ts`, `src/lib/tugasSiswa.ts`, `src/lib/pengumpulan.ts`, `src/lib/penilaianTugas.ts`, `src/pages/TugasDetail.tsx`, `src/pages/siswa/SiswaTugas.tsx`, `src/pages/siswa/PengumpulanSiswa.tsx`, `src/components/PengumpulanPanel.tsx`, `src/styles/siswa.css`, `src/styles/tugas.css`.
+- Antiregresi: §Tugas.Instruksi, §Tugas.Bukti.
+
 ## 2026-11-19 — Bank Soal: Gabungkan paket & Export paket (JSON) — TKA dan mapel lain
 
 - **Latar:** Paket TKA Matematika dan Bahasa Indonesia sering berjudul sama tetapi berisi soal berbeda, dan belum ada cara menyatukan beberapa paket maupun mengunduh isi paket yang sudah ada (hanya «Unduh template»).

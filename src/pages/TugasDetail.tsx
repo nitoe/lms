@@ -5,6 +5,8 @@ import { cakupanTugas } from '../lib/cakupanTugas'
 import { ambilTugas, aturBerbagiTugas, buatTugas, updateTugas } from '../lib/tugas'
 import BerbagiKelasDialog from '../components/BerbagiKelasDialog'
 import PengumpulanPanel from '../components/PengumpulanPanel'
+import BuktiTugasEditor from '../components/BuktiTugasEditor'
+import { htmlInstruksiSiswa } from '../lib/instruksiTugas'
 import { labelKelasDibagikan } from '../lib/kelasLms'
 import { aksenMapel, inisialMapel } from '../lib/uiAksen'
 import {
@@ -33,6 +35,7 @@ import { getDaftarMapel } from '../lib/mapelData'
 import { getTpMultiMapelKelas } from '../lib/tpData'
 import { generateIsiTugasAi, generateKategoriTugasAi } from '../lib/tugasAi'
 import type {
+  BuktiTugas,
   JenisPenilaianTugas,
   JenisTugas,
   PengaturanPenilaianTugas,
@@ -118,6 +121,7 @@ export default function TugasDetail() {
   ])
   const [deskripsi, setDeskripsi] = useState('')
   const [instruksi, setInstruksi] = useState('')
+  const [buktiList, setBuktiList] = useState<BuktiTugas[]>([])
   const [tenggatStr, setTenggatStr] = useState('')
   const [aktif, setAktif] = useState(false)
   const [berbagiOpen, setBerbagiOpen] = useState(false)
@@ -215,6 +219,7 @@ export default function TugasDetail() {
     ])
     setDeskripsi(t.deskripsi || '')
     setInstruksi(t.instruksi || '')
+    setBuktiList(t.buktiList || [])
     setTenggatStr(tenggatKeInput(t.tenggat))
     setAktif(t.aktif)
     setJenisPenilaian(
@@ -403,7 +408,12 @@ export default function TugasDetail() {
     setError('')
     setSukses('')
     try {
-      await updateTugas(tugasId, { instruksi, deskripsi })
+      if (buktiList.some((b) => !b.label.trim())) {
+        throw new Error('Beri nama untuk setiap bukti pengumpulan, atau hapus bukti yang kosong.')
+      }
+      await updateTugas(tugasId, { instruksi, deskripsi, buktiList })
+      const t = await ambilTugas(tugasId)
+      if (t) setTugas(t)
       setSukses('Isi tugas disimpan.')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Gagal menyimpan isi.')
@@ -1083,11 +1093,23 @@ export default function TugasDetail() {
                   value={instruksi}
                   onChange={(e) => setInstruksi(e.target.value)}
                   rows={12}
-                  placeholder="Langkah, kriteria, format pengumpulan…"
+                  placeholder={'Tulis per bagian, mis.:\nAlat dan Bahan:\n1. Stop watch\n2. Buku tulis\n\nLangkah Kegiatan:\n1. Duduk tenang 2 menit\n   - Hitung nadi 1 menit'}
                 />
+                <small className="td-field-hint">
+                  Format: baris berakhiran «:» menjadi judul bagian · «1.» «2.» menjadi langkah bernomor · «-»
+                  menjadi poin · baris kosong memisahkan paragraf · **tebal**.
+                </small>
               </label>
+              {instruksi.trim() && (
+                <details className="td-bukti-pratinjau">
+                  <summary>Pratinjau tampilan siswa</summary>
+                  <div className="sw-ins" dangerouslySetInnerHTML={{ __html: htmlInstruksiSiswa(instruksi) }} />
+                </details>
+              )}
             </div>
           </section>
+
+          <BuktiTugasEditor bukti={buktiList} kategori={pengaturan.kategori} onChange={setBuktiList} />
           <div className="td-aksi">
             <button
               type="button"
@@ -1205,6 +1227,30 @@ export default function TugasDetail() {
                               placeholder="Contoh: Komposisi"
                             />
                           </label>
+                          {jenis === 'proyek' && mapelUntukTp.length > 1 && (
+                            <label className="td-field">
+                              <span>Mapel</span>
+                              <select
+                                value={k.mapel ?? ''}
+                                onChange={(e) => {
+                                  const v = e.target.value
+                                  setPengaturan((p) => ({
+                                    ...p,
+                                    kategori: p.kategori.map((x, j) =>
+                                      j === i ? { ...x, mapel: v || undefined } : x,
+                                    ),
+                                  }))
+                                }}
+                              >
+                                <option value="">Umum</option>
+                                {mapelUntukTp.map((m) => (
+                                  <option key={m} value={m}>
+                                    {m}
+                                  </option>
+                                ))}
+                              </select>
+                            </label>
+                          )}
                           <label className="td-field td-field--sempit">
                             <span>Bobot</span>
                             <input

@@ -20,6 +20,7 @@ import type {
   TpTugas,
 } from '../types/tugas'
 import { normalisasiKelasList } from './kelasLms'
+import { rapikanBuktiList, sanitasiBuktiList } from './buktiTugas'
 
 /**
  * Firestore menolak `undefined`. Rapikan pengaturan penilaian:
@@ -38,6 +39,7 @@ function sanitasiPengaturanPenilaian(
       }
       if (k.deskripsi?.trim()) item.deskripsi = k.deskripsi.trim()
       if (typeof k.bobot === 'number' && !Number.isNaN(k.bobot)) item.bobot = k.bobot
+      if (typeof k.mapel === 'string' && k.mapel.trim()) item.mapel = k.mapel.trim()
       return item
     })
 
@@ -128,6 +130,10 @@ function docKeTugas(id: string, data: Record<string, unknown>): TugasLms {
       data.pengaturanPenilaian && typeof data.pengaturanPenilaian === 'object'
         ? (data.pengaturanPenilaian as TugasLms['pengaturanPenilaian'])
         : undefined,
+    buktiList: (() => {
+      const b = rapikanBuktiList(data.buktiList)
+      return b.length ? b : undefined
+    })(),
     createdAt: data.createdAt,
     updatedAt: data.updatedAt,
   }
@@ -304,6 +310,8 @@ export async function buatTugas(input: TugasInput): Promise<string> {
   if (input.pengaturanPenilaian) {
     payload.pengaturanPenilaian = sanitasiPengaturanPenilaian(input.pengaturanPenilaian)
   }
+  const bukti = sanitasiBuktiList(input.buktiList)
+  if (bukti.length) payload.buktiList = bukti
 
   const refDoc = await addDoc(koleksi(), payload)
   return refDoc.id
@@ -355,6 +363,10 @@ export async function updateTugas(
   if (data.aktif !== undefined) payload.aktif = data.aktif === true
   if (data.pengaturanPenilaian !== undefined) {
     payload.pengaturanPenilaian = sanitasiPengaturanPenilaian(data.pengaturanPenilaian)
+  }
+  if (data.buktiList !== undefined) {
+    const bukti = sanitasiBuktiList(data.buktiList)
+    payload.buktiList = bukti.length ? bukti : null
   }
 
   // Hapus undefined di top-level (nested sudah dirapikan sanitasi)

@@ -4,7 +4,8 @@ import { collection, getDocs, query, where } from 'firebase/firestore'
 import { db } from '../../lib/firebase'
 import { useSiswa } from '../../context/SiswaContext'
 import { aksenMapel, inisialMapel } from '../../lib/uiAksen'
-import { bersihHtml, teksPolos } from '../../lib/html'
+import { teksPolos } from '../../lib/html'
+import { htmlInstruksiSiswa } from '../../lib/instruksiTugas'
 import {
   daftarTugasAktifKelas,
   formatTenggatRelatif,
@@ -164,6 +165,9 @@ export default function SiswaTugas() {
     const a = aksenMapel(detail.mapel)
     const jenis = (detail.jenisPenilaian ?? 'slm') as JenisPenilaianTugas
     const tenggatTeks = formatTenggatRelatif(detail.tenggat)
+    const kategoriDinilai = (detail.pengaturanPenilaian?.kategori ?? []).filter((k) =>
+      String(k.nama ?? '').trim(),
+    )
     return (
       <div className="space-y-4">
         <section className="kelas-hero" style={{ background: a.cover }}>
@@ -240,11 +244,27 @@ export default function SiswaTugas() {
           <section className="sw-kat-panel">
             <h2>Instruksi</h2>
             <div
-              className="prose prose-sm max-w-none text-slate-700"
-              dangerouslySetInnerHTML={{ __html: bersihHtml(detail.instruksi) }}
+              className="sw-ins"
+              dangerouslySetInnerHTML={{ __html: htmlInstruksiSiswa(detail.instruksi) }}
             />
           </section>
         ) : null}
+
+        {kategoriDinilai.length > 0 && (
+          <section className="sw-kat-panel sw-dinilai">
+            <h2>Yang akan dinilai gurumu</h2>
+            <p className="sw-kat-hint">Baca dulu supaya tahu bagian mana yang perlu kamu kerjakan dengan baik.</p>
+            <ul className="sw-dinilai-list">
+              {kategoriDinilai.map((k) => (
+                <li key={k.id} className="sw-dinilai-item">
+                  <span className="sw-dinilai-nama">{k.nama}</span>
+                  {k.mapel ? <span className="sw-dinilai-mapel">{k.mapel}</span> : null}
+                  {k.deskripsi?.trim() ? <span className="sw-dinilai-desk">{k.deskripsi}</span> : null}
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
 
         {!detail.deskripsi?.trim() && !teksPolos(detail.instruksi) && (
           <div className="sw-kat-empty">

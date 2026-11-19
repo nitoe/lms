@@ -70,6 +70,8 @@ export function normalisasiPengaturan(
         nama: String(x.nama).trim(),
         deskripsi: typeof x.deskripsi === 'string' ? x.deskripsi : undefined,
         bobot: typeof x.bobot === 'number' ? x.bobot : undefined,
+        // Mapel pemilik aspek (tugas proyek) — JANGAN dibuang: dibaca & ditulis ulang saat simpan.
+        mapel: typeof x.mapel === 'string' && x.mapel.trim() ? x.mapel.trim() : undefined,
       }))
   }
 

@@ -1478,3 +1478,23 @@ Jangan memaksa satu kolom sempit di desktop.
 1. Iframe sandbox **tanpa** `allow-same-origin` → `localStorage` sering melempar SecurityError.
 2. `siapkanHtmlDokumen` wajib menyisipkan polyfill memori di `<head>` sebelum skrip modul.
 3. Jangan mengandalkan `allow-same-origin` hanya agar storage jalan (XSS ke parent).
+
+
+## §Tugas.Instruksi — instruksi tugas tampil terformat (2026-11-19)
+
+1. **Instruksi = teks polos** (textarea guru / keluaran AI) berisi baris baru, «1.», «-», dan judul berakhiran «:». Tampilan siswa WAJIB lewat `htmlInstruksiSiswa` (`lib/instruksiTugas.ts`). Jangan kembali ke `bersihHtml(detail.instruksi)` langsung: baris baru runtuh dan seluruh instruksi menjadi satu paragraf yang tak terbaca.
+2. **Sanitasi tetap wajib (§9).** `bersihHtmlInstruksi` hanya menambah `h3` pada daftar tag `bersihHtml`; tanpa atribut. Jangan mengubah `lib/html.ts` bersama perubahan ini dan jangan merender hasil `instruksiKeHtml` tanpa sanitasi.
+3. **Instruksi yang sudah berisi tag HTML dibiarkan** (tidak di-escape ulang) lalu disanitasi.
+4. **Heuristik teks «rata»** (tanpa satu pun baris baru dan ≥ 160 karakter) hanya pemulihan data lama. Jangan memperluasnya tanpa menguji contoh tugas «peneliti cilik — detak jantung & napas» (judul bagian, langkah bernomor, poin, kalimat penutup) dan teks berbaris biasa.
+5. **Pratinjau guru** (tab Isi Tugas) dan tampilan siswa memakai fungsi yang sama dan kelas `.sw-ins` (`siswa.css`, dimuat global lewat `main.tsx`). Ubah gaya di satu tempat itu.
+
+## §Tugas.Bukti — bukti pengumpulan berlabel & kaitan rubrik (2026-11-19)
+
+1. **Data:** `lms_tugas.buktiList[] = {id, slot, label, petunjuk?, wajib, kategoriIds?}`; rubrik `pengaturanPenilaian.kategori[].mapel?`. Maksimal 3 bukti = batas rules (`fotoIds` ≤ 3, slot `'1'..'3'`). Menaikkan batas WAJIB mengubah bersamaan: `firestore.rules` (di SDM01Penilaian, salin UTUH, §0), `BATAS_BUKTI_TUGAS`, `SLOT`/`BATAS_FOTO_PENGUMPULAN` di `pengumpulan.ts`.
+2. **Slot TETAP per bukti.** ID foto berakhiran `_<slot>`; slot dibaca dari ID (`slotDariFotoId`), BUKAN dari urutan `fotoIds`. Mengurutkan ulang bukti hanya mengubah urutan tampil. Jangan memberi nomor slot dari indeks pada tugas ber-bukti: bukti opsional yang dikosongkan akan menggeser foto «sesudah» ke slot bukti lain. `rapikanBuktiList` menjamin slot sah dan unik; semua jalur baca/tulis tugas melewatinya.
+3. **Mode ganda.** Tugas tanpa `buktiList` memakai mode lama (`foto: string[]`, slot berurutan). Tugas ber-bukti memakai `fotoSlot`. Jangan menggabungkan keduanya dalam satu pemanggilan `kirimPengumpulan`.
+4. **Wajib dicek dua lapis:** UI (tombol Kumpulkan nonaktif) dan `kirimPengumpulan` (`buktiWajibKurang`). Aturan tenggat/kunci nilai (§132.5) dan urutan tulis foto→meta (§132.2) tidak berubah.
+5. **Label tidak disimpan di dokumen pengumpulan** (rules membatasi kunci meta/foto). Label dibaca dari `tugas.buktiList` berdasarkan slot saat ditampilkan. Akibat yang diketahui: menghapus bukti lalu menambah yang baru memakai slot kosong terendah, sehingga foto lama siswa tampil di bukti baru; mengganti label mengubah keterangan foto lama. Editor sudah memberi peringatan; jangan mengandalkan pengubahan bukti setelah siswa mengumpulkan.
+6. **Field baru wajib dilewatkan di SEMUA pembaca/penulis tugas:** `tugas.docKeTugas`, `tugasSiswa.docKeTugas` (`buktiList`), serta `normalisasiPengaturan` (`penilaianTugas.ts`) dan `sanitasiPengaturanPenilaian` (`tugas.ts`) untuk `kategori.mapel`. Salah satu yang membuang field → data hilang diam-diam saat guru menyimpan pengaturan (kasus nyata: `normalisasiPengaturan` membuang semua field kategori yang tak dikenal). `updateTugas` hanya menulis `buktiList` bila diberikan (undefined = tidak diubah, `[]` = dihapus).
+7. **Siswa tidak menulis ke Storage;** foto tetap di Firestore (§132.1). Foto hanya dipasang lewat `<img src>` setelah `dataUrlGambarAman` (§132.7).
+8. **Uji sebelum deploy:** (a) tugas 3 bukti, kumpul lengkap, guru melihat tiga foto berlabel; (b) bukti wajib kosong → tombol nonaktif + daftar yang kurang; (c) kirim ulang hanya mengganti slot 2, slot lain utuh; (d) bukti opsional dikosongkan lalu kirim → «Bukti kurang» TIDAK muncul di guru; (e) tugas lama tanpa bukti tetap 1–3 foto bebas; (f) tugas proyek: pilih mapel rubrik, simpan pengaturan, muat ulang → mapel tetap; (g) siswa melihat «Yang akan dinilai» hanya bila rubrik berisi kategori; (h) HP lebar 360 px: kartu bukti tidak meluber.
