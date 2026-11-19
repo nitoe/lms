@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import SoalGandaDialog from './soal/SoalGandaDialog'
 import { useAuth } from '../context/AuthContext'
 import { buatPaket, daftarPaket, daftarPaketLomba, hapusPaket, simpanPaket } from '../lib/soal'
 import { KELAS_LOMBA_BANK } from '../lib/lombaAkses'
@@ -14,7 +15,7 @@ import {
   type ModeGanda,
 } from '../lib/gabungPaket'
 import type { TpRingkas } from '../types/materi'
-import type { KompleksitasSoal, PaketSoal, TipeSoal } from '../types/soal'
+import type { KompleksitasSoal, PaketSoal, Soal, TipeSoal } from '../types/soal'
 import {
   NAMA_KOMPLEKSITAS,
   NAMA_TIPE,
@@ -103,6 +104,9 @@ export default function BankSoalPanel({ kelas, mapel, ruangId, lombaId, tpKelas 
   const [formExport, setFormExport] = useState(false)
   const [tpIdExport, setTpIdExport] = useState('')
   const [materiIdExport, setMateriIdExport] = useState('')
+
+  /* Periksa soal ganda: satu paket (tombol di kartu) atau semua paket ruang ini (tombol di toolbar) */
+  const [targetGanda, setTargetGanda] = useState<PaketSoal[] | null>(null)
 
   /* Gabungkan paket */
   const [formGabung, setFormGabung] = useState(false)
@@ -493,6 +497,52 @@ export default function BankSoalPanel({ kelas, mapel, ruangId, lombaId, tpKelas 
     }
   }
 
+  /* ---------- Periksa soal ganda (ANTIREGRESI §Soal.Ganda) ---------- */
+
+  const dataGanda = useMemo(() => {
+    if (!targetGanda) return null
+    const soal: Soal[] = []
+    const asal: PaketSoal[] = []
+    for (const pk of targetGanda) {
+      for (const so of pk.soal ?? []) {
+        soal.push(so)
+        asal.push(pk)
+      }
+    }
+    return { soal, asal }
+  }, [targetGanda])
+
+  function bukaCekGanda(paketList: PaketSoal[]) {
+    tutupSemuaForm()
+    setError('')
+    setInfoImport('')
+    setTargetGanda(paketList)
+  }
+
+  async function terapkanHapusGanda(hasil: Soal[], dihapus: number) {
+    if (!targetGanda) return
+    const dipertahankan = new Set<Soal>(hasil)
+    setTargetGanda(null)
+    setBusy(true)
+    setError('')
+    try {
+      let paketBerubah = 0
+      for (const pk of targetGanda) {
+        const soalBaru = (pk.soal ?? []).filter((so) => dipertahankan.has(so))
+        if (soalBaru.length === (pk.soal ?? []).length) continue
+        await simpanPaket(pk.id, { soal: soalBaru })
+        paketBerubah += 1
+      }
+      setInfoImport(`${dihapus} soal ganda dihapus dari ${paketBerubah} paket.`)
+      await muat()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Gagal menghapus soal ganda.')
+      await muat()
+    } finally {
+      setBusy(false)
+    }
+  }
+
   /* ---------- Export & gabungkan paket (ANTIREGRESI §Bank.Gabung) ---------- */
 
   function tutupSemuaForm() {
@@ -725,6 +775,15 @@ export default function BankSoalPanel({ kelas, mapel, ruangId, lombaId, tpKelas 
             <button
               type="button"
               className="pk-btn"
+              disabled={busy || (p.soal?.length ?? 0) < 2}
+              onClick={() => bukaCekGanda([p])}
+              title="Periksa dan hapus soal yang isinya sama di paket ini"
+            >
+              Cek ganda
+            </button>
+            <button
+              type="button"
+              className="pk-btn"
               disabled={busy || (p.soal?.length ?? 0) === 0}
               onClick={() => eksporPaket(p)}
               title="Unduh soal paket ini sebagai JSON"
@@ -815,6 +874,10 @@ export default function BankSoalPanel({ kelas, mapel, ruangId, lombaId, tpKelas 
           />
         </div>
         <div className="flex flex-wrap gap-2">
+          <button type="button" className="lms-btn-secondary" disabled={busy || (list ?? []).every((pk) => (pk.soal?.length ?? 0) === 0)}
+            onClick={() => bukaCekGanda(list ?? [])} title="Periksa soal ganda di dalam dan antar paket ruang ini">
+            Cek soal ganda
+          </button>
           <button type="button" className="lms-btn-secondary" disabled={(list?.length ?? 0) < 2} onClick={bukaGabung}>
             Gabungkan paket
           </button>
@@ -1078,6 +1141,15 @@ export default function BankSoalPanel({ kelas, mapel, ruangId, lombaId, tpKelas 
             </button>
           </div>
         </form>
+      )}
+
+      {dataGanda && (
+        <SoalGandaDialog
+          soal={dataGanda.soal}
+          keterangan={(_, i) => dataGanda.asal[i].judul}
+          onTutup={() => setTargetGanda(null)}
+          onTerapkan={(hasil, dihapus) => void terapkanHapusGanda(hasil, dihapus)}
+        />
       )}
 
       {formExport && (

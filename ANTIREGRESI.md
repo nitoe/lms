@@ -10,6 +10,8 @@
 8. **Dialog dirender lewat portal ke `document.body`** (z-index 1200) dengan kelas `.sg-*` pada `src/styles/soal-ganda.css` yang diimpor oleh dialognya sendiri. Jangan memindahkan CSS ke berkas yang hanya dimuat satu halaman: editor paket dan detail kuis berada di rute berbeda dari panel bank.
 9. Kecepatan: perbandingan «mirip» O(n²) hanya untuk pasangan se-bentuk + angka sama dengan n ≤ 300 soal per paket — aman. Jangan dipakai pada gabungan lintas ratusan paket tanpa memangkas kandidat.
 
+10. **Cek ganda dari daftar paket (BankSoalPanel):** dialog menerima gabungan soal dari satu paket (kartu) atau semua paket ruang (toolbar). Soal yang dipertahankan dipetakan kembali ke paket asalnya lewat IDENTITAS objek (`Set<Soal>`), bukan lewat `id` soal; jangan diganti dengan pencocokan `id` karena soal hasil salin lama dapat berbagi `id` antar paket. Hanya paket yang jumlah soalnya berubah yang disimpan (`simpanPaket`), lalu `muat()` dipanggil ulang — juga saat sebagian penyimpanan gagal, supaya daftar tidak menampilkan data basi.
+
 ## §Bank.Gabung — Gabungkan paket & export paket (2026-11-19)
 
 1. **Paket sumber tidak boleh diubah.** Gabungkan selalu membuat paket BARU (`buatPaket` + `simpanPaket`) berstatus `draf`. Jangan menambah opsi yang menghapus/menimpa sumber tanpa konfirmasi tegas.

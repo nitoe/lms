@@ -1,3 +1,12 @@
+## 2026-11-19 — Bank Soal: tombol «Cek ganda» di kartu paket & «Cek soal ganda» di toolbar
+
+- **Gejala:** fitur periksa soal ganda baru ada di editor paket dan detail kuis; di daftar paket bank soal (kartu paket) belum ada.
+- **Kartu paket:** tombol **Cek ganda** — memeriksa soal ganda di dalam satu paket; hasilnya dapat dipilih soal mana yang dipertahankan, lalu disimpan ke paket tersebut.
+- **Toolbar Bank Soal:** tombol **Cek soal ganda** — memeriksa soal ganda di dalam dan ANTAR semua paket pada ruang itu (mapel, TKA per mapel, atau Lomba); tiap soal diberi keterangan paket asal. Paket yang berubah disimpan satu per satu, lalu daftar dimuat ulang.
+- Memakai mesin dan dialog yang sama dengan §Soal.Ganda; tidak ada perubahan skema atau firestore.rules.
+- File: `src/components/BankSoalPanel.tsx`.
+- Antiregresi: §Soal.Ganda butir 10.
+
 ## 2026-11-19 — Soal ganda: deteksi menurut isi + hapus soal ganda (bank soal, TKA, Lomba, kuis)
 
 - **Gejala:** «Gabungkan paket» tidak mengenali soal yang sama (paket Matematika/Bahasa Indonesia berjudul sama). Penyebab: pembanding lama terlalu kaku (HTML, kapital, tanda baca, urutan pilihan, dan ID gambar memengaruhi hasil), dan penambahan soal dari bank ke kuis hanya membandingkan ID soal — soal yang sama dari paket berbeda berID berbeda sehingga lolos jadi ganda.
