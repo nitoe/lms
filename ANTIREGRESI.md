@@ -1248,6 +1248,8 @@ Jangan memaksa satu kolom sempit di desktop.
 
 57.3 Bantu AI offline memakai gate yang sama §56 (UID+email); skor diterapkan lewat `nilaiManualKuisLms`.
 
+57.4 **Jangan menulis `undefined` ke Firestore.** Soal yang belum diisi di form offline menghasilkan `jawaban[soalId] === undefined`. CF wajib sanitasi (`undefined` → `null` / omit) sebelum `add`/`set` — tanpa itu Admin SDK melempar 500: `Cannot use "undefined" as a Firestore value`.
+
 ## §58. Sinkron kuis → nilai Penilaian
 
 58.1 Penulisan `nilai_tp` / `nilai_sts` / `nilai_sas` dari LMS hanya lewat CF `sinkronNilaiKuisLms` (Admin SDK). Jangan tulis langsung dari klien LMS tanpa rules yang setara Penilaian.

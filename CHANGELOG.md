@@ -1,3 +1,12 @@
+## 2026-11-19 — Offline kuis: perbaiki 500 «Cannot use undefined as a Firestore value»
+
+- **Gejala:** `simpanJawabanOfflineKuis` → 500 dengan pesan:
+  `Cannot use "undefined" as a Firestore value (found in field "jawaban.<soalId>")`.
+- **Akar:** soal yang belum diisi di form offline menghasilkan `jawaban[soalId] === undefined`; CF menulis objek itu apa adanya ke `lms_jawaban`. Firestore Admin SDK menolak `undefined`.
+- **Perbaikan:** helper `untukFirestore` — `undefined` → `null`, objek/array nested dibersihkan. Semua nilai di `jawabanBersih` dan payload `jawaban` melewati sanitasi sebelum `add()`.
+- File: `SDM01Penilaian/functions/simpanJawabanOfflineKuis.js` (versi lengkap).
+- Deploy: `firebase deploy --only functions:simpanJawabanOfflineKuis` dari SDM01Penilaian.
+
 ## 2026-11-19 — Offline kuis: tampilkan pesan error asli (bukan 500 kosong) + pastikan deploy CF
 
 - **Gejala lanjutan:** setelah perbaikan izin, `simpanJawabanOfflineKuis` masih 500 di production.
