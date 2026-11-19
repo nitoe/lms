@@ -1,3 +1,13 @@
+## 2026-11-19 — Lomba: pengampu non-admin bisa menilai kuis Lomba (CF nilaiManualKuisLms)
+
+- **Gejala:** guru pengampu lomba (terutama pengampu ke-2 dst.) mendapat «Anda bukan pengampu kelas×mapel ini» saat menyimpan skor manual uraian / koreksi isian pada kuis Lomba; kuis yang kebetulan sesuai mapel×rombel penugasannya terasa «bisa», kuis mapel lain / Gabungan / buatan pengampu lain «tidak bisa».
+- **Akar masalah:** `nilaiManualKuisLms` hanya memeriksa `penugasanKelasMapel` / `waliKelas` terhadap `jawaban.kelas` dan `jawaban.mapel`. Pada Lomba, `jawaban.kelas` = rombel nyata siswa dan `jawaban.mapel` bisa «Gabungan», sedangkan bank konten memakai kelas «LB» — pengampu non-admin hampir tidak pernah lolos. Akses baca (rules `lombaKontenBoleh`) dan CF `resetJawabanKuisLms` / `simpanJawabanOfflineKuis` sudah mengenal pengampu Lomba; CF ini ketinggalan. Akses tidak pernah ditentukan oleh `dibuatOleh`.
+- **Perbaikan:** bila kuis induk `kelas == 'LB'` dan punya `lombaId`, izin = admin / email admin LMS / anggota `guruPengampuUids` (atau `guruPengampuUid` legacy) lomba tersebut. Kuis non-Lomba **tidak berubah** (tetap `bolehMapelKelas`). Urutan galat tidak berubah (izin dulu, lalu «Kuis tidak ditemukan»).
+- Diuji dengan Firestore tiruan: pengampu-2 pada kuis buatan pengampu-1, field tunggal legacy, bukan pengampu, akun nonaktif, admin, email admin, kuis non-Lomba, dan kuis terhapus.
+- **Tidak diubah:** `firestore.rules` (versi terbaru §Lomba.31 sudah benar), kode klien.
+- **Deploy (WAJIB, dua-duanya dari repo SDM01Penilaian):** `firebase deploy --only functions:nilaiManualKuisLms` **dan** `npm run deploy:rules` (rules hidup di SDM01Penilaian; hosting LMS saja tidak memperbarui rules).
+- File SDM01Penilaian: `functions/nilaiManualKuisLms.js` (lengkap).
+
 ## 2026-11-19 — Input offline: bilah aksi tetap kiri + input suara isian/uraian
 
 - **Bilah aksi (Simpan / AI / Siswa berikutnya):** sebelumnya `mx-auto max-w-5xl` membuat tombol terasa **tengah** saat zoom < 100%. Diganti `justify-start` full-width agar **selalu rata kiri**.

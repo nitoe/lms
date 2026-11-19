@@ -1,3 +1,14 @@
+## §Lomba.32 — Otorisasi pengampu di Cloud Function kuis Lomba (2026-11-19)
+
+1. Hak guru atas kuis Lomba **hanya** ditentukan keanggotaan pengampu lomba (`guruPengampuUids` atau `guruPengampuUid` legacy) atau admin LMS — **bukan** `dibuatOleh` dan **bukan** `penugasanKelasMapel`. Pengampu lomba bisa >1 orang; kuis buatan pengampu lain atau admin harus tetap dapat diakses.
+2. Setiap CF yang mengotorisasi guru terhadap `lms_kuis` / `lms_jawaban` WAJIB punya cabang Lomba (kuis `kelas == 'LB'` + `lombaId`): `resetJawabanKuisLms`, `simpanJawabanOfflineKuis`, **`nilaiManualKuisLms`**. Cabang Lomba ditentukan dari **dokumen kuis**, bukan dari `jawaban.kelas`/`jawaban.mapel`.
+3. `jawaban.kelas` pada Lomba = rombel nyata siswa dan `jawaban.mapel` bisa «Gabungan». Jangan mengandalkan `bolehMapelKelas(profil, jawaban.mapel, jawaban.kelas)` untuk Lomba.
+4. Kuis non-Lomba tetap memakai `bolehMapelKelas`; urutan galat (izin → «Kuis tidak ditemukan») jangan diubah.
+5. Admin Lomba CF = `profil.role === 'admin'` atau email `arif.nitoe@gmail.com`; akun `aktif === false` ditolak (selaras `akunAktif()` rules).
+6. `sinkronNilaiKuisLms` (sinkron ke rapor Penilaian) sengaja **tidak** diberi cabang Lomba: nilai Lomba tidak masuk rapor.
+7. Rules `lms_kuis` / `lms_paket_soal`: cabang Lomba harus **di depan** `lmsLihatMapelKelas` dan berpagar `resource.data.kelas == 'LB'` (§Lomba.31); query klien `daftarKuisLomba` / `daftarPaketLomba` memakai `where lombaId` + `where kelas == 'LB'` (melengkapi butir 1 §Lomba.31). Jangan memindahkan cabang `lombaId` di `lms_jawaban` ke depan tanpa uji emulator — risiko menolak query Hasil mapel biasa.
+8. Rules hidup di **SDM01Penilaian** (`npm run deploy:rules`); salinan di repo LMS hanya referensi. Perbaikan rules/CF tidak aktif sebelum di-deploy dari sana.
+
 
 ## §Offline.UX.Suara — Dikte isian/uraian offline (2026-11-19)
 
