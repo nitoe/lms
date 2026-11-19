@@ -59,23 +59,6 @@ export type AdminDashboardData = {
   alert: string[]
 }
 
-function keDate(v: unknown): Date | null {
-  if (!v) return null
-  if (v instanceof Timestamp) return v.toDate()
-  if (typeof v === 'object' && v !== null && 'toDate' in v && typeof (v as { toDate: () => Date }).toDate === 'function') {
-    try {
-      return (v as { toDate: () => Date }).toDate()
-    } catch {
-      return null
-    }
-  }
-  if (typeof v === 'string' || typeof v === 'number') {
-    const d = new Date(v)
-    return Number.isNaN(d.getTime()) ? null : d
-  }
-  return null
-}
-
 function awalHariLokal(d = new Date()): Date {
   const x = new Date(d)
   x.setHours(0, 0, 0, 0)

@@ -1,18 +1,16 @@
-## 2026-11-19 — Lomba: cetak rekapitulasi hasil (peringkat A4)
+## 2026-11-19 — Dashboard admin: performa guru, cakupan materi, aktivitas siswa
 
-- **Masalah:** Hasil kuis Lomba sudah ada di panel guru (roster + skor), tetapi belum ada rekap siap cetak untuk arsip / pengumuman peringkat.
-- **Perbaikan:** Tombol **«Cetak rekap hasil»** di panel Hasil kuis Lomba (sebelah publikasi hasil).
-  - Membuka jendela pratinjau A4 → **Cetak / Simpan PDF**.
-  - **Identitas:** logo sekolah, nama lomba, tingkat, judul kuis, mapel, masa pelaksanaan, pengampu.
-  - **Ringkas:** jumlah peserta, mengerjakan, rata-rata nilai, skor tertinggi.
-  - **Tabel peringkat** (kompetisi: nilai sama = peringkat sama): peringkat, nama, kelas, skor mentah, nilai 0–100, status; kolom per mapel sumber bila kuis Gabungan (≥2 mapel).
-  - Peserta belum mengerjakan tetap tercantum di bawah dengan status «Belum mengerjakan».
-  - Area tanda tangan Kepala Sekolah + pengampu/panitia; keterangan cara hitung nilai.
-- Juga memperbaiki `togglePublishHasil` agar bekerja untuk **Lomba** (sebelumnya early-return hanya TKA, padahal UI publikasi sudah tampil di Lomba).
-- File baru: `src/lib/cetakHasilLomba.ts`.
-- File diubah: `src/components/HasilKuisPanel.tsx`.
-- Tidak mengubah firestore.rules / indexes / functions.
-- Antiregresi: §Lomba.30.
+- **Masalah:** Beranda admin hanya menampilkan ruang pribadi & agenda tugas/kuis — tidak memberi gambaran performa guru dan cakupan LMS yang bisa ditindaklanjuti wakil kepala kurikulum.
+- **Perbaikan:** Panel **Dashboard Kurikulum** di Beranda (hanya tampil untuk admin):
+  - Ringkasan: total materi, kuis aktif/total, tugas aktif/total, siswa aktif, guru yang sudah membuat konten, siswa unik aktif hari ini.
+  - **Aktivitas siswa hari ini:** jawaban kuis, pengumpulan tugas, ranking kelas terbanyak memanfaatkan LMS.
+  - **Temuan:** alert otomatis (kelas tanpa materi, mapel kosong, tidak ada aktivitas hari ini).
+  - **Tabel performa guru:** jumlah materi / kuis / tugas yang dibuat (dari `dibuatOleh` / `dibuatOlehNama`; konten Lomba dikecualikan).
+  - **Cakupan per kelas:** jumlah materi/kuis/tugas + mapel master yang sudah/belum punya materi (termasuk share `kelasList`).
+- File baru: `src/lib/adminDashboard.ts`, `src/components/AdminDashboardPanel.tsx`.
+- File diubah: `src/pages/Beranda.tsx`, `src/styles/ruang.css`.
+- Tidak mengubah firestore.rules / indexes — admin sudah boleh list koleksi terkait.
+- Antiregresi: §Admin.Dashboard.
 
 ## 2026-11-18 — Materi halaman: tempel gambar dari clipboard
 

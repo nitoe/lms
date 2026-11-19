@@ -28,17 +28,6 @@ Bila error tetap permission setelah rules 300 ter-deploy: cek penugasan `penugas
 ---
 
 
-## §Lomba.30 — Cetak rekapitulasi hasil lomba (2026-11-19)
-
-1. `window.open('about:blank')` **sinkron** di awal handler klik (sebelum `await`), sama pola kartu peserta (§Lomba.29) dan cetak kuis PDF. Setelah HTML siap, `document.write`; bila gagal, tutup jendela.
-2. Data baris = roster `lms_lomba.siswaList` + jawaban terbaru per `siswaId` dari `daftarJawabanKuisLomba` (sudah di panel Hasil). Jangan query ulang di lib cetak bila data sudah di UI.
-3. Peringkat **kompetisi** (1, 2, 2, 4): bandingkan `nilai100` lalu skor mentah; yang belum mengerjakan tidak mendapat nomor peringkat.
-4. Kolom mapel sumber hanya jika ≥2 `sumberMapel` pada soal kuis (Gabungan). Satu mapel → kolom itu disembunyikan agar tabel tidak berlebih.
-5. Nilai = `skorOtomatis / totalPoin × 100` (`skorKe100`). Soal uraian belum dinilai manual tetap memakai skor otomatis yang tersimpan.
-6. Publikasi hasil Lomba memakai field `hasilDipublish` di `lms_kuis` (sama TKA). `togglePublishHasil` harus mengizinkan `isLomba`, bukan hanya `isTka`.
-7. Tidak menulis koleksi baru; cetak murni klien.
-
-
 ## §Admin.Dashboard — Panel kurikulum di Beranda (2026-11-19)
 
 1. Panel hanya di-render bila `profil.role === 'admin' || profil.peranLms === 'admin'` (`sebagaiAdmin`). Guru biasa tidak memuat query agregat.
