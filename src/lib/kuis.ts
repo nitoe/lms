@@ -134,14 +134,25 @@ export async function ambilKuis(id: string): Promise<KuisLms | null> {
 }
 
 
+/**
+ * Kuis satu lomba untuk tab mapel (atau Gabungan).
+ *
+ * Query **hanya** `lombaId` (sama pola `daftarPaketLombaSemua`) lalu saring `mapel` di klien.
+ * Query `lombaId` + `mapel` sering gagal permission untuk guru pengampu non-admin: rules list
+ * mengevaluasi cabang `lmsLihatMapelKelas(mapel, kelas)` dengan `kelas == LB` (bukan penugasan)
+ * secara konservatif bersama OR `lombaKontenBoleh`. ANTIREGRESI §Lomba.13 / §Lomba.31.
+ * Hasil mencakup kuis yang dibuat admin maupun pengampu lain pada lomba yang sama.
+ */
 export async function daftarKuisLomba(lombaId: string, mapel: string): Promise<KuisLms[]> {
   if (!lombaId) return []
-  const snap = await getDocs(
-    query(koleksi(), where('lombaId', '==', lombaId), where('mapel', '==', mapel)),
-  )
-  return snap.docs.map((d) => {
-    const data = d.data()
-    return {
+  const snap = await getDocs(query(koleksi(), where('lombaId', '==', lombaId)))
+  const mapelNorm = String(mapel || '').trim()
+  const list: KuisLms[] = []
+  for (const d of snap.docs) {
+    const data = d.data() as Record<string, unknown>
+    const m = String(data.mapel || '').trim()
+    if (mapelNorm && m !== mapelNorm) continue
+    list.push({
       id: d.id,
       ...data,
       kelas: String(data.kelas || '').toUpperCase(),
@@ -150,8 +161,14 @@ export async function daftarKuisLomba(lombaId: string, mapel: string): Promise<K
       modeSusun: (data.modeSusun as ModeSusunKuis) || 'manual',
       jumlahSoal: typeof data.jumlahSoal === 'number' ? data.jumlahSoal : (data.soal?.length ?? 0),
       totalPoin: typeof data.totalPoin === 'number' ? data.totalPoin : 0,
-    } as KuisLms
+    } as KuisLms)
+  }
+  list.sort((a, b) => {
+    const ta = (a.updatedAt as { seconds?: number })?.seconds ?? 0
+    const tb = (b.updatedAt as { seconds?: number })?.seconds ?? 0
+    return tb - ta
   })
+  return list
 }
 
 /** Semua kuis aktif milik satu lomba (semua mapel + Gabungan). Untuk siswa peserta. */

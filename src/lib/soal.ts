@@ -278,12 +278,17 @@ export async function ambilPaket(id: string): Promise<PaketSoal | null> {
 }
 
 
+/**
+ * Paket satu mapel dalam lomba. Query hanya `lombaId` lalu saring mapel di klien
+ * (sama pola daftarPaketLombaSemua / daftarKuisLomba) agar lolos rules guru pengampu. §Lomba.31.
+ */
 export async function daftarPaketLomba(lombaId: string, mapel: string): Promise<PaketSoal[]> {
   if (!lombaId) return []
-  const snap = await getDocs(
-    query(collection(db, 'lms_paket_soal'), where('lombaId', '==', lombaId), where('mapel', '==', mapel)),
-  )
-  return snap.docs.map((d) => ({ id: d.id, ...(d.data() as object) }) as PaketSoal)
+  const snap = await getDocs(query(collection(db, 'lms_paket_soal'), where('lombaId', '==', lombaId)))
+  const mapelNorm = String(mapel || '').trim()
+  return snap.docs
+    .map((d) => ({ id: d.id, ...(d.data() as object) }) as PaketSoal)
+    .filter((p) => !mapelNorm || String(p.mapel || '').trim() === mapelNorm)
 }
 
 /** Semua paket sebuah lomba (lintas mapel). Query hanya `lombaId` agar lolos rules guru pengampu. */

@@ -29,7 +29,7 @@ import {
   type DrafKuisWizard,
   type HasilSimpanDraf,
 } from '../lib/kuisDraf'
-import { daftarJawabanKuis } from '../lib/jawabanKuis'
+import { daftarJawabanKuis, daftarJawabanKuisLomba } from '../lib/jawabanKuis'
 import { daftarPaketLomba, daftarPaketLombaSemua, ringkasanPaket } from '../lib/soal'
 import type { FilterSusunKuis, KuisLms, ModeSusunKuis, SoalKuis, TahapTryOutTka } from '../types/kuis'
 import {
@@ -615,7 +615,12 @@ export default function KuisPanel({ kelas, mapel, lombaId, mapelGabungan }: Prop
   /** Langkah 1: buka dialog konfirmasi (hitung dulu hasil siswa yang akan kehilangan kuis). */
   function onHapus(k: KuisLms) {
     setHapusTarget({ kuis: k, jumlahJawaban: null })
-    void daftarJawabanKuis(k.id, k.kelas, k.mapel)
+    // Lomba: kelas bank LB + jawaban menyimpan rombel siswa — wajib query kuisId+lombaId
+    // (daftarJawabanKuis dengan kelas=LB gagal untuk pengampu). ANTIREGRESI §Lomba.26 / §Lomba.31.
+    const janji = k.lombaId
+      ? daftarJawabanKuisLomba(k.id, k.lombaId)
+      : daftarJawabanKuis(k.id, k.kelas, k.mapel)
+    void janji
       .then((list) => {
         setHapusTarget((cur) => (cur && cur.kuis.id === k.id ? { kuis: k, jumlahJawaban: list.length } : cur))
       })

@@ -1,3 +1,15 @@
+## 2026-11-19 — Lomba: pengampu bisa melihat kuis (dan paket) yang dibuat admin/pengampu lain
+
+- **Gejala:** Guru pengampu lomba tidak melihat / tidak bisa mengakses kuis lomba yang dibuat admin (atau pengampu lain); seolah hanya kuis buatannya sendiri yang ada.
+- **Akar:** `daftarKuisLomba` (dan `daftarPaketLomba`) memakai query `where lombaId` **+** `where mapel`. Evaluasi list rules untuk kelas bank `LB` + cabang `lmsLihatMapelKelas` sering menolak seluruh query bagi non-admin, meskipun cabang `lombaKontenBoleh` sudah ada. Pola yang sudah terbukti aman untuk paket: query **hanya** `lombaId`, saring mapel di klien (`daftarPaketLombaSemua`).
+- **Perbaikan:**
+  - `daftarKuisLomba`: query `lombaId` saja → filter `mapel` di klien; urut terbaru.
+  - `daftarPaketLomba`: sama (selaras `daftarPaketLombaSemua`).
+  - `KuisPanel.onHapus`: hitung jawaban lewat `daftarJawabanKuisLomba` bila `k.lombaId` (bukan `daftarJawabanKuis` dengan kelas `LB`).
+- Tidak mengubah firestore.rules (cabang `lombaKontenBoleh` sudah benar; masalah di bentuk query klien).
+- File: `src/lib/kuis.ts`, `src/lib/soal.ts`, `src/components/KuisPanel.tsx`.
+- Antiregresi: §Lomba.31.
+
 ## 2026-11-19 — Gabung ulang CHANGELOG & ANTIREGRESI (hindari tumpuk tulis)
 
 - **Masalah:** Beberapa commit (dashboard admin, cetak hasil lomba, import Try Out II) mengedit `CHANGELOG.md` / `ANTIREGRESI.md` dari basis berbeda. Commit yang lebih baru menimpa entri yang sudah ada di remote sehingga riwayat fitur hilang dari dokumen (kode tetap ada).

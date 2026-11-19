@@ -62,6 +62,16 @@ Bila error tetap permission setelah rules 300 ter-deploy: cek penugasan `penugas
 6. Publikasi hasil Lomba memakai field `hasilDipublish` di `lms_kuis` (sama TKA). `togglePublishHasil` harus mengizinkan `isLomba`, bukan hanya `isTka`.
 7. Tidak menulis koleksi baru; cetak murni klien.
 
+
+## §Lomba.31 — Daftar kuis/paket lomba: query hanya lombaId (2026-11-19)
+
+1. **Jangan** query `lms_kuis` / `lms_paket_soal` dengan `where lombaId` **+** `where mapel` untuk UI pengampu. Gunakan `where lombaId == …` saja, saring mapel di klien. Alasan sama §Lomba.13 (paket semua mapel).
+2. `daftarKuisLomba(lombaId, mapel)` dan `daftarPaketLomba(lombaId, mapel)` mengikuti pola itu. `daftarKuisLombaAktif` / `daftarPaketLombaSemua` sudah query tanpa mapel.
+3. Hasil harus mencakup kuis/paket yang `dibuatOleh` admin atau pengampu lain — akses ditentukan `lombaKontenBoleh` (anggota `guruPengampuUids`), bukan `dibuatOleh`.
+4. Hitung jawaban sebelum hapus kuis Lomba: `daftarJawabanKuisLomba(kuisId, lombaId)`, **bukan** `daftarJawabanKuis(…, kelas=LB, mapel)` (§Lomba.26).
+5. Rules `lombaKontenBoleh` tetap wajib di-deploy; perbaikan ini hanya bentuk query klien.
+
+
 ## §Materi.TempelGambar — Paste clipboard ke blok gambar (2026-11-18)
 
 1. Listener `paste` hanya aktif di mode **edit** editor halaman (`MateriHalamanEditor`).
