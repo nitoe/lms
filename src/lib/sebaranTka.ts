@@ -296,24 +296,32 @@ function barisSebaran(key: string, nama: string, poin: number, maks: number): Ba
   return { key, nama, poin, maks, persen: persenPoin(poin, maks) }
 }
 
-/** Sebaran Matematika dari poin per kelompok (L1, L2 | Bilangan, Data, Geometri). */
+/**
+ * Sebaran Matematika dari poin per kelompok.
+ * - Try Out I: k = [L1, L2] dengan maks bawaan (MAKS_MTK_*).
+ * - Try Out II dst.: k = [L1, L2, L3]; poin maksimum dibawa per baris (maksK / maksM) karena
+ *   pembagian soalnya ditentukan penyelenggara. m = [Bilangan, Data, Geometri dan Pengukuran].
+ */
 export function bangunSebaranMtk(sb: NonNullable<BarisTryOutImport['sbMtk']>): SebaranMapelTka {
   const nm = MATERI_TKA['TKA Matematika'] // Bilangan, Geometri dan Pengukuran, Data
+  const poinK: readonly number[] = sb.k
+  const maksK: readonly number[] = sb.maksK ?? MAKS_MTK_KOMPLEKSITAS
+  const maksM: readonly number[] = sb.maksM ?? MAKS_MTK_MATERI
   const urutan: [string, number, number][] = [
-    ['Bilangan', sb.m[0], MAKS_MTK_MATERI[0]],
-    ['Data', sb.m[1], MAKS_MTK_MATERI[1]],
-    ['Geometri dan Pengukuran', sb.m[2], MAKS_MTK_MATERI[2]],
+    ['Bilangan', sb.m[0], maksM[0]],
+    ['Data', sb.m[1], maksM[1]],
+    ['Geometri dan Pengukuran', sb.m[2], maksM[2]],
   ]
   const materi = nm
     .map((nama) => urutan.find((u) => u[0] === nama))
     .filter((u): u is [string, number, number] => !!u)
     .map(([nama, poin, maks]) => barisSebaran(nama, nama, poin, maks))
-  const kompleksitas = [
-    barisSebaran('L1', NAMA_KOMPLEKSITAS_TKA.L1, sb.k[0], MAKS_MTK_KOMPLEKSITAS[0]),
-    barisSebaran('L2', NAMA_KOMPLEKSITAS_TKA.L2, sb.k[1], MAKS_MTK_KOMPLEKSITAS[1]),
-  ]
-  const skor = sb.k[0] + sb.k[1]
-  const maks = MAKS_MTK_KOMPLEKSITAS[0] + MAKS_MTK_KOMPLEKSITAS[1]
+  const kompleksitas = poinK.map((poin, i) => {
+    const key = `L${i + 1}` as KompleksitasSoal
+    return barisSebaran(key, NAMA_KOMPLEKSITAS_TKA[key], poin, maksK[i])
+  })
+  const skor = bulat2(poinK.reduce((a, b) => a + b, 0))
+  const maks = bulat2(maksK.slice(0, poinK.length).reduce((a, b) => a + b, 0))
   return { skor, maks, kompleksitas, materi }
 }
 
@@ -340,6 +348,52 @@ export function bangunSebaranBi(sb: NonNullable<BarisTryOutImport['sbBi']>): Seb
   return out
 }
 
+
+/**
+ * Validasi baris data import sebelum pratinjau/simpan (kesalahan angka = salah laporan ke orang tua).
+ * Memeriksa jumlah kelompok, poin 0…maks, dan — bila maks dibawa baris — jumlah kompetensi dasar =
+ * jumlah kompetensi materi (keduanya membagi soal yang sama; toleransi 0,05 karena pembulatan 2 desimal).
+ * @returns pesan galat, atau null bila valid.
+ */
+export function periksaSebaranImport(b: BarisTryOutImport): string | null {
+  const TOL = 0.05
+  const valid = (n: unknown): n is number => typeof n === 'number' && Number.isFinite(n) && n >= 0
+  const jumlah = (a: readonly number[]) => a.reduce((x, y) => x + y, 0)
+  if (b.sbMtk) {
+    const { k, m } = b.sbMtk
+    const maksK: readonly number[] = b.sbMtk.maksK ?? MAKS_MTK_KOMPLEKSITAS
+    const maksM: readonly number[] = b.sbMtk.maksM ?? MAKS_MTK_MATERI
+    if (!Array.isArray(k) || (k.length !== 2 && k.length !== 3)) return 'sbMtk.k harus 2 atau 3 angka (L1, L2[, L3]).'
+    if (!Array.isArray(m) || m.length !== 3) return 'sbMtk.m harus 3 angka (Bilangan, Data, Geometri dan Pengukuran).'
+    if (maksK.length !== k.length) return `sbMtk.maksK harus ${k.length} angka (sama dengan k).`
+    if (maksM.length !== 3) return 'sbMtk.maksM harus 3 angka.'
+    for (let i = 0; i < k.length; i++) {
+      if (!valid(k[i]) || !valid(maksK[i])) return `sbMtk.k[${i}] / maksK[${i}] bukan angka ≥ 0.`
+      if (k[i] > maksK[i] + 0.001) return `Matematika L${i + 1}: poin ${k[i]} melebihi maks ${maksK[i]}.`
+    }
+    for (let i = 0; i < 3; i++) {
+      if (!valid(m[i]) || !valid(maksM[i])) return `sbMtk.m[${i}] / maksM[${i}] bukan angka ≥ 0.`
+      if (m[i] > maksM[i] + 0.001) return `Matematika materi ke-${i + 1}: poin ${m[i]} melebihi maks ${maksM[i]}.`
+    }
+    if (Math.abs(jumlah(k) - jumlah(m)) > TOL) {
+      return `Matematika: jumlah poin kompetensi dasar (${jumlah(k)}) ≠ kompetensi materi (${jumlah(m)}).`
+    }
+    if (Math.abs(jumlah(maksK) - jumlah(maksM)) > TOL) {
+      return `Matematika: jumlah maks kompetensi dasar (${jumlah(maksK)}) ≠ kompetensi materi (${jumlah(maksM)}).`
+    }
+  }
+  if (b.sbBi) {
+    const { k } = b.sbBi
+    const maks: readonly number[] = b.sbBi.maks ?? MAKS_BI_KOMPLEKSITAS
+    if (!Array.isArray(k) || k.length !== 3) return 'sbBi.k harus 3 angka (L1, L2, L3).'
+    if (maks.length !== 3) return 'sbBi.maks harus 3 angka.'
+    for (let i = 0; i < 3; i++) {
+      if (!valid(k[i]) || !valid(maks[i])) return `sbBi.k[${i}] / maks[${i}] bukan angka ≥ 0.`
+      if (k[i] > maks[i] + 0.001) return `Bahasa Indonesia L${i + 1}: poin ${k[i]} melebihi maks ${maks[i]}.`
+    }
+  }
+  return null
+}
 
 /* ---------------------------------------------------------------- input sebaran manual */
 

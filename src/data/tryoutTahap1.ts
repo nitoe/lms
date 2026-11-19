@@ -13,14 +13,23 @@
  * - sbBi.k  = poin [L1, L2, L3]        (maks bawaan [10, 10, 20], total 40)
  *   Pada BI, L1/L2/L3 sama persis dengan Pemahaman Tekstual / Inferensial / Evaluasi dan
  *   Apresiasi — tipe materi diturunkan dari k (lihat bangunSebaranBi di importRekapTka.ts).
+ * - Try Out II dst. (Matematika): sbMtk.k boleh [L1, L2, L3] dan membawa poin maksimum sendiri
+ *   lewat sbMtk.maksK / sbMtk.maksM (lihat data/tryoutTahap2.ts). Tanpa maksK/maksM dipakai
+ *   konstanta Try Out I di bawah.
  * - sbBi.maks = maks per kelompok bila berbeda dari bawaan. Dua siswa kehabisan waktu
  *   (Daenzel Zhafran 6A, Zakiyah Fathinah Fauziyah 6B): soal yang tidak sempat tampil tidak
  *   dihitung oleh portal lama (maks 36 / 37, bukan 40). Angka sumber dipertahankan apa adanya
  *   dan ditandai waktuHabis (ANTIREGRESI §109).
  */
 export type SebaranMtkImport = {
-  k: [number, number]
+  /** Poin [L1, L2] (Try Out I) atau [L1, L2, L3] (Try Out II dst.). */
+  k: [number, number] | [number, number, number]
+  /** Poin [Bilangan, Data, Geometri dan Pengukuran]. */
   m: [number, number, number]
+  /** Poin maksimum per kompetensi dasar; kosong = MAKS_MTK_KOMPLEKSITAS (Try Out I). Wajib sama panjang dengan k. */
+  maksK?: readonly number[]
+  /** Poin maksimum per materi; kosong = MAKS_MTK_MATERI (Try Out I). */
+  maksM?: readonly number[]
 }
 
 export type SebaranBiImport = {

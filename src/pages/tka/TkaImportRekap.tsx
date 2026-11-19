@@ -7,6 +7,8 @@ import {
   SUMBER_TRYOUT_TAHAP_1,
   type BarisTryOutImport,
 } from '../../data/tryoutTahap1'
+import { DATA_TRYOUT_TAHAP_2, SUMBER_TRYOUT_TAHAP_2 } from '../../data/tryoutTahap2'
+import { periksaSebaranImport } from '../../lib/sebaranTka'
 import {
   cocokkanBaris,
   imporRekapTkaManual,
@@ -36,12 +38,17 @@ function parseJsonBaris(teks: string): BarisTryOutImport[] {
     if (kelas !== '6A' && kelas !== '6B') throw new Error(`Baris ${i + 1}: kelas harus 6A/6B.`)
     if (Number.isNaN(mtk) || Number.isNaN(bi)) throw new Error(`Baris ${i + 1}: mtk/bi bukan angka.`)
     const out: BarisTryOutImport = { nama, kelas, mtk, bi }
-    // Opsional: sebaran poin per kompetensi (lihat data/tryoutTahap1.ts untuk format).
+    // Opsional: sebaran poin per kompetensi (lihat data/tryoutTahap1.ts & tryoutTahap2.ts untuk format).
     const sbMtk = r.sbMtk as BarisTryOutImport['sbMtk'] | undefined
     const sbBi = r.sbBi as BarisTryOutImport['sbBi'] | undefined
     if (sbMtk) {
-      if (!Array.isArray(sbMtk.k) || sbMtk.k.length !== 2 || !Array.isArray(sbMtk.m) || sbMtk.m.length !== 3) {
-        throw new Error(`Baris ${i + 1}: sbMtk harus {k:[2 angka], m:[3 angka]}.`)
+      if (
+        !Array.isArray(sbMtk.k) ||
+        (sbMtk.k.length !== 2 && sbMtk.k.length !== 3) ||
+        !Array.isArray(sbMtk.m) ||
+        sbMtk.m.length !== 3
+      ) {
+        throw new Error(`Baris ${i + 1}: sbMtk harus {k:[2 atau 3 angka], m:[3 angka]}.`)
       }
       out.sbMtk = sbMtk
     }
@@ -51,6 +58,8 @@ function parseJsonBaris(teks: string): BarisTryOutImport[] {
       }
       out.sbBi = sbBi
     }
+    const galat = periksaSebaranImport(out)
+    if (galat) throw new Error(`Baris ${i + 1} (${nama}): ${galat}`)
     return out
   })
 }
@@ -66,6 +75,8 @@ export default function TkaImportRekap() {
   const [error, setError] = useState('')
   const [info, setInfo] = useState('')
   const [jsonTeks, setJsonTeks] = useState('')
+  /** Asal data yang sedang dipratinjau; `tahap` terisi untuk data bawaan (terkunci ke tahapnya). */
+  const [sumberAktif, setSumberAktif] = useState<{ label: string; tahap?: TahapTryOutTka } | null>(null)
 
   const ringkas = useMemo(() => {
     if (!pratinjau) return null
@@ -76,18 +87,31 @@ export default function TkaImportRekap() {
   }, [pratinjau])
 
   const jalankanCocok = useCallback(
-    async (sumber: readonly BarisTryOutImport[]) => {
+    async (
+      sumber: readonly BarisTryOutImport[],
+      asal: { label: string; tahap?: TahapTryOutTka } = { label: 'JSON kustom' },
+    ) => {
       setLoading(true)
       setError('')
       setInfo('')
       setPratinjau(null)
+      setSumberAktif(null)
       try {
+        // Validasi angka dulu: baris dengan poin tidak masuk akal tidak boleh sampai ke orang tua.
+        const galat = sumber
+          .map((b, i) => {
+            const g = periksaSebaranImport(b)
+            return g ? `Baris ${i + 1} (${b.nama}): ${g}` : ''
+          })
+          .filter(Boolean)
+        if (galat.length) throw new Error(`Data tidak valid:\n${galat.slice(0, 10).join('\n')}`)
         const roster = await muatRosterTka6()
         if (roster.length === 0) {
           throw new Error('Roster siswa 6A/6B kosong. Pastikan data siswa sudah diimpor.')
         }
         const hasil = cocokkanBaris(sumber, roster)
         setPratinjau(hasil)
+        setSumberAktif(asal)
         const nCocok = hasil.filter((h) => h.status === 'cocok').length
         setInfo(
           `Pratinjau: ${nCocok}/${hasil.length} cocok dengan roster. Periksa baris merah/kuning sebelum menyimpan.`,
@@ -104,8 +128,14 @@ export default function TkaImportRekap() {
   useEffect(() => {
     if (!bolehImport) return
     // default: muat data Try Out I bawaan
-    void jalankanCocok(DATA_TRYOUT_TAHAP_1)
+    void jalankanCocok(DATA_TRYOUT_TAHAP_1, { label: 'Try Out I (bawaan)', tahap: 'I' })
   }, [bolehImport, jalankanCocok])
+
+  function muatTahap(t: 'I' | 'II') {
+    setTahap(t)
+    if (t === 'I') void jalankanCocok(DATA_TRYOUT_TAHAP_1, { label: 'Try Out I (bawaan)', tahap: 'I' })
+    else void jalankanCocok(DATA_TRYOUT_TAHAP_2, { label: 'Try Out II (bawaan)', tahap: 'II' })
+  }
 
   async function simpan() {
     if (!pratinjau) return
@@ -114,9 +144,17 @@ export default function TkaImportRekap() {
       setError('Tidak ada baris yang cocok untuk disimpan.')
       return
     }
+    // Data bawaan terkunci ke tahapnya: Try Out II tidak boleh tertimpa ke tahap lain (dan sebaliknya).
+    if (sumberAktif?.tahap && sumberAktif.tahap !== tahap) {
+      setError(
+        `Data yang dimuat adalah ${sumberAktif.label}, tetapi tahap tujuan dipilih «${NAMA_TAHAP_TRYOUT_TKA[tahap]}». ` +
+          `Ubah tahap tujuan ke ${NAMA_TAHAP_TRYOUT_TKA[sumberAktif.tahap]} atau muat ulang datanya.`,
+      )
+      return
+    }
     if (
       !window.confirm(
-        `Simpan ${nCocok} nilai manual tahap ${tahap} (MTK + BI) beserta sebaran capaian ke lms_rekap_tka?\nBaris yang tidak cocok akan dilewati.`,
+        `Simpan ${nCocok} nilai manual ${NAMA_TAHAP_TRYOUT_TKA[tahap]} (MTK + BI) beserta sebaran capaian ke lms_rekap_tka?\nSumber: ${sumberAktif?.label ?? '—'}.\nBaris yang tidak cocok akan dilewati.`,
       )
     ) {
       return
@@ -196,9 +234,23 @@ export default function TkaImportRekap() {
           type="button"
           className="lms-btn-secondary text-sm mt-3"
           disabled={loading || busy}
-          onClick={() => void jalankanCocok(DATA_TRYOUT_TAHAP_1)}
+          onClick={() => muatTahap('I')}
         >
           Muat ulang data Try Out I
+        </button>
+        <p className="mt-4 text-sm text-slate-700">{SUMBER_TRYOUT_TAHAP_2}</p>
+        <p className="mt-1 text-xs text-slate-500">
+          {DATA_TRYOUT_TAHAP_2.length} siswa · Matematika &amp; Bahasa Indonesia (IPA Try Out II
+          dikerjakan di LMS, otomatis) · kompetensi dasar L1–L3 &amp; materi per siswa. Dzaky Abdul
+          Rauf tidak hadir (susulan tanpa rincian) sehingga tidak termasuk.
+        </p>
+        <button
+          type="button"
+          className="lms-btn-secondary text-sm mt-3"
+          disabled={loading || busy}
+          onClick={() => muatTahap('II')}
+        >
+          Muat data Try Out II
         </button>
       </div>
 
