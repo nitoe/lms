@@ -21,6 +21,7 @@ import type {
 } from '../types/tugas'
 import { normalisasiKelasList } from './kelasLms'
 import { rapikanBuktiList, sanitasiBuktiList } from './buktiTugas'
+import { tahapValid } from '../types/tugas'
 
 /**
  * Firestore menolak `undefined`. Rapikan pengaturan penilaian:
@@ -40,6 +41,9 @@ function sanitasiPengaturanPenilaian(
       if (k.deskripsi?.trim()) item.deskripsi = k.deskripsi.trim()
       if (typeof k.bobot === 'number' && !Number.isNaN(k.bobot)) item.bobot = k.bobot
       if (typeof k.mapel === 'string' && k.mapel.trim()) item.mapel = k.mapel.trim()
+      const tahap = tahapValid(k.tahap)
+      if (tahap) item.tahap = tahap
+      if (k.sumber === 'observasi') item.sumber = 'observasi'
       return item
     })
 

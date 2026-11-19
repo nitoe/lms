@@ -41,6 +41,18 @@ export interface RentangPredikat {
 }
 
 /** Kategori/aspek rubrik asesmen kinerja. */
+export type TahapTugas = 'persiapan' | 'pelaksanaan' | 'hasil'
+export type SumberKategori = 'bukti' | 'observasi'
+export const DAFTAR_TAHAP: TahapTugas[] = ['persiapan', 'pelaksanaan', 'hasil']
+export const LABEL_TAHAP: Record<TahapTugas, string> = {
+  persiapan: 'Persiapan',
+  pelaksanaan: 'Pelaksanaan (proses)',
+  hasil: 'Hasil akhir',
+}
+export function tahapValid(t: unknown): TahapTugas | undefined {
+  return t === 'persiapan' || t === 'pelaksanaan' || t === 'hasil' ? t : undefined
+}
+
 export interface KategoriPenilaian {
   id: string
   /** Nama aspek, mis. "Tebal-tipis garis" */
@@ -56,6 +68,13 @@ export interface KategoriPenilaian {
    * «Bahasa Indonesia»). Kosong = berlaku umum / mapel utama.
    */
   mapel?: string
+  /** Tahap kegiatan yang dinilai: persiapan, pelaksanaan (proses), atau hasil akhir. */
+  tahap?: TahapTugas
+  /**
+   * Dari mana nilai aspek ini diperoleh: `bukti` (foto/hasil tulisan siswa; default) atau
+   * `observasi` (pengamatan/tanya jawab guru — tidak butuh upload).
+   */
+  sumber?: SumberKategori
 }
 
 /**
@@ -66,20 +85,22 @@ export interface KategoriPenilaian {
 export interface BuktiTugas {
   /** ID stabil (tidak berubah walau label/urutan diedit). */
   id: string
-  /** Slot foto 1..3 yang dipakai bukti ini (unik per tugas). */
+  /** Slot foto 1..6 yang dipakai bukti ini (unik per tugas). */
   slot: number
   /** Nama bukti yang tampil ke siswa, mis. «Foto catatan hasil sebelum aktivitas». */
   label: string
   /** Petunjuk singkat: apa yang harus terlihat di foto. */
   petunjuk?: string
+  /** Tahap kegiatan bukti ini (untuk pengelompokan tampilan siswa). */
+  tahap?: TahapTugas
   /** Wajib dikumpulkan? Bukti opsional boleh dikosongkan siswa. */
   wajib: boolean
   /** ID kategori rubrik (`KategoriPenilaian.id`) yang dinilai dari bukti ini. */
   kategoriIds?: string[]
 }
 
-/** Jumlah bukti/foto maksimum per tugas — dibatasi aturan Firestore (slot foto '1'..'3'). */
-export const BATAS_BUKTI_TUGAS = 3
+/** Jumlah bukti/foto maksimum per tugas — dibatasi aturan Firestore (slot foto '1'..'6'). */
+export const BATAS_BUKTI_TUGAS = 6
 
 /**
  * Pengaturan penilaian tugas (tab Input Nilai → Pengaturan penilaian).
@@ -134,7 +155,7 @@ export interface TugasLms {
   jumlahPengumpulan?: number
   pengaturanPenilaian?: PengaturanPenilaianTugas
   /**
-   * Bukti pengumpulan berlabel (1–3). Kosong/tidak ada = mode lama: siswa mengunggah 1–3 foto
+   * Bukti pengumpulan berlabel (1–6). Kosong/tidak ada = mode lama: siswa mengunggah 1–3 foto
    * tanpa label. Dokumen lama tanpa field ini tetap bekerja.
    */
   buktiList?: BuktiTugas[]

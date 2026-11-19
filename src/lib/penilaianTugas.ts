@@ -1,5 +1,6 @@
 import { auth } from './firebase'
 import type { KategoriPenilaian, PengaturanPenilaianTugas, RentangPredikat } from '../types/tugas'
+import { tahapValid } from '../types/tugas'
 
 /** Sama dengan generate soal AI — mirror functions. */
 export const UID_AI_TUGAS = 'v4fQXsqCzYUtHrqcDM0u48sxIfn1'
@@ -72,6 +73,9 @@ export function normalisasiPengaturan(
         bobot: typeof x.bobot === 'number' ? x.bobot : undefined,
         // Mapel pemilik aspek (tugas proyek) — JANGAN dibuang: dibaca & ditulis ulang saat simpan.
         mapel: typeof x.mapel === 'string' && x.mapel.trim() ? x.mapel.trim() : undefined,
+        // Tahap & sumber nilai aspek (persiapan/pelaksanaan/hasil; bukti/observasi) — jangan dibuang.
+        tahap: tahapValid(x.tahap),
+        sumber: x.sumber === 'observasi' ? ('observasi' as const) : undefined,
       }))
   }
 

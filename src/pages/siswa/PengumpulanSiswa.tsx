@@ -3,6 +3,7 @@ import {
   BATAS_CATATAN,
   BATAS_FOTO_PENGUMPULAN,
   buktiWajibKurang,
+  DAFTAR_SLOT,
   kirimPengumpulan,
   muatFoto,
   muatFotoBerslot,
@@ -10,7 +11,8 @@ import {
   siapkanFoto,
   type PengumpulanDok,
 } from '../../lib/pengumpulan'
-import { adaBukti, namaKategoriBukti } from '../../lib/buktiTugas'
+import { adaBukti, kelompokBuktiPerTahap, namaKategoriBukti } from '../../lib/buktiTugas'
+import { LABEL_TAHAP } from '../../types/tugas'
 import type { TugasLms } from '../../types/tugas'
 import SiswaIcon from './SiswaIcon'
 
@@ -186,7 +188,7 @@ export default function PengumpulanSiswa({
   const buktiList = tugas.buktiList ?? []
   const kategori = tugas.pengaturanPenilaian?.kategori
   const slotBukti = new Set(buktiList.map((b) => b.slot))
-  const slotLain = [1, 2, 3].filter((n) => fotoSlot[n] && !slotBukti.has(n))
+  const slotLain = [...DAFTAR_SLOT].filter((n) => fotoSlot[n] && !slotBukti.has(n))
   const kurang = modeBukti ? buktiWajibKurang(tugas, fotoSlot) : []
   const jumlahWajib = buktiList.filter((b) => b.wajib).length
   const jumlahFotoBukti = buktiList.filter((b) => fotoSlot[b.slot]).length
@@ -249,8 +251,11 @@ export default function PengumpulanSiswa({
             {jumlahWajib < buktiList.length ? ` (${jumlahWajib} wajib)` : ''}. Ambil foto satu per satu
             sesuai namanya ya.
           </p>
-          <ol className="sw-bukti-daftar">
-            {buktiList.map((b, i) => {
+          {kelompokBuktiPerTahap(buktiList).map((g) => (
+            <div key={g.tahap ?? 'lain'} className="sw-bukti-kelompok">
+              {g.tahap && <h3 className="sw-bukti-tahap">{LABEL_TAHAP[g.tahap]}</h3>}
+              <ol className="sw-bukti-daftar">
+            {g.items.map(({ b, i }) => {
               const src = fotoSlot[b.slot]
               const dinilai = namaKategoriBukti(b, kategori)
               const idInput = `bukti-${tugas.id}-${b.slot}`
@@ -314,7 +319,9 @@ export default function PengumpulanSiswa({
                 </li>
               )
             })}
-          </ol>
+              </ol>
+            </div>
+          ))}
 
           {slotLain.length > 0 && (
             <div className="sw-bukti sw-bukti--ok">

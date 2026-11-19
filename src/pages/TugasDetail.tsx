@@ -6,6 +6,7 @@ import { ambilTugas, aturBerbagiTugas, buatTugas, updateTugas } from '../lib/tug
 import BerbagiKelasDialog from '../components/BerbagiKelasDialog'
 import PengumpulanPanel from '../components/PengumpulanPanel'
 import BuktiTugasEditor from '../components/BuktiTugasEditor'
+import { rapikanBuktiList } from '../lib/buktiTugas'
 import { htmlInstruksiSiswa } from '../lib/instruksiTugas'
 import { labelKelasDibagikan } from '../lib/kelasLms'
 import { aksenMapel, inisialMapel } from '../lib/uiAksen'
@@ -43,7 +44,14 @@ import type {
   TpTugas,
   TugasLms,
 } from '../types/tugas'
-import { labelJenisTugas, NAMA_JENIS_PENILAIAN_TUGAS, semuaMapelTugas } from '../types/tugas'
+import {
+  DAFTAR_TAHAP,
+  labelJenisTugas,
+  LABEL_TAHAP,
+  NAMA_JENIS_PENILAIAN_TUGAS,
+  semuaMapelTugas,
+  tahapValid,
+} from '../types/tugas'
 import type { TpRingkas } from '../types/materi'
 
 type TabId = 'pengaturan' | 'isi' | 'kumpul' | 'nilai'
@@ -658,7 +666,7 @@ export default function TugasDetail() {
     setError('')
     setSukses('')
     try {
-      const list = await generateKategoriTugasAi({
+      const hasil = await generateKategoriTugasAi({
         judul: tugas?.judul || judul,
         mapel: tugas?.mapel || mapel,
         kelas: tugas?.kelas || kelas,
@@ -666,14 +674,37 @@ export default function TugasDetail() {
         instruksi: tugas?.instruksi || instruksi,
         tpList: tugas?.tpList || tpDipilih,
       })
-      setPengaturan((p) => ({
-        ...p,
-        kategori: [
-          ...p.kategori,
-          ...list.filter((k) => !p.kategori.some((x) => x.nama === k.nama)),
-        ],
-      }))
-      setSukses(`${list.length} kategori rubrik dari AI (berdasarkan isi tugas). Periksa lalu simpan pengaturan.`)
+      const list = hasil.kategori
+      // Kategori yang namanya sudah ada tidak digandakan; id AI dipetakan ke id yang sudah ada.
+      const petaId = new Map<string, string>()
+      const baru = list.filter((k) => {
+        const lama = pengaturan.kategori.find((x) => x.nama === k.nama)
+        if (lama) petaId.set(k.id, lama.id)
+        return !lama
+      })
+      setPengaturan((p) => ({ ...p, kategori: [...p.kategori, ...baru] }))
+      // Saran bukti hanya dipasang bila daftar bukti masih kosong (tidak menimpa pilihan guru).
+      let infoBukti = ''
+      if (hasil.bukti.length > 0 && buktiList.length === 0) {
+        const diterapkan = rapikanBuktiList(
+          hasil.bukti.map((b, i) => ({
+            id: `bk-ai-${Date.now().toString(36)}-${i}`,
+            slot: i + 1,
+            label: b.label,
+            petunjuk: b.petunjuk,
+            wajib: b.wajib,
+            tahap: b.tahap,
+            kategoriIds: b.kategoriIds.map((id) => petaId.get(id) ?? id),
+          })),
+        )
+        setBuktiList(diterapkan)
+        infoBukti = ` + ${diterapkan.length} saran bukti foto (lihat tab Isi Tugas, periksa lalu simpan di sana)`
+      } else if (hasil.bukti.length > 0) {
+        infoBukti = '. Bukti foto yang sudah Anda atur tidak diubah'
+      }
+      setSukses(
+        `${list.length} kategori rubrik dari AI${infoBukti}. Periksa lalu simpan pengaturan.`,
+      )
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Gagal generate kategori AI.')
     } finally {
@@ -1251,6 +1282,42 @@ export default function TugasDetail() {
                               </select>
                             </label>
                           )}
+                          <label className="td-field">
+                            <span>Tahap</span>
+                            <select
+                              value={k.tahap ?? ''}
+                              onChange={(e) => {
+                                const v = tahapValid(e.target.value)
+                                setPengaturan((p) => ({
+                                  ...p,
+                                  kategori: p.kategori.map((x, j) => (j === i ? { ...x, tahap: v } : x)),
+                                }))
+                              }}
+                            >
+                              <option value="">—</option>
+                              {DAFTAR_TAHAP.map((t) => (
+                                <option key={t} value={t}>
+                                  {LABEL_TAHAP[t]}
+                                </option>
+                              ))}
+                            </select>
+                          </label>
+                          <label className="td-field">
+                            <span>Dinilai dari</span>
+                            <select
+                              value={k.sumber === 'observasi' ? 'observasi' : 'bukti'}
+                              onChange={(e) => {
+                                const v = e.target.value === 'observasi' ? ('observasi' as const) : undefined
+                                setPengaturan((p) => ({
+                                  ...p,
+                                  kategori: p.kategori.map((x, j) => (j === i ? { ...x, sumber: v } : x)),
+                                }))
+                              }}
+                            >
+                              <option value="bukti">Bukti foto siswa</option>
+                              <option value="observasi">Pengamatan guru</option>
+                            </select>
+                          </label>
                           <label className="td-field td-field--sempit">
                             <span>Bobot</span>
                             <input

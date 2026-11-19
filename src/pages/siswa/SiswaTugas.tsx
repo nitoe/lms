@@ -6,6 +6,7 @@ import { useSiswa } from '../../context/SiswaContext'
 import { aksenMapel, inisialMapel } from '../../lib/uiAksen'
 import { teksPolos } from '../../lib/html'
 import { htmlInstruksiSiswa } from '../../lib/instruksiTugas'
+import { LABEL_TAHAP } from '../../types/tugas'
 import {
   daftarTugasAktifKelas,
   formatTenggatRelatif,
@@ -259,6 +260,10 @@ export default function SiswaTugas() {
                 <li key={k.id} className="sw-dinilai-item">
                   <span className="sw-dinilai-nama">{k.nama}</span>
                   {k.mapel ? <span className="sw-dinilai-mapel">{k.mapel}</span> : null}
+                  {k.tahap ? <span className="sw-dinilai-mapel">{LABEL_TAHAP[k.tahap]}</span> : null}
+                  {k.sumber === 'observasi' ? (
+                    <span className="sw-dinilai-mapel">Dinilai lewat pengamatan guru</span>
+                  ) : null}
                   {k.deskripsi?.trim() ? <span className="sw-dinilai-desk">{k.deskripsi}</span> : null}
                 </li>
               ))}

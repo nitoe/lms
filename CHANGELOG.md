@@ -1,3 +1,15 @@
+## 2026-11-19 — Tugas: bukti foto per tahap terkait kategori rubrik (AI), batas foto 6
+
+- **Masalah:** rubrik berisi banyak aspek (persiapan, proses, hasil), tetapi pengumpulan cukup satu foto laporan akhir sehingga proses tidak terlihat dan semua aspek praktis dinilai dari satu bukti.
+- **Rubrik sadar tahap & sumber:** kategori rubrik punya `tahap` (persiapan / pelaksanaan / hasil) dan `sumber` («Bukti foto siswa» atau «Pengamatan guru» untuk aspek yang tidak bisa dibuktikan lewat foto). Dipilih di editor rubrik; siswa melihat tahap dan «Dinilai lewat pengamatan guru» di panel «Yang akan dinilai gurumu».
+- **AI merumuskan rubrik + bukti:** `generateKategoriTugasLmsAi` (repo SDM01Penilaian) kini mengembalikan kategori bertahap dan saran daftar bukti (maks. 6, kategori berbukti sama digabung, mengutamakan bukti proses seperti catatan data mentah dan foto saat kegiatan tanpa mewajibkan wajah anak). Hasil dipasang bila daftar bukti masih kosong (tidak menimpa pengaturan guru) dan harus diperiksa lalu disimpan.
+- **Editor bukti:** peringatan cakupan («N kategori belum punya bukti: …»), pilihan tahap per bukti, dan tombol «Isi contoh (persiapan, proses, hasil)».
+- **Siswa:** kartu bukti dikelompokkan per tahap dengan judul Persiapan / Pelaksanaan (proses) / Hasil akhir. **Guru:** keterangan tahap pada foto.
+- **Batas foto 3 → 6** (bukti berlabel). Mode lama tanpa bukti tetap maks. 3 foto bebas. **Wajib deploy `firestore.rules` SEBELUM hosting** (rules baru: `fotoIds` ≤ 6, slot `'1'..'6'`), lalu functions, lalu hosting.
+- File: `firestore.rules` (salinan identik SDM01Penilaian), `src/types/tugas.ts`, `src/lib/buktiTugas.ts`, `src/lib/pengumpulan.ts`, `src/lib/tugas.ts`, `src/lib/penilaianTugas.ts`, `src/lib/tugasAi.ts`, `src/pages/TugasDetail.tsx`, `src/pages/siswa/PengumpulanSiswa.tsx`, `src/pages/siswa/SiswaTugas.tsx`, `src/components/BuktiTugasEditor.tsx`, `src/components/PengumpulanPanel.tsx`, `src/styles/siswa.css`, `src/styles/tugas.css`.
+- Ditunda: AI menilai/menyarankan skor dari foto (tahap berikutnya, opsional, keputusan guru; perlu kebijakan pengiriman foto anak ke layanan AI).
+- Antiregresi: §Tugas.Bukti.9–12.
+
 ## 2026-11-19 — Import TKA: materi opsional di form (multi-materi tka2026)
 
 - **Gejala:** tombol «Impor & buka editor» tidak bisa diklik karena materi TKA wajib dipilih di form, padahal file ekspor tka2026 memuat semua materi dan sistem sudah bisa memecah paket otomatis.

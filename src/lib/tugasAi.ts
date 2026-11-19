@@ -5,7 +5,7 @@
 import { getFunctions, httpsCallable } from 'firebase/functions'
 import { app, auth } from './firebase'
 import { bolehAiTugas } from './penilaianTugas'
-import type { KategoriPenilaian, TpTugas } from '../types/tugas'
+import { tahapValid, type BuktiTugas, type KategoriPenilaian, type TpTugas } from '../types/tugas'
 
 const REGION = 'asia-southeast2'
 
@@ -34,10 +34,15 @@ export type InputKonteksTugasAi = {
   tpList?: TpTugas[]
 }
 
-/** Generate 4–6 kategori rubrik dari isi tugas (instruksi/deskripsi wajib). */
-export async function generateKategoriTugasAi(
-  input: InputKonteksTugasAi,
-): Promise<KategoriPenilaian[]> {
+/** Hasil AI: kategori rubrik (dengan tahap & sumber) + saran bukti foto yang tertaut ke kategori. */
+export type HasilKategoriAi = {
+  kategori: KategoriPenilaian[]
+  /** Saran bukti (tanpa `slot`/`id`; diberi guru-side saat diterapkan). `kategoriIds` merujuk id kategori di atas. */
+  bukti: Array<Pick<BuktiTugas, 'label' | 'petunjuk' | 'wajib' | 'tahap'> & { kategoriIds: string[] }>
+}
+
+/** Generate 4–6 kategori rubrik + saran bukti dari isi tugas (instruksi/deskripsi wajib). */
+export async function generateKategoriTugasAi(input: InputKonteksTugasAi): Promise<HasilKategoriAi> {
   pastikanBerhak()
   const isi = `${input.instruksi || ''} ${input.deskripsi || ''}`.trim()
   if (isi.length < 40) {
@@ -47,7 +52,7 @@ export async function generateKategoriTugasAi(
   }
   const panggil = httpsCallable<
     InputKonteksTugasAi & { provider: 'gemini' },
-    { kategori: KategoriPenilaian[] }
+    { kategori: KategoriPenilaian[]; bukti?: HasilKategoriAi['bukti'] }
   >(getFunctions(app, REGION), 'generateKategoriTugasLmsAi')
   try {
     const res = await panggil({ ...input, provider: 'gemini' })
@@ -55,11 +60,28 @@ export async function generateKategoriTugasAi(
     if (!Array.isArray(list) || list.length < 4) {
       throw new Error('AI tidak mengembalikan 4–6 kategori. Coba lagi.')
     }
-    return list.slice(0, 6).map((k, i) => ({
-      id: k.id || `kat-ai-${Date.now()}-${i}`,
-      nama: String(k.nama || '').trim(),
-      deskripsi: k.deskripsi ? String(k.deskripsi) : undefined,
-    }))
+    const kategori: KategoriPenilaian[] = list.slice(0, 6).map((k, i) => {
+      const item: KategoriPenilaian = {
+        id: k.id || `kat-ai-${Date.now()}-${i}`,
+        nama: String(k.nama || '').trim(),
+        deskripsi: k.deskripsi ? String(k.deskripsi) : undefined,
+      }
+      const tahap = tahapValid(k.tahap)
+      if (tahap) item.tahap = tahap
+      if (k.sumber === 'observasi') item.sumber = 'observasi'
+      return item
+    })
+    const bukti = (Array.isArray(res.data?.bukti) ? res.data.bukti : [])
+      .slice(0, 6)
+      .map((b) => ({
+        label: String(b.label || '').trim(),
+        petunjuk: b.petunjuk ? String(b.petunjuk) : undefined,
+        wajib: b.wajib !== false,
+        tahap: tahapValid(b.tahap),
+        kategoriIds: Array.isArray(b.kategoriIds) ? b.kategoriIds.map(String) : [],
+      }))
+      .filter((b) => b.label)
+    return { kategori, bukti }
   } catch (e) {
     throw new Error(pesan(e))
   }

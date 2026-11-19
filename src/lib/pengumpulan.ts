@@ -26,9 +26,13 @@ import { adaBukti } from './buktiTugas'
  * boleh menulis ke Storage (storage.rules sengaja tidak mengenal siswa).
  */
 
+/** Mode lama (tanpa bukti berlabel): maksimal foto bebas. */
 export const BATAS_FOTO_PENGUMPULAN = 3
+/** Slot foto maksimum (bukti berlabel) — selaras rules `fotoIds.size() <= 6` & slot '1'..'6'. */
+export const BATAS_SLOT_FOTO = 6
+export const DAFTAR_SLOT = [1, 2, 3, 4, 5, 6] as const
 export const BATAS_CATATAN = 500
-const SLOT = ['1', '2', '3'] as const
+const SLOT = ['1', '2', '3', '4', '5', '6'] as const
 
 export type PengumpulanDok = {
   id: string
@@ -53,12 +57,12 @@ export function idFoto(tugasId: string, siswaId: string, slot: number): string {
 }
 
 /**
- * Nomor slot foto (1..3) dari ID dokumen foto (akhiran `_1`..`_3`); 0 bila tak dikenali.
+ * Nomor slot foto (1..6) dari ID dokumen foto (akhiran `_1`..`_6`); 0 bila tak dikenali.
  * Bukti berlabel memakai slot TETAP (ANTIREGRESI §Tugas.Bukti), jadi slot dibaca dari ID,
  * bukan dari urutan di `fotoIds`.
  */
 export function slotDariFotoId(id: string): number {
-  const m = /_([1-3])$/.exec(id)
+  const m = /_([1-6])$/.exec(id)
   return m ? Number(m[1]) : 0
 }
 
@@ -125,7 +129,7 @@ export async function muatFoto(fotoIds: string[]): Promise<string[]> {
 /** Muat foto per slot (1..3 → data URL). Slot yang gagal/tak valid dilewati. */
 export async function muatFotoBerslot(fotoIds: string[]): Promise<Record<number, string>> {
   const hasil: Record<number, string> = {}
-  for (const id of fotoIds.slice(0, BATAS_FOTO_PENGUMPULAN)) {
+  for (const id of fotoIds.slice(0, BATAS_SLOT_FOTO)) {
     const slot = slotDariFotoId(id)
     if (!slot) continue
     try {
@@ -163,7 +167,7 @@ export type KirimInput = {
   /** Foto final (data URL) sesuai urutan tampil; 1–3. Dipakai tugas TANPA bukti berlabel. */
   foto?: string[]
   /**
-   * Foto per slot (1..3 → data URL). Dipakai tugas dengan bukti berlabel: slot tetap,
+   * Foto per slot (1..6 → data URL). Dipakai tugas dengan bukti berlabel: slot tetap,
    * bukti opsional boleh kosong (ANTIREGRESI §Tugas.Bukti).
    */
   fotoSlot?: Record<number, string>
@@ -185,7 +189,7 @@ export async function kirimPengumpulan(input: KirimInput): Promise<PengumpulanDo
     if (kurang.length > 0) {
       throw new Error(`Bukti wajib belum lengkap: ${kurang.join(', ')}.`)
     }
-    entri = [1, 2, 3]
+    entri = [...DAFTAR_SLOT]
       .filter((n) => dataUrlGambarAman(slotMap[n]))
       .map((n) => ({ slot: n, src: slotMap[n] }))
   } else {

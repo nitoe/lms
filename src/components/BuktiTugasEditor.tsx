@@ -1,6 +1,9 @@
-import { buktiBaru } from '../lib/buktiTugas'
+import { buktiBaru, contohBuktiProses, kategoriTanpaBukti } from '../lib/buktiTugas'
 import {
   BATAS_BUKTI_TUGAS,
+  DAFTAR_TAHAP,
+  LABEL_TAHAP,
+  tahapValid,
   type BuktiTugas,
   type KategoriPenilaian,
 } from '../types/tugas'
@@ -16,7 +19,9 @@ type Props = {
  * siswa, opsional dikaitkan ke kategori rubrik. Slot foto tetap per bukti (ANTIREGRESI §Tugas.Bukti).
  */
 export default function BuktiTugasEditor({ bukti, kategori, onChange }: Props) {
-  const kategoriAda = kategori.filter((k) => k.nama.trim())
+  const kategoriAda = kategori.filter((k) => k.nama.trim() && k.sumber !== 'observasi')
+  const tanpaBukti = kategoriTanpaBukti(kategori, bukti)
+  const adaRubrik = kategori.some((k) => k.nama.trim())
 
   function ubah(i: number, patch: Partial<BuktiTugas>) {
     onChange(bukti.map((b, j) => (j === i ? { ...b, ...patch } : b)))
@@ -64,10 +69,35 @@ export default function BuktiTugasEditor({ bukti, kategori, onChange }: Props) {
         </button>
       </div>
       <div className="td-kartu-badan space-y-3">
+        {adaRubrik && tanpaBukti.length > 0 && (
+          <div className="td-bukti-peringatan" role="status">
+            <b>
+              {bukti.length === 0
+                ? 'Semua kategori rubrik masih dinilai dari foto bebas.'
+                : `${tanpaBukti.length} kategori rubrik belum punya bukti.`}
+            </b>
+            <p>
+              Belum ada bukti untuk: {tanpaBukti.map((k) => k.nama).join(', ')}. Laporan akhir saja tidak
+              memperlihatkan proses. Tautkan tiap kategori ke bukti (persiapan, pelaksanaan, hasil), atau ubah
+              «Dinilai dari» menjadi «Pengamatan guru» di rubrik bila memang dinilai langsung di kelas.
+            </p>
+          </div>
+        )}
+        {adaRubrik && tanpaBukti.length === 0 && bukti.length > 0 && (
+          <div className="td-bukti-peringatan td-bukti-peringatan--ok" role="status">
+            <b>Semua kategori rubrik sudah punya bukti atau dinilai lewat pengamatan guru.</b>
+          </div>
+        )}
         {bukti.length === 0 ? (
           <div className="td-kosong-kecil">
             <b>Belum ada bukti berlabel</b>
-            <p>Siswa akan mengunggah 1–3 foto tanpa keterangan. Tambahkan bukti agar jelas foto untuk tahap apa.</p>
+            <p>
+              Siswa akan mengunggah 1–3 foto tanpa keterangan. Tambahkan bukti agar jelas foto untuk tahap apa,
+              atau mulai dari contoh yang mencakup proses dan hasil.
+            </p>
+            <button type="button" className="tg-btn" onClick={() => onChange(contohBuktiProses())}>
+              Isi contoh (persiapan, proses, hasil)
+            </button>
           </div>
         ) : (
           bukti.map((b, i) => (
@@ -122,6 +152,20 @@ export default function BuktiTugasEditor({ bukti, kategori, onChange }: Props) {
                   onChange={(e) => ubah(i, { petunjuk: e.target.value })}
                   placeholder="Contoh: Foto tabel yang berisi jumlah detak nadi dan napas, pastikan tulisan terbaca"
                 />
+              </label>
+              <label className="td-field">
+                <span>Tahap kegiatan</span>
+                <select
+                  value={b.tahap ?? ''}
+                  onChange={(e) => ubah(i, { tahap: tahapValid(e.target.value) })}
+                >
+                  <option value="">Tidak dikelompokkan</option>
+                  {DAFTAR_TAHAP.map((t) => (
+                    <option key={t} value={t}>
+                      {LABEL_TAHAP[t]}
+                    </option>
+                  ))}
+                </select>
               </label>
               <div className="td-bukti-kait">
                 <span className="td-bukti-kait-judul">Bukti ini dinilai pada kategori rubrik:</span>

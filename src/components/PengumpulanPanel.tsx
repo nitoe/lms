@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   daftarPengumpulanTugas,
+  DAFTAR_SLOT,
   muatFotoBerslot,
   slotDariFotoId,
   type PengumpulanDok,
 } from '../lib/pengumpulan'
 import { adaBukti, namaKategoriBukti } from '../lib/buktiTugas'
+import { LABEL_TAHAP } from '../types/tugas'
 import { tenggatMs } from '../lib/tugasSiswa'
 import type { TugasLms } from '../types/tugas'
 
@@ -160,6 +162,7 @@ export default function PengumpulanPanel({ tugas }: Props) {
                                 )}
                                 <figcaption>
                                   <strong>{b.label}</strong>
+                                  {b.tahap ? ` · ${LABEL_TAHAP[b.tahap]}` : ''}
                                   {b.wajib ? '' : ' · opsional'}
                                   {dinilai.length > 0 && (
                                     <span className="td-kumpul-fig-nilai">Dinilai pada: {dinilai.join(', ')}</span>
@@ -168,7 +171,7 @@ export default function PengumpulanPanel({ tugas }: Props) {
                               </figure>
                             )
                           })}
-                          {[1, 2, 3]
+                          {[...DAFTAR_SLOT]
                             .filter((n) => f[n] && !bukti.some((b) => b.slot === n))
                             .map((n) => (
                               <figure key={`lain-${n}`} className="td-kumpul-fig">
@@ -181,7 +184,7 @@ export default function PengumpulanPanel({ tugas }: Props) {
                         </div>
                       ) : (
                         <div className="td-kumpul-foto">
-                          {[1, 2, 3]
+                          {[...DAFTAR_SLOT]
                             .filter((n) => f[n])
                             .map((n, i) => (
                               <img key={n} src={f[n]} alt={`Foto ${i + 1} dari ${d.siswaNama}`} />
