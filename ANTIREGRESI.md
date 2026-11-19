@@ -43,6 +43,25 @@ Bila error tetap permission setelah rules 300 ter-deploy: cek penugasan `penugas
 11. Grid input manual Matematika masih L1–L2 (`kelompokInputSebaran`); mengubah nilai manual membuang `sebaran` (§109.3). Jangan menambah L3 ke grid tanpa menyesuaikan data Try Out I (yang tidak punya L3).
 
 
+## §Admin.Dashboard — Panel kurikulum di Beranda (2026-11-19)
+
+1. **Deteksi admin:** WAJIB `adalahAdminLms(user, profil)` (bukan hanya `role === 'admin'`). Fungsi itu mencakup role/peranLms admin **dan** email admin LMS (`arif.nitoe@gmail.com`). Tanpa email, panel bisa tidak pernah tampil.
+2. Panel hanya di-render bila `aktif` true. Guru biasa tidak memuat query agregat.
+3. Query full-collection `lms_materi` / `lms_kuis` / `lms_tugas` / `users` / `siswa` **hanya aman untuk admin** (rules `isAdmin()` pada read). Jangan panggil `muatAdminDashboard` dari peran guru. Catatan: email-admin tanpa `role: admin` di Firestore rules tetap **bukan** isAdmin() — agregat bisa gagal permission; pastikan dokumen `users` role = admin untuk akun kurikulum.
+4. Konten Lomba (`lombaId` terisi) **dikecualikan** dari statistik materi & kuis.
+5. Aktivitas hari ini: `createdAt >= awal hari` + limit 500; gagal → angka 0, panel tetap tampil.
+6. CSS prefix `.ad-*` di `ruang.css`.
+
+## §Lomba.30 — Cetak rekapitulasi hasil lomba (2026-11-19)
+
+1. `window.open('about:blank')` **sinkron** di awal handler klik (sebelum `await`), sama pola kartu peserta (§Lomba.29) dan cetak kuis PDF. Setelah HTML siap, `document.write`; bila gagal, tutup jendela.
+2. Data baris = roster `lms_lomba.siswaList` + jawaban terbaru per `siswaId` dari `daftarJawabanKuisLomba` (sudah di panel Hasil). Jangan query ulang di lib cetak bila data sudah di UI.
+3. Peringkat **kompetisi** (1, 2, 2, 4): bandingkan `nilai100` lalu skor mentah; yang belum mengerjakan tidak mendapat nomor peringkat.
+4. Kolom mapel sumber hanya jika ≥2 `sumberMapel` pada soal kuis (Gabungan). Satu mapel → kolom itu disembunyikan agar tabel tidak berlebih.
+5. Nilai = `skorOtomatis / totalPoin × 100` (`skorKe100`). Soal uraian belum dinilai manual tetap memakai skor otomatis yang tersimpan.
+6. Publikasi hasil Lomba memakai field `hasilDipublish` di `lms_kuis` (sama TKA). `togglePublishHasil` harus mengizinkan `isLomba`, bukan hanya `isTka`.
+7. Tidak menulis koleksi baru; cetak murni klien.
+
 ## §Materi.TempelGambar — Paste clipboard ke blok gambar (2026-11-18)
 
 1. Listener `paste` hanya aktif di mode **edit** editor halaman (`MateriHalamanEditor`).

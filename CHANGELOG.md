@@ -1,3 +1,11 @@
+## 2026-11-19 — Gabung ulang CHANGELOG & ANTIREGRESI (hindari tumpuk tulis)
+
+- **Masalah:** Beberapa commit (dashboard admin, cetak hasil lomba, import Try Out II) mengedit `CHANGELOG.md` / `ANTIREGRESI.md` dari basis berbeda. Commit yang lebih baru menimpa entri yang sudah ada di remote sehingga riwayat fitur hilang dari dokumen (kode tetap ada).
+- **Perbaikan dokumen:** file ini digabung ulang dari remote terbaru + entri yang sempat hilang:
+  - CHANGELOG: Import Try Out II · Fix Dashboard Kurikulum · Dashboard admin · Cetak rekap hasil lomba · … (isi sebelumnya utuh)
+  - ANTIREGRESI: §0 · §TKA.ImportTahap2 · §Admin.Dashboard · §Lomba.30 · … (isi sebelumnya utuh)
+- **Cara aman ke depan:** sebelum mengubah CHANGELOG/ANTIREGRESI, `git pull`; **hanya prepend** entri baru di paling atas (jangan menimpa file utuh dari zip lama); commit dokumen terpisah atau bersama fitur setelah pull.
+
 ## 2026-11-19 — Import Try Out II (Matematika & Bahasa Indonesia dari penyelenggara eksternal)
 
 - **Latar:** Try Out TKA tahap II untuk Matematika & Bahasa Indonesia diselenggarakan pihak luar (kejarcita.id), bukan di LMS; hanya IPA tahap II yang lewat LMS. Hasilnya harus masuk rekap & portal orang tua lengkap dengan kompetensi dasar (L1–L3) **dan** kompetensi materi per siswa, bukan hanya nilai akhir.
@@ -19,6 +27,44 @@
 - Tidak perlu `deploy:rules` (field `sebaran` sudah diizinkan, §109.8). Cukup `npm run deploy`. Setelah deploy: `/tka/import-rekap` → **Muat data Try Out II** → periksa pratinjau (51 baris cocok) → Simpan → «Perbarui publikasi» agar portal orang tua terbarui.
 - File: `src/data/tryoutTahap2.ts` (baru), `src/data/tryoutTahap1.ts` (tipe), `src/lib/sebaranTka.ts`, `src/pages/tka/TkaImportRekap.tsx`.
 - Antiregresi: §TKA.ImportTahap2.
+
+## 2026-11-19 — Fix: Dashboard Kurikulum tidak muncul untuk admin LMS
+
+- **Gejala:** Setelah deploy, Beranda admin (`arif.nitoe@gmail.com`) tetap tampilan lama tanpa panel Dashboard Kurikulum.
+- **Akar:** `sebagaiAdmin` di Beranda hanya mengecek `profil.role === 'admin' || profil.peranLms === 'admin'`. Modul Lomba memakai `adalahAdminLms` yang juga mengakui **email** admin LMS. Bila field `role` di `users` belum/bukan `admin`, panel tidak di-mount sama sekali (`aktif={false}` → return null).
+- **Perbaikan:** `sebagaiAdmin = adalahAdminLms(user, profil)` — selaras Lomba/TKA admin.
+- File: `src/pages/Beranda.tsx`.
+- Antiregresi: §Admin.Dashboard (poin deteksi admin).
+
+## 2026-11-19 — Dashboard admin: performa guru, cakupan materi, aktivitas siswa
+
+- **Masalah:** Beranda admin hanya menampilkan ruang pribadi & agenda tugas/kuis — tidak memberi gambaran performa guru dan cakupan LMS yang bisa ditindaklanjuti wakil kepala kurikulum.
+- **Perbaikan:** Panel **Dashboard Kurikulum** di Beranda (hanya tampil untuk admin):
+  - Ringkasan: total materi, kuis aktif/total, tugas aktif/total, siswa aktif, guru yang sudah membuat konten, siswa unik aktif hari ini.
+  - **Aktivitas siswa hari ini:** jawaban kuis, pengumpulan tugas, ranking kelas terbanyak memanfaatkan LMS.
+  - **Temuan:** alert otomatis (kelas tanpa materi, mapel kosong, tidak ada aktivitas hari ini).
+  - **Tabel performa guru:** jumlah materi / kuis / tugas yang dibuat (dari `dibuatOleh` / `dibuatOlehNama`; konten Lomba dikecualikan).
+  - **Cakupan per kelas:** jumlah materi/kuis/tugas + mapel master yang sudah/belum punya materi (termasuk share `kelasList`).
+- File baru: `src/lib/adminDashboard.ts`, `src/components/AdminDashboardPanel.tsx`.
+- File diubah: `src/pages/Beranda.tsx`, `src/styles/ruang.css`.
+- Tidak mengubah firestore.rules / indexes — admin sudah boleh list koleksi terkait.
+- Antiregresi: §Admin.Dashboard.
+
+## 2026-11-19 — Lomba: cetak rekapitulasi hasil (peringkat A4)
+
+- **Masalah:** Hasil kuis Lomba sudah ada di panel guru (roster + skor), tetapi belum ada rekap siap cetak untuk arsip / pengumuman peringkat.
+- **Perbaikan:** Tombol **«Cetak rekap hasil»** di panel Hasil kuis Lomba (sebelah publikasi hasil).
+  - Membuka jendela pratinjau A4 → **Cetak / Simpan PDF**.
+  - **Identitas:** logo sekolah, nama lomba, tingkat, judul kuis, mapel, masa pelaksanaan, pengampu.
+  - **Ringkas:** jumlah peserta, mengerjakan, rata-rata nilai, skor tertinggi.
+  - **Tabel peringkat** (kompetisi: nilai sama = peringkat sama): peringkat, nama, kelas, skor mentah, nilai 0–100, status; kolom per mapel sumber bila kuis Gabungan (≥2 mapel).
+  - Peserta belum mengerjakan tetap tercantum di bawah dengan status «Belum mengerjakan».
+  - Area tanda tangan Kepala Sekolah + pengampu/panitia; keterangan cara hitung nilai.
+- Juga memperbaiki `togglePublishHasil` agar bekerja untuk **Lomba** (sebelumnya early-return hanya TKA, padahal UI publikasi sudah tampil di Lomba).
+- File baru: `src/lib/cetakHasilLomba.ts`.
+- File diubah: `src/components/HasilKuisPanel.tsx`.
+- Tidak mengubah firestore.rules / indexes / functions.
+- Antiregresi: §Lomba.30.
 
 ## 2026-11-18 — Materi halaman: tempel gambar dari clipboard
 
