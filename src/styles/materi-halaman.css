@@ -1248,3 +1248,113 @@
   white-space: nowrap;
   border: 0;
 }
+
+/* ── Elemen bacaan lanjutan di blok teks (ANTIREGRESI §Materi.HtmlBlok) ─────────────
+   Kunci jawaban lipat (<details>/<summary>), kutipan, garis, kode, daftar definisi.
+   Hanya memakai peramban asli (tanpa JS) sehingga bekerja di pembaca siswa & pratinjau. */
+.mh-blok--teks details {
+  margin: 0.75rem 0;
+  border: 1px solid #bfdbfe;
+  border-radius: 0.65rem;
+  background: #eff6ff;
+  overflow: hidden;
+}
+.mh-blok--teks details > summary {
+  cursor: pointer;
+  list-style: none;
+  padding: 0.6rem 0.85rem;
+  font-weight: 600;
+  color: #1d4ed8;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 2.5rem; /* target sentuh nyaman di HP */
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.mh-blok--teks details > summary::-webkit-details-marker {
+  display: none;
+}
+.mh-blok--teks details > summary::before {
+  content: '▸';
+  display: inline-block;
+  transition: transform 0.15s ease;
+  flex: none;
+}
+.mh-blok--teks details[open] > summary::before {
+  transform: rotate(90deg);
+}
+.mh-blok--teks details[open] > summary {
+  border-bottom: 1px solid #bfdbfe;
+  background: #dbeafe;
+}
+.mh-blok--teks details > :not(summary) {
+  margin-left: 0.85rem;
+  margin-right: 0.85rem;
+}
+.mh-blok--teks details > summary + * {
+  margin-top: 0.65rem;
+}
+.mh-blok--teks details > :last-child {
+  margin-bottom: 0.75rem;
+}
+.mh-blok--teks details ol,
+.mh-blok--teks details ul {
+  padding-left: 1.4rem;
+}
+.mh-blok--teks blockquote {
+  margin: 0.75rem 0;
+  padding: 0.5rem 0.85rem;
+  border-left: 4px solid #93c5fd;
+  background: #f8fafc;
+  color: #334155;
+  border-radius: 0 0.5rem 0.5rem 0;
+}
+.mh-blok--teks hr {
+  border: 0;
+  border-top: 1px solid #cbd5e1;
+  margin: 1rem 0;
+}
+.mh-blok--teks mark {
+  background: #fef08a;
+  padding: 0 0.2em;
+  border-radius: 0.2em;
+}
+.mh-blok--teks code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.88em;
+  background: #f1f5f9;
+  padding: 0.05em 0.35em;
+  border-radius: 0.3em;
+}
+.mh-blok--teks pre {
+  margin: 0.75rem 0;
+  padding: 0.65rem 0.85rem;
+  background: #f1f5f9;
+  border-radius: 0.5rem;
+  overflow-x: auto;
+  font-size: 0.85rem;
+}
+.mh-blok--teks pre code {
+  background: none;
+  padding: 0;
+}
+.mh-blok--teks h4 {
+  font-size: 0.95rem;
+  font-weight: 700;
+  margin: 0.85rem 0 0.35rem;
+}
+.mh-blok--teks dl {
+  margin: 0.6rem 0;
+}
+.mh-blok--teks dt {
+  font-weight: 700;
+  margin-top: 0.4rem;
+}
+.mh-blok--teks dd {
+  margin: 0.1rem 0 0.3rem 1rem;
+}
+.mh-mode-toggle button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}

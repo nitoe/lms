@@ -63,6 +63,18 @@ const TAG_MATERI = [
   ...TAG_BOLEH,
   'h2',
   'h3',
+  'h4',
+  // Elemen bacaan lanjutan (ANTIREGRESI §Materi.HtmlBlok): kunci jawaban lipat, kutipan, kode.
+  'details',
+  'summary',
+  'blockquote',
+  'hr',
+  'mark',
+  'code',
+  'pre',
+  'dl',
+  'dt',
+  'dd',
   'table',
   'thead',
   'tbody',
@@ -92,6 +104,19 @@ export function materiPunyaRumus(html: string | undefined): boolean {
  */
 export function materiPunyaTabel(html: string | undefined): boolean {
   return typeof html === 'string' && /<\s*table[\s>]/i.test(html)
+}
+
+/**
+ * Apakah blok memuat elemen yang TIDAK dikenal editor visual (Tiptap StarterKit):
+ * tabel, kunci jawaban lipat (details/summary), kutipan, garis, kode, daftar definisi, h4, mark.
+ * Blok seperti ini hanya aman disunting di mode «HTML / tabel»; editor visual akan
+ * membuang elemen tersebut saat blok diubah (ANTIREGRESI §Materi.HtmlBlok).
+ */
+export function materiPunyaStrukturLanjut(html: string | undefined): boolean {
+  return (
+    typeof html === 'string' &&
+    /<\s*(table|details|summary|blockquote|hr|pre|code|dl|h4|mark)[\s>/]/i.test(html)
+  )
 }
 
 /**

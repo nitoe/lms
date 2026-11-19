@@ -1,3 +1,20 @@
+## 2026-11-19 — Materi halaman: kunci jawaban lipat (`<details>`), HTML bacaan lebih lengkap, dan impor gambar base64
+
+- **Gejala:** file JSON materi halaman «Mengenal Nilai, Norma, dan Aturan» berhasil diimpor tetapi tidak tampil benar di pratinjau/baca: kunci jawaban di «Latihan singkat» (`<details><summary>Lihat kunci jawaban</summary>…`) tidak bisa dibuka-tutup, dan gambar ilustrasi (`data:image/png;base64,…`, ±1,9 MB) tidak muncul.
+- **Akar masalah (3 lapis):**
+  1. `bersihHtmlMateri` tidak mengizinkan `details`/`summary`; tag dibuang dan isinya (jawaban) tampil terbuka permanen tanpa tombol.
+  2. `parseJsonMateriHalaman` menolak url selain http(s). Blok gambar data URI dilewati diam-diam, dan galatnya tertimbun peringatan lain (hanya 2 pesan pertama tampil), sehingga impor tampak sukses. Bila lolos pun, base64 ±1,9 MB melebihi batas dokumen Firestore 1 MiB.
+  3. Editor visual (Tiptap StarterKit) tidak mengenal `details`; menyunting blok seperti itu di mode Visual membuang elemennya.
+- **Perbaikan:**
+  - `lib/html.ts`: daftar tag materi ditambah `details`, `summary`, `h4`, `blockquote`, `hr`, `mark`, `code`, `pre`, `dl`, `dt`, `dd` (tetap tanpa atribut style/class/script/`open`, jadi kunci jawaban selalu tertutup di awal). Fungsi baru `materiPunyaStrukturLanjut` menggantikan `materiPunyaTabel` untuk memilih mode sunting.
+  - `lib/importMateriHalaman.ts`: url gambar boleh `data:image/(png|jpeg|webp|gif|svg+xml);base64,…` (maks. ±6 MB teks). Template JSON kini memuat contoh kunci jawaban lipat dan panduan tag/gambar.
+  - `components/materi/MateriHalamanEditor.tsx`: saat impor, gambar base64 otomatis diunggah ke Storage (dikompres seperti unggahan biasa) dan diganti URL + `storagePath`. Bila unggah gagal, blok dibiarkan kosong beserta petunjuknya dan ada peringatan. Blok yang dilewati kini tampil paling depan di pesan impor (hingga 4 pesan). Blok dengan tabel / details / elemen lanjutan otomatis dibuka di mode «HTML / tabel» dan tombol «Visual»-nya dinonaktifkan agar elemen tidak hilang.
+  - `lib/materi.ts`: `normalisasiHalaman` menolak url `data:` saat simpan dengan pesan jelas (mencegah dokumen > 1 MiB).
+  - `styles/materi-halaman.css`: gaya kunci jawaban lipat (target sentuh ≥ 40 px), kutipan, garis, kode, daftar definisi.
+- **Tidak berubah:** `firestore.rules`, `storage.rules`, functions. Cukup deploy hosting.
+- Pembaca siswa/guru (`MateriHalamanViewer`) tidak diubah: sanitasi yang sama sudah dipakai di semua jalur.
+- Antiregresi: §Materi.HtmlBlok.
+
 ## 2026-11-19 — Materi: tombol «Unggah file» dan «Tempel gambar» dipisah di blok gambar
 
 - **Gejala:** satu tombol berlabel «Unggah / tempel» (atau «Ganti file / tempel») di blok gambar editor materi hanya membuka dialog pilih file. Menempel gambar sebenarnya lewat Ctrl+V global yang tidak terlihat di tombol, sehingga label menyesatkan dan di HP tidak ada cara menempel.

@@ -6,6 +6,7 @@ import {
   idBaru,
   simpanMateriHalaman,
   tambahMateriHalaman,
+  unggahDataUrlHalaman,
   unggahGambarHalaman,
 } from '../../lib/materi'
 import {
@@ -17,6 +18,7 @@ import {
   ringkasHalamanUntukAi,
 } from '../../lib/generateMateriAi'
 import {
+  adalahDataUriGambar,
   buatTemplateMateriHalamanJson,
   eksporSatuHalamanKeJson,
   parseJsonMateriHalaman,
@@ -29,7 +31,7 @@ import {
   BATAS_HALAMAN_PER_MATERI,
   BATAS_UKURAN,
 } from '../../types/materi'
-import { bersihHtmlMateri, materiPunyaTabel } from '../../lib/html'
+import { bersihHtmlMateri, materiPunyaStrukturLanjut } from '../../lib/html'
 import { ambilGambarDariClipboardApi } from '../../lib/gambar'
 import MateriRichEditor from './MateriRichEditor'
 import MateriHalamanViewer from './MateriHalamanViewer'
@@ -128,15 +130,16 @@ export default function MateriHalamanEditor({
    */
   const [blokSiapTempel, setBlokSiapTempel] = useState<string | null>(null)
   /**
-   * Mode sumber HTML per blok teks (untuk tabel / rumus mentah).
-   * Otomatis aktif jika konten sudah berisi <table> (selaras editor stimulus TKA).
+   * Mode sumber HTML per blok teks (untuk tabel / kunci jawaban lipat / rumus mentah).
+   * Otomatis aktif jika konten berisi elemen yang tak dikenal editor visual
+   * (<table>, <details>, <blockquote>, …) agar tidak hilang saat disunting.
    */
   const [modeHtmlBlok, setModeHtmlBlok] = useState<Record<string, boolean>>(() => {
     const awal: Record<string, boolean> = {}
     const list = materiAwal?.halaman || []
     for (const h of list) {
       for (const b of h.blok || []) {
-        if (b.tipe === 'teks' && materiPunyaTabel(b.html)) awal[b.id] = true
+        if (b.tipe === 'teks' && materiPunyaStrukturLanjut(b.html)) awal[b.id] = true
       }
     }
     return awal
@@ -547,11 +550,11 @@ export default function MateriHalamanEditor({
           deskripsi: m.deskripsi.trim() ? m.deskripsi : draf.deskripsiMateri!,
         }))
       }
-      // Blok dengan tabel → buka mode HTML
+      // Blok dengan tabel / details / elemen lanjutan → buka mode HTML
       setModeHtmlBlok((m) => {
         const next = { ...m }
         for (const b of blok) {
-          if (b.tipe === 'teks' && materiPunyaTabel(b.html)) next[b.id] = true
+          if (b.tipe === 'teks' && materiPunyaStrukturLanjut(b.html)) next[b.id] = true
         }
         return next
       })
@@ -680,8 +683,9 @@ export default function MateriHalamanEditor({
         return
       }
       if (hasil.galat.length) {
-        // Galat parsial blok: tetap boleh impor jika halaman ada, tapi tampilkan
-        peringatan.push(...hasil.galat.slice(0, 3))
+        // Galat parsial blok: halaman tetap diimpor, tetapi blok yang dilewati harus
+        // tampil paling depan (jangan tertimbun peringatan lain).
+        peringatan.unshift(...hasil.galat.slice(0, 3).map((g) => `Dilewati — ${g}`))
       }
 
       // Meta kosong saja yang diisi dari file
@@ -707,7 +711,38 @@ export default function MateriHalamanEditor({
         }
       })
 
-      const baru = { ...hasil.halaman, urutan: 0 }
+      let baru: MateriHalaman = { ...hasil.halaman, urutan: 0 }
+
+      // Gambar tertanam (data URI base64) → unggah ke Storage supaya dokumen materi tetap kecil.
+      const adaDataUri = baru.blok.some((b) => b.tipe === 'gambar' && adalahDataUriGambar(b.url))
+      if (adaDataUri) {
+        const blokBaru: MateriBlok[] = []
+        let nomor = 0
+        for (const b of baru.blok) {
+          if (b.tipe === 'gambar' && adalahDataUriGambar(b.url)) {
+            nomor += 1
+            setInfoImpor(`Mengunggah gambar tertanam ${nomor}…`)
+            try {
+              const ext = /^data:image\/svg/i.test(b.url) ? 'svg' : /^data:image\/jpe?g/i.test(b.url) ? 'jpg' : 'png'
+              const { url, storagePath } = await unggahDataUrlHalaman(
+                kelas,
+                b.url,
+                `impor-${nomor}.${ext}`,
+              )
+              blokBaru.push({ ...b, url, storagePath })
+            } catch (err) {
+              // Gagal unggah: kosongkan url (placeholder) tapi pertahankan blok & petunjuk.
+              peringatan.unshift(
+                `Gambar tertanam di blok ${blokBaru.length + 1} gagal diunggah (${err instanceof Error ? err.message : 'galat tak dikenal'}). Blok dibiarkan kosong — unggah gambar secara manual.`,
+              )
+              blokBaru.push({ ...b, url: '' })
+            }
+          } else {
+            blokBaru.push(b)
+          }
+        }
+        baru = { ...baru, blok: blokBaru }
+      }
 
       if (modeImpor === 'ganti-aktif') {
         setHalaman((prev) =>
@@ -718,7 +753,7 @@ export default function MateriHalamanEditor({
         setInfoImpor(
           [
             `Halaman ${aktifIdx + 1} diganti (${baru.blok.length} blok).`,
-            peringatan.slice(0, 2).join(' '),
+            peringatan.slice(0, 4).join(' '),
           ]
             .filter(Boolean)
             .join(' '),
@@ -734,7 +769,7 @@ export default function MateriHalamanEditor({
         setInfoImpor(
           [
             `Halaman baru ditambahkan sebagai halaman ${idxBaru + 1} (${baru.blok.length} blok).`,
-            peringatan.slice(0, 2).join(' '),
+            peringatan.slice(0, 4).join(' '),
           ]
             .filter(Boolean)
             .join(' '),
@@ -1248,6 +1283,12 @@ export default function MateriHalamanEditor({
                           <button
                             type="button"
                             className={!modeHtmlBlok[b.id] ? 'mh-mode-on' : ''}
+                            disabled={materiPunyaStrukturLanjut(b.html)}
+                            title={
+                              materiPunyaStrukturLanjut(b.html)
+                                ? 'Blok ini memuat tabel / kunci jawaban lipat / elemen lanjutan. Sunting lewat mode HTML agar tidak hilang.'
+                                : undefined
+                            }
                             onClick={() =>
                               setModeHtmlBlok((m) => ({ ...m, [b.id]: false }))
                             }
@@ -1283,8 +1324,10 @@ export default function MateriHalamanEditor({
                               aria-label="Sumber HTML blok teks"
                             />
                             <p className="mh-html-hint">
-                              Tag aman: p, h2, h3, daftar, tebal/miring, tabel (th/td + colspan),
-                              rumus <code>$…$</code> / <code>$$…$$</code>. Tanpa style/class.
+                              Tag aman: p, h2–h4, daftar, tebal/miring, tabel (th/td + colspan),
+                              blockquote, hr, mark, code/pre, dl/dt/dd, dan kunci jawaban lipat{' '}
+                              <code>&lt;details&gt;&lt;summary&gt;Lihat kunci jawaban&lt;/summary&gt;…&lt;/details&gt;</code>;
+                              rumus <code>$…$</code> / <code>$$…$$</code>. Tanpa style/class/script.
                             </p>
                           </>
                         ) : (

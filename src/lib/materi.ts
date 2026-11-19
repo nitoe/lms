@@ -379,6 +379,12 @@ function normalisasiHalaman(list: MateriHalaman[] | undefined): MateriHalaman[] 
         bersih.push({ id: b.id || idBaru('b'), tipe: 'teks', html })
       } else if (b.tipe === 'gambar') {
         const url = typeof b.url === 'string' ? b.url.trim() : ''
+        if (/^data:/i.test(url)) {
+          // Gambar base64 tidak boleh masuk dokumen Firestore (batas 1 MiB) — harus lewat Storage.
+          throw new Error(
+            'Ada gambar yang belum diunggah ke penyimpanan (masih berupa data base64). Unggah ulang gambarnya atau ganti dengan url https.',
+          )
+        }
         const petunjuk =
           typeof b.petunjukGambar === 'string' ? b.petunjukGambar.trim().slice(0, 2000) : ''
         if (!url && !petunjuk) continue

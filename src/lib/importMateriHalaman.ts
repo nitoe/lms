@@ -19,6 +19,16 @@ import { idBaru } from './materi'
 import type { MateriBlok, MateriHalaman, TpRingkas } from '../types/materi'
 import { BATAS_BLOK_PER_HALAMAN } from '../types/materi'
 
+/** Batas karakter data URI gambar tertanam di file impor (~6 MB teks ≈ 4,5 MB biner). */
+export const BATAS_DATA_URI_GAMBAR = 6_000_000
+
+const POLA_DATA_URI_GAMBAR = /^data:image\/(png|jpe?g|webp|gif|svg\+xml);base64,/i
+
+/** Apakah url berupa gambar base64 tertanam (data URI). */
+export function adalahDataUriGambar(url: string | undefined): boolean {
+  return typeof url === 'string' && POLA_DATA_URI_GAMBAR.test(url.trim())
+}
+
 export const VERSI_IMPORT_MATERI_HALAMAN = 2
 export const JENIS_IMPORT_MATERI_HALAMAN = 'materi-halaman'
 
@@ -114,11 +124,24 @@ function normalisasiBlok(
         galat: `Blok ${indexBlok + 1}: gambar wajib punya url atau petunjukGambar (disarankan petunjuk panjang 3–6 kalimat).`,
       }
     }
-    if (url) {
+    if (url && /^data:/i.test(url)) {
+      // Gambar tertanam (base64). Diterima di sini; editor mengunggahnya ke Storage saat impor
+      // agar dokumen Firestore tidak membengkak (batas 1 MiB per dokumen).
+      if (!POLA_DATA_URI_GAMBAR.test(url)) {
+        return {
+          galat: `Blok ${indexBlok + 1}: data URI gambar harus berformat data:image/(png|jpeg|webp|gif|svg+xml);base64,…`,
+        }
+      }
+      if (url.length > BATAS_DATA_URI_GAMBAR) {
+        return {
+          galat: `Blok ${indexBlok + 1}: gambar tertanam terlalu besar (${Math.round(url.length / 1_000_000)} MB teks, maks. ${Math.round(BATAS_DATA_URI_GAMBAR / 1_000_000)} MB). Kecilkan/kompres gambar atau pakai url https.`,
+        }
+      }
+    } else if (url) {
       try {
         const u = new URL(url)
         if (u.protocol !== 'http:' && u.protocol !== 'https:') {
-          return { galat: `Blok ${indexBlok + 1}: url gambar harus http(s).` }
+          return { galat: `Blok ${indexBlok + 1}: url gambar harus http(s) atau data:image base64.` }
         }
       } catch {
         return { galat: `Blok ${indexBlok + 1}: url gambar tidak valid.` }
@@ -378,7 +401,9 @@ export function buatTemplateMateriHalamanJson(
     catatan:
       'PENTING: tepat SATU objek «halaman». Susun beberapa blok teks sesuai kompleksitas (pembuka → penjelasan → contoh → latihan → penutup), selang-seling gambar bila perlu. ' +
       PANDUAN_PETUNJUK_GAMBAR +
-      ' Maks 30 blok. Field html untuk rich text; field teks untuk paragraf polos.',
+      ' Maks 30 blok. Field html untuk rich text; field teks untuk paragraf polos. ' +
+      'Tag html yang didukung: p, h2–h4, strong/em/u, ul/ol/li, tabel, blockquote, hr, mark, code/pre, dl/dt/dd, dan <details><summary>Lihat kunci jawaban</summary>…</details> untuk kunci jawaban yang bisa dibuka-tutup (tanpa style/class/script). ' +
+      'Gambar: isi url dengan https://… ATAU data:image/png;base64,… (otomatis diunggah ke penyimpanan LMS saat impor; jaga ukuran ≤ 4 MB).',
     halaman: {
       judul: opsi?.judulHalaman || 'Judul halaman ini (contoh: Memahami konsep …)',
       blok: [
@@ -437,7 +462,10 @@ export function buatTemplateMateriHalamanJson(
           html:
             '<h3>Latihan singkat</h3>' +
             '<p>Kerjakan di buku latihanmu.</p>' +
-            '<ol><li>Soal 1 …</li><li>Soal 2 …</li><li>Soal 3 (tantangan) …</li></ol>',
+            '<ol><li>Soal 1 …</li><li>Soal 2 …</li><li>Soal 3 (tantangan) …</li></ol>' +
+            '<details><summary><strong>Lihat kunci jawaban</strong></summary>' +
+            '<ol><li>Jawaban soal 1 …</li><li>Jawaban soal 2 …</li><li>Jawaban soal 3 …</li></ol>' +
+            '</details>',
         },
         {
           tipe: 'teks',
