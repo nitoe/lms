@@ -1,4 +1,11 @@
 
+## §Offline.UX.Suara — Dikte isian/uraian offline (2026-11-19)
+
+1. Soal isian/uraian di Input offline boleh memakai Web Speech API (`id-ID`) sebagai **bantuan** ketik, bukan pengganti koreksi guru.
+2. Hasil dikte **append** ke teks yang ada; guru tetap bisa mengedit.
+3. Bilah aksi bawah: **jangan** `mx-auto` yang memusatkan tombol saat zoom berubah — pakai rata kiri (`justify-start`).
+
+
 ## §Offline.UX.Sentuh — Target sentuh input offline (2026-11-19)
 
 1. Kontrol jawaban offline (BS, PG, PGK, jodoh) **wajib** mudah disentuh: tinggi minimum ≈ 44px (`min-h-11`), bukan radio/checkbox native kecil saja.

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { muatSiswaKelas, type SiswaDasar } from '../lib/siswaAuth'
 import { simpanJawabanOffline } from '../lib/offlineKuis'
 import {
@@ -65,6 +65,39 @@ function dariJawabanTersimpan(
  * - Memuat ulang jawaban & skor yang sudah tersimpan saat siswa dipilih ulang.
  * - Bantu AI memakai jawabanId percobaan terbaru (tanpa wajib simpan ulang dulu).
  */
+
+/** Web Speech API (Chrome/Edge). null jika tidak didukung. */
+type SpeechRecLike = {
+  lang: string
+  continuous: boolean
+  interimResults: boolean
+  start: () => void
+  stop: () => void
+  abort: () => void
+  onresult: ((ev: SpeechRecognitionEventLike) => void) | null
+  onerror: ((ev: { error?: string }) => void) | null
+  onend: (() => void) | null
+}
+
+type SpeechRecognitionEventLike = {
+  resultIndex: number
+  results: ArrayLike<{ isFinal: boolean; 0: { transcript: string } }>
+}
+
+function buatSpeechRecognition(): SpeechRecLike | null {
+  const w = window as unknown as {
+    SpeechRecognition?: new () => SpeechRecLike
+    webkitSpeechRecognition?: new () => SpeechRecLike
+  }
+  const SR = w.SpeechRecognition || w.webkitSpeechRecognition
+  if (!SR) return null
+  const r = new SR()
+  r.lang = 'id-ID'
+  r.continuous = true
+  r.interimResults = true
+  return r
+}
+
 export default function OfflineKuisPanel({ kuis, onTersimpan }: Props) {
   const { user } = useAuth()
   const bolehAi = bolehAnalisisKuisAi(user?.uid)
@@ -85,6 +118,11 @@ export default function OfflineKuisPanel({ kuis, onTersimpan }: Props) {
   )
   /** true = form diisi dari data tersimpan; simpan ulang = percobaan baru */
   const [modeEditTersimpan, setModeEditTersimpan] = useState(false)
+
+  /** Soal yang sedang direkam suara (isian/uraian). */
+  const [dengarSoalId, setDengarSoalId] = useState<string | null>(null)
+  const [dukungSuara, setDukungSuara] = useState(false)
+  const recRef = useRef<SpeechRecLike | null>(null)
 
   const soal = kuis.soal ?? []
   const siswaNama = useMemo(
@@ -316,7 +354,81 @@ export default function OfflineKuisPanel({ kuis, onTersimpan }: Props) {
     return !kosongkanJawabanObj(jawaban[soalId])
   }
 
+  useEffect(() => {
+    setDukungSuara(!!buatSpeechRecognition())
+    return () => {
+      try {
+        recRef.current?.abort()
+      } catch {
+        /* ignore */
+      }
+      recRef.current = null
+    }
+  }, [])
+
+  function stopDengar() {
+    try {
+      recRef.current?.stop()
+    } catch {
+      /* ignore */
+    }
+    recRef.current = null
+    setDengarSoalId(null)
+  }
+
+  function mulaiDengar(soalId: string) {
+    if (dengarSoalId === soalId) {
+      stopDengar()
+      return
+    }
+    stopDengar()
+    const rec = buatSpeechRecognition()
+    if (!rec) {
+      setError('Peramban tidak mendukung input suara. Gunakan Chrome/Edge, atau ketik manual.')
+      return
+    }
+    rec.onresult = (ev) => {
+      let potongan = ''
+      for (let i = ev.resultIndex; i < ev.results.length; i++) {
+        const row = ev.results[i]
+        if (row && row.isFinal) potongan += row[0].transcript
+      }
+      if (!potongan.trim()) return
+      setJawaban((prev) => {
+        const cur = typeof prev[soalId] === 'string' ? String(prev[soalId]) : ''
+        const gap = cur && !/\s$/.test(cur) ? ' ' : ''
+        return { ...prev, [soalId]: cur + gap + potongan.trim() }
+      })
+    }
+    rec.onerror = (ev) => {
+      const code = ev?.error || ''
+      if (code === 'not-allowed' || code === 'service-not-allowed') {
+        setError('Izin mikrofon ditolak. Izinkan mikrofon di pengaturan peramban, lalu coba lagi.')
+      } else if (code && code !== 'aborted' && code !== 'no-speech') {
+        setError(`Input suara gagal (${code}). Coba lagi atau ketik manual.`)
+      }
+      setDengarSoalId(null)
+      recRef.current = null
+    }
+    rec.onend = () => {
+      // Hentikan UI bila recognition berakhir sendiri
+      setDengarSoalId((cur) => (cur === soalId ? null : cur))
+      if (recRef.current === rec) recRef.current = null
+    }
+    try {
+      rec.start()
+      recRef.current = rec
+      setDengarSoalId(soalId)
+      setError('')
+      setInfo('Mendengarkan… ucapkan jawaban siswa. Klik lagi untuk berhenti.')
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Tidak bisa memulai input suara.')
+      setDengarSoalId(null)
+    }
+  }
+
   function renderInput(s: SoalKuis) {
+
     const val = jawaban[s.id]
     if (s.tipe === 'pg') {
       return (
@@ -484,15 +596,52 @@ export default function OfflineKuisPanel({ kuis, onTersimpan }: Props) {
       )
     }
     // isian / uraian
+    const teksIsian = typeof val === 'string' ? val : ''
+    const sedangDengar = dengarSoalId === s.id
     return (
       <div className="mt-2 space-y-2">
-        <textarea
-          rows={s.tipe === 'uraian' ? 4 : 2}
-          className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-muh-500 focus:outline-none focus:ring-2 focus:ring-muh-200"
-          value={typeof val === 'string' ? val : ''}
-          onChange={(e) => setJawab(s.id, e.target.value)}
-          placeholder={s.tipe === 'uraian' ? 'Jawaban uraian siswa…' : 'Jawaban isian…'}
-        />
+        <div className="relative">
+          <textarea
+            rows={s.tipe === 'uraian' ? 4 : 2}
+            className={`w-full rounded-lg border px-3 py-2 pr-12 text-sm shadow-sm focus:outline-none focus:ring-2 ${
+              sedangDengar
+                ? 'border-rose-400 focus:border-rose-500 focus:ring-rose-200'
+                : 'border-slate-300 focus:border-muh-500 focus:ring-muh-200'
+            }`}
+            value={teksIsian}
+            onChange={(e) => setJawab(s.id, e.target.value)}
+            placeholder={
+              s.tipe === 'uraian'
+                ? 'Jawaban uraian siswa… (ketik atau pakai mikrofon)'
+                : 'Jawaban isian… (ketik atau pakai mikrofon)'
+            }
+          />
+          {dukungSuara ? (
+            <button
+              type="button"
+              title={sedangDengar ? 'Berhenti merekam' : 'Input suara (Bahasa Indonesia)'}
+              aria-pressed={sedangDengar}
+              onClick={() => mulaiDengar(s.id)}
+              className={`absolute right-2 top-2 inline-flex h-9 w-9 items-center justify-center rounded-lg border text-sm transition ${
+                sedangDengar
+                  ? 'border-rose-500 bg-rose-600 text-white shadow animate-pulse'
+                  : 'border-slate-200 bg-white text-slate-600 hover:border-muh-300 hover:bg-muh-50 hover:text-muh-800'
+              }`}
+            >
+              <span aria-hidden>{sedangDengar ? '■' : '🎤'}</span>
+              <span className="sr-only">{sedangDengar ? 'Berhenti' : 'Mikrofon'}</span>
+            </button>
+          ) : null}
+        </div>
+        {sedangDengar ? (
+          <p className="text-[11px] font-medium text-rose-700">
+            Mendengarkan… klik tombol mikrofon lagi untuk berhenti. Teks ditambahkan otomatis.
+          </p>
+        ) : dukungSuara ? (
+          <p className="text-[11px] text-slate-500">
+            Tips: klik 🎤 lalu ucapkan jawaban siswa (Bahasa Indonesia). Bisa dikoreksi manual setelahnya.
+          </p>
+        ) : null}
         <label className="flex flex-wrap items-center gap-2 text-xs text-slate-600">
           Skor (opsional, maks {s.poin}
           {bolehAi ? ', bisa dari AI' : ''})
@@ -732,7 +881,8 @@ export default function OfflineKuisPanel({ kuis, onTersimpan }: Props) {
       {/* Sticky action bar */}
       {siswaId && (
         <div className="fixed bottom-0 left-0 right-0 z-20 border-t border-slate-200 bg-white/95 px-4 py-3 shadow-[0_-4px_20px_rgba(0,0,0,0.06)] backdrop-blur sm:static sm:rounded-2xl sm:border sm:shadow-sm sm:backdrop-blur-none">
-          <div className="mx-auto flex max-w-5xl flex-wrap items-center gap-2">
+          {/* justify-start + tanpa mx-auto: tetap kiri di semua tingkat zoom */}
+          <div className="flex w-full flex-wrap items-center justify-start gap-2">
             <button
               type="button"
               className="lms-btn-primary text-sm"

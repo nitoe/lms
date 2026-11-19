@@ -1,3 +1,13 @@
+## 2026-11-19 — Input offline: bilah aksi tetap kiri + input suara isian/uraian
+
+- **Bilah aksi (Simpan / AI / Siswa berikutnya):** sebelumnya `mx-auto max-w-5xl` membuat tombol terasa **tengah** saat zoom < 100%. Diganti `justify-start` full-width agar **selalu rata kiri**.
+- **Input suara** untuk soal **isian** & **uraian**:
+  - Tombol mikrofon di pojok textarea (Web Speech API, `id-ID`).
+  - Teks hasil dikte **ditambahkan** ke isian (bisa dikoreksi manual).
+  - Klik lagi untuk berhenti; indikator merah saat merekam.
+  - Chrome/Edge; Safari mungkin terbatas. Tanpa dukungan → tombol disembunyikan.
+- File: `src/components/OfflineKuisPanel.tsx`.
+
 ## 2026-11-19 — Input offline: tombol jawaban lebih besar (UX sentuh)
 
 - **Gejala:** di tab Input offline, radio **B / S** (benar-salah) sangat kecil — sulit diklik kecuali zoom 100%; opsi PG juga hanya radio tipis.
