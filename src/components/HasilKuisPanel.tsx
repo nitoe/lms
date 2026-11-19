@@ -55,8 +55,7 @@ type Props = {
   onUpdated?: () => void
 }
 
-/** Baris roster hasil TKA: siswa selalu tampil, jawaban opsional. */
-/** Baris roster hasil TKA: siswa selalu tampil, jawaban opsional. */
+/** Baris roster hasil: siswa selalu tampil, jawaban opsional (TKA / Lomba / mapel). */
 type BarisHasilTka = {
   siswaId: string
   siswaNama: string
@@ -237,6 +236,8 @@ export default function HasilKuisPanel({ kuis, onUpdated }: Props) {
   const bolehAi = !isTka && bolehAnalisisKuisAi(user?.uid)
   const [list, setList] = useState<JawabanKuis[] | null>(null)
   const [rosterTka, setRosterTka] = useState<SiswaDasar[] | null>(null)
+  /** Roster mapel biasa (kelas kuis ± kelasList) — semua siswa tampil meski belum mengerjakan. */
+  const [rosterMapel, setRosterMapel] = useState<SiswaDasar[] | null>(null)
   const [filterKelasTka, setFilterKelasTka] = useState<string>('semua')
   const [error, setError] = useState('')
   const [mode, setMode] = useState<'siswa' | 'soal'>('siswa')
@@ -287,8 +288,37 @@ export default function HasilKuisPanel({ kuis, onUpdated }: Props) {
         setRosterLomba(null)
         setMetaLomba(null)
       } else {
-        const data = await daftarJawabanKuis(kuis.id, kuis.kelas, kuis.mapel)
+        // Mapel biasa: muat jawaban + roster seluruh siswa di kelas (dan kelasList bila berbagi paralel)
+        const kelasSet = new Set<string>()
+        const kUtama = String(kuis.kelas || '').toUpperCase()
+        if (kUtama) kelasSet.add(kUtama)
+        for (const x of kuis.kelasList ?? []) {
+          const kk = String(x || '').toUpperCase()
+          if (kk) kelasSet.add(kk)
+        }
+        const kelasArr = [...kelasSet]
+        const data =
+          kelasArr.length > 1
+            ? await daftarJawabanKuisMultiKelas(kuis.id, kelasArr, kuis.mapel)
+            : await daftarJawabanKuis(kuis.id, kUtama || kuis.kelas, kuis.mapel)
+        const siswaBatches = await Promise.all(
+          (kelasArr.length > 0 ? kelasArr : [String(kuis.kelas || '').toUpperCase()]).map((k) =>
+            muatSiswaKelas(k),
+          ),
+        )
+        const roster = siswaBatches
+          .flat()
+          .sort((a, b) => a.nama.localeCompare(b.nama, 'id'))
+        // Dedup by id (bila siswa pindah kelas data ganda)
+        const seen = new Set<string>()
+        const rosterUnik: SiswaDasar[] = []
+        for (const s of roster) {
+          if (seen.has(s.id)) continue
+          seen.add(s.id)
+          rosterUnik.push(s)
+        }
         setList(data)
+        setRosterMapel(rosterUnik)
         setRosterTka(null)
         setRosterLomba(null)
         setMetaLomba(null)
@@ -296,6 +326,7 @@ export default function HasilKuisPanel({ kuis, onUpdated }: Props) {
     } catch (e) {
       setList([])
       if (isTka) setRosterTka([])
+      else if (!isLomba) setRosterMapel([])
       if (isLomba) {
         setRosterLomba([])
         setMetaLomba(null)
@@ -307,7 +338,7 @@ export default function HasilKuisPanel({ kuis, onUpdated }: Props) {
           : msg || 'Gagal memuat hasil.',
       )
     }
-  }, [kuis.id, kuis.kelas, kuis.mapel, kuis.lombaId, isTka, isLomba, user, profil])
+  }, [kuis.id, kuis.kelas, kuis.kelasList, kuis.mapel, kuis.lombaId, isTka, isLomba, user, profil])
 
   useEffect(() => {
     void muat()
@@ -491,7 +522,31 @@ export default function HasilKuisPanel({ kuis, onUpdated }: Props) {
     }))
   }, [isLomba, rosterLomba, tampil])
 
-  const barisRoster = isLomba ? barisLomba : isTka ? barisTka : []
+  /** Roster mapel biasa: semua siswa kelas (± paralel) tampil meski belum mengerjakan / belum diinput offline. */
+  const barisMapel = useMemo((): BarisHasilTka[] => {
+    if (isTka || isLomba || rosterMapel === null) return []
+    const bySiswa = new Map<string, JawabanKuis>()
+    for (const j of tampil) {
+      const key = j.siswaId || j.siswaUid || ''
+      if (!key) continue
+      const prev = bySiswa.get(key)
+      if (!prev || jawabanTsMs(j.createdAt) > jawabanTsMs(prev.createdAt) || j.percobaan > prev.percobaan) {
+        bySiswa.set(key, j)
+      }
+    }
+    return rosterMapel.map((s) => ({
+      siswaId: s.id,
+      siswaNama: s.nama,
+      kelas: s.kelas,
+      jawaban: bySiswa.get(s.id) ?? null,
+    }))
+  }, [isTka, isLomba, rosterMapel, tampil])
+
+  const barisRoster = isLomba ? barisLomba : isTka ? barisTka : barisMapel
+  const labelBelum =
+    !isTka && !isLomba && kuis.modePelaksanaan === 'offline'
+      ? 'Belum diinput'
+      : 'Belum mengerjakan'
 
   /** Mapel sumber di kuis Gabungan — kolom capaian per mapel. */
   const mapelSumberLomba = useMemo(() => {
@@ -545,7 +600,8 @@ export default function HasilKuisPanel({ kuis, onUpdated }: Props) {
   }, [list, tampil, soalIds, isTka, barisTka])
 
   const ringkas = useMemo(() => {
-    if (isTka || isLomba) {
+    // TKA, Lomba, dan mapel biasa: hitung dari roster penuh
+    if (isTka || isLomba || rosterMapel !== null) {
       const nRoster = barisRoster.length
       const sudah = barisRoster.filter((b) => b.jawaban)
       const n = sudah.length
@@ -574,7 +630,7 @@ export default function HasilKuisPanel({ kuis, onUpdated }: Props) {
       if (j.status === 'sebagian_manual' || (j.detail ?? []).some((d) => d.butuhManual)) perlu += 1
     }
     return { n, nRoster: n, rata: Math.round((sum / n) * 10) / 10, perlu, selesai: n - perlu }
-  }, [tampil, isTka, isLomba, barisTka, barisRoster])
+  }, [tampil, isTka, isLomba, rosterMapel, barisRoster])
 
   const terpilih = list?.find((j) => j.id === pilihId) ?? null
   const jenis = (kuis.jenisPenilaian ?? 'latihan') as JenisPenilaianKuis
@@ -1050,7 +1106,8 @@ export default function HasilKuisPanel({ kuis, onUpdated }: Props) {
               : labelJenis +
                 (jenis === 'latihan'
                   ? ' · tidak masuk rapor, tetap dapat dianalisis dan dinilai'
-                  : ' · skor LMS; bisa disinkronkan ke Penilaian')}
+                  : ' · skor LMS; bisa disinkronkan ke Penilaian') +
+                ' · roster seluruh siswa ditampilkan'}
           </p>
         </div>
         <button type="button" className="kn-aksi" onClick={() => void muat()}>
@@ -1113,10 +1170,10 @@ export default function HasilKuisPanel({ kuis, onUpdated }: Props) {
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
           <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-            {isTka ? 'Mengerjakan' : 'Siswa'}
+            {isTka || isLomba || rosterMapel !== null ? 'Mengerjakan' : 'Siswa'}
           </p>
           <p className="mt-1 text-2xl font-bold tabular-nums text-slate-900">
-            {isTka ? (
+            {isTka || isLomba || rosterMapel !== null ? (
               <>
                 {ringkas.n}
                 <span className="text-sm font-semibold text-slate-400"> / {ringkas.nRoster}</span>
@@ -1598,13 +1655,14 @@ export default function HasilKuisPanel({ kuis, onUpdated }: Props) {
         </div>
       )}
 
-      {mode === 'siswa' && !isTka && tampil.length > 0 && (
+      {mode === 'siswa' && !isTka && !isLomba && rosterMapel !== null && barisMapel.length > 0 && (
         <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
           <div className="overflow-x-auto">
             <table className="w-full min-w-[640px] text-left text-sm">
               <thead>
                 <tr className="border-b border-slate-200 bg-slate-50/80 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
                   <th className="px-4 py-3">Siswa</th>
+                  <th className="px-3 py-3">Kelas</th>
                   <th className="px-3 py-3">Perc.</th>
                   <th className="px-3 py-3">Nilai</th>
                   <th className="px-3 py-3">Status</th>
@@ -1613,7 +1671,35 @@ export default function HasilKuisPanel({ kuis, onUpdated }: Props) {
                 </tr>
               </thead>
               <tbody>
-                {tampil.map((j) => {
+                {barisMapel.map((row) => {
+                  const j = row.jawaban
+                  if (!j) {
+                    return (
+                      <tr key={row.siswaId} className="border-b border-slate-100 last:border-0">
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-2.5">
+                            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-100 text-xs font-bold text-slate-500">
+                              {(row.siswaNama || '?').trim().charAt(0).toUpperCase() || '?'}
+                            </div>
+                            <div className="min-w-0">
+                              <p className="truncate font-medium text-slate-800">{row.siswaNama || '—'}</p>
+                              <p className="text-[11px] text-slate-400">{row.siswaId}</p>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-3 py-3 text-xs font-medium text-slate-600">{row.kelas}</td>
+                        <td className="px-3 py-3 text-slate-300">—</td>
+                        <td className="px-3 py-3 text-sm font-semibold text-slate-300">—</td>
+                        <td className="px-3 py-3">
+                          <span className="inline-flex rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-500">
+                            {labelBelum}
+                          </span>
+                        </td>
+                        <td className="px-3 py-3 text-xs text-slate-400">—</td>
+                        <td className="px-4 py-3 text-right text-xs text-slate-300">—</td>
+                      </tr>
+                    )
+                  }
                   const perlu =
                     j.status === 'sebagian_manual' || (j.detail ?? []).some((d) => d.butuhManual)
                   const ts = jawabanTsMs(j.createdAt)
@@ -1622,13 +1708,17 @@ export default function HasilKuisPanel({ kuis, onUpdated }: Props) {
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2.5">
                           <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muh-100 text-xs font-bold text-muh-700">
-                            {(j.siswaNama || '?').trim().charAt(0).toUpperCase() || '?'}
+                            {(row.siswaNama || j.siswaNama || '?').trim().charAt(0).toUpperCase() || '?'}
                           </div>
                           <div className="min-w-0">
-                            <p className="truncate font-medium text-slate-900">{j.siswaNama || j.siswaId || '—'}</p>
+                            <p className="truncate font-medium text-slate-900">
+                              {row.siswaNama || j.siswaNama || j.siswaId || '—'}
+                            </p>
+                            <p className="text-[11px] text-slate-400">{row.siswaId}</p>
                           </div>
                         </div>
                       </td>
+                      <td className="px-3 py-3 text-xs font-medium text-slate-600">{row.kelas || j.kelas}</td>
                       <td className="px-3 py-3 tabular-nums text-slate-600">#{j.percobaan}</td>
                       <td className="px-3 py-3">
                         <span className="text-base font-bold tabular-nums text-muh-700">
@@ -1672,9 +1762,9 @@ export default function HasilKuisPanel({ kuis, onUpdated }: Props) {
                               onClick={() =>
                                 void resetAttempt(
                                   j.siswaId!,
-                                  j.siswaNama || j.siswaId || '',
+                                  row.siswaNama || j.siswaNama || j.siswaId || '',
                                   'semua',
-                                  j.kelas,
+                                  row.kelas || j.kelas,
                                 )
                               }
                             >
@@ -1692,6 +1782,11 @@ export default function HasilKuisPanel({ kuis, onUpdated }: Props) {
         </div>
       )}
 
+      {mode === 'siswa' && !isTka && !isLomba && rosterMapel !== null && barisMapel.length === 0 && (
+        <p className="rounded-xl border border-dashed border-slate-200 bg-slate-50/80 px-4 py-6 text-center text-sm text-slate-500">
+          Belum ada siswa aktif di kelas ini.
+        </p>
+      )}
 
       {mode === 'soal' && list.length > 0 && (
         <div className="space-y-2">

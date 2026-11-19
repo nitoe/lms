@@ -1,3 +1,15 @@
+## 2026-11-19 — Hasil kuis mapel: tabel roster seluruh siswa (termasuk belum mengerjakan)
+
+- **Kebutuhan:** guru perlu memonitor siapa yang belum mengerjakan / belum diinput offline — sebelumnya tabel hasil mapel hanya menampilkan siswa yang sudah punya `lms_jawaban`.
+- **Perilaku baru (selaras TKA & Lomba):**
+  - Muat roster aktif lewat `muatSiswaKelas` untuk `kuis.kelas` dan `kelasList` (berbagi paralel).
+  - Jawaban digabung multi-kelas bila `kelasList` > 1 (`daftarJawabanKuisMultiKelas`).
+  - Tabel menampilkan **semua siswa**; status «Belum mengerjakan» (online) atau «Belum diinput» (offline).
+  - Kartu ringkasan: **Mengerjakan n / nRoster**.
+- Tidak mengubah rules/functions.
+- File: `src/components/HasilKuisPanel.tsx`.
+- Antiregresi: §Hasil.RosterMapel.
+
 ## 2026-11-19 — Offline kuis: perbaiki 500 «Cannot use undefined as a Firestore value»
 
 - **Gejala:** `simpanJawabanOfflineKuis` → 500 dengan pesan:

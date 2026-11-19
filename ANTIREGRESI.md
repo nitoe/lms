@@ -93,6 +93,15 @@ Bila error tetap permission setelah rules 300 ter-deploy: cek penugasan `penugas
 6. Grouping daftar tetap by `tpId` utama; label boleh menampilkan «(+N TP lain)».
 
 
+
+## §Hasil.RosterMapel — Tabel hasil mapel menampilkan seluruh siswa (2026-11-19)
+
+1. Hasil kuis **mapel biasa** (bukan hanya TKA/Lomba) wajib menampilkan roster siswa aktif kelas (`muatSiswaKelas`) + `kelasList` bila berbagi paralel.
+2. Siswa tanpa `lms_jawaban` tetap tampil dengan status «Belum mengerjakan» (mode online) atau «Belum diinput» (mode offline).
+3. Ringkasan angka: **mengerjakan / total roster**, bukan hanya jumlah dokumen jawaban.
+4. Jangan kembali ke tabel yang hanya `tampil.map` dari jawaban saja — guru tidak bisa melihat siapa yang belum menunaikan kewajiban.
+
+
 ## §128. Query kelasList array-contains (berbagi paralel) — permission list
 
 128.1 Query sekunder `where('kelasList','array-contains', kelas)` di `daftarTugas`, `daftarKuis`, `daftarMateri` **wajib** didukung rules **dan** menyertakan constraint `mapel`.
