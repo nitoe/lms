@@ -1,3 +1,16 @@
+## 2026-11-19 — Offline kuis: tampilkan pesan error asli (bukan 500 kosong) + pastikan deploy CF
+
+- **Gejala lanjutan:** setelah perbaikan izin, `simpanJawabanOfflineKuis` masih 500 di production.
+- **Kemungkinan utama:** file CF sudah di-push ke GitHub tetapi **belum** `firebase deploy --only functions:…` — runtime Cloud Functions masih kode lama.
+- **Perbaikan tambahan di CF offline:**
+  - Seluruh handler dibungkus `try/catch`: error tak terduga diubah jadi `HttpsError('internal', pesanAsli)` agar UI menampilkan penyebab (bukan «internal» kosong).
+  - Penilaian menjodohkan diselaraskan dengan `nilaiKuisLms.js` (`j[p.id] === p.id`).
+- **Wajib deploy ulang** dari repo SDM01Penilaian:
+  ```
+  firebase deploy --only functions:simpanJawabanOfflineKuis,functions:resetJawabanKuisLms
+  ```
+- Permission `daftarTugas`/`daftarKuis` kelasList di console adalah **peringatan sekunder** (query cadangan berbagi paralel); di-tangkap `try/catch` di klien dan tidak memblokir simpan offline. Bila ingin hilang total, pastikan rules production sudah versi §128 (`npm run deploy:rules`).
+
 ## 2026-11-19 — Perbaiki regresi reset & input offline kuis mapel (CF tertimpa TKA/Lomba)
 
 - **Gejala:**
