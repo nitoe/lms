@@ -19,6 +19,8 @@ import { bolehAnalisisKuisAi } from '../lib/analisisKuisAi'
 import { klasifikasiDomainTkaDenganAi } from '../lib/domainTkaAi'
 import { useAuth } from '../context/AuthContext'
 import PilihSoalManual, { type PilihanSoalRef } from './soal/PilihSoalManual'
+import SoalGandaDialog from './soal/SoalGandaDialog'
+import { sidikJariSoal } from '../lib/soalGanda'
 
 /** Instruksi lengkap per bentuk soal (untuk siswa dan nantinya cetak). */
 export const INSTRUKSI_TIPE: Record<TipeSoal, string> = {
@@ -53,6 +55,7 @@ export default function KuisDetail({ kuis, onUpdated }: Props) {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [info, setInfo] = useState('')
+  const [dialogGanda, setDialogGanda] = useState(false)
   const [waktuMulai, setWaktuMulai] = useState(kuis.waktuMulai ?? '')
   const [waktuSelesai, setWaktuSelesai] = useState(kuis.waktuSelesai ?? '')
   const [token, setToken] = useState(kuis.token ?? '')
@@ -208,6 +211,8 @@ export default function KuisDetail({ kuis, onUpdated }: Props) {
     const sudah = new Set(
       soal.map((s) => s.sumberSoalId || s.id).filter(Boolean) as string[],
     )
+    // Duplikat juga dicek menurut ISI (soal yang sama dari paket berbeda punya ID berbeda).
+    const isiSudah = new Set(soal.map((s) => sidikJariSoal(s)))
     const tipeIzinkan = new Set<string>(tipePilihan as string[])
     const baru: SoalKuis[] = []
     const paketIdsBaru = new Set(sumberPaketIds)
@@ -227,6 +232,12 @@ export default function KuisDetail({ kuis, onUpdated }: Props) {
         lewatiTipe += 1
         continue
       }
+      const sidik = sidikJariSoal(s)
+      if (isiSudah.has(sidik)) {
+        lewatiDuplikat += 1
+        continue
+      }
+      isiSudah.add(sidik)
       const poin =
         typeof s.poin === 'number' && s.poin > 0 ? s.poin : 1
       baru.push(snapshotSoal(s, { id: pk.id, judul: pk.judul || 'Paket', mapel: pk.mapel }, poin))
@@ -753,19 +764,30 @@ export default function KuisDetail({ kuis, onUpdated }: Props) {
               {soal.length > 0 && soal.length >= BATAS_SOAL_PER_KUIS ? ` · batas ${BATAS_SOAL_PER_KUIS}` : ''}
             </p>
           </div>
-          <button
-            type="button"
-            className="lms-btn-secondary text-xs"
-            disabled={busy || loadingPaket || soal.length >= BATAS_SOAL_PER_KUIS}
-            onClick={() => void bukaTambahDariBank()}
-            title={
-              soal.length >= BATAS_SOAL_PER_KUIS
-                ? `Sudah mencapai batas ${BATAS_SOAL_PER_KUIS} soal`
-                : 'Tambah soal dari paket bank yang siap'
-            }
-          >
-            {loadingPaket ? 'Memuat bank…' : '+ Tambah dari bank'}
-          </button>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              className="lms-btn-secondary text-xs"
+              disabled={busy || soal.length < 2}
+              onClick={() => setDialogGanda(true)}
+              title="Cari dan hapus soal yang isinya sama"
+            >
+              Soal ganda
+            </button>
+            <button
+              type="button"
+              className="lms-btn-secondary text-xs"
+              disabled={busy || loadingPaket || soal.length >= BATAS_SOAL_PER_KUIS}
+              onClick={() => void bukaTambahDariBank()}
+              title={
+                soal.length >= BATAS_SOAL_PER_KUIS
+                  ? `Sudah mencapai batas ${BATAS_SOAL_PER_KUIS} soal`
+                  : 'Tambah soal dari paket bank yang siap'
+              }
+            >
+              {loadingPaket ? 'Memuat bank…' : '+ Tambah dari bank'}
+            </button>
+          </div>
         </div>
 
         <div className="space-y-4">
@@ -1019,6 +1041,19 @@ export default function KuisDetail({ kuis, onUpdated }: Props) {
             </footer>
           </div>
         </div>
+      )}
+
+      {dialogGanda && (
+        <SoalGandaDialog
+          soal={soal}
+          keterangan={(s) => s.sumberPaketJudul || ''}
+          onTutup={() => setDialogGanda(false)}
+          onTerapkan={(hasil, dihapus) => {
+            setSoal(hasil)
+            setDialogGanda(false)
+            setInfo(`${dihapus} soal ganda dihapus dari kuis. Jangan lupa Simpan perubahan.`)
+          }}
+        />
       )}
     </div>
   )

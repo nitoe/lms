@@ -12,24 +12,37 @@
 import type { PaketSoal, Soal } from '../types/soal'
 import { BATAS_SOAL_PER_PAKET } from '../types/soal'
 import { BATAS_UKURAN_PAKET, salinSoal, ukuranPerkiraan } from './soal'
-import { teksPolos } from './html'
+import { cariSoalGanda, hapusSoalGanda } from './soalGanda'
 import { adalahMapelTka, materiTkaUntuk } from './tkaAkses'
 
+/** Cara menangani soal ganda saat menggabungkan. */
+export type ModeGanda =
+  /** Semua soal dimasukkan apa adanya. */
+  | 'tidak'
+  /** Soal ganda dilewati; versi dari paket yang lebih dulu dipertahankan. */
+  | 'lewati'
+  /** Soal ganda ditimpa: versi dari paket terakhir menggantikan versi lama di posisi semula. */
+  | 'timpa'
+
 export interface OpsiGabung {
-  /** Lewati soal yang isinya sama persis dengan soal yang sudah masuk (bacaan + pertanyaan + pilihan). */
-  lewatiDuplikat: boolean
+  mode: ModeGanda
+  /** Ikut menganggap soal yang «mirip» (≥ 90%, angka identik) sebagai ganda. */
+  mirip?: boolean
 }
 
 export interface RingkasanSumber {
   id: string
   judul: string
   mapel: string
+  /** Soal paket ini yang ada di hasil gabungan. */
   masuk: number
+  /** Soal paket ini yang tidak dipakai (dilewati atau tertimpa). */
   dilewati: number
 }
 
 export interface HasilGabung {
   soal: Soal[]
+  /** Jumlah soal ganda yang dibuang (dilewati atau ditimpa). */
   dilewati: number
   perSumber: RingkasanSumber[]
   /** Materi TKA paket gabungan; hanya terisi bila semua soal bermateri sama. */
@@ -40,25 +53,6 @@ export interface HasilGabung {
   galat: string[]
   /** Perlu dibaca, tidak menghalangi. */
   peringatan: string[]
-}
-
-function norm(s: string | undefined): string {
-  return teksPolos(s).toLowerCase().replace(/\s+/g, ' ').trim()
-}
-
-/** Sidik jari isi soal untuk mendeteksi duplikat. */
-export function sidikJariSoal(s: Soal): string {
-  const bagian: string[] = [s.tipe, norm(s.stimulus), norm(s.teks), s.gambarId ?? '']
-  if (s.tipe === 'pg' || s.tipe === 'pgk') {
-    bagian.push(...(s.opsi ?? []).map((o) => `${(o.teks ?? '').trim().toLowerCase()}${o.gambarId ?? ''}`))
-  } else if (s.tipe === 'bs') {
-    bagian.push(...(s.pernyataan ?? []).map((p) => `${(p.teks ?? '').trim().toLowerCase()}:${p.benar ? 1 : 0}`))
-  } else if (s.tipe === 'jodoh') {
-    bagian.push(...(s.pasangan ?? []).map((p) => `${(p.kiri ?? '').trim().toLowerCase()}>${(p.kanan ?? '').trim().toLowerCase()}`))
-  } else if (s.tipe === 'isian') {
-    bagian.push(...(s.kunci ?? []).map((k) => (k ?? '').trim().toLowerCase()))
-  }
-  return bagian.join('\u241F')
 }
 
 /** Judul usulan: bila semua sumber berjudul sama pakai itu; selain itu gabungkan dengan « + ». */
@@ -72,47 +66,67 @@ export function judulUsulan(sumber: PaketSoal[]): string {
 /**
  * Gabungkan paket menurut urutan `sumber`. Murni (tanpa Firestore) agar bisa dipakai untuk pratinjau.
  * `mapelTujuan` = mapel ruang tempat paket gabungan akan disimpan.
+ * Deteksi soal ganda memakai `cariSoalGanda` (isi, bukan ID) — lihat ANTIREGRESI §Soal.Ganda.
  */
 export function gabungkanPaket(sumber: PaketSoal[], mapelTujuan: string, opsi: OpsiGabung): HasilGabung {
   const tka = adalahMapelTka(mapelTujuan)
   const materiSah = new Set(materiTkaUntuk(mapelTujuan))
   const galat: string[] = []
   const peringatan: string[] = []
-  const hasil: Soal[] = []
-  const lihat = new Set<string>()
-  const perSumber: RingkasanSumber[] = []
-  const materiDipakai = new Set<string>()
-  const materiAsing = new Set<string>()
-  let dilewati = 0
 
-  for (const p of sumber) {
-    let masuk = 0
-    let lewat = 0
+  // 1) Salin semua soal (ID baru), catat paket asalnya.
+  const semua: { s: Soal; asal: number }[] = []
+  sumber.forEach((p, asal) => {
     for (const s of p.soal ?? []) {
-      if (opsi.lewatiDuplikat) {
-        const k = sidikJariSoal(s)
-        if (lihat.has(k)) {
-          lewat += 1
-          continue
-        }
-        lihat.add(k)
-      }
       const salin = salinSoal(s)
       if (tka) {
         // Materi paket diwariskan ke soal bila soal belum bermateri, supaya asal materi tidak hilang
         // saat paket gabungan memuat lebih dari satu materi.
         const materi = (s.tipeMateri || p.tipeMateri || '').trim()
-        if (materi) {
-          salin.tipeMateri = materi
-          materiDipakai.add(materi)
-          if (!materiSah.has(materi)) materiAsing.add(materi)
-        }
+        if (materi) salin.tipeMateri = materi
       }
-      hasil.push(salin)
-      masuk += 1
+      semua.push({ s: salin, asal })
     }
-    dilewati += lewat
-    perSumber.push({ id: p.id, judul: p.judul, mapel: p.mapel, masuk, dilewati: lewat })
+  })
+
+  // 2) Deteksi & tangani soal ganda berdasarkan isi.
+  let terpakai = semua
+  if (opsi.mode !== 'tidak' && semua.length > 1) {
+    const kelompok = cariSoalGanda(semua.map((x) => x.s), { mirip: !!opsi.mirip })
+    if (kelompok.length > 0) {
+      const { hasil } = hapusSoalGanda(semua, kelompok, {
+        kebijakan: opsi.mode === 'timpa' ? 'terakhir' : 'pertama',
+        posisi: opsi.mode === 'timpa' ? 'pertama' : 'asli',
+      })
+      terpakai = hasil
+      const bedaKunci = kelompok.filter((g) => g.kunciBeda).length
+      if (bedaKunci > 0) {
+        peringatan.push(
+          `${bedaKunci} kelompok soal ganda memiliki kunci jawaban berbeda antar paket. ` +
+            (opsi.mode === 'timpa' ? 'Versi dari paket terakhir dipakai.' : 'Versi dari paket pertama dipakai.') +
+            ' Periksa kuncinya setelah digabung.',
+        )
+      }
+    }
+  }
+
+  const hasil = terpakai.map((x) => x.s)
+  const dilewati = semua.length - hasil.length
+  const perSumber: RingkasanSumber[] = sumber.map((p, asal) => {
+    const total = (p.soal ?? []).length
+    const masuk = terpakai.filter((x) => x.asal === asal).length
+    return { id: p.id, judul: p.judul, mapel: p.mapel, masuk, dilewati: total - masuk }
+  })
+
+  const materiDipakai = new Set<string>()
+  const materiAsing = new Set<string>()
+  if (tka) {
+    for (const s of hasil) {
+      const m = (s.tipeMateri ?? '').trim()
+      if (!m) continue
+      materiDipakai.add(m)
+      if (!materiSah.has(m)) materiAsing.add(m)
+    }
   }
 
   if (sumber.length < 2) galat.push('Pilih minimal 2 paket untuk digabungkan.')

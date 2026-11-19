@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
 import SoalEditorKartu from '../components/soal/SoalEditorKartu'
 import PratinjauSoal from '../components/soal/PratinjauSoal'
+import SoalGandaDialog from '../components/soal/SoalGandaDialog'
 import { useAuth } from '../context/AuthContext'
 import {
   ambilPaket,
@@ -72,6 +73,7 @@ export default function SoalEditor() {
   const [pengaturan, setPengaturan] = useState(false)
   const [pratinjau, setPratinjau] = useState(false)
   const [panelAnalisis, setPanelAnalisis] = useState(false)
+  const [dialogGanda, setDialogGanda] = useState(false)
   const [tpList, setTpList] = useState<TpRingkas[]>([])
   const [seretDari, setSeretDari] = useState<number | null>(null)
 
@@ -279,6 +281,10 @@ export default function SoalEditor() {
             ⚙ Pengaturan
           </button>
           <button type="button" className="lms-btn-secondary" onClick={() => setPratinjau(true)}>▶ Pratinjau</button>
+          <button type="button" className="lms-btn-secondary" disabled={terkunci || soalList.length < 2}
+            onClick={() => setDialogGanda(true)} title="Cari dan hapus soal yang isinya sama">
+            Soal ganda
+          </button>
           {bolehAnalisis && (
             <button type="button" className={`lms-btn-secondary ${panelAnalisis ? 'ring-2 ring-amber-400' : ''}`}
               onClick={() => setPanelAnalisis((v) => !v)} title="Analisis soal yang butuh stimulus/ilustrasi">
@@ -488,6 +494,18 @@ export default function SoalEditor() {
           )}
         </main>
       </div>
+
+      {dialogGanda && (
+        <SoalGandaDialog
+          soal={soalList}
+          onTutup={() => setDialogGanda(false)}
+          onTerapkan={(hasil) => {
+            setSoal(hasil)
+            if (!hasil.some((x) => x.id === aktifId)) setAktifId(hasil[0]?.id ?? '')
+            setDialogGanda(false)
+          }}
+        />
+      )}
 
       {/* Panel Analisis Stimulus (khusus user tertentu) */}
       {bolehAnalisis && panelAnalisis && (

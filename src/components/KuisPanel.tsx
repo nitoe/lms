@@ -19,6 +19,7 @@ import {
   susunOtomatis,
 } from '../lib/susunKuis'
 import { teksPolos } from '../lib/html'
+import { cariSoalGanda, hapusSoalGanda } from '../lib/soalGanda'
 import {
   bacaDrafKuis,
   drafKuisKosong,
@@ -510,18 +511,24 @@ export default function KuisPanel({ kelas, mapel, lombaId, mapelGabungan }: Prop
       soal = urutkanMenurutBentuk(soal, tipePilihan)
       setPratinjau(soal)
 
+      // Soal ganda menurut ISI (semua mode, termasuk manual): soal sama dari paket berbeda berID berbeda.
+      const peringatan: string[] = []
+      for (const g of cariSoalGanda(soal, { mirip: true }).slice(0, 8)) {
+        const awal = teksPolos(soal[g.indeks[0]].teks).slice(0, 60)
+        peringatan.push(
+          `Soal ${g.indeks.map((i) => `#${i + 1}`).join(' = ')} ` +
+            `${g.jenis === 'sama' ? 'sama persis' : `mirip (${Math.round(g.skor * 100)}%)`}${g.kunciBeda ? ', kunci berbeda' : ''}: «${awal}…»`,
+        )
+      }
       if (mode === 'otomatis_ai' || mode === 'otomatis') {
         const dup = deteksiDuplikatKasar(soal)
-        if (dup.length) {
-          setPeringatanDuplikat(
-            dup.slice(0, 8).map((d) => {
-              const a = teksPolos(soal[d.a].teks).slice(0, 60)
-              const b = teksPolos(soal[d.b].teks).slice(0, 60)
-              return `Soal #${d.a + 1} ≈ #${d.b + 1} (${Math.round(d.skor * 100)}%): «${a}…» ↔ «${b}…»`
-            }),
-          )
+        for (const d of dup.slice(0, 8)) {
+          const a = teksPolos(soal[d.a].teks).slice(0, 60)
+          const b = teksPolos(soal[d.b].teks).slice(0, 60)
+          peringatan.push(`Soal #${d.a + 1} ≈ #${d.b + 1} (${Math.round(d.skor * 100)}%): «${a}…» ↔ «${b}…»`)
         }
       }
+      setPeringatanDuplikat(peringatan)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Gagal menyusun pratinjau.')
     }
@@ -529,13 +536,17 @@ export default function KuisPanel({ kelas, mapel, lombaId, mapelGabungan }: Prop
 
   function buangDuplikatKasar() {
     if (!pratinjau?.length) return
-    const dup = deteksiDuplikatKasar(pratinjau)
-    if (!dup.length) return
+    // 1) Soal ganda/mirip menurut isi → pertahankan yang pertama.
+    let dasar: SoalKuis[] = pratinjau
+    const ganda = cariSoalGanda(dasar, { mirip: true })
+    if (ganda.length) dasar = hapusSoalGanda(dasar, ganda, { kebijakan: 'pertama' }).hasil
+    // 2) Pasangan teks kasar (perilaku lama, hanya mode otomatis).
     const buang = new Set<number>()
-    for (const d of dup) {
-      buang.add(d.b)
+    if (mode === 'otomatis_ai' || mode === 'otomatis') {
+      for (const d of deteksiDuplikatKasar(dasar)) buang.add(d.b)
     }
-    const sisa = urutkanMenurutBentuk(pratinjau.filter((_, i) => !buang.has(i)), tipePilihan)
+    if (!ganda.length && buang.size === 0) return
+    const sisa = urutkanMenurutBentuk(dasar.filter((_, i) => !buang.has(i)), tipePilihan)
     setPratinjau(sisa)
     setPeringatanDuplikat([])
   }
@@ -1376,7 +1387,7 @@ export default function KuisPanel({ kelas, mapel, lombaId, mapelGabungan }: Prop
                 </div>
                 {adaPratinjau && peringatanDuplikat.length > 0 && (
                   <button type="button" className="pk-btn" onClick={buangDuplikatKasar}>
-                    Buang yang mirip ({peringatanDuplikat.length} pasangan)
+                    Buang soal ganda/mirip ({peringatanDuplikat.length})
                   </button>
                 )}
               </div>

@@ -11,6 +11,7 @@ import {
   judulUsulan,
   namaBerkasAman,
   unduhBerkasTeks,
+  type ModeGanda,
 } from '../lib/gabungPaket'
 import type { TpRingkas } from '../types/materi'
 import type { KompleksitasSoal, PaketSoal, TipeSoal } from '../types/soal'
@@ -108,7 +109,8 @@ export default function BankSoalPanel({ kelas, mapel, ruangId, lombaId, tpKelas 
   const [terpilih, setTerpilih] = useState<string[]>([])
   const [judulGabung, setJudulGabung] = useState('')
   const [judulGabungManual, setJudulGabungManual] = useState(false)
-  const [lewatiDuplikat, setLewatiDuplikat] = useState(true)
+  const [modeGanda, setModeGanda] = useState<ModeGanda>('lewati')
+  const [miripGabung, setMiripGabung] = useState(false)
   const [cariGabung, setCariGabung] = useState('')
   const [sertakanMapelLain, setSertakanMapelLain] = useState(false)
   const [paketMapelLain, setPaketMapelLain] = useState<PaketSoal[]>([])
@@ -564,8 +566,8 @@ export default function BankSoalPanel({ kelas, mapel, ruangId, lombaId, tpKelas 
   }, [terpilih, sumberGabung])
 
   const hasilGabung = useMemo(
-    () => gabungkanPaket(paketTerpilih, mapel, { lewatiDuplikat }),
-    [paketTerpilih, mapel, lewatiDuplikat],
+    () => gabungkanPaket(paketTerpilih, mapel, { mode: modeGanda, mirip: miripGabung }),
+    [paketTerpilih, mapel, modeGanda, miripGabung],
   )
 
   // Judul usulan mengikuti pilihan selama belum diubah manual.
@@ -1028,16 +1030,26 @@ export default function BankSoalPanel({ kelas, mapel, ruangId, lombaId, tpKelas 
                 placeholder="Contoh: Try Out 1 — gabungan"
               />
             </label>
-            <label className="gp-cek gp-cek--blok">
-              <input type="checkbox" checked={lewatiDuplikat} onChange={(e) => setLewatiDuplikat(e.target.checked)} />
-              <span>Lewati soal yang isinya sama persis</span>
+            <label className="materi-field">
+              <span>Jika ada soal ganda (isi sama)</span>
+              <select value={modeGanda} onChange={(e) => setModeGanda(e.target.value as ModeGanda)}>
+                <option value="lewati">Lewati — pertahankan versi paket pertama</option>
+                <option value="timpa">Timpa — pakai versi paket terakhir</option>
+                <option value="tidak">Masukkan semua (jangan cek)</option>
+              </select>
             </label>
+            {modeGanda !== 'tidak' && (
+              <label className="gp-cek gp-cek--blok">
+                <input type="checkbox" checked={miripGabung} onChange={(e) => setMiripGabung(e.target.checked)} />
+                <span>Anggap soal yang mirip (≥ 90%, angka sama) sebagai ganda</span>
+              </label>
+            )}
           </div>
 
           {paketTerpilih.length > 0 && (
             <div className="gp-ringkas" aria-live="polite">
               <b>{hasilGabung.soal.length}</b> soal akan masuk dari {paketTerpilih.length} paket
-              {hasilGabung.dilewati > 0 ? ` · ${hasilGabung.dilewati} duplikat dilewati` : ''}
+              {hasilGabung.dilewati > 0 ? ` · ${hasilGabung.dilewati} soal ganda ${modeGanda === 'timpa' ? 'ditimpa' : 'dilewati'}` : ''}
               {hasilGabung.tipeMateri ? ` · materi: ${hasilGabung.tipeMateri}` : ''}
             </div>
           )}

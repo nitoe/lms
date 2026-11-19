@@ -7,6 +7,7 @@ import { normalisasiKompleksitas, URUTAN_TIPE, URUTAN_KOMPLEKSITAS } from '../ty
 import type { FilterSusunKuis, SoalKuis } from '../types/kuis'
 import { BATAS_SOAL_PER_KUIS } from '../types/kuis'
 import { teksPolos } from './html'
+import { sidikJariSoal } from './soalGanda'
 
 function acakFisherYates<T>(arr: T[]): T[] {
   const a = [...arr]
@@ -127,6 +128,8 @@ export function susunOtomatis(
   const cocok = kandidat.filter((k) => cocokFilter(k.soal, filter))
   const pool = opsi?.seedAcak === false ? cocok : acakFisherYates(cocok)
   const terpakai = new Set<string>()
+  // Soal berisi sama dari paket berbeda (ID berbeda) hanya diambil sekali — ANTIREGRESI §Soal.Ganda.
+  const isiTerpakai = new Set<string>()
   const hasil: SoalKuis[] = []
 
   const ambil = (pred: (s: Soal) => boolean, n: number) => {
@@ -136,6 +139,9 @@ export function susunOtomatis(
       const key = `${k.paket.id}::${k.soal.id}`
       if (terpakai.has(key)) continue
       if (!pred(k.soal)) continue
+      const sidik = sidikJariSoal(k.soal)
+      if (isiTerpakai.has(sidik)) continue
+      isiTerpakai.add(sidik)
       terpakai.add(key)
       hasil.push(snapshotSoal(k.soal, k.paket, 1))
       diambil++

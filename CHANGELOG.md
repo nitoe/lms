@@ -1,3 +1,16 @@
+## 2026-11-19 — Soal ganda: deteksi menurut isi + hapus soal ganda (bank soal, TKA, Lomba, kuis)
+
+- **Gejala:** «Gabungkan paket» tidak mengenali soal yang sama (paket Matematika/Bahasa Indonesia berjudul sama). Penyebab: pembanding lama terlalu kaku (HTML, kapital, tanda baca, urutan pilihan, dan ID gambar memengaruhi hasil), dan penambahan soal dari bank ke kuis hanya membandingkan ID soal — soal yang sama dari paket berbeda berID berbeda sehingga lolos jadi ganda.
+- **Mesin baru** `src/lib/soalGanda.ts`: membandingkan ISI soal (bacaan, pertanyaan, pilihan; HTML/kapital/tanda baca/urutan pilihan diabaikan; simbol rumus dipertahankan). Dua tingkat: **sama persis** dan **mirip ≥ 90%** (opsional; angka pada soal wajib identik sehingga «125 + 340» ≠ «125 + 350»). Kelompok yang kuncinya berbeda diberi tanda «Kunci berbeda».
+- **Gabungkan paket:** pilihan «Jika ada soal ganda» — *Lewati* (versi paket pertama dipertahankan), *Timpa* (versi paket terakhir menggantikan versi lama di posisi semula), atau *Masukkan semua*; opsi «anggap mirip sebagai ganda». Ringkasan menunjukkan jumlah soal ganda dilewati/ditimpa.
+- **Tombol «Soal ganda»** (dialog: daftar kelompok, pilih soal yang dipertahankan per kelompok atau «pertama/terakhir» untuk semua, lalu hapus):
+  - Editor paket bank soal (semua ruang: mapel reguler, TKA, Lomba) — tersimpan otomatis seperti perubahan biasa.
+  - Detail kuis (semua kuis) — perubahan berlaku setelah klik Simpan.
+- **Kuis:** «+ Tambah dari bank» kini melewati soal berisi sama (bukan hanya ID sama); susun otomatis tidak mengambil soal berisi sama dua kali; wizard susun kuis (semua mode, termasuk manual) memperingatkan soal ganda/mirip dan «Buang soal ganda/mirip» memakai mesin baru.
+- Tidak mengubah firestore.rules maupun skema data.
+- File: `src/lib/soalGanda.ts` (baru), `src/components/soal/SoalGandaDialog.tsx` (baru), `src/styles/soal-ganda.css` (baru), `src/lib/gabungPaket.ts`, `src/lib/susunKuis.ts`, `src/components/BankSoalPanel.tsx`, `src/components/KuisDetail.tsx`, `src/components/KuisPanel.tsx`, `src/pages/SoalEditor.tsx`.
+- Antiregresi: §Soal.Ganda.
+
 ## 2026-11-19 — Tugas: instruksi siswa terbaca rapi + bukti pengumpulan berlabel yang terkait rubrik
 
 - **Gejala:** (1) instruksi tugas di tampilan siswa menyatu menjadi satu paragraf panjang (judul bagian, langkah «1. 2. 3.», dan poin «-» tidak terbedakan); (2) pengumpulan hanya «Ambil / pilih foto» tanpa keterangan foto untuk tahap/bukti apa, dan kriteria penilaian (rubrik) tidak terlihat siswa maupun terhubung ke foto.

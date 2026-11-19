@@ -1,3 +1,15 @@
+## §Soal.Ganda — Deteksi & penghapusan soal ganda (2026-11-19)
+
+1. **Duplikat ditentukan menurut ISI, bukan ID.** Soal hasil salin/gabung/snapshot kuis selalu berID baru (`salinSoal`, `snapshotSoal`), jadi membandingkan `id`/`sumberSoalId` tidak pernah menemukan soal yang sama dari paket berbeda. Gunakan `cariSoalGanda` / `sidikJariSoal` (`src/lib/soalGanda.ts`); jangan membuat pembanding sendiri di komponen.
+2. **Normalisasi harus tetap longgar terhadap format, ketat terhadap makna:** HTML, kapital, tanda baca teks, spasi, dan urutan pilihan diabaikan; simbol rumus (`+ - * / = < > % ^ × ÷ $`) dan angka desimal (`0,5`) DIPERTAHANKAN. Jika simbol/angka dibuang, «2+3» dan «2−3» dianggap sama dan soal berbeda terhapus.
+3. **Bacaan (stimulus) ikut dibandingkan.** Pertanyaan yang sama («Ide pokok paragraf ini adalah…») dengan bacaan berbeda adalah soal berbeda. `gambarId` yang berbeda juga berarti berbeda (ID gambar yang sama = gambar yang sama).
+4. **«Mirip» wajib angka identik** (multiset angka pada bacaan+pertanyaan+pilihan sama) dan bentuk soal sama; default OFF dan harus dipilih guru. Kunci jawaban tidak ikut menentukan kesamaan, tetapi kelompok dengan kunci berbeda ditandai `kunciBeda` dan UI/peringatan harus menampilkannya.
+5. **Penghapusan tidak otomatis pada kuis/paket yang sedang diedit:** `SoalGandaDialog` hanya mengembalikan daftar baru ke pemanggil. Editor paket menyimpan lewat `setSoal` (autosimpan); `KuisDetail` hanya mengubah state — tetap harus klik Simpan. Jangan menulis ke Firestore dari dialog.
+6. **Gabungkan paket:** mode `lewati` (pertahankan versi pertama) dan `timpa` (versi terakhir menggantikan versi lama di POSISI anggota pertama kelompok — `hapusSoalGanda(..., { kebijakan: 'terakhir', posisi: 'pertama' })`). Materi TKA dihitung dari soal yang BERTAHAN (bukan dari semua soal sumber), kalau tidak `tipeMateri` paket menjadi kosong padahal soal tersisa satu materi.
+7. **Susun otomatis** (`susunOtomatis`) menandai isi yang sudah terambil (`isiTerpakai`) sebelum memilih soal berikutnya; pemeriksaan harus dilakukan SETELAH predikat filter tipe/kompleksitas lolos agar soal yang tidak cocok filter tidak «membakar» kuota isinya. `susunManual` sengaja tidak membuang soal (pilihan eksplisit guru) — wizard hanya memperingatkan.
+8. **Dialog dirender lewat portal ke `document.body`** (z-index 1200) dengan kelas `.sg-*` pada `src/styles/soal-ganda.css` yang diimpor oleh dialognya sendiri. Jangan memindahkan CSS ke berkas yang hanya dimuat satu halaman: editor paket dan detail kuis berada di rute berbeda dari panel bank.
+9. Kecepatan: perbandingan «mirip» O(n²) hanya untuk pasangan se-bentuk + angka sama dengan n ≤ 300 soal per paket — aman. Jangan dipakai pada gabungan lintas ratusan paket tanpa memangkas kandidat.
+
 ## §Bank.Gabung — Gabungkan paket & export paket (2026-11-19)
 
 1. **Paket sumber tidak boleh diubah.** Gabungkan selalu membuat paket BARU (`buatPaket` + `simpanPaket`) berstatus `draf`. Jangan menambah opsi yang menghapus/menimpa sumber tanpa konfirmasi tegas.
