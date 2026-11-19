@@ -1,3 +1,14 @@
+## §Materi.TempelGambar.Tombol — Unggah file dan Tempel gambar harus tombol terpisah (2026-11-19)
+
+Melengkapi §Materi.TempelGambar (poin 4 di sana digantikan oleh poin 2 di bawah).
+
+1. **Jangan menggabungkan «unggah file» dan «tempel» dalam satu tombol/label.** Keduanya mekanisme berbeda: dialog pilih file vs pembacaan clipboard. Label «Unggah / tempel» membuat guru mengira tombol itu menempel, padahal hanya membuka dialog file.
+2. **Dua target berbeda, dua state berbeda.** `unggahUntukBlok` = target dialog file («Unggah file»/«Ganti file»). `blokSiapTempel` = target Ctrl+V yang sengaja diset tombol «Tempel». Listener `paste` memakai `blokSiapTempel`, bukan `unggahUntukBlok`. Urutan target tempel: `blokSiapTempel` → blok gambar `url` kosong pertama → blok baru (cek `BATAS_BLOK_PER_HALAMAN`).
+3. **Dialog file dibatalkan harus melepas target.** Event `cancel` pada input file mengosongkan `unggahUntukBlok` (efek bergantung `mode` karena input ikut unmount saat pratinjau). Tanpa ini target tertinggal dan aksi berikutnya salah sasaran.
+4. **Tombol «Tempel» memakai `ambilGambarDariClipboardApi` (`src/lib/gambar.ts`)**, bukan menulis ulang pembaca clipboard. Bila helper melempar galat (tidak didukung / izin ditolak) → fallback menandai blok `blokSiapTempel` dengan petunjuk Ctrl+V terlihat (bukan hanya pesan di bilah atas). Bila helper mengembalikan `null` → galat «Clipboard tidak berisi gambar», jangan jatuh ke mode siap-tempel.
+5. **Unggah tetap lewat `unggahGambarHalaman`** (kompres + Storage); jangan simpan data-URL mentah.
+6. **Siap-tempel harus terlihat dan bisa dibatalkan** (bingkai hijau + tombol Batal), dan dilepas setelah tempel selesai (`finally` listener paste) maupun saat «Unggah file» ditekan.
+
 ## §Import.Tka2026 — Import ekspor bank soal website lama (2026-11-19)
 
 1. **Jangan menolak `pgk-cat`.** Tipe ini di tka2026 = BS kategori 2 kolom. Map ke `bs` lewat `rows`/`cols`/`kunciJawaban`. Soal dengan `cols.length !== 2` boleh ditolak + dilaporkan; yang 2 kolom wajib masuk.

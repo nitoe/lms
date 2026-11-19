@@ -30,6 +30,7 @@ import {
   BATAS_UKURAN,
 } from '../../types/materi'
 import { bersihHtmlMateri, materiPunyaTabel } from '../../lib/html'
+import { ambilGambarDariClipboardApi } from '../../lib/gambar'
 import MateriRichEditor from './MateriRichEditor'
 import MateriHalamanViewer from './MateriHalamanViewer'
 
@@ -119,7 +120,13 @@ export default function MateriHalamanEditor({
   const [error, setError] = useState('')
   const [mode, setMode] = useState<'edit' | 'pratinjau'>('edit')
   const fileRef = useRef<HTMLInputElement>(null)
+  /** Blok yang sedang memilih file lewat dialog «Unggah file» / «Ganti file». */
   const [unggahUntukBlok, setUnggahUntukBlok] = useState<string | null>(null)
+  /**
+   * Blok yang «siap menerima tempel» (Ctrl+V). Diisi tombol «Tempel» bila Clipboard API
+   * tidak tersedia / izin ditolak. Terpisah dari unggahUntukBlok (ANTIREGRESI §Materi.TempelGambar).
+   */
+  const [blokSiapTempel, setBlokSiapTempel] = useState<string | null>(null)
   /**
    * Mode sumber HTML per blok teks (untuk tabel / rumus mentah).
    * Otomatis aktif jika konten sudah berisi <table> (selaras editor stimulus TKA).
@@ -251,7 +258,7 @@ export default function MateriHalamanEditor({
   /**
    * Tempelkan / unggah satu file gambar ke blok.
    * Prioritas target:
-   * 1) blok yang dipilih lewat tombol «Unggah file» / «Ganti file» (unggahUntukBlok)
+   * 1) blok yang dipilih lewat «Unggah file» / «Ganti file» (unggahUntukBlok) atau «Tempel» (targetBlokId)
    * 2) blok gambar kosong pertama (url kosong — sering dari generate AI)
    * 3) blok gambar baru di akhir (jika masih muat)
    */
@@ -306,6 +313,53 @@ export default function MateriHalamanEditor({
     const adaKosong = aktif.blok.some((b) => b.tipe === 'gambar' && !(b.url || '').trim())
     if (adaKosong) return true
     return aktif.blok.length < BATAS_BLOK_PER_HALAMAN
+  }
+
+  /**
+   * Dialog pilih file ditutup tanpa memilih → lepas target blok.
+   * Tanpa ini unggahUntukBlok tertinggal dan salah sasaran di aksi berikutnya.
+   */
+  useEffect(() => {
+    if (mode !== 'edit') return
+    const el = fileRef.current
+    if (!el) return
+    const onCancel = () => setUnggahUntukBlok(null)
+    el.addEventListener('cancel', onCancel)
+    return () => el.removeEventListener('cancel', onCancel)
+  }, [mode])
+
+  /**
+   * Tombol «Tempel» pada satu blok gambar: baca gambar dari clipboard (Clipboard API).
+   * Bila peramban tidak mendukung / izin ditolak → blok ditandai «siap tempel» dan
+   * guru diminta menekan Ctrl+V (listener paste global di bawah).
+   */
+  async function tempelKeBlok(blokId: string) {
+    setError('')
+    setInfoImpor('')
+    setBlokSiapTempel(null)
+    setBusy(true)
+    try {
+      let file: File | null = null
+      try {
+        file = await ambilGambarDariClipboardApi()
+      } catch {
+        // Clipboard API tak tersedia / ditolak: arahkan ke Ctrl+V pada blok ini.
+        setBlokSiapTempel(blokId)
+        return
+      }
+      if (!file) {
+        setError('Clipboard tidak berisi gambar. Salin gambar dulu (screenshot atau «Salin gambar»), lalu klik Tempel.')
+        return
+      }
+      const { url, storagePath } = await unggahGambarHalaman(kelas, file)
+      const alt = `tempel-${Date.now()}`
+      terapkanGambarKeBlok(url, storagePath, alt, blokId)
+      setInfoImpor('Gambar dari clipboard berhasil ditempel.')
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Gagal menempel gambar dari clipboard.')
+    } finally {
+      setBusy(false)
+    }
   }
 
   async function onFileGambar(file: File | null) {
@@ -377,14 +431,14 @@ export default function MateriHalamanEditor({
         return
       }
 
-      if (!bisaTambahBlokGambarBaru(unggahUntukBlok) && files.length === 1) {
+      if (!bisaTambahBlokGambarBaru(blokSiapTempel) && files.length === 1) {
         setError(`Maksimal ${BATAS_BLOK_PER_HALAMAN} blok per halaman.`)
         return
       }
 
       setBusy(true)
       setError('')
-      const targetId = unggahUntukBlok
+      const targetId = blokSiapTempel
       let berhasil = 0
       try {
         for (let i = 0; i < files.length; i++) {
@@ -411,7 +465,7 @@ export default function MateriHalamanEditor({
         setError(err instanceof Error ? err.message : 'Gagal menempel gambar dari clipboard.')
       } finally {
         setBusy(false)
-        setUnggahUntukBlok(null)
+        setBlokSiapTempel(null)
       }
     }
 
@@ -423,7 +477,7 @@ export default function MateriHalamanEditor({
     busyAi,
     busyGambarId,
     aktif,
-    unggahUntukBlok,
+    blokSiapTempel,
     kelas,
     terapkanGambarKeBlok,
   ])
@@ -1163,7 +1217,10 @@ export default function MateriHalamanEditor({
 
               <div className="mh-blok-list">
                 {aktif.blok.map((b, bi) => (
-                  <div key={b.id} className="mh-blok-card">
+                  <div
+                    key={b.id}
+                    className={`mh-blok-card ${blokSiapTempel === b.id ? 'ring-2 ring-emerald-500' : ''}`}
+                  >
                     <div className="mh-blok-card-head">
                       <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
                         {b.tipe === 'teks' ? 'Teks' : 'Gambar'} · {bi + 1}
@@ -1248,8 +1305,8 @@ export default function MateriHalamanEditor({
                         ) : (
                           <div className="mh-img-empty">
                             {b.petunjukGambar?.trim()
-                              ? 'Petunjuk siap — generate gambar AI atau unggah file'
-                              : 'Belum ada gambar'}
+                              ? 'Petunjuk siap — generate gambar AI, unggah file, atau tempel gambar'
+                              : 'Belum ada gambar — unggah file atau tempel gambar'}
                           </div>
                         )}
                         <label className="materi-field">
@@ -1300,14 +1357,42 @@ export default function MateriHalamanEditor({
                             type="button"
                             className="lms-btn-secondary"
                             disabled={busy || busyGambarId === b.id}
+                            title="Pilih file gambar dari perangkat"
                             onClick={() => {
+                              setBlokSiapTempel(null)
                               setUnggahUntukBlok(b.id)
                               fileRef.current?.click()
                             }}
                           >
-                            {b.url ? 'Ganti file / tempel' : 'Unggah / tempel'}
+                            {b.url ? 'Ganti file' : 'Unggah file'}
+                          </button>
+                          <button
+                            type="button"
+                            className="lms-btn-secondary"
+                            disabled={busy || busyGambarId === b.id}
+                            title="Tempel gambar yang sudah disalin (screenshot / Salin gambar)"
+                            onClick={() => void tempelKeBlok(b.id)}
+                          >
+                            {b.url ? '⎘ Tempel pengganti' : '⎘ Tempel gambar'}
                           </button>
                         </div>
+                        {blokSiapTempel === b.id && (
+                          <div
+                            className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-[12px] text-emerald-900"
+                            role="status"
+                          >
+                            <span>
+                              Siap menerima tempel — tekan <strong>Ctrl+V</strong> (⌘V di Mac) sekarang.
+                            </span>
+                            <button
+                              type="button"
+                              className="mh-link-btn"
+                              onClick={() => setBlokSiapTempel(null)}
+                            >
+                              Batal
+                            </button>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
@@ -1321,7 +1406,7 @@ export default function MateriHalamanEditor({
                 <button type="button" className="lms-btn-secondary" onClick={mulaiUnggahGambar} disabled={busy}>
                   + Gambar
                 </button>
-                <span className="mh-hint">Gambar max {maxMb} MB · JPG/PNG/WebP · atau <strong>tempel (Ctrl+V)</strong></span>
+                <span className="mh-hint">Gambar max {maxMb} MB · JPG/PNG/WebP · atau <strong>tempel (Ctrl+V)</strong> / tombol «Tempel gambar» pada blok</span>
               </div>
             </>
           )}

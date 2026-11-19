@@ -1,3 +1,11 @@
+## 2026-11-19 — Materi: tombol «Unggah file» dan «Tempel gambar» dipisah di blok gambar
+
+- **Gejala:** satu tombol berlabel «Unggah / tempel» (atau «Ganti file / tempel») di blok gambar editor materi hanya membuka dialog pilih file. Menempel gambar sebenarnya lewat Ctrl+V global yang tidak terlihat di tombol, sehingga label menyesatkan dan di HP tidak ada cara menempel.
+- **Akar masalah:** dua mekanisme berbeda (dialog file vs clipboard) berbagi satu tombol dan satu variabel target (`unggahUntukBlok`). Bila dialog file dibatalkan, target tertinggal dan tempel berikutnya bisa salah sasaran.
+- **Perbaikan:** dua tombol terpisah per blok gambar: «Unggah file» / «Ganti file» (dialog file) dan «⎘ Tempel gambar» / «⎘ Tempel pengganti» (membaca clipboard lewat `ambilGambarDariClipboardApi`, helper yang sama dengan editor soal). Bila peramban tidak mendukung atau izin clipboard ditolak, blok ditandai «Siap menerima tempel» (bingkai hijau + tombol Batal) dan Ctrl+V / ⌘V menempel ke blok itu. Clipboard tanpa gambar menampilkan pesan jelas. Dialog file yang dibatalkan melepas target blok. Ctrl+V tanpa tombol tetap bekerja seperti sebelumnya (blok gambar kosong pertama, atau blok baru).
+- File: `src/components/materi/MateriHalamanEditor.tsx` (tanpa perubahan rules/functions/CSS; hanya deploy hosting LMS).
+- Antiregresi: §Materi.TempelGambar.Tombol.
+
 ## 2026-11-19 — Tugas: bukti foto per tahap terkait kategori rubrik (AI), batas foto 6
 
 - **Masalah:** rubrik berisi banyak aspek (persiapan, proses, hasil), tetapi pengumpulan cukup satu foto laporan akhir sehingga proses tidak terlihat dan semua aspek praktis dinilai dari satu bukti.
