@@ -312,7 +312,6 @@ export function normalisasiSoalDariImport(raw: Record<string, unknown>, index: n
         const teksP = String((raw.rows as unknown[])[ri] ?? '').trim()
         if (!teksP) continue
         const kunciBaris = (kunciArr[ri] ?? '').trim()
-        // Cocokkan ke labelBenar (case-insensitive); selain itu = salah
         const benar =
           kunciBaris.toLowerCase() === labelBenar.toLowerCase() ||
           kunciBaris.toLowerCase() === 'benar' ||
@@ -519,15 +518,12 @@ export function parseJsonImport(teks: string): HasilParseImport {
       return
     }
     if (r.soal) {
-      // Duplikat: abaikan untuk ekspor tka2026 besar (banyak soal mirip lintas materi);
-      // tetap cegah salinan identik berurutan pada template LMS biasa.
       const normal = normalisasiTeksUntukDuplikat(r.soal.teks || '')
       if (!formatTka2026 && normal && teksTerlihat.has(normal)) {
         galat.push(`Baris ${i + 1}: soal duplikat (teks hampir sama dengan soal sebelumnya).`)
         return
       }
       if (normal) teksTerlihat.add(normal)
-      // Rumus KaTeX otomatis aktif untuk soal TKA hasil migrasi/import tka2026
       if (formatTka2026) (r.soal as any).rumus = true
       soal.push(r.soal)
     }
@@ -773,7 +769,6 @@ export function validasiMetadataTka(
     return galat
   }
   if (!meta.tipeMateri || !meta.tipeMateri.trim()) {
-    // Format tka2026 kadang tanpa root tipeMateri tapi tiap soal punya — UI akan isi dari soal
     if (opts?.formatSumber !== 'tka2026') {
       galat.push('File import TKA wajib memuat materi (tipeMateri). Import dibatalkan.')
     }

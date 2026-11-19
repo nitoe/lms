@@ -1299,7 +1299,7 @@ export default function BankSoalPanel({ kelas, mapel, ruangId, lombaId, tpKelas 
           </div>
           <p className="mb-3 text-sm text-slate-600">
             {isTka
-              ? 'Masukkan judul paket dan materi TKA. File harus memuat mata pelajaran dan materi yang sama (satu materi saja).'
+              ? 'Masukkan judul paket. Materi boleh dikosongkan: sistem membaca materi dari file. File ekspor tka2026 yang memuat beberapa materi akan dipecah otomatis menjadi satu paket per materi. Bila Anda memilih materi di form, file harus cocok dengan materi itu (kecuali multi-materi).'
               : 'Masukkan judul paket dan pilih TP — atau «Tanpa TP» untuk soal gabungan beberapa TP. Dengan TP: file harus memuat mata pelajaran dan TP yang sama (satu TP saja). Tanpa TP: file harus dari template «Tanpa TP» (tidak memuat TP). Jika tidak sesuai, impor ditolak.'}
           </p>
           <div className="materi-form-grid">
@@ -1315,9 +1315,9 @@ export default function BankSoalPanel({ kelas, mapel, ruangId, lombaId, tpKelas 
             </label>
             {isTka ? (
               <label className="materi-field">
-                <span>Materi TKA</span>
-                <select value={materiIdImport} onChange={(e) => setMateriIdImport(e.target.value)} required>
-                  <option value="">— pilih materi —</option>
+                <span>Materi TKA (opsional)</span>
+                <select value={materiIdImport} onChange={(e) => setMateriIdImport(e.target.value)}>
+                  <option value="">— Otomatis dari file (satu atau multi materi) —</option>
                   {materiTka.map((m) => (
                     <option key={m} value={m}>{m}</option>
                   ))}
@@ -1346,7 +1346,11 @@ export default function BankSoalPanel({ kelas, mapel, ruangId, lombaId, tpKelas 
             </label>
           </div>
           <div className="mt-3 flex justify-end">
-            <button type="submit" className="lms-btn-primary" disabled={busy || !judulImport.trim() || !(isTka ? materiIdImport : tpIdImport) || !fileImport}>
+            <button
+              type="submit"
+              className="lms-btn-primary"
+              disabled={busy || !judulImport.trim() || (!isTka && !tpIdImport) || !fileImport}
+            >
               {busy ? 'Memproses…' : 'Impor & buka editor'}
             </button>
           </div>

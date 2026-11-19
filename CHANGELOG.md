@@ -1,3 +1,10 @@
+## 2026-11-19 — Import TKA: materi opsional di form (multi-materi tka2026)
+
+- **Gejala:** tombol «Impor & buka editor» tidak bisa diklik karena materi TKA wajib dipilih di form, padahal file ekspor tka2026 memuat semua materi dan sistem sudah bisa memecah paket otomatis.
+- **Perbaikan:** pada form «Import soal ke paket baru» di ruang TKA, pilihan materi **opsional** — default «Otomatis dari file (satu atau multi materi)». Submit hanya membutuhkan judul + file. File multi-materi tetap dipecah satu paket per materi.
+- Membuat **paket kosong baru** (+ Paket soal baru) tetap wajib pilih materi (satu paket = satu materi).
+- File: `src/components/BankSoalPanel.tsx` (lanjutan §Import.Tka2026).
+
 ## 2026-11-19 — Import bank soal TKA: dukungan penuh ekspor tka2026 (BI & Matematika)
 
 - **Kebutuhan:** mengimpor 300 soal Bahasa Indonesia dan 300 soal Matematika dari ekspor website lama (`tka2026`) ke bank soal TKA LMS tanpa soal tertinggal.

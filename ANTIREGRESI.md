@@ -7,6 +7,8 @@
 5. **Kompleksitas berlabel.** `L1-Pemahaman` dll. harus dinormalisasi ke `L1`/`L2`/`L3` (`normalisasiKompleksitasImport`); membiarkan string penuh membuat filter analisis TKA kosong.
 6. **Mapel dari subjectId.** `bahasa-indonesia` → `TKA Bahasa Indonesia`, `matematika` → `TKA Matematika`. Validasi mapel memakai nama kanonis ruang TKA, bukan slug.
 7. **Jangan menandai duplikat agresif pada file tka2026 besar.** Soal lintas materi bisa berbagi stem mirip; cek duplikat ketat hanya untuk template LMS biasa.
+8. **Form import TKA: materi tidak wajib.** Tombol «Impor & buka editor» hanya boleh bergantung pada judul + file. Memaksa `materiIdImport` (disabled/required) mengunci import file multi-materi. Paket kosong baru (+ Paket soal baru) tetap wajib materi.
+
 
 ## §Soal.Ganda — Deteksi & penghapusan soal ganda (2026-11-19)
 
