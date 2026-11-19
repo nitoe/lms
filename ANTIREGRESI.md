@@ -1,3 +1,10 @@
+
+## §Offline.UX.Sentuh — Target sentuh input offline (2026-11-19)
+
+1. Kontrol jawaban offline (BS, PG, PGK, jodoh) **wajib** mudah disentuh: tinggi minimum ≈ 44px (`min-h-11`), bukan radio/checkbox native kecil saja.
+2. Benar/Salah: tombol segmen **B** / **S** (bukan pasangan radio `text-xs`); status terpilih jelas (warna).
+3. Jangan mengembalikan radio B/S ukuran default browser di form offline.
+
 ## §0. PRIORITAS — Batas klien vs rules (permission denied berulang)
 
 **Ini sudah berulang.** Gejala: simpan/import paket soal (atau write lain) gagal dengan `Missing or insufficient permissions` padahal user berhak menulis kelas×mapel.

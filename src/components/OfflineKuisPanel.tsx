@@ -320,47 +320,75 @@ export default function OfflineKuisPanel({ kuis, onTersimpan }: Props) {
     const val = jawaban[s.id]
     if (s.tipe === 'pg') {
       return (
-        <div className="mt-2 space-y-1.5">
-          {(s.opsi || []).map((o) => (
-            <label key={o.id} className="flex cursor-pointer items-start gap-2 text-sm text-slate-700">
-              <input
-                type="radio"
-                name={`off-${s.id}`}
-                className="mt-0.5 text-muh-600"
-                checked={val === o.id}
-                onChange={() => setJawab(s.id, o.id)}
-              />
-              <span className="min-w-0 flex-1">{o.teks}</span>
-              {o.gambarId ? (
-                <GambarSoal id={o.gambarId} className="ml-1 h-10 w-10 rounded object-cover" />
-              ) : null}
-            </label>
-          ))}
+        <div className="mt-3 space-y-2">
+          {(s.opsi || []).map((o) => {
+            const aktif = val === o.id
+            return (
+              <button
+                key={o.id}
+                type="button"
+                onClick={() => setJawab(s.id, o.id)}
+                className={`flex w-full min-h-11 cursor-pointer items-start gap-3 rounded-xl border px-3 py-2.5 text-left text-sm transition ${
+                  aktif
+                    ? 'border-muh-500 bg-muh-50 ring-2 ring-muh-200'
+                    : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'
+                }`}
+              >
+                <span
+                  className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 text-[11px] font-bold ${
+                    aktif
+                      ? 'border-muh-600 bg-muh-600 text-white'
+                      : 'border-slate-300 bg-white text-slate-500'
+                  }`}
+                  aria-hidden
+                >
+                  {o.id.toUpperCase().slice(0, 1)}
+                </span>
+                <span className="min-w-0 flex-1 pt-0.5 text-slate-800">{o.teks}</span>
+                {o.gambarId ? (
+                  <GambarSoal id={o.gambarId} className="h-12 w-12 shrink-0 rounded-lg object-cover" />
+                ) : null}
+              </button>
+            )
+          })}
         </div>
       )
     }
     if (s.tipe === 'pgk') {
       const arr = Array.isArray(val) ? (val as string[]) : []
       return (
-        <div className="mt-2 space-y-1.5">
+        <div className="mt-3 space-y-2">
           {(s.opsi || []).map((o) => {
             const on = arr.includes(o.id)
             return (
-              <label key={o.id} className="flex cursor-pointer items-start gap-2 text-sm text-slate-700">
-                <input
-                  type="checkbox"
-                  className="mt-0.5 rounded text-muh-600"
-                  checked={on}
-                  onChange={() => {
-                    const next = on ? arr.filter((x) => x !== o.id) : [...arr, o.id]
-                    setJawab(s.id, next)
-                  }}
-                />
-                <span className="min-w-0 flex-1">{o.teks}</span>
+              <button
+                key={o.id}
+                type="button"
+                onClick={() => {
+                  const next = on ? arr.filter((x) => x !== o.id) : [...arr, o.id]
+                  setJawab(s.id, next)
+                }}
+                className={`flex w-full min-h-11 cursor-pointer items-start gap-3 rounded-xl border px-3 py-2.5 text-left text-sm transition ${
+                  on
+                    ? 'border-muh-500 bg-muh-50 ring-2 ring-muh-200'
+                    : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'
+                }`}
+              >
+                <span
+                  className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-md border-2 text-[11px] font-bold ${
+                    on
+                      ? 'border-muh-600 bg-muh-600 text-white'
+                      : 'border-slate-300 bg-white text-slate-400'
+                  }`}
+                  aria-hidden
+                >
+                  {on ? '✓' : ''}
+                </span>
+                <span className="min-w-0 flex-1 pt-0.5 text-slate-800">{o.teks}</span>
                 {o.gambarId ? (
-                  <GambarSoal id={o.gambarId} className="ml-1 h-10 w-10 rounded object-cover" />
+                  <GambarSoal id={o.gambarId} className="h-12 w-12 shrink-0 rounded-lg object-cover" />
                 ) : null}
-              </label>
+              </button>
             )
           })}
         </div>
@@ -372,30 +400,52 @@ export default function OfflineKuisPanel({ kuis, onTersimpan }: Props) {
         boolean
       >
       return (
-        <div className="mt-2 space-y-2">
-          {(s.pernyataan || []).map((p) => (
-            <div key={p.id} className="flex flex-wrap items-center gap-3 text-sm">
-              <span className="min-w-0 flex-1 text-slate-700">{teksPolos(p.teks)}</span>
-              <label className="flex items-center gap-1 text-xs">
-                <input
-                  type="radio"
-                  name={`bs-${s.id}-${p.id}`}
-                  checked={obj[p.id] === true}
-                  onChange={() => setJawab(s.id, { ...obj, [p.id]: true })}
-                />
-                B
-              </label>
-              <label className="flex items-center gap-1 text-xs">
-                <input
-                  type="radio"
-                  name={`bs-${s.id}-${p.id}`}
-                  checked={obj[p.id] === false}
-                  onChange={() => setJawab(s.id, { ...obj, [p.id]: false })}
-                />
-                S
-              </label>
-            </div>
-          ))}
+        <div className="mt-3 space-y-3">
+          {(s.pernyataan || []).map((p) => {
+            const v = obj[p.id]
+            const pilihB = v === true
+            const pilihS = v === false
+            return (
+              <div
+                key={p.id}
+                className="flex flex-col gap-2 rounded-xl border border-slate-100 bg-slate-50/60 p-3 sm:flex-row sm:items-center sm:gap-4"
+              >
+                <p className="min-w-0 flex-1 text-sm leading-snug text-slate-800">
+                  {teksPolos(p.teks)}
+                </p>
+                <div
+                  className="flex shrink-0 gap-2 self-end sm:self-center"
+                  role="group"
+                  aria-label={`Benar atau salah: ${teksPolos(p.teks).slice(0, 40)}`}
+                >
+                  <button
+                    type="button"
+                    onClick={() => setJawab(s.id, { ...obj, [p.id]: true })}
+                    className={`inline-flex min-h-11 min-w-[3.25rem] items-center justify-center rounded-xl border-2 px-4 text-sm font-bold transition ${
+                      pilihB
+                        ? 'border-emerald-600 bg-emerald-600 text-white shadow-sm'
+                        : 'border-slate-200 bg-white text-slate-600 hover:border-emerald-300 hover:bg-emerald-50'
+                    }`}
+                    aria-pressed={pilihB}
+                  >
+                    B
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setJawab(s.id, { ...obj, [p.id]: false })}
+                    className={`inline-flex min-h-11 min-w-[3.25rem] items-center justify-center rounded-xl border-2 px-4 text-sm font-bold transition ${
+                      pilihS
+                        ? 'border-rose-600 bg-rose-600 text-white shadow-sm'
+                        : 'border-slate-200 bg-white text-slate-600 hover:border-rose-300 hover:bg-rose-50'
+                    }`}
+                    aria-pressed={pilihS}
+                  >
+                    S
+                  </button>
+                </div>
+              </div>
+            )
+          })}
         </div>
       )
     }
@@ -406,12 +456,15 @@ export default function OfflineKuisPanel({ kuis, onTersimpan }: Props) {
       >
       const kananIds = (s.pasangan || []).map((p) => p.id)
       return (
-        <div className="mt-2 space-y-2">
+        <div className="mt-3 space-y-3">
           {(s.pasangan || []).map((p) => (
-            <div key={p.id} className="flex flex-wrap items-center gap-2 text-sm">
-              <span className="min-w-[8rem] flex-1 text-slate-700">{teksPolos(p.kiri)}</span>
+            <div
+              key={p.id}
+              className="flex flex-col gap-2 rounded-xl border border-slate-100 bg-slate-50/60 p-3 sm:flex-row sm:items-center sm:gap-3"
+            >
+              <span className="min-w-0 flex-1 text-sm text-slate-800">{teksPolos(p.kiri)}</span>
               <select
-                className="rounded-lg border border-slate-300 px-2 py-1 text-sm"
+                className="min-h-11 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-muh-500 focus:outline-none focus:ring-2 focus:ring-muh-200 sm:max-w-xs"
                 value={obj[p.id] || ''}
                 onChange={(e) => setJawab(s.id, { ...obj, [p.id]: e.target.value })}
               >

@@ -1,3 +1,13 @@
+## 2026-11-19 — Input offline: tombol jawaban lebih besar (UX sentuh)
+
+- **Gejala:** di tab Input offline, radio **B / S** (benar-salah) sangat kecil — sulit diklik kecuali zoom 100%; opsi PG juga hanya radio tipis.
+- **Perbaikan UX** (`OfflineKuisPanel`):
+  - **Benar/Salah:** tombol segmen besar (`min-h-11`, `min-w-[3.25rem]`), B hijau / S merah saat dipilih; baris pernyataan dalam kartu.
+  - **PG / PG kompleks:** seluruh opsi menjadi kartu klikabel full-width (bukan radio kecil), indikator huruf/centang.
+  - **Menjodohkan:** `select` tinggi `min-h-11`.
+- Tidak mengubah model data jawaban atau CF.
+- File: `src/components/OfflineKuisPanel.tsx`.
+
 ## 2026-11-19 — Hasil kuis mapel: tabel roster seluruh siswa (termasuk belum mengerjakan)
 
 - **Kebutuhan:** guru perlu memonitor siapa yang belum mengerjakan / belum diinput offline — sebelumnya tabel hasil mapel hanya menampilkan siswa yang sudah punya `lms_jawaban`.
