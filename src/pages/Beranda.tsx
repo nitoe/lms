@@ -21,6 +21,7 @@ import {
   type RuangKelas,
 } from '../lib/kelasLms'
 import { getDaftarMapel } from '../lib/mapelData'
+import { adalahAdminLms } from '../lib/lombaAkses'
 import { NAMA_PERAN } from '../lib/peran'
 import { kunciRuang, urutkanAgenda, useRingkasanRuang } from '../lib/ringkasanRuang'
 import { bolehAksesTkaStaf } from '../lib/tkaAkses'
@@ -61,7 +62,12 @@ export default function Beranda() {
     }
   }, [profil])
 
-  const sebagaiAdmin = profil?.role === 'admin' || profil?.peranLms === 'admin'
+  /**
+   * Admin dashboard & ringkasan global: samakan dengan adalahAdminLms
+   * (role admin / peranLms admin / email admin LMS). Tanpa email, akun
+   * arif.nitoe@gmail.com bisa terlewat bila field role di users belum «admin».
+   */
+  const sebagaiAdmin = adalahAdminLms(user, profil)
   const { ringkas, aktif, memuat, error } = useRingkasanRuang(ruang, sebagaiAdmin)
 
   const sekarang = useMemo(() => new Date(), [aktif])
