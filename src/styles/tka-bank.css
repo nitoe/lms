@@ -431,3 +431,41 @@
 button.pk-judul {
   border: 0; background: none; padding: 0; margin: 0; text-align: left; cursor: pointer; font-family: inherit;
 }
+
+/* ── Gabungkan paket soal (§Bank.Gabung) ── */
+.gp-alat { display: flex; flex-wrap: wrap; align-items: center; gap: 0.6rem 1rem; margin-bottom: 0.6rem; }
+.gp-cari {
+  flex: 1 1 12rem; min-width: 0; max-width: 20rem; padding: 0.45rem 0.7rem; font: inherit; font-size: 0.85rem;
+  border: 1px solid var(--color-border); border-radius: 0.55rem; background: #fff;
+}
+.gp-cek { display: inline-flex; align-items: center; gap: 0.45rem; font-size: 0.82rem; color: #374151; cursor: pointer; }
+.gp-cek--blok { align-self: end; min-height: 2.4rem; }
+.gp-daftar {
+  list-style: none; margin: 0; padding: 0; display: grid; gap: 0.35rem; max-height: 18rem; overflow-y: auto;
+  border: 1px solid var(--color-border); border-radius: 0.7rem; padding: 0.4rem; background: #fff;
+}
+.gp-kosong { padding: 0.8rem; font-size: 0.82rem; color: var(--color-muted); text-align: center; }
+.gp-baris {
+  display: flex; align-items: center; gap: 0.6rem; padding: 0.5rem 0.65rem; border-radius: 0.55rem;
+  border: 1px solid transparent; cursor: pointer; min-height: 2.75rem;
+}
+.gp-baris:hover { background: #f6f7fb; }
+.gp-baris--on { background: #eef0fb; border-color: #c9cdf0; }
+.gp-baris input { width: 1.1rem; height: 1.1rem; flex: none; }
+.gp-urut {
+  flex: none; min-width: 1.4rem; height: 1.4rem; border-radius: 999px; background: var(--pk-ink, #313083); color: #fff;
+  font-size: 0.72rem; font-weight: 800; display: inline-flex; align-items: center; justify-content: center;
+}
+.gp-urut:empty { visibility: hidden; }
+.gp-info { display: flex; flex-direction: column; min-width: 0; }
+.gp-info b { font-size: 0.85rem; color: #1f2937; overflow-wrap: anywhere; }
+.gp-info small { font-size: 0.72rem; color: var(--color-muted); }
+.gp-ringkas {
+  margin-top: 0.75rem; padding: 0.55rem 0.8rem; border-radius: 0.6rem; background: #ecfdf5; color: #065f46; font-size: 0.84rem;
+}
+.gp-pesan {
+  margin: 0.6rem 0 0; padding: 0.55rem 0.8rem 0.55rem 1.6rem; border-radius: 0.6rem; background: #fffbeb; color: #92400e;
+  font-size: 0.8rem; display: grid; gap: 0.25rem;
+}
+.gp-pesan--galat { background: #fef2f2; color: #991b1b; }
+

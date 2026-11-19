@@ -1,3 +1,14 @@
+## §Bank.Gabung — Gabungkan paket & export paket (2026-11-19)
+
+1. **Paket sumber tidak boleh diubah.** Gabungkan selalu membuat paket BARU (`buatPaket` + `simpanPaket`) berstatus `draf`. Jangan menambah opsi yang menghapus/menimpa sumber tanpa konfirmasi tegas.
+2. **Salin soal hanya lewat `salinSoal`** (klon JSON + ID baru; kunci dipetakan ulang). Jangan menyusun ulang soal bidang demi bidang: `stimulus`, `rumus`, `labelBenar/labelSalah`, `gambarId`, `pembahasan` akan hilang (selaras §84.1). ID soal/opsi yang sama di dua paket menyebabkan jawaban dan kunci bertabrakan.
+3. **`gambarId` aman dibawa** antar paket karena dokumen `lms_gambar` tidak dihapus saat paket dihapus. Export JSON TIDAK membawa gambar; UI wajib menyebut hal itu.
+4. **Batas:** hasil gabungan ≤ `BATAS_SOAL_PER_PAKET` (300, sama dengan rules `soal.size() <= 300`, lihat §0) dan ≤ `BATAS_UKURAN_PAKET`. Pemblokiran dilakukan di klien (`gabungkanPaket().galat`) agar bukan «permission denied» yang membingungkan.
+5. **Lintas mapel TKA:** paket gabungan disimpan pada mapel ruang tempat tombol ditekan (kelas bank `6`). Kuis & rekap TKA dipisah per mapel (§120, Rekap per mapel), jadi soal Matematika yang digabung ke paket Bahasa Indonesia akan dinilai sebagai bagian kuis Bahasa Indonesia. Materi per soal dipertahankan (`tipeMateri` diwariskan dari paket bila soal belum punya); `tipeMateri` paket hanya diisi bila seragam. Jangan memaksa satu materi bila campuran (editor mengunci materi soal mengikuti paket).
+6. **Sumber lintas mapel dibaca lewat `daftarPaket(KELAS_TKA_BANK, mapel)`** (menggabung kelas 6/6A/6B, §121). Jangan query `lms_paket_soal` langsung dengan `kelas == '6'`. Pada modul Lomba opsi lintas mapel dimatikan (query harus tetap `lombaId` saja, §Lomba.31).
+7. **Jika `simpanPaket` gagal setelah `buatPaket`**, paket kosong dihapus kembali (best effort) agar tidak meninggalkan paket «soal kosong».
+8. **Format export = format import**, tetapi import bank soal TKA hanya menerima satu materi per file (`validasiMetadataTka`) dan tidak membaca `labelBenar/labelSalah`/`rumus`/gambar. Untuk menyatukan paket multi-materi atau bergambar gunakan Gabungkan paket, bukan export-lalu-import.
+
 ## §Lomba.32 — Otorisasi pengampu di Cloud Function kuis Lomba (2026-11-19)
 
 1. Hak guru atas kuis Lomba **hanya** ditentukan keanggotaan pengampu lomba (`guruPengampuUids` atau `guruPengampuUid` legacy) atau admin LMS — **bukan** `dibuatOleh` dan **bukan** `penugasanKelasMapel`. Pengampu lomba bisa >1 orang; kuis buatan pengampu lain atau admin harus tetap dapat diakses.

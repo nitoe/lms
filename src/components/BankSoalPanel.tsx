@@ -4,7 +4,14 @@ import { useAuth } from '../context/AuthContext'
 import { buatPaket, daftarPaket, daftarPaketLomba, hapusPaket, simpanPaket } from '../lib/soal'
 import { KELAS_LOMBA_BANK } from '../lib/lombaAkses'
 import { getTpMapelKelas } from '../lib/tpData'
-import { adalahMapelTka, materiTkaUntuk, TIPE_SOAL_TKA, KELAS_TKA_BANK, LABEL_MAPEL_TKA } from '../lib/tkaAkses'
+import { adalahMapelTka, materiTkaUntuk, MAPEL_TKA, TIPE_SOAL_TKA, KELAS_TKA_BANK, LABEL_MAPEL_TKA } from '../lib/tkaAkses'
+import {
+  buatExportJson,
+  gabungkanPaket,
+  judulUsulan,
+  namaBerkasAman,
+  unduhBerkasTeks,
+} from '../lib/gabungPaket'
 import type { TpRingkas } from '../types/materi'
 import type { KompleksitasSoal, PaketSoal, TipeSoal } from '../types/soal'
 import {
@@ -95,6 +102,17 @@ export default function BankSoalPanel({ kelas, mapel, ruangId, lombaId, tpKelas 
   const [formExport, setFormExport] = useState(false)
   const [tpIdExport, setTpIdExport] = useState('')
   const [materiIdExport, setMateriIdExport] = useState('')
+
+  /* Gabungkan paket */
+  const [formGabung, setFormGabung] = useState(false)
+  const [terpilih, setTerpilih] = useState<string[]>([])
+  const [judulGabung, setJudulGabung] = useState('')
+  const [judulGabungManual, setJudulGabungManual] = useState(false)
+  const [lewatiDuplikat, setLewatiDuplikat] = useState(true)
+  const [cariGabung, setCariGabung] = useState('')
+  const [sertakanMapelLain, setSertakanMapelLain] = useState(false)
+  const [paketMapelLain, setPaketMapelLain] = useState<PaketSoal[]>([])
+  const [muatMapelLain, setMuatMapelLain] = useState(false)
 
   /* Filter & pengelompokan */
   const [filterTp, setFilterTp] = useState('')
@@ -473,6 +491,143 @@ export default function BankSoalPanel({ kelas, mapel, ruangId, lombaId, tpKelas 
     }
   }
 
+  /* ---------- Export & gabungkan paket (ANTIREGRESI §Bank.Gabung) ---------- */
+
+  function tutupSemuaForm() {
+    setFormBuka(false)
+    setFormImport(false)
+    setFormExport(false)
+    setPaketTargetImport(null)
+    setFormGabung(false)
+  }
+
+  function eksporPaket(p: PaketSoal) {
+    const h = buatExportJson({
+      mapel: p.mapel,
+      judul: p.judul,
+      soal: p.soal ?? [],
+      tipeMateri: p.tipeMateri,
+      tpNama: p.tpNama,
+    })
+    unduhBerkasTeks(`bank-soal-${namaBerkasAman(p.mapel)}-${namaBerkasAman(p.judul)}.json`, h.isi)
+    setError('')
+    setInfoImport(
+      `Mengunduh ${h.jumlahSoal} soal dari «${p.judul}».` +
+        (h.jumlahBergambar > 0 ? ` ${h.jumlahBergambar} soal memakai gambar — gambar tidak ikut file JSON.` : ''),
+    )
+  }
+
+  function bukaGabung() {
+    tutupSemuaForm()
+    setFormGabung(true)
+    setTerpilih([])
+    setJudulGabung('')
+    setJudulGabungManual(false)
+    setCariGabung('')
+    setSertakanMapelLain(false)
+    setError('')
+    setInfoImport('')
+  }
+
+  /** Muat paket mapel TKA lainnya (kelas bank «6» + sisa 6A/6B) saat opsi lintas mapel dicentang. */
+  async function aturMapelLain(aktif: boolean) {
+    setSertakanMapelLain(aktif)
+    if (!aktif || paketMapelLain.length > 0 || !isTka || lombaId) return
+    setMuatMapelLain(true)
+    try {
+      const lain = MAPEL_TKA.filter((m) => m !== mapel)
+      const hasil = await Promise.allSettled(lain.map((m) => daftarPaket(KELAS_TKA_BANK, m)))
+      const gabung: PaketSoal[] = []
+      for (const h of hasil) if (h.status === 'fulfilled') gabung.push(...h.value)
+      setPaketMapelLain(gabung)
+      if (hasil.every((h) => h.status === 'rejected')) setError('Gagal memuat paket dari mapel TKA lain.')
+    } finally {
+      setMuatMapelLain(false)
+    }
+  }
+
+  function aturTerpilih(id: string) {
+    setTerpilih((prev) => {
+      const baru = prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+      return baru
+    })
+  }
+
+  const sumberGabung = useMemo(() => {
+    const semua = [...(list ?? []), ...(sertakanMapelLain ? paketMapelLain : [])]
+    return semua
+  }, [list, sertakanMapelLain, paketMapelLain])
+
+  const paketTerpilih = useMemo(() => {
+    const peta = new Map(sumberGabung.map((p) => [p.id, p]))
+    return terpilih.map((id) => peta.get(id)).filter((p): p is PaketSoal => !!p)
+  }, [terpilih, sumberGabung])
+
+  const hasilGabung = useMemo(
+    () => gabungkanPaket(paketTerpilih, mapel, { lewatiDuplikat }),
+    [paketTerpilih, mapel, lewatiDuplikat],
+  )
+
+  // Judul usulan mengikuti pilihan selama belum diubah manual.
+  useEffect(() => {
+    if (!formGabung || judulGabungManual) return
+    setJudulGabung(judulUsulan(paketTerpilih))
+  }, [formGabung, judulGabungManual, paketTerpilih])
+
+  const sumberGabungTersaring = useMemo(() => {
+    const s = cariGabung.trim().toLowerCase()
+    if (!s) return sumberGabung
+    return sumberGabung.filter((p) => `${p.judul} ${p.mapel} ${p.tipeMateri ?? ''} ${p.tpNama ?? ''}`.toLowerCase().includes(s))
+  }, [sumberGabung, cariGabung])
+
+  function unduhGabungan() {
+    if (paketTerpilih.length === 0) return
+    const h = buatExportJson({
+      mapel,
+      judul: judulGabung.trim() || judulUsulan(paketTerpilih),
+      soal: hasilGabung.soal,
+      tipeMateri: hasilGabung.tipeMateri,
+      tpNama: hasilGabung.tp?.tpNama,
+    })
+    unduhBerkasTeks(`bank-soal-gabungan-${namaBerkasAman(mapel)}-${namaBerkasAman(judulGabung || 'paket')}.json`, h.isi)
+    setInfoImport(
+      `Mengunduh ${h.jumlahSoal} soal gabungan.` +
+        (h.jumlahBergambar > 0 ? ` ${h.jumlahBergambar} soal memakai gambar — gambar tidak ikut file JSON.` : ''),
+    )
+  }
+
+  async function simpanGabungan(e: React.FormEvent) {
+    e.preventDefault()
+    if (hasilGabung.galat.length > 0 || !judulGabung.trim()) return
+    setBusy(true)
+    setError('')
+    setInfoImport('')
+    let idBaru = ''
+    try {
+      idBaru = await buatPaket({
+        kelas: lombaId ? KELAS_LOMBA_BANK : isTka ? KELAS_TKA_BANK : kelas,
+        mapel,
+        ...(lombaId ? { lombaId } : {}),
+        judul: judulGabung,
+        tpId: hasilGabung.tp?.tpId,
+        tpNomor: hasilGabung.tp?.tpNomor,
+        tpNama: hasilGabung.tp?.tpNama,
+        tipeMateri: hasilGabung.tipeMateri,
+        namaGuru: profil?.nama,
+      })
+      await simpanPaket(idBaru, {
+        soal: hasilGabung.soal,
+        ...(hasilGabung.tipeMateri ? { tipeMateri: hasilGabung.tipeMateri } : {}),
+      })
+      navigate(`/kelas/${encodeURIComponent(ruangId)}/soal/${idBaru}${qLomba}`)
+    } catch (err) {
+      // Jangan tinggalkan paket kosong bila penyimpanan soal gagal.
+      if (idBaru) await hapusPaket(idBaru).catch(() => undefined)
+      setError(err instanceof Error ? err.message : 'Gagal menyimpan paket gabungan.')
+      setBusy(false)
+    }
+  }
+
   function renderKartu(p: PaketSoal) {
     const jt = hitungTipe(p)
     const jk = hitungKompleksitas(p)
@@ -568,12 +723,22 @@ export default function BankSoalPanel({ kelas, mapel, ruangId, lombaId, tpKelas 
             <button
               type="button"
               className="pk-btn"
+              disabled={busy || (p.soal?.length ?? 0) === 0}
+              onClick={() => eksporPaket(p)}
+              title="Unduh soal paket ini sebagai JSON"
+            >
+              Export
+            </button>
+            <button
+              type="button"
+              className="pk-btn"
               disabled={busy}
               onClick={() => {
                 setPaketTargetImport(p)
                 setFormImport(false)
                 setFormExport(false)
                 setFormBuka(false)
+                setFormGabung(false)
               }}
             >
               Import
@@ -648,13 +813,16 @@ export default function BankSoalPanel({ kelas, mapel, ruangId, lombaId, tpKelas 
           />
         </div>
         <div className="flex flex-wrap gap-2">
-          <button type="button" className="lms-btn-secondary" onClick={() => { setFormExport(true); setFormBuka(false); setFormImport(false); setError("") }}>
+          <button type="button" className="lms-btn-secondary" disabled={(list?.length ?? 0) < 2} onClick={bukaGabung}>
+            Gabungkan paket
+          </button>
+          <button type="button" className="lms-btn-secondary" onClick={() => { setFormExport(true); setFormBuka(false); setFormImport(false); setFormGabung(false); setError("") }}>
             Unduh template
           </button>
-          <button type="button" className="lms-btn-secondary" onClick={() => { setFormImport(true); setFormBuka(false); setFormExport(false); setError("") }}>
+          <button type="button" className="lms-btn-secondary" onClick={() => { setFormImport(true); setFormBuka(false); setFormExport(false); setFormGabung(false); setError("") }}>
             Import soal
           </button>
-          <button type="button" className="lms-btn-primary" onClick={() => { setFormBuka((v) => !v); setFormImport(false); setFormExport(false); setError("") }}>
+          <button type="button" className="lms-btn-primary" onClick={() => { setFormBuka((v) => !v); setFormImport(false); setFormExport(false); setFormGabung(false); setError("") }}>
             + Paket soal baru
           </button>
         </div>
@@ -793,6 +961,108 @@ export default function BankSoalPanel({ kelas, mapel, ruangId, lombaId, tpKelas 
           <div className="mt-3 flex justify-end">
             <button type="submit" className="lms-btn-primary" disabled={busy || !judul.trim() || (isTka && !materiId.trim())}>
               {busy ? 'Membuat…' : 'Buat & buka editor'}
+            </button>
+          </div>
+        </form>
+      )}
+
+      {formGabung && (
+        <form onSubmit={(e) => void simpanGabungan(e)} className="materi-form gp-form">
+          <div className="materi-form-head">
+            <h3 className="text-sm font-semibold text-slate-900">Gabungkan paket soal</h3>
+            <button type="button" className="lms-btn-ghost" onClick={() => setFormGabung(false)}>Batal</button>
+          </div>
+          <p className="mb-3 text-sm text-slate-600">
+            Centang dua paket atau lebih. Soal disalin ke <b>paket baru</b> (draf) menurut urutan centang; paket sumber
+            tidak berubah. Bacaan, rumus, gambar, dan pembahasan ikut terbawa.
+          </p>
+
+          <div className="gp-alat">
+            <input
+              type="search"
+              className="gp-cari"
+              placeholder="Cari paket…"
+              value={cariGabung}
+              onChange={(e) => setCariGabung(e.target.value)}
+              aria-label="Cari paket untuk digabungkan"
+            />
+            {isTka && !lombaId && (
+              <label className="gp-cek">
+                <input type="checkbox" checked={sertakanMapelLain} onChange={(e) => void aturMapelLain(e.target.checked)} />
+                <span>Sertakan paket mapel TKA lain{muatMapelLain ? ' (memuat…)' : ''}</span>
+              </label>
+            )}
+          </div>
+
+          <ul className="gp-daftar" aria-label="Pilih paket sumber">
+            {sumberGabungTersaring.length === 0 && <li className="gp-kosong">Tidak ada paket yang cocok.</li>}
+            {sumberGabungTersaring.map((p) => {
+              const urut = terpilih.indexOf(p.id)
+              const lain = p.mapel !== mapel
+              return (
+                <li key={p.id}>
+                  <label className={`gp-baris${urut >= 0 ? ' gp-baris--on' : ''}`}>
+                    <input type="checkbox" checked={urut >= 0} onChange={() => aturTerpilih(p.id)} />
+                    <span className="gp-urut" aria-hidden>{urut >= 0 ? urut + 1 : ''}</span>
+                    <span className="gp-info">
+                      <b>{p.judul}</b>
+                      <small>
+                        {lain ? `${LABEL_MAPEL_TKA[p.mapel as keyof typeof LABEL_MAPEL_TKA] ?? p.mapel} · ` : ''}
+                        {(p.tipeMateri || p.tpNama || 'Tanpa materi/TP')} · {p.jumlahSoal} soal · {p.status === 'siap' ? 'Siap' : 'Draf'}
+                      </small>
+                    </span>
+                  </label>
+                </li>
+              )
+            })}
+          </ul>
+
+          <div className="materi-form-grid mt-3">
+            <label className="materi-field">
+              <span>Judul paket gabungan</span>
+              <input
+                required
+                value={judulGabung}
+                maxLength={200}
+                onChange={(e) => { setJudulGabung(e.target.value); setJudulGabungManual(true) }}
+                placeholder="Contoh: Try Out 1 — gabungan"
+              />
+            </label>
+            <label className="gp-cek gp-cek--blok">
+              <input type="checkbox" checked={lewatiDuplikat} onChange={(e) => setLewatiDuplikat(e.target.checked)} />
+              <span>Lewati soal yang isinya sama persis</span>
+            </label>
+          </div>
+
+          {paketTerpilih.length > 0 && (
+            <div className="gp-ringkas" aria-live="polite">
+              <b>{hasilGabung.soal.length}</b> soal akan masuk dari {paketTerpilih.length} paket
+              {hasilGabung.dilewati > 0 ? ` · ${hasilGabung.dilewati} duplikat dilewati` : ''}
+              {hasilGabung.tipeMateri ? ` · materi: ${hasilGabung.tipeMateri}` : ''}
+            </div>
+          )}
+          {hasilGabung.galat.length > 0 && paketTerpilih.length > 0 && (
+            <ul className="gp-pesan gp-pesan--galat">{hasilGabung.galat.map((g) => <li key={g}>{g}</li>)}</ul>
+          )}
+          {hasilGabung.peringatan.length > 0 && (
+            <ul className="gp-pesan">{hasilGabung.peringatan.map((g) => <li key={g}>{g}</li>)}</ul>
+          )}
+
+          <div className="mt-3 flex flex-wrap justify-end gap-2">
+            <button
+              type="button"
+              className="lms-btn-secondary"
+              disabled={busy || paketTerpilih.length === 0 || hasilGabung.soal.length === 0}
+              onClick={unduhGabungan}
+            >
+              Unduh JSON gabungan
+            </button>
+            <button
+              type="submit"
+              className="lms-btn-primary"
+              disabled={busy || hasilGabung.galat.length > 0 || !judulGabung.trim()}
+            >
+              {busy ? 'Menyimpan…' : 'Gabungkan & buka editor'}
             </button>
           </div>
         </form>

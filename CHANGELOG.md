@@ -1,3 +1,17 @@
+## 2026-11-19 — Bank Soal: Gabungkan paket & Export paket (JSON) — TKA dan mapel lain
+
+- **Latar:** Paket TKA Matematika dan Bahasa Indonesia sering berjudul sama tetapi berisi soal berbeda, dan belum ada cara menyatukan beberapa paket maupun mengunduh isi paket yang sudah ada (hanya «Unduh template»).
+- **Gabungkan paket** (tombol di tab Bank Soal): centang ≥ 2 paket → soal disalin ke **paket baru berstatus Draf** menurut urutan centang; paket sumber tidak diubah. Stimulus/bacaan, rumus, label Benar/Salah, gambar, kompleksitas, dan pembahasan ikut terbawa (klon penuh + ID baru).
+  - Opsi «Lewati soal yang isinya sama persis» (aktif bawaan) mencegah soal dobel.
+  - Ruang TKA: opsi «Sertakan paket mapel TKA lain» agar paket Matematika & Bahasa Indonesia (dan IPA) dapat disatukan. Materi tiap soal dipertahankan; materi paket diisi hanya bila semuanya sama.
+  - Mapel biasa: TP paket gabungan diisi bila semua sumber satu TP, selain itu «Tanpa TP».
+  - Pratinjau jumlah soal, duplikat, peringatan, dan pemblokiran bila > 300 soal atau mendekati 1 MB.
+  - Modul Lomba tetap di-scope `lombaId` + kelas bank LB.
+- **Export:** tombol **Export** pada tiap kartu paket dan **Unduh JSON gabungan** di form gabung. Format JSON mengikuti format import bank soal.
+- Tidak mengubah firestore.rules maupun skema data.
+- File: `src/lib/gabungPaket.ts` (baru), `src/components/BankSoalPanel.tsx`, `src/styles/tka-bank.css`.
+- Antiregresi: §Bank.Gabung.
+
 ## 2026-11-19 — Lomba: pengampu non-admin bisa menilai kuis Lomba (CF nilaiManualKuisLms)
 
 - **Gejala:** guru pengampu lomba (terutama pengampu ke-2 dst.) mendapat «Anda bukan pengampu kelas×mapel ini» saat menyimpan skor manual uraian / koreksi isian pada kuis Lomba; kuis yang kebetulan sesuai mapel×rombel penugasannya terasa «bisa», kuis mapel lain / Gabungan / buatan pengampu lain «tidak bisa».
