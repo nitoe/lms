@@ -1,16 +1,24 @@
-## 2026-11-19 — Dashboard admin: performa guru, cakupan materi, aktivitas siswa
+## 2026-11-19 — Import Try Out II (Matematika & Bahasa Indonesia dari penyelenggara eksternal)
 
-- **Masalah:** Beranda admin hanya menampilkan ruang pribadi & agenda tugas/kuis — tidak memberi gambaran performa guru dan cakupan LMS yang bisa ditindaklanjuti wakil kepala kurikulum.
-- **Perbaikan:** Panel **Dashboard Kurikulum** di Beranda (hanya tampil untuk admin):
-  - Ringkasan: total materi, kuis aktif/total, tugas aktif/total, siswa aktif, guru yang sudah membuat konten, siswa unik aktif hari ini.
-  - **Aktivitas siswa hari ini:** jawaban kuis, pengumpulan tugas, ranking kelas terbanyak memanfaatkan LMS.
-  - **Temuan:** alert otomatis (kelas tanpa materi, mapel kosong, tidak ada aktivitas hari ini).
-  - **Tabel performa guru:** jumlah materi / kuis / tugas yang dibuat (dari `dibuatOleh` / `dibuatOlehNama`; konten Lomba dikecualikan).
-  - **Cakupan per kelas:** jumlah materi/kuis/tugas + mapel master yang sudah/belum punya materi (termasuk share `kelasList`).
-- File baru: `src/lib/adminDashboard.ts`, `src/components/AdminDashboardPanel.tsx`.
-- File diubah: `src/pages/Beranda.tsx`, `src/styles/ruang.css`.
-- Tidak mengubah firestore.rules / indexes — admin sudah boleh list koleksi terkait.
-- Antiregresi: §Admin.Dashboard.
+- **Latar:** Try Out TKA tahap II untuk Matematika & Bahasa Indonesia diselenggarakan pihak luar (kejarcita.id), bukan di LMS; hanya IPA tahap II yang lewat LMS. Hasilnya harus masuk rekap & portal orang tua lengkap dengan kompetensi dasar (L1–L3) **dan** kompetensi materi per siswa, bukan hanya nilai akhir.
+- **Data baru** `src/data/tryoutTahap2.ts`: 51 siswa (6A 25, 6B 26), disimpan sebagai **poin per kelompok** (bukan persen), diturunkan dari skor per butir Excel penyelenggara.
+  - Matematika: L1/L2/L3 maks 2/39/9; materi Bilangan/Data/Geometri dan Pengukuran maks 19/17/14 (total 50). Bahasa Indonesia: L1/L2/L3 maks 10/22/18 (total 50).
+  - Nilai mapel = `round(poin ÷ 50 × 100)`; soal dilewati = 0 poin, penyebut tetap 50.
+  - Dzaky Abdul Rauf (6A) **tidak diimpor**: tidak hadir pada sesi reguler; susulannya hanya satu nilai gabungan (35) tanpa rincian per soal, tidak bisa dipecah per mapel.
+- **Kode:**
+  - `SebaranMtkImport`: `k` boleh 3 angka (L1–L3, **L3 Matematika baru**) dan baris boleh membawa poin maksimum sendiri (`maksK`, `maksM`). Tanpa itu tetap memakai konstanta Try Out I — keluaran Try Out I **identik** dengan kode lama (diuji 52/52 baris).
+  - `bangunSebaranMtk` (`lib/sebaranTka.ts`) memakai maks per baris dan mendukung L3.
+  - `periksaSebaranImport` (baru): memvalidasi jumlah kelompok, poin 0…maks, dan jumlah kompetensi dasar = materi. Dipanggil di pratinjau (data bawaan & JSON kustom); satu baris salah menghentikan pratinjau.
+  - `TkaImportRekap.tsx`: tombol **Muat data Try Out II** (otomatis memilih tahap II). Data bawaan terkunci ke tahapnya — menyimpan data Try Out II ke tahap lain ditolak.
+- **Asumsi yang perlu diketahui (bukan data resmi penyelenggara):**
+  - Level Kognitif penyelenggara dipetakan 1–3 = L1, 4–6 = L2, 7–9 = L3.
+  - Materi Matematika = klasifikasi isi soal dari PDF soal paket 6A-I (penyelenggara tidak menyediakan kisi-kisi). Soal 4, 13, 17, 21 ambigu.
+  - Materi Bahasa Indonesia = L1/L2/L3 (konvensi sama dengan Try Out I).
+  - Paket B (6A-II, 6B-I, 6B-II) memuat 10 soal berkode baru yang dianggap salinan paket A (dikonfirmasi guru).
+- **Batas yang diketahui:** grid input manual Matematika (`kelompokInputSebaran`) masih L1–L2; mengubah nilai manual Try Out II lewat grid membuang sebaran (ANTIREGRESI §109.3).
+- Tidak perlu `deploy:rules` (field `sebaran` sudah diizinkan, §109.8). Cukup `npm run deploy`. Setelah deploy: `/tka/import-rekap` → **Muat data Try Out II** → periksa pratinjau (51 baris cocok) → Simpan → «Perbarui publikasi» agar portal orang tua terbarui.
+- File: `src/data/tryoutTahap2.ts` (baru), `src/data/tryoutTahap1.ts` (tipe), `src/lib/sebaranTka.ts`, `src/pages/tka/TkaImportRekap.tsx`.
+- Antiregresi: §TKA.ImportTahap2.
 
 ## 2026-11-18 — Materi halaman: tempel gambar dari clipboard
 

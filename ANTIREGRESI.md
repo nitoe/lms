@@ -28,16 +28,19 @@ Bila error tetap permission setelah rules 300 ter-deploy: cek penugasan `penugas
 ---
 
 
-## §Admin.Dashboard — Panel kurikulum di Beranda (2026-11-19)
+## §TKA.ImportTahap2 — Import Try Out II (MTK & BI eksternal) (2026-11-19)
 
-1. Panel hanya di-render bila `profil.role === 'admin' || profil.peranLms === 'admin'` (`sebagaiAdmin`). Guru biasa tidak memuat query agregat.
-2. Query full-collection `lms_materi` / `lms_kuis` / `lms_tugas` / `users` / `siswa` **hanya aman untuk admin** (rules `isAdmin()` pada read). Jangan panggil `muatAdminDashboard` dari peran guru.
-3. Konten Lomba (`lombaId` terisi) **dikecualikan** dari statistik materi & kuis agar tidak mencampur bank LB dengan pembelajaran reguler.
-4. Aktivitas hari ini memakai `createdAt >= awal hari lokal` + `orderBy createdAt desc` + `limit(500)` pada `lms_jawaban` dan `lms_pengumpulan`. Bila indeks belum ada / query gagal, panel tetap tampil dengan angka 0 (error di-console, tidak merusak Beranda).
-5. Cakupan mapel memakai master koleksi `mapel` + set mapel yang punya materi per kelas (termasuk `kelasList`). Mapel «Wali kelas» diabaikan.
-6. Nama guru di ranking diambil dari `dibuatOlehNama` (fallback uid). Dokumen lama tanpa nama tetap masuk baris «Tanpa nama» / uid.
-7. Tombol «Muat ulang» memanggil ulang agregat; tidak ada cache lokal yang menyesatkan.
-8. CSS memakai prefix `.ad-*` di `ruang.css` agar tidak bentrok kelas `.rg-*`.
+1. **Poin maksimum dibawa per baris.** Data Try Out II membawa `sbMtk.maksK/maksM` dan `sbBi.maks`. Konstanta `MAKS_MTK_*` / `MAKS_BI_*` di `tryoutTahap1.ts` hanya bawaan Try Out I — **jangan diubah** (merusak data tahap I) dan jangan mengimpor data tahap lain tanpa maks sendiri.
+2. `sbMtk.k` = 2 angka (Try Out I) atau 3 angka (L3). `maksK` wajib sama panjang dengan `k`.
+3. `periksaSebaranImport` wajib dipanggil sebelum pratinjau/simpan (data bawaan **dan** JSON kustom). Jangan dihapus: jumlah poin kompetensi dasar harus = kompetensi materi, dan poin ≤ maks.
+4. **Data bawaan terkunci ke tahapnya** (`sumberAktif.tahap` di `TkaImportRekap`). Jangan hapus penjaga ini — Try Out II tertulis ke tahap I = laporan salah ke orang tua.
+5. Nilai mapel = `round(poin ÷ maks × 100)` (`nilaiDariSebaran`); penyebut tetap seluruh soal (50). Soal dilewati = 0 poin (selaras §109.2).
+6. Skor parsial sumber dibulatkan 2 desimal (0,67 / 1,33 / 0,63 / 0,42). Kembalikan ke pecahan eksak (1/3, 1/2, 2/3 × bobot) **sebelum** dijumlah; jangan menjumlah angka bulat sumber langsung (galat menumpuk).
+7. Kompetensi materi Matematika Try Out II adalah **klasifikasi isi soal** dari PDF soal paket 6A-I, bukan kisi-kisi resmi penyelenggara. Bila kisi-kisi resmi didapat, ganti isi `m` — jangan menyunting `k`. Level Kognitif penyelenggara dipakai untuk L1–L3 (1–3/4–6/7–9); **jangan memakai tagar LOTS/HOTS** (tidak konsisten antar paket: soal 4 dan 23).
+8. Bahasa Indonesia: tipe materi = L1/L2/L3 tetapi tetap **dua daftar terpisah** (§123). Jangan menggabung atau memasangkan.
+9. Siswa tidak hadir / susulan tanpa rincian per soal (mis. Dzaky Abdul Rauf, nilai gabungan 35) **tidak diimpor**. Jangan memecah nilai gabungan menjadi MTK/BI dengan perkiraan; impor setelah ada Excel per soal.
+10. Kode Soal berbeda antar paket tidak otomatis berarti isi soal berbeda; yang menentukan adalah bukti (level, bobot, tingkat keberhasilan) atau PDF paket tersebut. Asumsi paket B = salinan paket A dikonfirmasi guru.
+11. Grid input manual Matematika masih L1–L2 (`kelompokInputSebaran`); mengubah nilai manual membuang `sebaran` (§109.3). Jangan menambah L3 ke grid tanpa menyesuaikan data Try Out I (yang tidak punya L3).
 
 
 ## §Materi.TempelGambar — Paste clipboard ke blok gambar (2026-11-18)

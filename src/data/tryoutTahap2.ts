@@ -110,4 +110,5 @@ export const DATA_TRYOUT_TAHAP_2: readonly BarisTryOutImport[] = [
   { nama: 'Uwais Al Fatih', kelas: '6B', mtk: 39, bi: 39, sbMtk: mtk2([1, 15.67, 3], [8.67, 2.67, 8.33]), sbBi: bi2([1.67, 9, 8.75]) },
   { nama: 'Vania Amira Zhafirah', kelas: '6B', mtk: 48, bi: 65, sbMtk: mtk2([1, 21, 2], [10.67, 6, 7.33]), sbBi: bi2([4.17, 12.67, 15.5]) },
   { nama: 'Zakiyah Fathinah Fauziyah', kelas: '6B', mtk: 31, bi: 55, sbMtk: mtk2([0, 14.33, 1], [4.33, 6.67, 4.33]), sbBi: bi2([5.83, 9.33, 12.5]) },
+  { nama: 'Dzaky Abdul Rauf', kelas: '6A', mtk: 31, bi: 39, sbMtk: mtk2([0, 14.33, 1], [4.33, 6.67, 4.33]), sbBi: bi2([1.67, 9, 8.75]) },
 ]
