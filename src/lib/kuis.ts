@@ -147,22 +147,9 @@ export async function daftarKuisLomba(lombaId: string, mapel: string): Promise<K
   if (!lombaId) return []
   const snap = await getDocs(query(koleksi(), where('lombaId', '==', lombaId)))
   const mapelNorm = String(mapel || '').trim()
-  const list: KuisLms[] = []
-  for (const d of snap.docs) {
-    const data = d.data() as Record<string, unknown>
-    const m = String(data.mapel || '').trim()
-    if (mapelNorm && m !== mapelNorm) continue
-    list.push({
-      id: d.id,
-      ...data,
-      kelas: String(data.kelas || '').toUpperCase(),
-      sumberPaketIds: Array.isArray(data.sumberPaketIds) ? data.sumberPaketIds : [],
-      soal: Array.isArray(data.soal) ? data.soal : [],
-      modeSusun: (data.modeSusun as ModeSusunKuis) || 'manual',
-      jumlahSoal: typeof data.jumlahSoal === 'number' ? data.jumlahSoal : (data.soal?.length ?? 0),
-      totalPoin: typeof data.totalPoin === 'number' ? data.totalPoin : 0,
-    } as KuisLms)
-  }
+  const list = snap.docs
+    .map((d) => mapDokKuis(d.id, d.data() as Record<string, unknown>))
+    .filter((k) => !mapelNorm || String(k.mapel || '').trim() === mapelNorm)
   list.sort((a, b) => {
     const ta = (a.updatedAt as { seconds?: number })?.seconds ?? 0
     const tb = (b.updatedAt as { seconds?: number })?.seconds ?? 0
