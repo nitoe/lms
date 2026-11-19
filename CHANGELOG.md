@@ -1,3 +1,31 @@
+## 2026-11-19 — Perbaiki regresi reset & input offline kuis mapel (CF tertimpa TKA/Lomba)
+
+- **Gejala:**
+  - Reset attempt kuis mapel biasa gagal (HTTP 400 / `failed-precondition`: «Reset attempt lewat fungsi ini untuk kuis TKA atau Lomba (atau admin).»).
+  - Input nilai manual / offline (`simpanJawabanOfflineKuis`) kadang 500.
+  - Console guru sering menampilkan `daftarTugas` / `daftarKuis` kelasList «Missing or insufficient permissions» (query klien sudah benar; rules production mungkin belum ter-deploy versi terbaru).
+- **Akar reset:** CF `resetJawabanKuisLms` di SDM01Penilaian diubah saat integrasi TKA+Lomba menjadi **hanya** mengizinkan TKA / Lomba / admin. Bertentangan dengan **ANTIREGRESI §126** (reset wajib untuk semua kuis; UI `HasilKuisPanel` memanggil CF yang sama).
+- **Perbaikan CF `resetJawabanKuisLms`:**
+  - Mapel biasa → admin **atau** guru dengan `penugasanKelasMapel` / `waliKelas` (helper `bolehMapelKelas`, selaras `nilaiManualKuisLms` & offline).
+  - TKA → tetap admin / email khusus / wali 6A·6B.
+  - Lomba → tetap pengampu (`guruPengampuUid` / `guruPengampuUids`) + admin.
+  - Marker progress tetap di `lms_tka_progress_reset` (nama historis, dipakai semua kuis).
+- **Perbaikan CF `simpanJawabanOfflineKuis`:**
+  - Izin mapel biasa mempertimbangkan `kelas` **dan** `kelasList` (berbagi paralel).
+  - Lomba: izinkan pengampu (bukan hanya penugasan mapel `LB`).
+  - Loop penilaian lebih defensif (lewati soal tanpa `id`, tangkap exception di `nilaiSatuSoal` → 500 tidak lagi muncul dari struktur soal tak terduga).
+  - Simpan `lombaId` ke dokumen jawaban bila ada.
+- **Deploy wajib (dari SDM01Penilaian):**
+  ```
+  firebase deploy --only functions:resetJawabanKuisLms,functions:simpanJawabanOfflineKuis
+  ```
+  (atau `npm run deploy:functions` sesuai skrip repo).
+- **File (versi lengkap):**
+  - `SDM01Penilaian/functions/resetJawabanKuisLms.js`
+  - `SDM01Penilaian/functions/simpanJawabanOfflineKuis.js`
+  - `lms/CHANGELOG.md`, `lms/ANTIREGRESI.md` (dokumen)
+- Tidak mengubah firestore.rules / index / klien untuk perbaikan ini. Bila permission `kelasList` masih muncul setelah deploy functions, deploy ulang rules dari SDM01Penilaian (`npm run deploy:rules`).
+
 ## 2026-11-19 — Lomba: pengampu bisa melihat kuis (dan paket) yang dibuat admin/pengampu lain
 
 - **Gejala:** Guru pengampu lomba tidak melihat / tidak bisa mengakses kuis lomba yang dibuat admin (atau pengampu lain); seolah hanya kuis buatannya sendiri yang ada.

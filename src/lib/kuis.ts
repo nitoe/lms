@@ -145,7 +145,10 @@ export async function ambilKuis(id: string): Promise<KuisLms | null> {
  */
 export async function daftarKuisLomba(lombaId: string, mapel: string): Promise<KuisLms[]> {
   if (!lombaId) return []
-  const snap = await getDocs(query(koleksi(), where('lombaId', '==', lombaId)))
+  // kelas == LB + lombaId: selaras cabang rules (kelas=='LB' && lombaKontenBoleh). §Lomba.31
+  const snap = await getDocs(
+    query(koleksi(), where('lombaId', '==', lombaId), where('kelas', '==', 'LB')),
+  )
   const mapelNorm = String(mapel || '').trim()
   const list = snap.docs
     .map((d) => mapDokKuis(d.id, d.data() as Record<string, unknown>))

@@ -284,7 +284,13 @@ export async function ambilPaket(id: string): Promise<PaketSoal | null> {
  */
 export async function daftarPaketLomba(lombaId: string, mapel: string): Promise<PaketSoal[]> {
   if (!lombaId) return []
-  const snap = await getDocs(query(collection(db, 'lms_paket_soal'), where('lombaId', '==', lombaId)))
+  const snap = await getDocs(
+    query(
+      collection(db, 'lms_paket_soal'),
+      where('lombaId', '==', lombaId),
+      where('kelas', '==', 'LB'),
+    ),
+  )
   const mapelNorm = String(mapel || '').trim()
   return snap.docs
     .map((d) => ({ id: d.id, ...(d.data() as object) }) as PaketSoal)

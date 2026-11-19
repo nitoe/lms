@@ -247,6 +247,14 @@ export default function KuisPanel({ kelas, mapel, lombaId, mapelGabungan }: Prop
       const [k, milikSaya, p] = await Promise.all([
         (lombaId ? daftarKuisLomba(lombaId, mapel) : daftarKuis(kelas, mapel)).catch((e) => {
           console.warn('daftarKuis', e)
+          const msg = e instanceof Error ? e.message : String(e)
+          if (/permission|insufficient/i.test(msg)) {
+            setError(
+              lombaId
+                ? 'Tidak bisa memuat kuis lomba (permission). Pastikan Anda terdaftar sebagai pengampu di meta lomba, dan firestore.rules terbaru sudah di-deploy dari SDM01Penilaian (npm run deploy:rules).'
+                : 'Tidak bisa memuat kuis (permission).',
+            )
+          }
           return [] as KuisLms[]
         }),
         daftarKuisDibuatOleh().catch((e) => {

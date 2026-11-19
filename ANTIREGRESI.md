@@ -201,7 +201,7 @@ Tombol unduh Word wajib di `KuisKepala` (prop `aksi`) agar mudah ditemukan dari 
 
 127.5 Judul dokumen mengikuti `jenisPenilaian` (STS/SAS/SLM/Latihan), bukan hanya judul kuis.
 
-## §126. Reset attempt kuis mapel (online)
+## §126. Reset attempt kuis mapel (online) — CF & klien
 
 126.1 Reset attempt **bukan** hanya TKA. UI di `HasilKuisPanel` (detail + daftar) menampilkan aksi reset untuk **semua** kuis; jangan mengembalikan guard `if (!isTka) return` pada `resetAttempt`.
 
@@ -212,6 +212,14 @@ Tombol unduh Word wajib di `KuisKepala` (prop `aksi`) agar mudah ditemukan dari 
 126.4 Mode: `attempt` | `progress` | `semua`. Default UI daftar = `semua` (Reset+). Detail menyediakan ketiga mode.
 
 126.5 Setelah reset attempt, daftar hasil di-muat ulang; siswa boleh mengerjakan ulang (termasuk jenis SLM/STS/SAS yang sebelumnya terkunci setelah kirim).
+
+126.6 **CF `resetJawabanKuisLms` wajib mendukung tiga jalur** (regresi 2026-11-19: guard «hanya TKA/Lomba/admin» menolak mapel biasa → HTTP 400):
+  - **Mapel biasa:** `admin` **atau** `bolehMapelKelas(profil, mapel, kelas)` (penugasanKelasMapel / waliKelas). Cek terhadap `kuis.kelas`, `kuis.kelasList`, dan kelas dari dokumen `lms_jawaban` / argumen `kelasSiswa`.
+  - **TKA** (mapel ∈ MAPEL_TKA): admin / email khusus / wali 6A·6B.
+  - **Lomba** (`lombaId` + kelas `LB`): admin LMS atau pengampu (`guruPengampuUid` / `guruPengampuUids`).
+  - Jangan mengembalikan guard yang membatasi CF hanya untuk TKA/Lomba.
+
+126.7 **CF `simpanJawabanOfflineKuis`:** izin mapel biasa harus mempertimbangkan `kelasList` (bukan hanya `kuis.kelas`); Lomba izinkan pengampu. Loop penilaian wajib defensif (lewati soal tanpa `id`, tangkap exception) agar tidak 500.
 
 ## §125.4 Gambar HP-first: 1200px + ~180KB WebP
 
