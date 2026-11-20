@@ -69,6 +69,11 @@ export async function generateKategoriTugasAi(input: InputKonteksTugasAi): Promi
       const tahap = tahapValid(k.tahap)
       if (tahap) item.tahap = tahap
       if (k.sumber === 'observasi') item.sumber = 'observasi'
+      // Bobot dari AI (sudah dinormalisasi total 100 di CF); abaikan nilai tidak valid.
+      const bobot = Number((k as { bobot?: unknown }).bobot)
+      if (Number.isFinite(bobot) && bobot > 0) {
+        item.bobot = Math.min(100, Math.round(bobot))
+      }
       return item
     })
     const bukti = (Array.isArray(res.data?.bukti) ? res.data.bukti : [])

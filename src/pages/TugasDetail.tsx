@@ -463,49 +463,98 @@ export default function TugasDetail() {
     }
   }
 
-  const muatNilai = useCallback(async () => {
-    if (isBaru || !tugas) {
-      setBarisNilai(null)
-      return
-    }
-    setLoadingNilai(true)
-    setError('')
-    try {
-      const kat = normalisasiPengaturan(tugas.pengaturanPenilaian).kategori.filter((k) =>
-        k.nama.trim(),
-      )
-      const rentang = normalisasiPengaturan(tugas.pengaturanPenilaian).rentangPredikat
-      const rows = await muatBarisNilaiTugas(tugas.id, tugas.kelas, tugas.mapel, kat)
-      setBarisNilai(rows)
-      const next: Record<string, DraftBaris> = {}
-      for (const r of rows) {
-        const per: Record<string, string> = {}
-        for (const k of kat) {
-          const v = r.perKategori[k.id]
-          per[k.id] = v === null || v === undefined ? '' : String(v)
-        }
-        let pred = r.predikat
-        if (!pred && r.nilaiAkhir !== null) {
-          pred = predikatOtomatis(r.nilaiAkhir, rentang)
-        }
-        next[r.siswaId] = {
-          perKategori: per,
-          nilaiAkhir: r.nilaiAkhir === null ? '' : String(r.nilaiAkhir),
-          predikat: pred,
-          komentar: r.komentar || '',
-        }
+  /** Apakah draf lokal berisi data yang perlu dipertahankan (belum disimpan). */
+  function draftBerisiData(d: DraftBaris | undefined): boolean {
+    if (!d) return false
+    if (String(d.nilaiAkhir || '').trim() !== '') return true
+    if (String(d.komentar || '').trim() !== '') return true
+    if (String(d.predikat || '').trim() !== '') return true
+    return Object.values(d.perKategori || {}).some((v) => String(v || '').trim() !== '')
+  }
+
+  /** Bandingkan draf dengan snapshot server (string skor). */
+  function draftSamaDenganServer(d: DraftBaris, server: DraftBaris): boolean {
+    if (String(d.nilaiAkhir || '').trim() !== String(server.nilaiAkhir || '').trim()) return false
+    if (String(d.predikat || '').trim() !== String(server.predikat || '').trim()) return false
+    if (String(d.komentar || '').trim() !== String(server.komentar || '').trim()) return false
+    const ids = new Set([
+      ...Object.keys(d.perKategori || {}),
+      ...Object.keys(server.perKategori || {}),
+    ])
+    for (const id of ids) {
+      if (
+        String(d.perKategori?.[id] || '').trim() !==
+        String(server.perKategori?.[id] || '').trim()
+      ) {
+        return false
       }
-      setDraft(next)
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Gagal memuat daftar nilai.')
-      setBarisNilai([])
-    } finally {
-      setLoadingNilai(false)
     }
-  }, [isBaru, tugas])
+    return true
+  }
+
+  /**
+   * Muat daftar nilai dari server.
+   * `force: true` menimpa seluruh draf (tombol Muat ulang).
+   * Default: pertahankan draf lokal yang berbeda dari server (hasil generate AI / edit belum disimpan).
+   */
+  const muatNilai = useCallback(
+    async (opsi?: { force?: boolean }) => {
+      if (isBaru || !tugas) {
+        setBarisNilai(null)
+        return
+      }
+      setLoadingNilai(true)
+      setError('')
+      try {
+        const kat = normalisasiPengaturan(tugas.pengaturanPenilaian).kategori.filter((k) =>
+          k.nama.trim(),
+        )
+        const rentang = normalisasiPengaturan(tugas.pengaturanPenilaian).rentangPredikat
+        const rows = await muatBarisNilaiTugas(tugas.id, tugas.kelas, tugas.mapel, kat)
+        setBarisNilai(rows)
+        const dariServer: Record<string, DraftBaris> = {}
+        for (const r of rows) {
+          const per: Record<string, string> = {}
+          for (const k of kat) {
+            const v = r.perKategori[k.id]
+            per[k.id] = v === null || v === undefined ? '' : String(v)
+          }
+          let pred = r.predikat
+          if (!pred && r.nilaiAkhir !== null) {
+            pred = predikatOtomatis(r.nilaiAkhir, rentang)
+          }
+          dariServer[r.siswaId] = {
+            perKategori: per,
+            nilaiAkhir: r.nilaiAkhir === null ? '' : String(r.nilaiAkhir),
+            predikat: pred,
+            komentar: r.komentar || '',
+          }
+        }
+        setDraft((prev) => {
+          if (opsi?.force) return dariServer
+          const next: Record<string, DraftBaris> = { ...dariServer }
+          for (const [sid, local] of Object.entries(prev)) {
+            if (!draftBerisiData(local)) continue
+            const srv = dariServer[sid]
+            if (!srv || !draftSamaDenganServer(local, srv)) {
+              next[sid] = local
+            }
+          }
+          return next
+        })
+      } catch (e) {
+        setError(e instanceof Error ? e.message : 'Gagal memuat daftar nilai.')
+        setBarisNilai([])
+      } finally {
+        setLoadingNilai(false)
+      }
+    },
+    [isBaru, tugas],
+  )
 
   useEffect(() => {
     if (tab === 'nilai' && subNilai === 'daftar-nilai' && !isBaru && tugas) {
+      // Jangan force: pertahankan draf AI/edit bila user pindah tab lalu kembali.
       void muatNilai()
     }
   }, [tab, subNilai, isBaru, tugas, muatNilai])
@@ -563,38 +612,18 @@ export default function TugasDetail() {
     patchDraft(siswaId, patch)
   }
 
-  function generateDariPredikat(siswaId: string) {
-    if (!bisaAi) return
-    const d = draft[siswaId]
-    if (!d?.predikat) {
-      setError('Pilih predikat dulu, lalu tekan generate.')
-      return
-    }
-    const hasil = generateSkorPerKategoriDariPredikat(
-      d.predikat,
-      kategoriAktif,
-      pengaturan.rentangPredikat,
-    )
-    const per: Record<string, string> = {}
-    for (const [id, n] of Object.entries(hasil.perKategori)) {
-      per[id] = String(n)
-    }
-    patchDraft(siswaId, {
-      perKategori: per,
-      nilaiAkhir: String(hasil.nilaiAkhir),
-      predikat: d.predikat,
-    })
-    setSukses(
-      kategoriAktif.length
-        ? `Skor ${kategoriAktif.length} kategori diisi otomatis (predikat ${d.predikat}). Simpan baris siswa.`
-        : `Nilai akhir diusulkan: ${hasil.nilaiAkhir}. Simpan baris siswa.`,
-    )
-  }
-
-  async function simpanSatuNilai(siswaId: string, siswaNama: string) {
-    if (!tugas) return
-    const d = draft[siswaId]
-    if (!d) return
+  /**
+   * Simpan satu baris tanpa memuat ulang seluruh daftar (agar draf siswa lain tetap utuh).
+   * Mengembalikan true bila berhasil.
+   */
+  async function simpanSatuNilai(
+    siswaId: string,
+    siswaNama: string,
+    opsi?: { diam?: boolean; draftOverride?: DraftBaris },
+  ): Promise<boolean> {
+    if (!tugas) return false
+    const d = opsi?.draftOverride ?? draft[siswaId]
+    if (!d) return false
     const perAngka: Record<string, number> = {}
     for (const k of kategoriAktif) {
       const raw = (d.perKategori[k.id] || '').trim()
@@ -602,7 +631,7 @@ export default function TugasDetail() {
       const n = Number(raw.replace(',', '.'))
       if (Number.isNaN(n) || n < 0 || n > 100) {
         setError(`Skor «${k.nama}» untuk ${siswaNama} harus 0–100.`)
-        return
+        return false
       }
       perAngka[k.id] = n
     }
@@ -612,21 +641,23 @@ export default function TugasDetail() {
       if (rata !== null) akhir = Math.round(rata)
       else {
         setError(`Isi skor kategori atau nilai akhir untuk ${siswaNama}.`)
-        return
+        return false
       }
     }
     if (akhir < 0 || akhir > 100) {
       setError(`Nilai akhir ${siswaNama} harus 0–100.`)
-      return
+      return false
     }
     const pred =
       d.predikat ||
       predikatDariNilai(akhir, pengaturan.rentangPredikat)?.predikat ||
       ''
 
-    setMenyimpanSiswaId(siswaId)
-    setError('')
-    setSukses('')
+    if (!opsi?.diam) {
+      setMenyimpanSiswaId(siswaId)
+      setError('')
+      setSukses('')
+    }
     try {
       await simpanNilaiTugas({
         tugasId: tugas.id,
@@ -641,10 +672,126 @@ export default function TugasDetail() {
         komentar: d.komentar,
         namaGuru: profil?.nama,
       })
-      setSukses(`Nilai ${siswaNama} disimpan.`)
-      await muatNilai()
+      // Soft-update baris lokal — jangan muat ulang seluruh daftar (draf AI siswa lain tetap utuh).
+      const perLokal: Record<string, number | null> = {}
+      for (const k of kategoriAktif) {
+        perLokal[k.id] = perAngka[k.id] !== undefined ? perAngka[k.id] : null
+      }
+      setBarisNilai((prev) =>
+        (prev || []).map((r) =>
+          r.siswaId === siswaId
+            ? {
+                ...r,
+                sudahAda: true,
+                perKategori: perLokal,
+                rataRata: rata,
+                nilaiAkhir: akhir,
+                predikat: pred,
+                komentar: d.komentar || '',
+              }
+            : r,
+        ),
+      )
+      setDraft((prev) => {
+        const perStr: Record<string, string> = {}
+        for (const k of kategoriAktif) {
+          perStr[k.id] = perAngka[k.id] !== undefined ? String(perAngka[k.id]) : ''
+        }
+        return {
+          ...prev,
+          [siswaId]: {
+            perKategori: perStr,
+            nilaiAkhir: String(akhir),
+            predikat: pred,
+            komentar: d.komentar || '',
+          },
+        }
+      })
+      if (!opsi?.diam) setSukses(`Nilai ${siswaNama} disimpan.`)
+      return true
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Gagal menyimpan nilai.')
+      if (!opsi?.diam) setError(e instanceof Error ? e.message : 'Gagal menyimpan nilai.')
+      return false
+    } finally {
+      if (!opsi?.diam) setMenyimpanSiswaId(null)
+    }
+  }
+
+  /** Generate skor kategori dari predikat lalu langsung simpan (live). */
+  async function generateDariPredikat(siswaId: string) {
+    if (!bisaAi || !tugas) return
+    const d = draft[siswaId]
+    if (!d?.predikat) {
+      setError('Pilih predikat dulu, lalu tekan generate.')
+      return
+    }
+    const siswaNama =
+      barisNilai?.find((r) => r.siswaId === siswaId)?.siswaNama || siswaId
+    const hasil = generateSkorPerKategoriDariPredikat(
+      d.predikat,
+      kategoriAktif,
+      pengaturan.rentangPredikat,
+    )
+    const per: Record<string, string> = {}
+    for (const [id, n] of Object.entries(hasil.perKategori)) {
+      per[id] = String(n)
+    }
+    const nextDraft: DraftBaris = {
+      perKategori: per,
+      nilaiAkhir: String(hasil.nilaiAkhir),
+      predikat: d.predikat,
+      komentar: d.komentar || '',
+    }
+    patchDraft(siswaId, nextDraft)
+    setMenyimpanSiswaId(siswaId)
+    setError('')
+    setSukses('')
+    try {
+      const ok = await simpanSatuNilai(siswaId, siswaNama, {
+        diam: true,
+        draftOverride: nextDraft,
+      })
+      if (ok) {
+        setSukses(
+          kategoriAktif.length
+            ? `Skor ${kategoriAktif.length} kategori diisi & disimpan (predikat ${d.predikat}).`
+            : `Nilai akhir ${hasil.nilaiAkhir} disimpan (predikat ${d.predikat}).`,
+        )
+      }
+    } finally {
+      setMenyimpanSiswaId(null)
+    }
+  }
+
+  /** Simpan semua baris yang punya data di draf. */
+  async function simpanSemuaDraft() {
+    if (!tugas || !barisNilai?.length) return
+    const kandidat = barisNilai.filter((r) => draftBerisiData(draft[r.siswaId]))
+    if (!kandidat.length) {
+      setError('Tidak ada nilai yang perlu disimpan.')
+      return
+    }
+    setMenyimpanSiswaId('__semua__')
+    setError('')
+    setSukses('')
+    let ok = 0
+    let gagal = 0
+    try {
+      for (const r of kandidat) {
+        const berhasil = await simpanSatuNilai(r.siswaId, r.siswaNama, {
+          diam: true,
+          draftOverride: draft[r.siswaId],
+        })
+        if (berhasil) ok++
+        else gagal++
+      }
+      if (gagal === 0) {
+        setSukses(`${ok} nilai siswa disimpan.`)
+      } else {
+        setError(
+          `${ok} berhasil, ${gagal} gagal. Periksa skor 0–100 lalu simpan ulang yang gagal.`,
+        )
+      }
     } finally {
       setMenyimpanSiswaId(null)
     }
@@ -1472,11 +1619,27 @@ export default function TugasDetail() {
                     <div>
                       <h2 className="td-subjudul">Daftar nilai siswa</h2>
                       <p className="td-hint">
-                        Isi skor per kategori; nilai akhir & predikat menyesuaikan. Simpan per baris.
+                        Isi skor per kategori; nilai akhir & predikat menyesuaikan.
+                        Generate AI menyimpan otomatis. Draf siswa lain tidak hilang saat menyimpan satu baris.
                       </p>
                     </div>
                     <div className="td-kepala-aksi">
-                      <button type="button" className="tg-btn" disabled={loadingNilai} onClick={() => void muatNilai()}>
+                      <button
+                        type="button"
+                        className="tg-btn tg-btn--utama"
+                        disabled={loadingNilai || menyimpanSiswaId === '__semua__'}
+                        onClick={() => void simpanSemuaDraft()}
+                        title="Simpan semua baris yang sudah diisi di draf"
+                      >
+                        {menyimpanSiswaId === '__semua__' ? 'Menyimpan…' : 'Simpan semua'}
+                      </button>
+                      <button
+                        type="button"
+                        className="tg-btn"
+                        disabled={loadingNilai}
+                        onClick={() => void muatNilai({ force: true })}
+                        title="Muat ulang dari server (menghapus draf yang belum disimpan)"
+                      >
                         {loadingNilai ? 'Memuat…' : 'Muat ulang'}
                       </button>
                       <button type="button" className="tg-btn" onClick={() => void sinkronKePenilaian()}>
@@ -1573,9 +1736,9 @@ export default function TugasDetail() {
                                     <button
                                       type="button"
                                       className="td-btn-ai td-btn-ai--ikon"
-                                      title="Generate skor kategori dari predikat"
-                                      disabled={!d.predikat}
-                                      onClick={() => generateDariPredikat(r.siswaId)}
+                                      title="Generate skor dari predikat lalu simpan otomatis"
+                                      disabled={!d.predikat || menyimpanSiswaId === r.siswaId || menyimpanSiswaId === '__semua__'}
+                                      onClick={() => void generateDariPredikat(r.siswaId)}
                                     >
                                       <IconSparkle />
                                     </button>
@@ -1594,7 +1757,7 @@ export default function TugasDetail() {
                                   <button
                                     type="button"
                                     className="tg-btn tg-btn--utama"
-                                    disabled={menyimpanSiswaId === r.siswaId}
+                                    disabled={menyimpanSiswaId === r.siswaId || menyimpanSiswaId === '__semua__'}
                                     onClick={() => void simpanSatuNilai(r.siswaId, r.siswaNama)}
                                   >
                                     {menyimpanSiswaId === r.siswaId ? '…' : 'Simpan'}
