@@ -1,3 +1,14 @@
+## 2026-11-20 — Tugas: bukti video ≤ 1 menit (dikecilkan di HP siswa, disimpan di Storage)
+
+- **Kebutuhan:** foto catatan/laporan tidak memperlihatkan proses (mis. siswa benar-benar mengukur nadi). Guru kini bisa meminta **bukti berjenis Video** di editor bukti (tab Isi Tugas; «Jenis bukti» → «Video (maks. 1 menit)»; maks. 2 video per tugas; video memakai slot bukti yang sama sehingga total bukti tetap ≤ 6).
+- **Siswa (HP Android):** «Rekam / pilih video» → durasi diperiksa → **lebih dari 1 menit ditolak langsung tanpa konversi** («Videomu 1 mnt 25 dtk, terlalu panjang…»). Video mp4/webm ≤ 6 MB dipakai apa adanya; selain itu tombol «Perkecil video» mengonversi di perangkat (±480p, ±0,7 Mbps + suara 64 kbps → ±6 MB/menit; lama konversi ≈ durasi video; terhenti bila aplikasi ditinggalkan). Video diunggah ke Storage saat «Kumpulkan» (progres %); tombol Kumpulkan aktif bila bukti wajib (termasuk video) lengkap. Perangkat tanpa dukungan konversi diarahkan memakai foto.
+- **Guru:** tab Pengumpulan memutar video langsung (durasi + ukuran), «Bukti kurang» ikut menghitung video.
+- **Penyimpanan:** `lms/pengumpulan/{tugasId}/{siswaId}_{slot}.{webm|mp4}` (maks. 15 MB, hanya webm/mp4). Meta `lms_pengumpulan.videos` (peta slot → path/tipe/ukuran/durasi). Dihapus otomatis 120 hari lewat lifecycle bucket (`docs/storage-lifecycle-video.json`, langkah di `docs/DEPLOY.md`). Hanya siswa pemilik (tugas aktif, kelas cocok, belum dinilai) yang boleh menulis/menghapus; baca: pemilik + guru/admin (bukan akun orang tua).
+- **Wajib deploy:** `firestore.rules` + `storage.rules` (file lengkap, identik dengan SDM01Penilaian; salinan `storage.rules` LMS kini ikut versi terbaru SDM01Penilaian yang memuat aturan audio materi), atur lifecycle, lalu hosting LMS. Tidak ada perubahan Cloud Functions.
+- **Belum diuji di perangkat nyata:** alur konversi/unggah ditulis dan lolos build, tetapi belum dijalankan di HP; aturan Storage belum diuji di emulator. Lihat daftar uji di ANTIREGRESI §Tugas.Video.9.
+- File: `firestore.rules`, `storage.rules`, `docs/DEPLOY.md`, `docs/storage-lifecycle-video.json` (baru), `src/lib/videoTugas.ts` (baru), `src/pages/siswa/VideoBukti.tsx` (baru), `src/types/tugas.ts`, `src/lib/buktiTugas.ts`, `src/lib/pengumpulan.ts`, `src/pages/siswa/PengumpulanSiswa.tsx`, `src/components/PengumpulanPanel.tsx`, `src/components/BuktiTugasEditor.tsx`, `src/styles/siswa.css`, `src/styles/tugas.css`.
+- Antiregresi: §Tugas.Video.
+
 ## 2026-11-19 — Materi halaman: kunci jawaban lipat (`<details>`), HTML bacaan lebih lengkap, dan impor gambar base64
 
 - **Gejala:** file JSON materi halaman «Mengenal Nilai, Norma, dan Aturan» berhasil diimpor tetapi tidak tampil benar di pratinjau/baca: kunci jawaban di «Latihan singkat» (`<details><summary>Lihat kunci jawaban</summary>…`) tidak bisa dibuka-tutup, dan gambar ilustrasi (`data:image/png;base64,…`, ±1,9 MB) tidak muncul.

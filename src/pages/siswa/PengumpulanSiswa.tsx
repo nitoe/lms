@@ -13,6 +13,14 @@ import {
 } from '../../lib/pengumpulan'
 import { adaBukti, kelompokBuktiPerTahap, namaKategoriBukti } from '../../lib/buktiTugas'
 import { LABEL_TAHAP } from '../../types/tugas'
+import {
+  dukungKonversiVideo,
+  kompresVideo,
+  periksaVideo,
+  urlVideoTugas,
+  videoLangsung,
+} from '../../lib/videoTugas'
+import VideoBukti, { type VideoUI } from './VideoBukti'
 import type { TugasLms } from '../../types/tugas'
 import SiswaIcon from './SiswaIcon'
 
@@ -58,6 +66,13 @@ export default function PengumpulanSiswa({
   const modeBukti = adaBukti(tugas)
   const [fotoSlot, setFotoSlot] = useState<Record<number, string>>({})
   const [olahSlot, setOlahSlot] = useState<number | null>(null)
+  // Video bukti (ANTIREGRESI §Tugas.Video): keadaan per slot, video lama yang dihapus, URL putar lama.
+  const [videoUI, setVideoUI] = useState<Record<number, VideoUI>>({})
+  const [videoLamaDihapus, setVideoLamaDihapus] = useState<Record<number, boolean>>({})
+  const [urlLama, setUrlLama] = useState<Record<number, string>>({})
+  const [persenUnggah, setPersenUnggah] = useState<number | null>(null)
+  const videoUIRef = useRef(videoUI)
+  videoUIRef.current = videoUI
   const [catatan, setCatatan] = useState(ada?.catatan ?? '')
   const [memuat, setMemuat] = useState(false)
   const [olah, setOlah] = useState(false)
@@ -66,7 +81,47 @@ export default function PengumpulanSiswa({
   const [sukses, setSukses] = useState(false)
   const [ubah, setUbah] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
+  // Turunan video: slot yang akan punya video saat dikirim (baru siap + lama yang tidak dihapus/diganti).
+  const videoBaru: Record<number, NonNullable<VideoUI['siap']>> = {}
+  for (const [k, v] of Object.entries(videoUI)) if (v.fase === 'siap' && v.siap) videoBaru[Number(k)] = v.siap
+  const videoPertahankan = Object.keys(ada?.videos ?? {})
+    .map(Number)
+    .filter((n) => !videoLamaDihapus[n] && !videoBaru[n])
+  const videoAda: Record<number, boolean> = {}
+  for (const n of videoPertahankan) videoAda[n] = true
+  for (const n of Object.keys(videoBaru)) videoAda[Number(n)] = true
+  const videoSibuk = Object.values(videoUI).some((v) => v.fase === 'periksa' || v.fase === 'konversi')
   const kunciAda = ada?.fotoIds.join('|') ?? ''
+  const kunciVideo = Object.values(ada?.videos ?? {})
+    .map((v) => v.path)
+    .join('|')
+
+  // Bersihkan object URL pratinjau saat komponen ditutup.
+  useEffect(
+    () => () => {
+      for (const v of Object.values(videoUIRef.current)) if (v.url) URL.revokeObjectURL(v.url)
+    },
+    [],
+  )
+
+  // Muat URL putar video yang sudah terkirim; pengiriman baru membersihkan keadaan lokal.
+  useEffect(() => {
+    setVideoUI({})
+    setVideoLamaDihapus({})
+    setUrlLama({})
+    let batal = false
+    for (const [k, v] of Object.entries(ada?.videos ?? {})) {
+      void urlVideoTugas(v.path)
+        .then((u) => {
+          if (!batal) setUrlLama((p) => ({ ...p, [Number(k)]: u }))
+        })
+        .catch((e) => console.warn('URL video gagal', e))
+    }
+    return () => {
+      batal = true
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [kunciVideo])
 
   // Muat foto yang sudah terkirim (untuk pratinjau & kirim ulang).
   useEffect(() => {
@@ -145,6 +200,62 @@ export default function PengumpulanSiswa({
     setSukses(false)
   }
 
+  function setVideoSlot(slot: number, st: VideoUI | null) {
+    setVideoUI((p) => {
+      const baru = { ...p }
+      if (p[slot]?.url && p[slot].url !== st?.url) URL.revokeObjectURL(p[slot].url!)
+      if (st) baru[slot] = st
+      else delete baru[slot]
+      return baru
+    })
+  }
+
+  async function pilihVideo(slot: number, files: FileList | null, input: HTMLInputElement | null) {
+    const f = files?.[0]
+    if (!f) return
+    setGalat('')
+    setSukses(false)
+    setVideoSlot(slot, { fase: 'periksa', persen: 0 })
+    try {
+      const info = await periksaVideo(f)
+      const langsung = videoLangsung(f, info.durasi)
+      if (langsung) {
+        setVideoSlot(slot, { fase: 'siap', persen: 1, siap: langsung, url: URL.createObjectURL(langsung.blob) })
+      } else if (!dukungKonversiVideo()) {
+        throw new Error('Perangkat ini belum bisa memperkecil video. Kumpulkan dengan foto ya.')
+      } else {
+        setVideoSlot(slot, { fase: 'perlu', persen: 0, file: f, durasi: info.durasi })
+      }
+    } catch (e) {
+      setVideoSlot(slot, null)
+      setGalat(e instanceof Error ? e.message : 'Video tidak bisa diproses.')
+    } finally {
+      if (input) input.value = ''
+    }
+  }
+
+  async function konversiVideo(slot: number) {
+    const st = videoUI[slot]
+    if (!st?.file) return
+    setGalat('')
+    setVideoSlot(slot, { ...st, fase: 'konversi', persen: 0 })
+    try {
+      const v = await kompresVideo(st.file, (b) =>
+        setVideoUI((p) => (p[slot] ? { ...p, [slot]: { ...p[slot], persen: b } } : p)),
+      )
+      setVideoSlot(slot, { fase: 'siap', persen: 1, siap: v, url: URL.createObjectURL(v.blob) })
+    } catch (e) {
+      setVideoSlot(slot, { ...st, fase: 'perlu' })
+      setGalat(e instanceof Error ? e.message : 'Video gagal diperkecil.')
+    }
+  }
+
+  function hapusVideo(slot: number) {
+    setVideoSlot(slot, null)
+    if (ada?.videos[slot]) setVideoLamaDihapus((p) => ({ ...p, [slot]: true }))
+    setSukses(false)
+  }
+
   function hapus(key: string) {
     setItems((prev) => prev.filter((x) => x.key !== key))
     setSukses(false)
@@ -154,9 +265,9 @@ export default function PengumpulanSiswa({
     setGalat('')
     setSukses(false)
     if (modeBukti) {
-      const kurang = buktiWajibKurang(tugas, fotoSlot)
+      const kurang = buktiWajibKurang(tugas, fotoSlot, videoAda)
       if (kurang.length > 0) {
-        setGalat(`Foto yang wajib belum lengkap: ${kurang.join(', ')}.`)
+        setGalat(`Bukti yang wajib belum lengkap: ${kurang.join(', ')}.`)
         return
       }
     } else if (items.length === 0) {
@@ -164,6 +275,7 @@ export default function PengumpulanSiswa({
       return
     }
     setBusy(true)
+    setPersenUnggah(null)
     try {
       const dok = await kirimPengumpulan({
         tugas,
@@ -171,6 +283,9 @@ export default function PengumpulanSiswa({
         siswaNama,
         kelas,
         ...(modeBukti ? { fotoSlot } : { foto: items.map((x) => x.src) }),
+        videoBaru,
+        videoPertahankan,
+        onProgressVideo: setPersenUnggah,
         catatan,
         ada,
       })
@@ -182,6 +297,7 @@ export default function PengumpulanSiswa({
       setGalat(pesanGagalKumpul(e))
     } finally {
       setBusy(false)
+      setPersenUnggah(null)
     }
   }
 
@@ -189,9 +305,9 @@ export default function PengumpulanSiswa({
   const kategori = tugas.pengaturanPenilaian?.kategori
   const slotBukti = new Set(buktiList.map((b) => b.slot))
   const slotLain = [...DAFTAR_SLOT].filter((n) => fotoSlot[n] && !slotBukti.has(n))
-  const kurang = modeBukti ? buktiWajibKurang(tugas, fotoSlot) : []
+  const kurang = modeBukti ? buktiWajibKurang(tugas, fotoSlot, videoAda) : []
   const jumlahWajib = buktiList.filter((b) => b.wajib).length
-  const jumlahFotoBukti = buktiList.filter((b) => fotoSlot[b.slot]).length
+  const jumlahFotoBukti = buktiList.filter((b) => (b.jenis === 'video' ? videoAda[b.slot] : fotoSlot[b.slot])).length
 
   /* —— Sudah dinilai: hanya tampilkan —— */
   if (terkunci) {
@@ -210,6 +326,18 @@ export default function PengumpulanSiswa({
                   .map((b) => (
                     <figure key={b.id} className="sw-bukti-baca">
                       <img src={fotoSlot[b.slot]} alt={b.label} className="sw-kumpul-thumb" />
+                      <figcaption>{b.label}</figcaption>
+                    </figure>
+                  ))}
+                {buktiList
+                  .filter((b) => b.jenis === 'video' && ada.videos[b.slot])
+                  .map((b) => (
+                    <figure key={b.id} className="sw-bukti-baca">
+                      {urlLama[b.slot] ? (
+                        <video className="sw-video" src={urlLama[b.slot]} controls playsInline preload="metadata" />
+                      ) : (
+                        <div className="sw-bukti-kosong">Memuat video…</div>
+                      )}
                       <figcaption>{b.label}</figcaption>
                     </figure>
                   ))}
@@ -256,15 +384,16 @@ export default function PengumpulanSiswa({
               {g.tahap && <h3 className="sw-bukti-tahap">{LABEL_TAHAP[g.tahap]}</h3>}
               <ol className="sw-bukti-daftar">
             {g.items.map(({ b, i }) => {
-              const src = fotoSlot[b.slot]
+              const video = b.jenis === 'video'
+              const src = video ? undefined : fotoSlot[b.slot]
               const dinilai = namaKategoriBukti(b, kategori)
               const idInput = `bukti-${tugas.id}-${b.slot}`
               const sibuk = olahSlot === b.slot
-              const off = busy || olahSlot !== null
+              const off = busy || olahSlot !== null || videoSibuk
               return (
                 <li
                   key={b.id}
-                  className={`sw-bukti${src ? ' sw-bukti--ok' : b.wajib ? ' sw-bukti--kurang' : ''}`}
+                  className={`sw-bukti${(video ? videoAda[b.slot] : src) ? ' sw-bukti--ok' : b.wajib ? ' sw-bukti--kurang' : ''}`}
                 >
                   <div className="sw-bukti-head">
                     <span className="sw-bukti-no" aria-hidden>
@@ -281,6 +410,21 @@ export default function PengumpulanSiswa({
                   {dinilai.length > 0 && (
                     <p className="sw-bukti-dinilai">Dinilai pada: {dinilai.join(', ')}</p>
                   )}
+                  {video ? (
+                    <VideoBukti
+                      slot={b.slot}
+                      idInput={idInput}
+                      tampilForm={tampilForm}
+                      sibuk={busy}
+                      ui={videoUI[b.slot]}
+                      lama={videoLamaDihapus[b.slot] ? undefined : ada?.videos[b.slot]}
+                      urlLama={urlLama[b.slot]}
+                      onPilih={(sl, f, inp) => void pilihVideo(sl, f, inp)}
+                      onKonversi={(sl) => void konversiVideo(sl)}
+                      onHapus={hapusVideo}
+                    />
+                  ) : (
+                    <>
                   {src ? (
                     <div className="sw-kumpul-thumb-wrap sw-bukti-foto">
                       <img src={src} alt={`Foto: ${b.label}`} className="sw-kumpul-thumb" />
@@ -314,6 +458,8 @@ export default function PengumpulanSiswa({
                       >
                         {sibuk ? 'Memproses foto…' : src ? 'Ganti foto' : 'Ambil / pilih foto'}
                       </label>
+                    </>
+                  )}
                     </>
                   )}
                 </li>
@@ -427,11 +573,18 @@ export default function PengumpulanSiswa({
                 busy ||
                 olah ||
                 olahSlot !== null ||
+                videoSibuk ||
                 (modeBukti ? kurang.length > 0 : items.length === 0)
               }
               onClick={() => void kirim()}
             >
-              {busy ? 'Mengirim…' : ada ? 'Kirim ulang' : 'Kumpulkan'}
+              {busy
+                ? persenUnggah !== null
+                  ? `Mengunggah video… ${Math.round(persenUnggah * 100)}%`
+                  : 'Mengirim…'
+                : ada
+                  ? 'Kirim ulang'
+                  : 'Kumpulkan'}
             </button>
             {ada && (
               <button type="button" className="sw-btn-ghost" onClick={() => setUbah(false)} disabled={busy}>

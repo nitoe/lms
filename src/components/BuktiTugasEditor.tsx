@@ -1,6 +1,7 @@
 import { buktiBaru, contohBuktiProses, kategoriTanpaBukti } from '../lib/buktiTugas'
 import {
   BATAS_BUKTI_TUGAS,
+  BATAS_BUKTI_VIDEO,
   DAFTAR_TAHAP,
   LABEL_TAHAP,
   tahapValid,
@@ -152,6 +153,27 @@ export default function BuktiTugasEditor({ bukti, kategori, onChange }: Props) {
                   onChange={(e) => ubah(i, { petunjuk: e.target.value })}
                   placeholder="Contoh: Foto tabel yang berisi jumlah detak nadi dan napas, pastikan tulisan terbaca"
                 />
+              </label>
+              <label className="td-field">
+                <span>Jenis bukti</span>
+                <select
+                  value={b.jenis === 'video' ? 'video' : 'foto'}
+                  onChange={(e) => ubah(i, { jenis: e.target.value === 'video' ? 'video' : undefined })}
+                >
+                  <option value="foto">Foto</option>
+                  <option
+                    value="video"
+                    disabled={b.jenis !== 'video' && bukti.filter((x) => x.jenis === 'video').length >= BATAS_BUKTI_VIDEO}
+                  >
+                    Video (maks. 1 menit)
+                  </option>
+                </select>
+                {b.jenis === 'video' && (
+                  <small className="td-field-hint">
+                    Siswa merekam/memilih video maksimal 1 menit; video dikecilkan otomatis di HP siswa. Maksimal{' '}
+                    {BATAS_BUKTI_VIDEO} bukti video per tugas. Video dihapus otomatis setelah beberapa bulan.
+                  </small>
+                )}
               </label>
               <label className="td-field">
                 <span>Tahap kegiatan</span>

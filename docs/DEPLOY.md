@@ -40,3 +40,18 @@ Urutan deploy:
 4. Di repo Penilaian: `npm run deploy:rules` (rules baru membatasi baca `lms_materi` hanya untuk siswa yang login lewat function).
 
 Gejala bila langkah 1 terlewat: siswa melihat «Layanan masuk belum bisa dihubungi» dan log function berisi kegagalan membuat custom token.
+
+## Video bukti tugas — hapus otomatis (lifecycle Storage)
+
+Video siswa disimpan di `lms/pengumpulan/…` dan **dihapus otomatis 120 hari** setelah diunggah (kuota Storage).
+Atur sekali (butuh Google Cloud SDK `gcloud`). **Perintah ini MENGGANTI seluruh aturan lifecycle bucket**, jadi
+periksa dulu aturan yang sudah ada:
+
+```
+gcloud storage buckets describe gs://<NAMA-BUCKET> --format="default(lifecycle_config)"
+gcloud storage buckets update gs://<NAMA-BUCKET> --lifecycle-file=docs/storage-lifecycle-video.json
+```
+
+Nama bucket = nilai `VITE_FIREBASE_STORAGE_BUCKET` (Firebase Console → Storage). Bila sudah ada aturan lain,
+gabungkan isinya ke file JSON sebelum menjalankan perintah kedua. Urutan deploy fitur video:
+`firestore.rules` + `storage.rules` (`firebase deploy --only firestore:rules,storage`) → hosting LMS.

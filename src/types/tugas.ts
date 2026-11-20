@@ -82,6 +82,10 @@ export interface KategoriPenilaian {
  * Tiap bukti memegang satu slot foto (`slot` 1..3 = akhiran ID `lms_pengumpulan_foto`,
  * ANTIREGRESI §132 & §Tugas.Bukti). Slot TIDAK berubah walau bukti diurutkan ulang atau bukti lain dihapus.
  */
+export type JenisBukti = 'foto' | 'video'
+/** Maksimal bukti berjenis video per tugas (kuota Storage & waktu guru menonton). */
+export const BATAS_BUKTI_VIDEO = 2
+
 export interface BuktiTugas {
   /** ID stabil (tidak berubah walau label/urutan diedit). */
   id: string
@@ -91,6 +95,12 @@ export interface BuktiTugas {
   label: string
   /** Petunjuk singkat: apa yang harus terlihat di foto. */
   petunjuk?: string
+  /**
+   * `foto` (default) atau `video` (≤ 1 menit, dikecilkan di HP siswa, disimpan di Storage).
+   * Bukti video memakai slot yang sama dengan bukti foto (total bukti tetap ≤ 6) tetapi TIDAK
+   * membuat dokumen `lms_pengumpulan_foto` (ANTIREGRESI §Tugas.Video).
+   */
+  jenis?: JenisBukti
   /** Tahap kegiatan bukti ini (untuk pengelompokan tampilan siswa). */
   tahap?: TahapTugas
   /** Wajib dikumpulkan? Bukti opsional boleh dikosongkan siswa. */

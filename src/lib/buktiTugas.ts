@@ -1,5 +1,6 @@
 import {
   BATAS_BUKTI_TUGAS,
+  BATAS_BUKTI_VIDEO,
   DAFTAR_TAHAP,
   tahapValid,
   type BuktiTugas,
@@ -41,6 +42,7 @@ export function rapikanBuktiList(raw: unknown): BuktiTugas[] {
       petunjuk: typeof x.petunjuk === 'string' ? x.petunjuk.trim().slice(0, 300) : '',
       wajib: x.wajib !== false,
       tahap: tahapValid(x.tahap),
+      video: x.jenis === 'video',
       kategoriIds: Array.isArray(x.kategoriIds)
         ? [...new Set((x.kategoriIds as unknown[]).map(String).filter(Boolean))]
         : [],
@@ -50,6 +52,7 @@ export function rapikanBuktiList(raw: unknown): BuktiTugas[] {
     if (k.slot >= 1 && k.slot <= BATAS_BUKTI_TUGAS && !dipakai.has(k.slot)) dipakai.add(k.slot)
     else k.slot = 0
   }
+  let jumlahVideo = 0
   for (const k of kandidat) {
     if (hasil.length >= BATAS_BUKTI_TUGAS) break
     if (!k.slot) {
@@ -66,6 +69,10 @@ export function rapikanBuktiList(raw: unknown): BuktiTugas[] {
     }
     if (k.petunjuk) item.petunjuk = k.petunjuk
     if (k.tahap) item.tahap = k.tahap
+    if (k.video && jumlahVideo < BATAS_BUKTI_VIDEO) {
+      item.jenis = 'video'
+      jumlahVideo++
+    }
     if (k.kategoriIds.length) item.kategoriIds = k.kategoriIds
     hasil.push(item)
   }
@@ -143,6 +150,10 @@ export function kelompokBuktiPerTahap(
 /** Bentuk siap simpan ke Firestore (tanpa undefined / label kosong). */
 export function sanitasiBuktiList(list: BuktiTugas[] | undefined): BuktiTugas[] {
   return rapikanBuktiList(list ?? [])
+}
+
+export function adaBuktiVideo(t: Pick<TugasLms, 'buktiList'> | null | undefined): boolean {
+  return (t?.buktiList ?? []).some((b) => b.jenis === 'video')
 }
 
 export function adaBukti(t: Pick<TugasLms, 'buktiList'> | null | undefined): boolean {

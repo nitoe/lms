@@ -8,6 +8,7 @@ import {
 } from '../lib/pengumpulan'
 import { adaBukti, namaKategoriBukti } from '../lib/buktiTugas'
 import { LABEL_TAHAP } from '../types/tugas'
+import { formatDurasi, formatUkuran, urlVideoTugas } from '../lib/videoTugas'
 import { tenggatMs } from '../lib/tugasSiswa'
 import type { TugasLms } from '../types/tugas'
 
@@ -34,6 +35,8 @@ export default function PengumpulanPanel({ tugas }: Props) {
   const [galat, setGalat] = useState('')
   const [buka, setBuka] = useState<string | null>(null)
   const [foto, setFoto] = useState<Record<string, Record<number, string> | 'memuat'>>({})
+  /** URL putar video per pengumpulan (dimuat saat baris dibuka; berisi token akses, jangan disimpan). */
+  const [videoUrl, setVideoUrl] = useState<Record<string, Record<number, string>>>({})
 
   const muat = useCallback(async () => {
     setGalat('')
@@ -68,6 +71,15 @@ export default function PengumpulanPanel({ tugas }: Props) {
     setFoto((p) => ({ ...p, [d.id]: 'memuat' }))
     const hasil = await muatFotoBerslot(d.fotoIds)
     setFoto((p) => ({ ...p, [d.id]: hasil }))
+    const urls: Record<number, string> = {}
+    for (const [k, v] of Object.entries(d.videos)) {
+      try {
+        urls[Number(k)] = await urlVideoTugas(v.path)
+      } catch (e) {
+        console.warn('Video pengumpulan gagal dimuat', v.path, e)
+      }
+    }
+    if (Object.keys(urls).length > 0) setVideoUrl((p) => ({ ...p, [d.id]: urls }))
   }
 
   const bukti = tugas.buktiList ?? []
@@ -77,7 +89,7 @@ export default function PengumpulanPanel({ tugas }: Props) {
   /** Label bukti wajib yang belum ada di pengumpulan siswa ini. */
   function buktiKurang(d: PengumpulanDok): string[] {
     if (!modeBukti) return []
-    const terisi = new Set(d.fotoIds.map(slotDariFotoId))
+    const terisi = new Set([...d.fotoIds.map(slotDariFotoId), ...Object.keys(d.videos).map(Number)])
     return bukti.filter((b) => b.wajib && !terisi.has(b.slot)).map((b) => b.label)
   }
 
@@ -144,16 +156,25 @@ export default function PengumpulanPanel({ tugas }: Props) {
                       )}
                       {f === 'memuat' || f === undefined ? (
                         <p className="td-kumpul-kosong">Memuat foto…</p>
-                      ) : Object.keys(f).length === 0 ? (
+                      ) : Object.keys(f).length === 0 && Object.keys(d.videos).length === 0 ? (
                         <p className="td-kumpul-kosong">Foto tidak bisa dimuat.</p>
                       ) : modeBukti ? (
                         <div className="td-kumpul-foto">
                           {bukti.map((b) => {
                             const src = f[b.slot]
+                            const video = b.jenis === 'video'
+                            const vInfo = d.videos[b.slot]
+                            const vUrl = videoUrl[d.id]?.[b.slot]
                             const dinilai = namaKategoriBukti(b, kategori)
                             return (
                               <figure key={b.id} className="td-kumpul-fig">
-                                {src ? (
+                                {video && vInfo ? (
+                                  vUrl ? (
+                                    <video className="td-kumpul-video" src={vUrl} controls playsInline preload="metadata" />
+                                  ) : (
+                                    <div className="td-kumpul-fig-kosong">Memuat video…</div>
+                                  )
+                                ) : src ? (
                                   <img src={src} alt={`${b.label} — ${d.siswaNama}`} />
                                 ) : (
                                   <div className="td-kumpul-fig-kosong">
@@ -162,6 +183,7 @@ export default function PengumpulanPanel({ tugas }: Props) {
                                 )}
                                 <figcaption>
                                   <strong>{b.label}</strong>
+                                  {video && vInfo ? ` · ${formatDurasi(vInfo.durasi)}, ${formatUkuran(vInfo.ukuran)}` : ''}
                                   {b.tahap ? ` · ${LABEL_TAHAP[b.tahap]}` : ''}
                                   {b.wajib ? '' : ' · opsional'}
                                   {dinilai.length > 0 && (

@@ -13,7 +13,14 @@ import {
 import { db } from './firebase'
 import { kompresGambar, BATAS_KARAKTER_GAMBAR } from './gambar'
 import type { TugasLms } from '../types/tugas'
-import { adaBukti } from './buktiTugas'
+import { adaBukti, adaBuktiVideo } from './buktiTugas'
+import {
+  hapusVideoTugas,
+  pathVideoAman,
+  unggahVideoTugas,
+  type VideoMeta,
+  type VideoSiap,
+} from './videoTugas'
 
 /**
  * Pengumpulan tugas siswa (foto) — ANTIREGRESI §132.
@@ -44,6 +51,8 @@ export type PengumpulanDok = {
   catatan: string
   fotoIds: string[]
   jumlahFoto: number
+  /** Video bukti per slot (1..6) → berkas di Storage (ANTIREGRESI §Tugas.Video). */
+  videos: Record<number, VideoMeta>
   dibuatMs: number
   diubahMs: number
 }
@@ -82,6 +91,24 @@ function tsMs(v: unknown): number {
   return 0
 }
 
+function videosDariDok(raw: unknown): Record<number, VideoMeta> {
+  const hasil: Record<number, VideoMeta> = {}
+  if (!raw || typeof raw !== 'object') return hasil
+  for (const [k, v] of Object.entries(raw as Record<string, unknown>)) {
+    const slot = Number(k)
+    const x = v as Record<string, unknown> | null
+    if (!Number.isInteger(slot) || slot < 1 || slot > BATAS_SLOT_FOTO || !x) continue
+    if (!pathVideoAman(x.path)) continue
+    hasil[slot] = {
+      path: x.path,
+      tipe: x.tipe === 'video/mp4' ? 'video/mp4' : 'video/webm',
+      ukuran: Number(x.ukuran) || 0,
+      durasi: Number(x.durasi) || 0,
+    }
+  }
+  return hasil
+}
+
 function keDok(id: string, x: Record<string, unknown>): PengumpulanDok {
   return {
     id,
@@ -93,6 +120,7 @@ function keDok(id: string, x: Record<string, unknown>): PengumpulanDok {
     catatan: typeof x.catatan === 'string' ? x.catatan : '',
     fotoIds: Array.isArray(x.fotoIds) ? (x.fotoIds as unknown[]).map(String) : [],
     jumlahFoto: Number(x.jumlahFoto) || 0,
+    videos: videosDariDok(x.videos),
     dibuatMs: tsMs(x.createdAt),
     diubahMs: tsMs(x.updatedAt),
   }
@@ -143,14 +171,20 @@ export async function muatFotoBerslot(fotoIds: string[]): Promise<Record<number,
   return hasil
 }
 
-/** Label bukti wajib yang belum terisi (kosong = lengkap atau tugas tanpa bukti berlabel). */
+/**
+ * Label bukti wajib yang belum terisi (kosong = lengkap atau tugas tanpa bukti berlabel).
+ * Bukti berjenis video dicek pada `videoSlot`, bukti foto pada `fotoSlot`.
+ */
 export function buktiWajibKurang(
   tugas: Pick<TugasLms, 'buktiList'>,
   fotoSlot: Record<number, string>,
+  videoSlot: Record<number, unknown> = {},
 ): string[] {
   if (!adaBukti(tugas)) return []
   return (tugas.buktiList ?? [])
-    .filter((b) => b.wajib && !dataUrlGambarAman(fotoSlot[b.slot]))
+    .filter((b) =>
+      b.wajib && (b.jenis === 'video' ? !videoSlot[b.slot] : !dataUrlGambarAman(fotoSlot[b.slot])),
+    )
     .map((b) => b.label)
 }
 
@@ -171,6 +205,12 @@ export type KirimInput = {
    * bukti opsional boleh kosong (ANTIREGRESI §Tugas.Bukti).
    */
   fotoSlot?: Record<number, string>
+  /** Video baru per slot (sudah lolos periksa & konversi) yang akan diunggah ke Storage. */
+  videoBaru?: Record<number, VideoSiap>
+  /** Slot video lama yang DIPERTAHANKAN (tidak diganti/dihapus siswa). */
+  videoPertahankan?: number[]
+  /** Kemajuan unggah video 0..1 (rata-rata semua video baru). */
+  onProgressVideo?: (bagian: number) => void
   catatan: string
   /** Dokumen meta yang sudah ada (kirim ulang) atau null (pertama kali). */
   ada: PengumpulanDok | null
@@ -183,9 +223,18 @@ export type KirimInput = {
 export async function kirimPengumpulan(input: KirimInput): Promise<PengumpulanDok> {
   const { tugas, siswaId, siswaNama, kelas, ada } = input
   let entri: { slot: number; src: string }[]
+  const videoBaru = input.videoBaru ?? {}
+  const videoLama = ada?.videos ?? {}
+  const videoAkhir: Record<number, VideoMeta> = {}
+  for (const n of input.videoPertahankan ?? []) {
+    if (videoLama[n] && !videoBaru[n]) videoAkhir[n] = videoLama[n]
+  }
   if (adaBukti(tugas)) {
     const slotMap = input.fotoSlot ?? {}
-    const kurang = buktiWajibKurang(tugas, slotMap)
+    const adaVideo: Record<number, boolean> = {}
+    for (const n of Object.keys(videoAkhir)) adaVideo[Number(n)] = true
+    for (const n of Object.keys(videoBaru)) adaVideo[Number(n)] = true
+    const kurang = buktiWajibKurang(tugas, slotMap, adaVideo)
     if (kurang.length > 0) {
       throw new Error(`Bukti wajib belum lengkap: ${kurang.join(', ')}.`)
     }
@@ -198,9 +247,23 @@ export async function kirimPengumpulan(input: KirimInput): Promise<PengumpulanDo
       .slice(0, BATAS_FOTO_PENGUMPULAN)
       .map((src, i) => ({ slot: i + 1, src }))
   }
-  if (entri.length === 0) throw new Error('Tambahkan minimal satu foto.')
+  if (entri.length === 0 && Object.keys(videoAkhir).length === 0 && Object.keys(videoBaru).length === 0) {
+    throw new Error('Tambahkan minimal satu foto.')
+  }
   const catatan = input.catatan.trim().slice(0, BATAS_CATATAN)
   const mapel = tugas.mapel
+
+  // 1) Video ke Storage dulu (paling berat & paling mungkin gagal), lalu foto, meta TERAKHIR.
+  const slotVideoBaru = Object.keys(videoBaru).map(Number)
+  const bagian: Record<number, number> = {}
+  for (const n of slotVideoBaru) {
+    videoAkhir[n] = await unggahVideoTugas(tugas.id, siswaId, n, videoBaru[n], (b) => {
+      bagian[n] = b
+      input.onProgressVideo?.(
+        slotVideoBaru.reduce((acc, k) => acc + (bagian[k] ?? 0), 0) / slotVideoBaru.length,
+      )
+    })
+  }
 
   const fotoIds: string[] = []
   for (const { slot, src } of entri) {
@@ -237,11 +300,17 @@ export async function kirimPengumpulan(input: KirimInput): Promise<PengumpulanDo
 
   const id = idPengumpulan(tugas.id, siswaId)
   const ref = doc(db, 'lms_pengumpulan', id)
+  const videosDok: Record<string, VideoMeta> = {}
+  for (const [k, v] of Object.entries(videoAkhir)) videosDok[k] = v
   if (ada) {
     await updateDoc(ref, {
       catatan,
       fotoIds,
       jumlahFoto: fotoIds.length,
+      // Foto saja (tanpa video sebelum/sekarang): jangan sentuh `videos` agar tetap jalan di rules lama.
+      ...(adaBuktiVideo(tugas) || Object.keys(videoLama).length > 0 || Object.keys(videosDok).length > 0
+        ? { videos: videosDok }
+        : {}),
       updatedAt: serverTimestamp(),
     })
   } else {
@@ -254,9 +323,16 @@ export async function kirimPengumpulan(input: KirimInput): Promise<PengumpulanDo
       catatan,
       fotoIds,
       jumlahFoto: fotoIds.length,
+      ...(Object.keys(videosDok).length > 0 ? { videos: videosDok } : {}),
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     })
+  }
+
+  // Berkas video lama yang tak dipakai lagi (dihapus/diganti, atau ekstensi berubah) — best-effort.
+  const pathDipakai = new Set(Object.values(videoAkhir).map((v) => v.path))
+  for (const lama of Object.values(videoLama)) {
+    if (!pathDipakai.has(lama.path)) await hapusVideoTugas(lama.path)
   }
   const s = await getDoc(ref)
   return keDok(id, s.data() ?? {})

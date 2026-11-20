@@ -2367,3 +2367,26 @@ button.sw-kat-card {
   font-weight: 800;
   color: #1e1b4b;
 }
+
+/* Video bukti (2026-11-20, ANTIREGRESI §Tugas.Video) */
+.sw-video-wrap { position: relative; max-width: 22rem; }
+.sw-video { width: 100%; max-height: 18rem; border-radius: 0.9rem; background: #0f172a; }
+.sw-video-info { margin: 0.3rem 0 0; font-size: 0.75rem; font-weight: 700; color: var(--color-muted); }
+.sw-video-perlu,
+.sw-video-proses {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  max-width: 22rem;
+  padding: 0.75rem;
+  border-radius: 0.9rem;
+  border: 1.5px dashed #cbd5e1;
+  background: #f8fafc;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #334155;
+}
+.sw-video-perlu p,
+.sw-video-proses p { margin: 0; }
+.sw-video-bar { height: 0.5rem; border-radius: 999px; background: #e2e8f0; overflow: hidden; }
+.sw-video-bar span { display: block; height: 100%; background: var(--color-muh-600); transition: width 0.3s; }
