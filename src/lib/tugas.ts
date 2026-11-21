@@ -126,6 +126,8 @@ function docKeTugas(id: string, data: Record<string, unknown>): TugasLms {
     tpNama: typeof data.tpNama === 'string' ? data.tpNama : undefined,
     tenggat: data.tenggat,
     aktif: data.aktif === true,
+    selesai: data.selesai === true,
+    arsip: data.arsip === true,
     dibuatOleh: String(data.dibuatOleh || ''),
     dibuatOlehNama: typeof data.dibuatOlehNama === 'string' ? data.dibuatOlehNama : undefined,
     jumlahPengumpulan:
@@ -323,7 +325,7 @@ export async function buatTugas(input: TugasInput): Promise<string> {
 
 export async function updateTugas(
   id: string,
-  data: Partial<TugasInput> & { aktif?: boolean },
+  data: Partial<TugasInput> & { aktif?: boolean; selesai?: boolean; arsip?: boolean },
 ): Promise<void> {
   const payload: Record<string, unknown> = { updatedAt: serverTimestamp() }
 
@@ -365,6 +367,8 @@ export async function updateTugas(
     }
   }
   if (data.aktif !== undefined) payload.aktif = data.aktif === true
+  if (data.selesai !== undefined) payload.selesai = data.selesai === true
+  if (data.arsip !== undefined) payload.arsip = data.arsip === true
   if (data.pengaturanPenilaian !== undefined) {
     payload.pengaturanPenilaian = sanitasiPengaturanPenilaian(data.pengaturanPenilaian)
   }

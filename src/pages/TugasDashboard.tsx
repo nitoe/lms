@@ -16,7 +16,7 @@ import { NAMA_JENIS_PENILAIAN_TUGAS, semuaMapelTugas } from '../types/tugas'
 import '../styles/tugas.css'
 
 type FilterJenis = 'semua' | 'mapel' | 'proyek'
-type FilterStatus = 'semua' | 'aktif' | 'draf'
+type FilterStatus = 'semua' | 'aktif' | 'draf' | 'selesai' | 'arsip'
 type Urut = 'terbaru' | 'tenggat' | 'judul' | 'kumpul'
 
 function IkonCari() {
@@ -133,12 +133,15 @@ export default function TugasDashboard() {
 
   const hitung = useMemo(() => {
     const l = list ?? []
+    const aktifList = l.filter((t) => t.aktif && !t.arsip)
     return {
-      semua: l.length,
-      mapel: l.filter((t) => t.jenis === 'mapel').length,
-      proyek: l.filter((t) => t.jenis === 'proyek').length,
-      aktif: l.filter((t) => t.aktif).length,
-      draf: l.filter((t) => !t.aktif).length,
+      semua: l.filter((t) => !t.arsip).length,
+      mapel: l.filter((t) => !t.arsip && t.jenis === 'mapel').length,
+      proyek: l.filter((t) => !t.arsip && t.jenis === 'proyek').length,
+      aktif: aktifList.length,
+      draf: l.filter((t) => !t.arsip && !t.aktif).length,
+      selesai: l.filter((t) => !t.arsip && t.selesai).length,
+      arsip: l.filter((t) => t.arsip).length,
     }
   }, [list])
 
@@ -147,20 +150,32 @@ export default function TugasDashboard() {
     let segera = 0
     let kumpul = 0
     for (const t of l) {
+      if (t.arsip) continue
       kumpul += t.jumlahPengumpulan ?? 0
       if (!t.aktif) continue
       const info = infoTenggat(t.tenggat, sekarang)
       if (info.nada === 'hariini' || info.nada === 'segera') segera += 1
     }
-    return { total: l.length, aktif: hitung.aktif, segera, kumpul }
-  }, [list, sekarang, hitung.aktif])
+    return {
+      total: hitung.semua,
+      aktif: hitung.aktif,
+      selesai: hitung.selesai,
+      arsip: hitung.arsip,
+      segera,
+      kumpul,
+    }
+  }, [list, sekarang, hitung])
 
   const filtered = useMemo(() => {
     if (!list) return []
     let rows = list
     if (filterJenis !== 'semua') rows = rows.filter((t) => t.jenis === filterJenis)
-    if (filterStatus === 'aktif') rows = rows.filter((t) => t.aktif)
-    if (filterStatus === 'draf') rows = rows.filter((t) => !t.aktif)
+    // Status: default «semua» = non-arsip. Filter khusus untuk arsip / selesai / aktif / draf.
+    if (filterStatus === 'semua') rows = rows.filter((t) => !t.arsip)
+    else if (filterStatus === 'aktif') rows = rows.filter((t) => t.aktif && !t.arsip)
+    else if (filterStatus === 'draf') rows = rows.filter((t) => !t.aktif && !t.arsip)
+    else if (filterStatus === 'selesai') rows = rows.filter((t) => t.selesai && !t.arsip)
+    else if (filterStatus === 'arsip') rows = rows.filter((t) => t.arsip)
     if (filterKelas !== 'semua') rows = rows.filter((t) => t.kelas === filterKelas)
     const s = q.trim().toLowerCase()
     if (s) {
@@ -232,14 +247,60 @@ export default function TugasDashboard() {
     }
   }
 
+  async function onToggleSelesai(t: TugasLms) {
+    setBusyId(t.id)
+    setError('')
+    try {
+      await updateTugas(t.id, { selesai: !t.selesai })
+      await muat()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Gagal mengubah tanda selesai.')
+    } finally {
+      setBusyId(null)
+    }
+  }
+
+  /** Arsipkan: sembunyikan dari daftar utama + nonaktifkan untuk siswa. */
+  async function onArsipkan(t: TugasLms) {
+    if (
+      !confirm(
+        `Arsipkan «${t.judul}»? Tugas disembunyikan dari daftar utama dan dinonaktifkan untuk siswa. Data nilai tetap aman.`,
+      )
+    )
+      return
+    setBusyId(t.id)
+    setError('')
+    try {
+      await updateTugas(t.id, { arsip: true, aktif: false })
+      await muat()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Gagal mengarsipkan.')
+    } finally {
+      setBusyId(null)
+    }
+  }
+
+  async function onKeluarkanArsip(t: TugasLms) {
+    setBusyId(t.id)
+    setError('')
+    try {
+      // Tidak otomatis aktifkan — guru memilih sendiri kapan dibuka ke siswa.
+      await updateTugas(t.id, { arsip: false })
+      await muat()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Gagal mengeluarkan dari arsip.')
+    } finally {
+      setBusyId(null)
+    }
+  }
+
   return (
     <div className="tg-halaman">
       <header className="tg-kepala">
         <div className="tg-kepala-teks">
           <h2 className="tg-judul-halaman">Tugas</h2>
           <p className="tg-sub">
-            Katalog tugas mapel dan proyek. Atur tenggat, lampirkan Tujuan Pembelajaran, lalu input
-            nilai dari halaman tiap tugas.
+            Katalog tugas mapel dan proyek. Tandai selesai setelah dinilai, arsipkan yang tidak dipakai lagi.
           </p>
         </div>
         <Link to="/tugas/baru" className="tg-btn tg-btn--utama tg-btn--besar">
@@ -268,6 +329,20 @@ export default function TugasDashboard() {
           <div className="tg-ringkas-item tg-ringkas-item--teal">
             <b>{ringkas.kumpul}</b>
             <span>Pengumpulan</span>
+          </div>
+          <div
+            className="tg-ringkas-item tg-ringkas-item--ungu"
+            title="Tugas yang sudah ditandai selesai penilaian"
+          >
+            <b>{ringkas.selesai}</b>
+            <span>Selesai</span>
+          </div>
+          <div
+            className="tg-ringkas-item tg-ringkas-item--abu"
+            title="Tugas diarsipkan (disembunyikan dari daftar utama)"
+          >
+            <b>{ringkas.arsip}</b>
+            <span>Arsip</span>
           </div>
         </section>
       )}
@@ -312,6 +387,8 @@ export default function TugasDashboard() {
                 { v: 'semua', teks: 'Semua', n: hitung.semua },
                 { v: 'aktif', teks: 'Aktif', n: hitung.aktif },
                 { v: 'draf', teks: 'Draf', n: hitung.draf },
+                { v: 'selesai', teks: 'Selesai', n: hitung.selesai },
+                { v: 'arsip', teks: 'Arsip', n: hitung.arsip },
               ]}
             />
             <Segmen<FilterJenis>
@@ -395,7 +472,7 @@ export default function TugasDashboard() {
             return (
               <li key={t.id}>
                 <article
-                  className={`tg-kartu${t.aktif ? '' : ' tg-kartu--draf'}${sibuk ? ' tg-kartu--sibuk' : ''}`}
+                  className={`tg-kartu${!t.aktif && !t.arsip ? ' tg-kartu--draf' : ''}${t.arsip ? ' tg-kartu--arsip' : ''}${t.selesai && !t.arsip ? ' tg-kartu--selesai' : ''}${sibuk ? ' tg-kartu--sibuk' : ''}`}
                   style={gaya}
                   aria-busy={sibuk}
                 >
@@ -412,11 +489,22 @@ export default function TugasDashboard() {
                         <span className="tg-kelas">Kelas {t.kelas}</span>
                       </div>
                       <span
-                        className={`tg-status ${t.aktif ? 'tg-status--aktif' : 'tg-status--draf'}`}
-                        title={t.aktif ? 'Terlihat oleh siswa' : 'Belum terlihat oleh siswa'}
+                        className={`tg-status tg-status--${t.arsip ? 'arsip' : t.aktif ? 'aktif' : 'draf'}`}
+                        title={
+                          t.arsip
+                            ? 'Tugas diarsipkan'
+                            : t.aktif
+                              ? 'Tampil ke siswa'
+                              : 'Draf — belum tampil ke siswa'
+                        }
                       >
-                        {t.aktif ? 'Aktif' : 'Draf'}
+                        {t.arsip ? 'Arsip' : t.aktif ? 'Aktif' : 'Draf'}
                       </span>
+                      {t.selesai && !t.arsip && (
+                        <span className="tg-status tg-status--selesai" title="Penilaian ditandai selesai">
+                          Selesai
+                        </span>
+                      )}
                     </div>
 
                     <h3 className="tg-judul">
@@ -465,14 +553,53 @@ export default function TugasDashboard() {
                     <Link to={`/tugas/${t.id}`} className="tg-btn tg-btn--utama">
                       Buka
                     </Link>
-                    <button
-                      type="button"
-                      className="tg-btn"
-                      disabled={busyId !== null}
-                      onClick={() => void onToggleAktif(t)}
-                    >
-                      {t.aktif ? 'Nonaktifkan' : 'Aktifkan'}
-                    </button>
+                    {!t.arsip && (
+                      <button
+                        type="button"
+                        className="tg-btn"
+                        disabled={busyId !== null}
+                        onClick={() => void onToggleAktif(t)}
+                        title={t.aktif ? 'Sembunyikan dari siswa' : 'Tampilkan ke siswa'}
+                      >
+                        {t.aktif ? 'Nonaktifkan' : 'Aktifkan'}
+                      </button>
+                    )}
+                    {!t.arsip && (
+                      <button
+                        type="button"
+                        className={`tg-btn${t.selesai ? ' tg-btn--selesai' : ''}`}
+                        disabled={busyId !== null}
+                        onClick={() => void onToggleSelesai(t)}
+                        title={
+                          t.selesai
+                            ? 'Batalkan tanda selesai'
+                            : 'Tandai penilaian tugas sudah selesai'
+                        }
+                      >
+                        {t.selesai ? 'Batal selesai' : 'Tandai selesai'}
+                      </button>
+                    )}
+                    {t.arsip ? (
+                      <button
+                        type="button"
+                        className="tg-btn"
+                        disabled={busyId !== null}
+                        onClick={() => void onKeluarkanArsip(t)}
+                        title="Kembalikan ke daftar utama (masih draf sampai diaktifkan)"
+                      >
+                        Keluarkan arsip
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        className="tg-btn"
+                        disabled={busyId !== null}
+                        onClick={() => void onArsipkan(t)}
+                        title="Arsipkan tugas yang sudah tidak dipakai"
+                      >
+                        Arsipkan
+                      </button>
+                    )}
                     <span className="tg-kaki-spasi" />
                     <button
                       type="button"

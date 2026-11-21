@@ -160,6 +160,16 @@ export interface TugasLms {
   /** ISO string atau Firestore Timestamp. */
   tenggat?: unknown
   aktif: boolean
+  /**
+   * Alur penilaian guru selesai (nilai sudah diisi / tugas dianggap tuntas).
+   * Berbeda dari `aktif` (tampil ke siswa). Default/legacy = belum selesai.
+   */
+  selesai?: boolean
+  /**
+   * Diarsipkan: disembunyikan dari daftar default dashboard.
+   * Biasanya digabung dengan aktif=false agar siswa tidak melihat.
+   */
+  arsip?: boolean
   dibuatOleh: string
   dibuatOlehNama?: string
   jumlahPengumpulan?: number
@@ -186,6 +196,8 @@ export type TugasInput = {
   tpList?: TpTugas[]
   tenggat?: Date | null
   aktif?: boolean
+  selesai?: boolean
+  arsip?: boolean
   pengaturanPenilaian?: PengaturanPenilaianTugas
   buktiList?: BuktiTugas[]
   namaGuru?: string
