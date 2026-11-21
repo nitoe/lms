@@ -160,6 +160,8 @@ export function bangunRankingGabungan(
     })
     .filter((x): x is NonNullable<typeof x> => x != null)
 
+  // Urut dari rata-rata (sudah dibulatkan 1 desimal seperti yang dilihat orang tua).
+  // Nama hanya untuk urutan tampil; TIDAK memengaruhi peringkat.
   withRata.sort(
     (a, b) =>
       b.rataRata - a.rataRata ||
@@ -167,14 +169,20 @@ export function bangunRankingGabungan(
       a.kelas.localeCompare(b.kelas),
   )
 
-  const ranked: TkaPeringkatBaris[] = withRata.map((p, i) => ({
-    peringkat: i + 1,
-    siswaId: p.siswaId,
-    siswaNama: p.siswaNama,
-    kelas: p.kelas,
-    rataRata: p.rataRata,
-    nilai: p.nilai,
-  }))
+  // Peringkat kompetisi: rata-rata sama = peringkat sama (1, 2, 2, 4), sama seperti Leger.
+  const ranked: TkaPeringkatBaris[] = []
+  withRata.forEach((p, i) => {
+    const prev = ranked[i - 1]
+    const peringkat = prev && prev.rataRata === p.rataRata ? prev.peringkat : i + 1
+    ranked.push({
+      peringkat,
+      siswaId: p.siswaId,
+      siswaNama: p.siswaNama,
+      kelas: p.kelas,
+      rataRata: p.rataRata,
+      nilai: p.nilai,
+    })
+  })
 
   return { ranked, jumlahPeserta: ranked.length }
 }
@@ -215,7 +223,14 @@ export async function publikasikanTkaOrtu(input: {
   tahap: TahapTryOutTka
   catatanOrtu?: string
   namaGuru?: string
-}): Promise<{ jumlahSiswa: number; jumlahRanking: number }> {
+}): Promise<{
+  jumlahSiswa: number
+  jumlahRanking: number
+  sementara: boolean
+  jumlahSiswaGabungan: number
+  /** true bila peringkat kelas paralel tidak bisa diselaraskan (hak akses): publish ulang oleh kelas tsb. */
+  kelasLainTertunda: boolean
+}> {
   const uid = auth.currentUser?.uid
   if (!uid) throw new Error('Anda harus masuk terlebih dahulu.')
 
@@ -244,12 +259,32 @@ export async function publikasikanTkaOrtu(input: {
   })
 
   const { ranked, jumlahPeserta } = bangunRankingGabungan(tahap, pesertaSemua)
+  // Penanda satu kali hitung: dokumen siswa & 10 besar membawa id yang sama sehingga portal
+  // bisa mendeteksi pasangan yang tidak sinkron.
+  const rankingId = `${tahap}-${Date.now().toString(36)}`
+  const jumlahSiswaGabungan = semuaSiswa.length
+  const sementara = jumlahPeserta < jumlahSiswaGabungan
   const rankBySiswa = new Map(ranked.map((r) => [r.siswaId, r]))
+
+  // Kelas paralel hanya di-patch bila sudah pernah dipublikasikan (jangan membuat dokumen baru).
+  const kelasPaten = new Set<string>()
+  for (const k of KELAS_TKA as readonly string[]) {
+    if (k === kelas) continue
+    try {
+      const g = await getDoc(doc(db, 'lms_tka_publikasi', idTkaPublikasi(k, tahap)))
+      if (g.exists() && g.data().published === true) kelasPaten.add(k)
+    } catch {
+      /* gagal baca gerbang → anggap belum dipublikasikan */
+    }
+  }
 
   const siswaKelas = semuaSiswa.filter((s) => String(s.kelas).toUpperCase() === kelas)
   const catatan = (input.catatanOrtu || '').trim().slice(0, 500)
 
   const ops: { ref: ReturnType<typeof doc>; data: Record<string, unknown> }[] = []
+  // Patch peringkat kelas paralel dipisah: aturan Firestore hanya mengizinkan wali kelas menulis
+  // rombelnya sendiri (admin / akun TKA boleh keduanya). Gagal di sini tidak boleh menggagalkan publish.
+  const opsLain: { ref: ReturnType<typeof doc>; data: Record<string, unknown> }[] = []
 
   /**
    * Snapshot penuh untuk kelas yang dipublikasikan + PATCH peringkat untuk kelas paralel.
@@ -288,6 +323,9 @@ export async function publikasikanTkaOrtu(input: {
         rataRata: rank ? rank.rataRata : hitungRataRata(nilai, tahap),
         peringkat: rank ? rank.peringkat : null,
         jumlahPesertaRanking: jumlahPeserta,
+        rankingId,
+        sementara,
+        jumlahSiswaGabungan,
         published: true,
         publishedAt: serverTimestamp(),
         catatanOrtu: catatan,
@@ -295,10 +333,10 @@ export async function publikasikanTkaOrtu(input: {
       }
       if (Object.keys(sebaran).length) data.sebaran = sebaran
       ops.push({ ref: refHasil, data })
-    } else {
+    } else if (kelasPaten.has(kelasSiswa)) {
       // Kelas paralel: hanya selaraskan field ranking (jangan ubah published/nilai bila belum pernah publish)
       // merge: jika dokumen belum ada, jangan membuat snapshot "published" palsu — hanya update bila perlu rank
-      ops.push({
+      opsLain.push({
         ref: refHasil,
         data: {
           kelas: kelasSiswa,
@@ -310,6 +348,9 @@ export async function publikasikanTkaOrtu(input: {
           rataRata: rank ? rank.rataRata : hitungRataRata(nilai, tahap),
           peringkat: rank ? rank.peringkat : null,
           jumlahPesertaRanking: jumlahPeserta,
+          rankingId,
+          sementara,
+          jumlahSiswaGabungan,
           updatedAt: serverTimestamp(),
         },
       })
@@ -337,6 +378,9 @@ export async function publikasikanTkaOrtu(input: {
       tahap,
       top10: ranked.slice(0, 10),
       jumlahPeserta,
+      jumlahSiswaGabungan,
+      sementara,
+      rankingId,
       updatedAt: serverTimestamp(),
       updatedByNama: input.namaGuru || '',
     },
@@ -351,7 +395,28 @@ export async function publikasikanTkaOrtu(input: {
     await batch.commit()
   }
 
-  return { jumlahSiswa: siswaKelas.length, jumlahRanking: jumlahPeserta }
+  // Selaraskan peringkat kelas paralel yang sudah dipublikasikan (bila akun berhak).
+  let kelasLainTertunda = false
+  for (let i = 0; i < opsLain.length; i += CHUNK) {
+    try {
+      const batch = writeBatch(db)
+      for (const o of opsLain.slice(i, i + CHUNK)) {
+        batch.set(o.ref, o.data, { merge: true })
+      }
+      await batch.commit()
+    } catch {
+      kelasLainTertunda = true
+      break
+    }
+  }
+
+  return {
+    jumlahSiswa: siswaKelas.length,
+    jumlahRanking: jumlahPeserta,
+    sementara,
+    jumlahSiswaGabungan,
+    kelasLainTertunda,
+  }
 }
 
 /**

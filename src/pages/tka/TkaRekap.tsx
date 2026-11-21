@@ -221,7 +221,13 @@ export default function TkaRekap() {
       })
       setInfo(
         `Dipublikasikan: ${hasil.jumlahSiswa} siswa kelas ${k}. ` +
-          `Peserta ranking gabungan 6A+6B: ${hasil.jumlahRanking}.`,
+          `Peserta ranking gabungan 6A+6B: ${hasil.jumlahRanking} dari ${hasil.jumlahSiswaGabungan} siswa.` +
+          (hasil.sementara
+            ? ' Peringkat masih SEMENTARA karena belum semua siswa memiliki nilai lengkap untuk tahap ini.'
+            : '') +
+          (hasil.kelasLainTertunda
+            ? ' Peringkat kelas paralel belum bisa diselaraskan dari akun ini; minta wali kelas lainnya mempublikasikan ulang (portal sementara menampilkan «sedang diperbarui»).'
+            : ''),
       )
       await muat()
     } catch (e) {

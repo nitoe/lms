@@ -1603,3 +1603,12 @@ Jangan memaksa satu kolom sempit di desktop.
 3. **`hitungRataRata`** (`nilaiTugas.ts`) memakai bobot > 0; jika semua kosong/0, tiap kategori berbobot 1 (rata-rata sederhana). Jangan memaksa total 100 di klien saat hitung skor — total 100 adalah konvensi pengaturan rubrik.
 4. Deploy CF setelah mengubah prompt/normalisasi: `firebase deploy --only functions:generateKategoriTugasLmsAi`.
 
+
+## §TKA.Peringkat — peringkat gabungan 6A+6B harus satu sumber & jujur (2026-11-21)
+
+1. Peringkat TKA SELALU gabungan 6A+6B (tidak ada peringkat per kelas di portal). Seluruh `lms_tka_hasil_ortu` kedua kelas dan `lms_tka_peringkat/{tahap}` dihitung dari satu panggilan `bangunRankingGabungan` dan membawa `rankingId` yang sama. Jangan menghitung peringkat di tempat lain.
+2. Peringkat kompetisi: rata-rata (1 desimal, seperti yang dilihat orang tua) sama = peringkat sama; urut nama hanya urutan tampil.
+3. Hanya siswa dengan rata-rata lengkap (tahap I: BI+MTK; II–V: BI+MTK+IPA) masuk ranking. Bila `jumlahPeserta < jumlahSiswaGabungan`, `sementara = true` dan portal wajib menampilkan label «sementara».
+4. Rules hanya mengizinkan wali kelas menulis `lms_tka_hasil_ortu` rombelnya sendiri. Patch kelas paralel TIDAK boleh digabung ke batch utama (atomik → seluruh publish gagal). Bila gagal, portal mendeteksi ketidaksinkronan lewat `rankingId` dan menyembunyikan peringkat sampai kelas itu publish ulang.
+5. Setelah data rekap berubah (impor/nilai baru), publish ulang KEDUA kelas. Snapshot tidak dihitung ulang otomatis.
+6. **Tes:** publish 6B saja → kartu & tabel 10 besar cocok; ubah satu nilai lalu publish 6A → kartu 6B cocok atau tampil «sedang diperbarui», tidak pernah kontradiktif.

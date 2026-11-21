@@ -1,3 +1,12 @@
+## 2026-11-21 — TKA: peringkat gabungan konsisten (seri berbagi peringkat, penanda «sementara», patch kelas paralel aman)
+
+- **Masalah:** kartu portal «#6 · 65,40» tidak cocok dengan tabel 10 besar (#6 = 72,00); label «gabungan 6A & 6B» padahal hanya siswa dengan nilai lengkap yang diperingkat (mis. baru 6B yang punya IPA tahap II); rata-rata sama mendapat peringkat berbeda; patch peringkat kelas paralel (commit sebelumnya) ditolak rules untuk wali kelas yang bukan admin sehingga seluruh publish gagal.
+- `src/lib/tkaPublikasi.ts`: `bangunRankingGabungan` memakai peringkat kompetisi (rata-rata sama = peringkat sama). Publish menulis `rankingId` (sama di dokumen siswa & `lms_tka_peringkat`), `jumlahSiswaGabungan`, `sementara` (belum semua siswa lengkap). Patch kelas paralel dipisah (batch sendiri, try/catch), hanya untuk kelas yang sudah dipublikasikan, dan tidak lagi menggagalkan publish; hasilnya dilaporkan lewat `kelasLainTertunda`.
+- `src/types/tkaPublikasi.ts`: field `rankingId`, `sementara`, `jumlahSiswaGabungan`.
+- `src/pages/tka/TkaRekap.tsx`: pesan setelah publish menyebut «n dari N siswa», peringatan SEMENTARA, dan perlunya publish ulang kelas lain bila tidak berhak.
+- Portal orang tua (repo `portal-orangtua`) kini menolak menampilkan peringkat yang tidak sinkron dan menampilkan label «sementara».
+- Antiregresi: §TKA.Peringkat. Tidak perlu deploy rules/functions.
+
 ## 2026-11-21 — Tugas: status tiga tingkat (draf / aktif guru / aktif siswa)
 
 - **Masalah:** boolean `aktif` hanya membedakan «tampil ke siswa» vs tidak; tidak ada status untuk tugas yang siap dinilai guru tanpa pengumpulan LMS (tugas offline yang nanti disinkron ke Penilaian).

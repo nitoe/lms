@@ -71,6 +71,12 @@ export type TkaHasilOrtuDok = {
   peringkat: number | null
   /** Jumlah peserta yang masuk ranking pada tahap ini. */
   jumlahPesertaRanking: number
+  /** Id satu kali hitung ranking; sama dengan `lms_tka_peringkat.rankingId` bila sinkron. */
+  rankingId?: string
+  /** true bila belum semua siswa gabungan 6A+6B punya rata-rata lengkap. */
+  sementara?: boolean
+  /** Jumlah seluruh siswa 6A+6B pada saat publish. */
+  jumlahSiswaGabungan?: number
   published: boolean
   publishedAt?: unknown
   catatanOrtu?: string
@@ -95,6 +101,9 @@ export type TkaPeringkatDok = {
   tahap: TahapTryOutTka
   top10: TkaPeringkatBaris[]
   jumlahPeserta: number
+  jumlahSiswaGabungan?: number
+  sementara?: boolean
+  rankingId?: string
   updatedAt?: unknown
   updatedByNama?: string
 }
