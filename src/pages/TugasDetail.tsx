@@ -47,11 +47,16 @@ import type {
 } from '../types/tugas'
 import {
   DAFTAR_TAHAP,
+  KETERANGAN_STATUS_TUGAS,
+  LABEL_STATUS_TUGAS,
   labelJenisTugas,
   LABEL_TAHAP,
   NAMA_JENIS_PENILAIAN_TUGAS,
+  normalisasiStatusTugas,
+  bolehInputNilaiTugas,
   semuaMapelTugas,
   tahapValid,
+  type StatusTugas,
 } from '../types/tugas'
 import type { TpRingkas } from '../types/materi'
 
@@ -132,7 +137,7 @@ export default function TugasDetail() {
   const [instruksi, setInstruksi] = useState('')
   const [buktiList, setBuktiList] = useState<BuktiTugas[]>([])
   const [tenggatStr, setTenggatStr] = useState('')
-  const [aktif, setAktif] = useState(false)
+  const [statusTugas, setStatusTugas] = useState<StatusTugas>('draf')
   const [berbagiOpen, setBerbagiOpen] = useState(false)
   const [jenisPenilaian, setJenisPenilaian] = useState<JenisPenilaianTugas>('slm')
   const [tpDipilih, setTpDipilih] = useState<TpTugas[]>([])
@@ -230,7 +235,7 @@ export default function TugasDetail() {
     setInstruksi(t.instruksi || '')
     setBuktiList(t.buktiList || [])
     setTenggatStr(tenggatKeInput(t.tenggat))
-    setAktif(t.aktif)
+    setStatusTugas(normalisasiStatusTugas(t.statusTugas, t.aktif))
     setJenisPenilaian(
       t.jenisPenilaian === 'latihan' ||
         t.jenisPenilaian === 'sts' ||
@@ -372,7 +377,8 @@ export default function TugasDetail() {
           instruksi,
           tpList: tpDipilih,
           tenggat,
-          aktif,
+          statusTugas,
+          aktif: statusTugas === 'aktif_siswa',
           pengaturanPenilaian: pengaturan,
           namaGuru: profil?.nama,
         })
@@ -390,7 +396,8 @@ export default function TugasDetail() {
           instruksi,
           tpList: tpDipilih,
           tenggat,
-          aktif,
+          statusTugas,
+          aktif: statusTugas === 'aktif_siswa',
           pengaturanPenilaian: pengaturan,
         })
         setSukses('Perubahan disimpan.')
@@ -996,7 +1003,7 @@ export default function TugasDetail() {
   const aksen = aksenMapel(mapelAksen || 'Umum')
   const infoTg = infoTenggat(isBaru ? null : tugas?.tenggat)
   const jp = isBaru ? jenisPenilaian : penilaianTugas(tugas || { jenisPenilaian })
-  const statusAktif = isBaru ? aktif : !!tugas?.aktif
+  const statusNow = isBaru ? statusTugas : normalisasiStatusTugas(tugas?.statusTugas, tugas?.aktif)
   const mapelsLabel = !isBaru && tugas ? semuaMapelTugas(tugas).join(', ') : mapelAksen
 
   return (
@@ -1019,8 +1026,8 @@ export default function TugasDetail() {
                     <span className="td-chip">{labelJenisTugas(tugas.jenis)}</span>
                     <span className="td-chip">Kelas {tugas.kelas}</span>
                     {mapelsLabel && <span className="td-chip td-chip--mapel">{mapelsLabel}</span>}
-                    <span className={`td-chip td-chip--status ${statusAktif ? 'td-chip--aktif' : 'td-chip--draf'}`}>
-                      {statusAktif ? 'Aktif' : 'Draf'}
+                    <span className={`td-chip td-chip--status td-chip--${statusNow}`}>
+                      {LABEL_STATUS_TUGAS[statusNow]}
                     </span>
                     <span className={`td-chip td-chip--jp td-chip--${jp}`} title={NAMA_JENIS_PENILAIAN_TUGAS[jp]}>
                       {LABEL_PENILAIAN_SINGKAT[jp]}
@@ -1161,9 +1168,17 @@ export default function TugasDetail() {
                 <span>Deskripsi singkat</span>
                 <textarea value={deskripsi} onChange={(e) => setDeskripsi(e.target.value)} rows={2} placeholder="Ringkasan singkat untuk kartu katalog…" />
               </label>
-              <label className="td-cek">
-                <input type="checkbox" checked={aktif} onChange={(e) => setAktif(e.target.checked)} />
-                <span>Aktifkan tugas (tampil untuk siswa)</span>
+              <label className="td-field td-field--full">
+                <span>Status tugas</span>
+                <select
+                  value={statusTugas}
+                  onChange={(e) => setStatusTugas(e.target.value as StatusTugas)}
+                >
+                  <option value="draf">{LABEL_STATUS_TUGAS.draf}</option>
+                  <option value="aktif_guru">{LABEL_STATUS_TUGAS.aktif_guru}</option>
+                  <option value="aktif_siswa">{LABEL_STATUS_TUGAS.aktif_siswa}</option>
+                </select>
+                <small className="td-hint">{KETERANGAN_STATUS_TUGAS[statusTugas]}</small>
               </label>
               {tugas && (
                 <div className="td-field td-field--full" style={{ marginTop: '0.5rem' }}>
@@ -1658,6 +1673,15 @@ export default function TugasDetail() {
                 <div className="td-kosong-kecil">
                   <b>Simpan tugas dulu</b>
                   <p>Buat dan simpan pengaturan tugas sebelum mengisi nilai siswa.</p>
+                </div>
+              ) : !bolehInputNilaiTugas(statusNow) ? (
+                <div className="td-kosong-kecil">
+                  <b>Masih draf</b>
+                  <p>
+                    Ubah status tugas menjadi <strong>Aktif guru</strong> (nilai tanpa pengumpulan
+                    siswa) atau <strong>Aktif siswa</strong> di tab Pengaturan, lalu simpan — baru
+                    nilai dapat diisi dan disinkronkan ke Penilaian.
+                  </p>
                 </div>
               ) : (
                 <>

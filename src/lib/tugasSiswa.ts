@@ -41,6 +41,14 @@ function docKeTugas(id: string, data: Record<string, unknown>): TugasLms {
     tpList: Array.isArray(data.tpList) ? (data.tpList as TugasLms['tpList']) : undefined,
     tenggat: data.tenggat,
     aktif: data.aktif === true,
+    statusTugas:
+      data.statusTugas === 'draf' ||
+      data.statusTugas === 'aktif_guru' ||
+      data.statusTugas === 'aktif_siswa'
+        ? data.statusTugas
+        : data.aktif === true
+          ? 'aktif_siswa'
+          : 'draf',
     dibuatOleh: String(data.dibuatOleh || ''),
     dibuatOlehNama: typeof data.dibuatOlehNama === 'string' ? data.dibuatOlehNama : undefined,
     jumlahPengumpulan:

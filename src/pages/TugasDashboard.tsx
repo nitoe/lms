@@ -11,12 +11,17 @@ import {
   penilaianTugas,
   tenggatKeDate,
 } from '../lib/tugasUi'
-import type { TugasLms } from '../types/tugas'
-import { NAMA_JENIS_PENILAIAN_TUGAS, semuaMapelTugas } from '../types/tugas'
+import type { StatusTugas, TugasLms } from '../types/tugas'
+import {
+  LABEL_STATUS_TUGAS,
+  NAMA_JENIS_PENILAIAN_TUGAS,
+  normalisasiStatusTugas,
+  semuaMapelTugas,
+} from '../types/tugas'
 import '../styles/tugas.css'
 
 type FilterJenis = 'semua' | 'mapel' | 'proyek'
-type FilterStatus = 'semua' | 'aktif' | 'draf' | 'selesai' | 'arsip'
+type FilterStatus = 'semua' | 'draf' | 'aktif_guru' | 'aktif_siswa' | 'selesai' | 'arsip'
 type Urut = 'terbaru' | 'tenggat' | 'judul' | 'kumpul'
 
 function IkonCari() {
@@ -133,13 +138,14 @@ export default function TugasDashboard() {
 
   const hitung = useMemo(() => {
     const l = list ?? []
-    const aktifList = l.filter((t) => t.aktif && !t.arsip)
+    const statusOf = (x: TugasLms) => normalisasiStatusTugas(x.statusTugas, x.aktif)
     return {
       semua: l.filter((t) => !t.arsip).length,
       mapel: l.filter((t) => !t.arsip && t.jenis === 'mapel').length,
       proyek: l.filter((t) => !t.arsip && t.jenis === 'proyek').length,
-      aktif: aktifList.length,
-      draf: l.filter((t) => !t.arsip && !t.aktif).length,
+      draf: l.filter((t) => !t.arsip && statusOf(t) === 'draf').length,
+      aktif_guru: l.filter((t) => !t.arsip && statusOf(t) === 'aktif_guru').length,
+      aktif_siswa: l.filter((t) => !t.arsip && statusOf(t) === 'aktif_siswa').length,
       selesai: l.filter((t) => !t.arsip && t.selesai).length,
       arsip: l.filter((t) => t.arsip).length,
     }
@@ -158,7 +164,8 @@ export default function TugasDashboard() {
     }
     return {
       total: hitung.semua,
-      aktif: hitung.aktif,
+      aktifGuru: hitung.aktif_guru,
+      aktifSiswa: hitung.aktif_siswa,
       selesai: hitung.selesai,
       arsip: hitung.arsip,
       segera,
@@ -172,8 +179,16 @@ export default function TugasDashboard() {
     if (filterJenis !== 'semua') rows = rows.filter((t) => t.jenis === filterJenis)
     // Status: default «semua» = non-arsip. Filter khusus untuk arsip / selesai / aktif / draf.
     if (filterStatus === 'semua') rows = rows.filter((t) => !t.arsip)
-    else if (filterStatus === 'aktif') rows = rows.filter((t) => t.aktif && !t.arsip)
-    else if (filterStatus === 'draf') rows = rows.filter((t) => !t.aktif && !t.arsip)
+    else if (filterStatus === 'draf')
+      rows = rows.filter((t) => !t.arsip && normalisasiStatusTugas(t.statusTugas, t.aktif) === 'draf')
+    else if (filterStatus === 'aktif_guru')
+      rows = rows.filter(
+        (t) => !t.arsip && normalisasiStatusTugas(t.statusTugas, t.aktif) === 'aktif_guru',
+      )
+    else if (filterStatus === 'aktif_siswa')
+      rows = rows.filter(
+        (t) => !t.arsip && normalisasiStatusTugas(t.statusTugas, t.aktif) === 'aktif_siswa',
+      )
     else if (filterStatus === 'selesai') rows = rows.filter((t) => t.selesai && !t.arsip)
     else if (filterStatus === 'arsip') rows = rows.filter((t) => t.arsip)
     if (filterKelas !== 'semua') rows = rows.filter((t) => t.kelas === filterKelas)
@@ -220,11 +235,11 @@ export default function TugasDashboard() {
     setQ('')
   }
 
-  async function onToggleAktif(t: TugasLms) {
+  async function onSetStatus(t: TugasLms, status: StatusTugas) {
     setBusyId(t.id)
     setError('')
     try {
-      await updateTugas(t.id, { aktif: !t.aktif })
+      await updateTugas(t.id, { statusTugas: status })
       await muat()
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Gagal mengubah status.')
@@ -271,7 +286,12 @@ export default function TugasDashboard() {
     setBusyId(t.id)
     setError('')
     try {
-      await updateTugas(t.id, { arsip: true, aktif: false })
+      // Arsip: sembunyikan dari siswa; status penilaian tetap (bisa aktif_guru) agar jelas jenisnya.
+      const st = normalisasiStatusTugas(t.statusTugas, t.aktif)
+      await updateTugas(t.id, {
+        arsip: true,
+        statusTugas: st === 'aktif_siswa' ? 'aktif_guru' : st,
+      })
       await muat()
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Gagal mengarsipkan.')
@@ -315,9 +335,19 @@ export default function TugasDashboard() {
             <b>{ringkas.total}</b>
             <span>Total tugas</span>
           </div>
-          <div className="tg-ringkas-item tg-ringkas-item--hijau">
-            <b>{ringkas.aktif}</b>
-            <span>Aktif</span>
+          <div
+            className="tg-ringkas-item tg-ringkas-item--hijau"
+            title="Siap dinilai guru; siswa tidak melihat (tugas offline / input langsung)"
+          >
+            <b>{ringkas.aktifGuru}</b>
+            <span>Aktif guru</span>
+          </div>
+          <div
+            className="tg-ringkas-item tg-ringkas-item--biru"
+            title="Tampil ke siswa dan bisa dikumpulkan di LMS"
+          >
+            <b>{ringkas.aktifSiswa}</b>
+            <span>Aktif siswa</span>
           </div>
           <div
             className="tg-ringkas-item tg-ringkas-item--kuning"
@@ -385,8 +415,9 @@ export default function TugasDashboard() {
               onPilih={setFilterStatus}
               opsi={[
                 { v: 'semua', teks: 'Semua', n: hitung.semua },
-                { v: 'aktif', teks: 'Aktif', n: hitung.aktif },
                 { v: 'draf', teks: 'Draf', n: hitung.draf },
+                { v: 'aktif_guru', teks: 'Aktif guru', n: hitung.aktif_guru },
+                { v: 'aktif_siswa', teks: 'Aktif siswa', n: hitung.aktif_siswa },
                 { v: 'selesai', teks: 'Selesai', n: hitung.selesai },
                 { v: 'arsip', teks: 'Arsip', n: hitung.arsip },
               ]}
@@ -472,7 +503,7 @@ export default function TugasDashboard() {
             return (
               <li key={t.id}>
                 <article
-                  className={`tg-kartu${!t.aktif && !t.arsip ? ' tg-kartu--draf' : ''}${t.arsip ? ' tg-kartu--arsip' : ''}${t.selesai && !t.arsip ? ' tg-kartu--selesai' : ''}${sibuk ? ' tg-kartu--sibuk' : ''}`}
+                  className={`tg-kartu${(() => { const st = normalisasiStatusTugas(t.statusTugas, t.aktif); if (t.arsip) return ' tg-kartu--arsip'; if (st === 'draf') return ' tg-kartu--draf'; if (st === 'aktif_guru') return ' tg-kartu--aktif-guru'; return '' })()}${t.selesai && !t.arsip ? ' tg-kartu--selesai' : ''}${sibuk ? ' tg-kartu--sibuk' : ''}`}
                   style={gaya}
                   aria-busy={sibuk}
                 >
@@ -488,18 +519,25 @@ export default function TugasDashboard() {
                         </span>
                         <span className="tg-kelas">Kelas {t.kelas}</span>
                       </div>
-                      <span
-                        className={`tg-status tg-status--${t.arsip ? 'arsip' : t.aktif ? 'aktif' : 'draf'}`}
-                        title={
-                          t.arsip
-                            ? 'Tugas diarsipkan'
-                            : t.aktif
-                              ? 'Tampil ke siswa'
-                              : 'Draf — belum tampil ke siswa'
-                        }
-                      >
-                        {t.arsip ? 'Arsip' : t.aktif ? 'Aktif' : 'Draf'}
-                      </span>
+                      {(() => {
+                        const st = normalisasiStatusTugas(t.statusTugas, t.aktif)
+                        const key = t.arsip ? 'arsip' : st
+                        const label = t.arsip
+                          ? 'Arsip'
+                          : LABEL_STATUS_TUGAS[st]
+                        const title = t.arsip
+                          ? 'Tugas diarsipkan'
+                          : st === 'aktif_siswa'
+                            ? 'Tampil ke siswa + pengumpulan LMS'
+                            : st === 'aktif_guru'
+                              ? 'Siap dinilai guru; siswa tidak melihat'
+                              : 'Masih draf — belum bisa diisi nilai'
+                        return (
+                          <span className={`tg-status tg-status--${key}`} title={title}>
+                            {label}
+                          </span>
+                        )
+                      })()}
                       {t.selesai && !t.arsip && (
                         <span className="tg-status tg-status--selesai" title="Penilaian ditandai selesai">
                           Selesai
@@ -554,15 +592,21 @@ export default function TugasDashboard() {
                       Buka
                     </Link>
                     {!t.arsip && (
-                      <button
-                        type="button"
-                        className="tg-btn"
-                        disabled={busyId !== null}
-                        onClick={() => void onToggleAktif(t)}
-                        title={t.aktif ? 'Sembunyikan dari siswa' : 'Tampilkan ke siswa'}
-                      >
-                        {t.aktif ? 'Nonaktifkan' : 'Aktifkan'}
-                      </button>
+                      <label className="tg-status-pilih" title="Ubah status publikasi tugas">
+                        <span className="tg-sr">Status</span>
+                        <select
+                          className="tg-select-status"
+                          disabled={busyId !== null}
+                          value={normalisasiStatusTugas(t.statusTugas, t.aktif)}
+                          onChange={(e) =>
+                            void onSetStatus(t, e.target.value as StatusTugas)
+                          }
+                        >
+                          <option value="draf">{LABEL_STATUS_TUGAS.draf}</option>
+                          <option value="aktif_guru">{LABEL_STATUS_TUGAS.aktif_guru}</option>
+                          <option value="aktif_siswa">{LABEL_STATUS_TUGAS.aktif_siswa}</option>
+                        </select>
+                      </label>
                     )}
                     {!t.arsip && (
                       <button

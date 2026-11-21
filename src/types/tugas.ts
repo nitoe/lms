@@ -3,6 +3,53 @@
 /** Jenis tugas: terikat satu mapel, atau proyek lintas mapel. */
 export type JenisTugas = 'mapel' | 'proyek'
 
+/**
+ * Status publikasi & kesiapan penilaian tugas.
+ * - draf: masih disusun; guru belum boleh input nilai; siswa tidak melihat
+ * - aktif_guru: siap dinilai guru (bisa sinkron ke Penilaian); siswa tidak melihat/mengumpulkan
+ * - aktif_siswa: tampil ke siswa + pengumpulan LMS; guru boleh input nilai
+ *
+ * Field boolean `aktif` diselaraskan: true hanya jika status === 'aktif_siswa'
+ * (kompatibel rules & query siswa lama).
+ */
+export type StatusTugas = 'draf' | 'aktif_guru' | 'aktif_siswa'
+
+export const LABEL_STATUS_TUGAS: Record<StatusTugas, string> = {
+  draf: 'Draf',
+  aktif_guru: 'Aktif guru',
+  aktif_siswa: 'Aktif siswa',
+}
+
+export const KETERANGAN_STATUS_TUGAS: Record<StatusTugas, string> = {
+  draf: 'Masih disusun — belum bisa diisi nilai, siswa tidak melihat',
+  aktif_guru: 'Siap dinilai guru tanpa pengumpulan LMS (mis. tugas offline) — siswa tidak melihat',
+  aktif_siswa: 'Tampil ke siswa; ada pengumpulan/bukti di LMS',
+}
+
+export function statusTugasValid(v: unknown): StatusTugas | undefined {
+  return v === 'draf' || v === 'aktif_guru' || v === 'aktif_siswa' ? v : undefined
+}
+
+/** Normalisasi dari dokumen (termasuk legacy hanya field aktif). */
+export function normalisasiStatusTugas(
+  status: unknown,
+  aktifLegacy?: unknown,
+): StatusTugas {
+  const s = statusTugasValid(status)
+  if (s) return s
+  return aktifLegacy === true ? 'aktif_siswa' : 'draf'
+}
+
+export function aktifSiswaDariStatus(s: StatusTugas): boolean {
+  return s === 'aktif_siswa'
+}
+
+/** Guru boleh mengisi nilai di daftar nilai. */
+export function bolehInputNilaiTugas(s: StatusTugas): boolean {
+  return s === 'aktif_guru' || s === 'aktif_siswa'
+}
+
+
 /** Tujuan penilaian tugas — selaras kuis, untuk rekap nilai TP. */
 export type JenisPenilaianTugas = 'latihan' | 'slm' | 'sts' | 'sas'
 
@@ -159,10 +206,15 @@ export interface TugasLms {
   tpNama?: string
   /** ISO string atau Firestore Timestamp. */
   tenggat?: unknown
+  /**
+   * true = tampil ke siswa (statusTugas === 'aktif_siswa'). Diselaraskan otomatis.
+   */
   aktif: boolean
+  /** Status kanonis: draf | aktif_guru | aktif_siswa. */
+  statusTugas?: StatusTugas
   /**
    * Alur penilaian guru selesai (nilai sudah diisi / tugas dianggap tuntas).
-   * Berbeda dari `aktif` (tampil ke siswa). Default/legacy = belum selesai.
+   * Berbeda dari status publikasi. Default/legacy = belum selesai.
    */
   selesai?: boolean
   /**
@@ -196,6 +248,7 @@ export type TugasInput = {
   tpList?: TpTugas[]
   tenggat?: Date | null
   aktif?: boolean
+  statusTugas?: StatusTugas
   selesai?: boolean
   arsip?: boolean
   pengaturanPenilaian?: PengaturanPenilaianTugas

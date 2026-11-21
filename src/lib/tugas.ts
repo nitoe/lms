@@ -15,13 +15,18 @@ import { auth, db } from './firebase'
 import type {
   JenisPenilaianTugas,
   PengaturanPenilaianTugas,
+  StatusTugas,
   TugasInput,
   TugasLms,
   TpTugas,
 } from '../types/tugas'
+import {
+  aktifSiswaDariStatus,
+  normalisasiStatusTugas,
+  tahapValid,
+} from '../types/tugas'
 import { normalisasiKelasList } from './kelasLms'
 import { rapikanBuktiList, sanitasiBuktiList } from './buktiTugas'
-import { tahapValid } from '../types/tugas'
 
 /**
  * Firestore menolak `undefined`. Rapikan pengaturan penilaian:
@@ -125,7 +130,8 @@ function docKeTugas(id: string, data: Record<string, unknown>): TugasLms {
     tpNomor: typeof data.tpNomor === 'number' ? data.tpNomor : undefined,
     tpNama: typeof data.tpNama === 'string' ? data.tpNama : undefined,
     tenggat: data.tenggat,
-    aktif: data.aktif === true,
+    aktif: aktifSiswaDariStatus(normalisasiStatusTugas(data.statusTugas, data.aktif)),
+    statusTugas: normalisasiStatusTugas(data.statusTugas, data.aktif),
     selesai: data.selesai === true,
     arsip: data.arsip === true,
     dibuatOleh: String(data.dibuatOleh || ''),
@@ -290,7 +296,11 @@ export async function buatTugas(input: TugasInput): Promise<string> {
     judul,
     jenis,
     jenisPenilaian: normalisasiJenisPenilaian(input.jenisPenilaian ?? 'slm'),
-    aktif: input.aktif === true,
+    statusTugas: (() => {
+      const st = normalisasiStatusTugas(input.statusTugas, input.aktif)
+      return st
+    })(),
+    aktif: aktifSiswaDariStatus(normalisasiStatusTugas(input.statusTugas, input.aktif)),
     dibuatOleh: uid,
     dibuatOlehNama: input.namaGuru || '',
     jumlahPengumpulan: 0,
@@ -325,7 +335,7 @@ export async function buatTugas(input: TugasInput): Promise<string> {
 
 export async function updateTugas(
   id: string,
-  data: Partial<TugasInput> & { aktif?: boolean; selesai?: boolean; arsip?: boolean },
+  data: Partial<TugasInput> & { aktif?: boolean; statusTugas?: StatusTugas; selesai?: boolean; arsip?: boolean },
 ): Promise<void> {
   const payload: Record<string, unknown> = { updatedAt: serverTimestamp() }
 
@@ -366,7 +376,16 @@ export async function updateTugas(
       payload.tenggat = null
     }
   }
-  if (data.aktif !== undefined) payload.aktif = data.aktif === true
+  if (data.statusTugas !== undefined) {
+    const st = normalisasiStatusTugas(data.statusTugas, data.aktif)
+    payload.statusTugas = st
+    payload.aktif = aktifSiswaDariStatus(st)
+  } else if (data.aktif !== undefined) {
+    // Legacy: checkbox aktif → aktif_siswa / draf (jangan pakai untuk aktif_guru)
+    const st: StatusTugas = data.aktif === true ? 'aktif_siswa' : 'draf'
+    payload.statusTugas = st
+    payload.aktif = aktifSiswaDariStatus(st)
+  }
   if (data.selesai !== undefined) payload.selesai = data.selesai === true
   if (data.arsip !== undefined) payload.arsip = data.arsip === true
   if (data.pengaturanPenilaian !== undefined) {
