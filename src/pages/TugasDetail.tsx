@@ -35,6 +35,7 @@ import {
 import { getDaftarMapel } from '../lib/mapelData'
 import { getTpMultiMapelKelas } from '../lib/tpData'
 import { generateIsiTugasAi, generateKategoriTugasAi } from '../lib/tugasAi'
+import { sinkronNilaiTugasKePenilaian } from '../lib/sinkronNilaiTugas'
 import type {
   BuktiTugas,
   JenisPenilaianTugas,
@@ -913,10 +914,55 @@ export default function TugasDetail() {
   }
 
   async function sinkronKePenilaian() {
+    if (!tugas?.id) {
+      setError('Simpan tugas dulu sebelum sinkron ke Penilaian.')
+      return
+    }
+    const jenis = tugas.jenisPenilaian || jenisPenilaian
+    if (jenis === 'latihan') {
+      setError('Tugas latihan tidak masuk nilai rapor. Ubah jenis penilaian ke SLM/STS/SAS dulu.')
+      return
+    }
+    if (!['slm', 'sts', 'sas'].includes(jenis)) {
+      setError(`Jenis penilaian tidak dikenal: ${jenis}`)
+      return
+    }
+    const punyaTp =
+      (Array.isArray(tugas.tpList) && tugas.tpList.length > 0) ||
+      !!(tugas.tpId || tugas.tpNama) ||
+      tpDipilih.length > 0
+    if (!punyaTp) {
+      setError('Lampirkan minimal satu TP di pengaturan tugas sebelum sinkron.')
+      return
+    }
+    const adaNilai =
+      barisNilai?.some((r) => r.sudahAda || (typeof r.nilaiAkhir === 'number' && r.nilaiAkhir !== null)) ||
+      Object.values(draft).some(
+        (d) => String(d.nilaiAkhir || '').trim() !== '' || Object.values(d.perKategori || {}).some((v) => String(v || '').trim() !== ''),
+      )
+    if (!adaNilai) {
+      setError('Belum ada nilai yang tersimpan. Isi & simpan nilai siswa dulu, lalu sinkron.')
+      return
+    }
+    setBusy(true)
     setError('')
-    setSukses(
-      'Sinkron ke database Penilaian belum diaktifkan di server. Simpan semua nilai dulu; CF akan menyusul.',
-    )
+    setSukses('')
+    try {
+      const h = await sinkronNilaiTugasKePenilaian({ tugasId: tugas.id, overwrite: true })
+      setSukses(
+        `Sinkron OK → ${h.koleksi}: ${h.ditulis} nilai ditulis` +
+          (h.dilewati ? `, ${h.dilewati} dilewati` : '') +
+          ` · ${h.nSiswa} siswa · ${h.nTp} TP · sem ${h.semester} · ${h.tahunAjaran}`,
+      )
+    } catch (e) {
+      const msg =
+        e && typeof e === 'object' && 'message' in e
+          ? String((e as { message: unknown }).message)
+          : 'Gagal sinkron ke Penilaian.'
+      setError(msg.replace(/^Firebase: |\s*\(.*\)\.?$/g, '').trim() || msg)
+    } finally {
+      setBusy(false)
+    }
   }
 
   if (loading) {
@@ -1642,8 +1688,14 @@ export default function TugasDetail() {
                       >
                         {loadingNilai ? 'Memuat…' : 'Muat ulang'}
                       </button>
-                      <button type="button" className="tg-btn" onClick={() => void sinkronKePenilaian()}>
-                        Sinkron ke Penilaian
+                      <button
+                        type="button"
+                        className="tg-btn"
+                        disabled={busy || loadingNilai}
+                        onClick={() => void sinkronKePenilaian()}
+                        title="Kirim nilai tugas ke koleksi rapor Penilaian (SLM/STS/SAS)"
+                      >
+                        {busy ? 'Sinkron…' : 'Sinkron ke Penilaian'}
                       </button>
                     </div>
                   </div>
