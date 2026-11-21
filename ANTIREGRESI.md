@@ -1563,3 +1563,43 @@ Jangan memaksa satu kolom sempit di desktop.
 7. **Kuota:** hapus otomatis 120 hari lewat lifecycle bucket (`docs/storage-lifecycle-video.json`); perintah gcloud MENGGANTI seluruh lifecycle bucket — periksa aturan lama dulu (`docs/DEPLOY.md`). Menghapus dokumen pengumpulan/tugas tidak menghapus berkas video (hanya lifecycle).
 8. **Rules lintas-layanan:** `siswaBolehKelolaVideo` memakai satu `firestore.get` (tugas, lewat `let`) + satu `firestore.exists` (nilai) — batas dua panggilan per evaluasi Storage. Jangan menambah panggilan `firestore.get/exists` lain pada jalur siswa. `storage.rules` identik di SDM01Penilaian dan lms (salin UTUH, termasuk blok audio materi).
 9. **Uji sebelum dipakai siswa (belum pernah dijalankan di perangkat/emulator):** (a) HP Android Chrome: video 30 dtk dari kamera → «Perkecil video» → hasil ≤ ±8 MB, suara ada, bisa diputar; (b) video 75 dtk → ditolak dengan pesan durasi; (c) kumpulkan → guru memutar video di tab Pengumpulan; (d) ganti video lalu kirim ulang → berkas lama terhapus; (e) hapus video opsional → `videos` terbarui; (f) tugas sudah dinilai → siswa tidak bisa mengunggah/menghapus; (g) akun orang tua tidak bisa membaca URL video; (h) tutup aplikasi saat konversi → pesan «Konversi terhenti», bisa diulang; (i) video HEVC/format tak dikenal → pesan «tidak bisa dibuka» + saran foto; (j) kumpulkan hanya dengan video (tanpa foto) lolos rules.
+
+
+## §Tugas.Status — status tiga tingkat draf / aktif_guru / aktif_siswa (2026-11-21)
+
+1. **Field kanonis adalah `statusTugas`**, bukan boolean `aktif` saja. Nilai: `draf` | `aktif_guru` | `aktif_siswa`. Setiap tulis status WAJIB juga menyetel `aktif = (statusTugas === 'aktif_siswa')` agar rules siswa (`resource.data.aktif == true`) dan query `where('aktif','==',true)` tetap benar **tanpa** mengubah firestore.rules.
+2. **Jangan menghidupkan kembali checkbox «Aktifkan tugas»** sebagai satu-satunya kontrol. UI guru memakai select/dropdown tiga status (dashboard + tab Pengaturan). Memakai hanya `aktif: true/false` dari UI lama akan memetakan ke `aktif_siswa` / `draf` dan **menghilangkan** `aktif_guru`.
+3. **Daftar nilai hanya boleh diisi** bila `bolehInputNilaiTugas(status)` (aktif_guru atau aktif_siswa). Draf menampilkan pesan, bukan tabel skor kosong yang seolah bisa disimpan.
+4. **Baca dokumen lama:** `normalisasiStatusTugas(statusTugas, aktif)` — jika `statusTugas` absen, `aktif === true` → `aktif_siswa`, selain itu → `draf`. Jangan menganggap semua `aktif: false` sebagai `aktif_guru`.
+5. **Siswa hanya melihat `aktif_siswa`.** `aktif_guru` sengaja tidak tampil di katalog/pengumpulan siswa (nilai diisi guru, bisa disinkron ke Penilaian).
+
+## §Tugas.Arsip — selesai penilaian & arsip (2026-11-21)
+
+1. **`selesai` ≠ status publikasi.** `selesai` = penanda alur penilaian guru tuntas; independen dari `statusTugas` / `aktif`.
+2. **`arsip: true` disembunyikan dari filter «Semua».** Filter «Arsip» khusus. Jangan menghapus dokumen saat arsipkan — hanya set flag (+ turunkan ke non-siswa-visible).
+3. **Arsipkan dari `aktif_siswa`:** turunkan ke `aktif_guru` (atau set `aktif: false` lewat status) agar siswa tidak melihat. «Keluarkan arsip» **tidak** otomatis `aktif_siswa` — guru memilih status lagi.
+4. Field `selesai` / `arsip` opsional boolean; rules update yang ada tidak menolak field ekstra (tidak memakai `hasOnly`).
+
+## §Tugas.Sinkron — nilai tugas → koleksi rapor Penilaian (2026-11-21)
+
+1. **Hanya Cloud Function `sinkronNilaiTugasLms`** (Admin SDK) yang menulis `nilai_tp` / `nilai_sts` / `nilai_sas`. Klien LMS **tidak** menulis langsung ke koleksi rapor.
+2. **Pemetaan jenis:** `slm` → `nilai_tp` field `slm`; `sts` → `nilai_sts` field `nilai`; `sas` → `nilai_sas` field `nilai`. **`latihan` ditolak** (`failed-precondition`).
+3. **Prasyarat CF:** `tugasId` valid, pengampu kelas×mapel, minimal satu TP yang resolve ke `tp_kktp`, minimal satu dokumen `lms_nilai_tugas` dengan `nilai` numerik.
+4. **TP:** prefer `tpList[]`; cocokkan id atau nama ke `tp_kktp` (pola sama `sinkronNilaiKuisLms`). Proyek lintas mapel: mapel per TP bila ada.
+5. **Overwrite default true** (seperti kuis). Setelah sukses, tugas mendapat `terakhirSinkronAt` / `terakhirSinkronRingkas`.
+6. Deploy dari **SDM01Penilaian**: `firebase deploy --only functions:sinkronNilaiTugasLms`. Stub klien «belum diaktifkan di server» harus sudah diganti pemanggilan CF.
+
+## §Tugas.NilaiDraft — draf daftar nilai tidak boleh hilang (2026-11-21)
+
+1. **Jangan panggil `muatNilai()` penuh setelah `simpanSatuNilai`.** Soft-update baris yang disimpan saja. `muatNilai` tanpa `force` **menggabungkan** draf lokal yang berbeda dari server (hasil generate AI / edit belum tersimpan).
+2. **«Muat ulang»** saja yang memakai `muatNilai({ force: true })` (sengaja membuang draf lokal).
+3. **Generate skor dari predikat** mengisi draf **dan** menyimpan baris itu (live), tanpa memuat ulang seluruh daftar.
+4. Tombol **«Simpan semua»** menyimpan semua baris yang `draftBerisiData` — jangan mengandalkan simpan per baris saja saat guru men-generate banyak siswa.
+
+## §Tugas.BobotAi — bobot kategori dari generate AI (2026-11-21)
+
+1. Prompt & normalisasi di **`generateTugasLmsAi.js`** (CF `generateKategoriTugasLmsAi`) wajib mengisi `bobot` per kategori dengan **total 100** (bilangan bulat ≥ 1). Jika AI tidak memberi bobot valid, CF membagi rata.
+2. Klien **`tugasAi.ts`** harus memetakan `bobot` ke `KategoriPenilaian`; mengabaikan field ini membuat UI bobot kosong meski CF sudah mengirim.
+3. **`hitungRataRata`** (`nilaiTugas.ts`) memakai bobot > 0; jika semua kosong/0, tiap kategori berbobot 1 (rata-rata sederhana). Jangan memaksa total 100 di klien saat hitung skor — total 100 adalah konvensi pengaturan rubrik.
+4. Deploy CF setelah mengubah prompt/normalisasi: `firebase deploy --only functions:generateKategoriTugasLmsAi`.
+

@@ -1,3 +1,47 @@
+## 2026-11-21 — Tugas: status tiga tingkat (draf / aktif guru / aktif siswa)
+
+- **Masalah:** boolean `aktif` hanya membedakan «tampil ke siswa» vs tidak; tidak ada status untuk tugas yang siap dinilai guru tanpa pengumpulan LMS (tugas offline yang nanti disinkron ke Penilaian).
+- **Model:** field kanonis `statusTugas`: `draf` | `aktif_guru` | `aktif_siswa`. Boolean `aktif` **diselaraskan otomatis** (`true` hanya jika `aktif_siswa`) agar rules & query siswa lama tetap valid tanpa deploy rules.
+- **Makna:** **Draf** — belum boleh isi nilai, siswa tidak melihat. **Aktif guru** — guru boleh isi nilai & sinkron rapor; siswa tidak melihat/mengumpulkan. **Aktif siswa** — tampil ke siswa + pengumpulan LMS; guru boleh isi nilai.
+- **Migrasi baca:** dokumen tanpa `statusTugas` → `aktif === true` menjadi `aktif_siswa`, selain itu `draf`.
+- **UI:** filter & badge di dashboard; dropdown status di kartu; select + keterangan di tab Pengaturan detail; daftar nilai diblokir saat masih draf.
+- File: `src/types/tugas.ts`, `src/lib/tugas.ts`, `src/lib/tugasSiswa.ts`, `src/pages/TugasDashboard.tsx`, `src/pages/TugasDetail.tsx`, `src/styles/tugas.css`.
+- Antiregresi: §Tugas.Status.
+- Tidak perlu deploy rules.
+
+## 2026-11-21 — Tugas: tanda selesai penilaian + arsip
+
+- **Selesai (`selesai`):** penanda alur penilaian guru sudah tuntas (terpisah dari status publikasi). Filter, badge, tombol «Tandai selesai» / «Batal selesai» di dashboard.
+- **Arsip (`arsip`):** disembunyikan dari daftar default («Semua» = non-arsip). «Arsipkan» menonaktifkan tampilan siswa; «Keluarkan arsip» mengembalikan ke daftar tanpa otomatis mengaktifkan ke siswa.
+- File: `src/types/tugas.ts`, `src/lib/tugas.ts`, `src/pages/TugasDashboard.tsx`, `src/styles/tugas.css`.
+- Antiregresi: §Tugas.Arsip.
+- Tidak perlu deploy rules.
+
+## 2026-11-21 — Tugas: sinkron nilai ke aplikasi Penilaian (rapor)
+
+- **CF baru** `sinkronNilaiTugasLms` (repo SDM01Penilaian): membaca `lms_nilai_tugas` + TP tugas → menulis koleksi rapor sesuai jenis penilaian (`slm` → `nilai_tp.slm`, `sts` → `nilai_sts.nilai`, `sas` → `nilai_sas.nilai`). Latihan ditolak. Semester/tahun ajaran dari `config/akademik`.
+- **Klien:** `src/lib/sinkronNilaiTugas.ts`; tombol «Sinkron ke Penilaian» di daftar nilai memanggil CF (bukan stub).
+- Prasyarat: jenis SLM/STS/SAS, minimal satu TP, nilai siswa sudah disimpan.
+- **Wajib deploy CF:** `firebase deploy --only functions:sinkronNilaiTugasLms` dari SDM01Penilaian; lalu hosting LMS.
+- File: `SDM01Penilaian/functions/sinkronNilaiTugasLms.js`, `functions/index.js`; LMS `src/lib/sinkronNilaiTugas.ts`, `src/pages/TugasDetail.tsx`.
+- Antiregresi: §Tugas.Sinkron.
+
+## 2026-11-21 — Tugas: daftar nilai — generate AI langsung simpan + draf tidak hilang
+
+- **Bug:** setelah «Simpan» satu siswa, `muatNilai()` menimpa seluruh draft → skor AI/edit siswa lain hilang. Generate AI hanya mengisi draft (tidak live).
+- **Perbaikan:** simpan satu baris = soft-update lokal (tanpa muat ulang penuh); `muatNilai` default **merge** draf lokal yang berbeda dari server; «Muat ulang» memakai `force: true`; generate dari predikat **langsung menyimpan**; tombol «Simpan semua» untuk sisa draf.
+- File: `src/pages/TugasDetail.tsx`.
+- Antiregresi: §Tugas.NilaiDraft.
+- Tidak perlu deploy rules/CF.
+
+## 2026-11-21 — Tugas: AI kategori rubrik mengisi bobot (total 100)
+
+- Generate kategori AI kini meminta **bobot per aspek sesuai kompleksitas** (bukan wajib sama rata); total bobot dinormalisasi tepat **100** di Cloud Function.
+- Klien memetakan `bobot` ke `KategoriPenilaian`; UI input bobot & `hitungRataRata` berbobot sudah ada sebelumnya.
+- **Wajib deploy CF:** `firebase deploy --only functions:generateKategoriTugasLmsAi` (file `generateTugasLmsAi.js` di SDM01Penilaian); hosting LMS untuk `tugasAi.ts`.
+- File: `SDM01Penilaian/functions/generateTugasLmsAi.js`, LMS `src/lib/tugasAi.ts`.
+- Antiregresi: §Tugas.BobotAi.
+
 ## 2026-11-20 — Tugas: bukti video ≤ 1 menit (dikecilkan di HP siswa, disimpan di Storage)
 
 - **Kebutuhan:** foto catatan/laporan tidak memperlihatkan proses (mis. siswa benar-benar mengukur nadi). Guru kini bisa meminta **bukti berjenis Video** di editor bukti (tab Isi Tugas; «Jenis bukti» → «Video (maks. 1 menit)»; maks. 2 video per tugas; video memakai slot bukti yang sama sehingga total bukti tetap ≤ 6).
