@@ -2,6 +2,8 @@
  * Publikasi snapshot Try Out TKA ke portal orang tua.
  * - Publish per kelas × tahap (6A_I, 6B_I, …)
  * - Ranking 10 besar dari gabungan 6A+6B
+ * - Saat publish satu kelas, field peringkat/rataRata di-refresh untuk KEDUA kelas
+ *   agar snapshot portal tidak “nyambung” dengan top10 (bug: rank kelas lain basi).
  * - Rata tahap I: BI+MTK; tahap II–V: BI+MTK+IPA
  * - Sebaran capaian (kompleksitas / materi / domain IPA) diambil dari rekap (`SelNilaiTka.sebaran`):
  *   hasil hitung jawaban LMS, atau data import try out di luar LMS (ANTIREGRESI §109).
@@ -249,38 +251,69 @@ export async function publikasikanTkaOrtu(input: {
 
   const ops: { ref: ReturnType<typeof doc>; data: Record<string, unknown> }[] = []
 
-  for (const s of siswaKelas) {
+  /**
+   * Snapshot penuh untuk kelas yang dipublikasikan + PATCH peringkat untuk kelas paralel.
+   * Tanpa patch kelas lain, `lms_tka_peringkat.top10` sudah ranking baru sementara
+   * `lms_tka_hasil_ortu` kelas lain masih menyimpan peringkat lama → portal tidak nyambung
+   * (contoh: kartu #6 rata 65,40 vs tabel 10 besar #6 = 72,00).
+   */
+  for (const s of semuaSiswa) {
+    const kelasSiswa = String(s.kelas).toUpperCase()
     const baris = pesertaSemua.find((p) => p.siswaId === s.id)
     const nilai = baris?.nilai || { BI: null, MTK: null, IPA: null }
     const rank = rankBySiswa.get(s.id)
+    const id = idTkaHasilOrtu(kelasSiswa, tahap, s.id)
+    const refHasil = doc(db, 'lms_tka_hasil_ortu', id)
 
-    // Sebaran per mapel: sudah dihitung di rekap (jawaban LMS atau hasil import).
-    const sebaran: SebaranOrtuTka = {}
-    if (baris) {
-      for (const mapelTka of ['TKA Bahasa Indonesia', 'TKA Matematika', 'TKA IPA'] as MapelTkaNama[]) {
-        const seb = keSebaranOrtu(baris.perMapel[mapelTka]?.sebaran)
-        if (seb) sebaran[MAPEL_KE_ORTU[mapelTka]] = seb
+    if (kelasSiswa === kelas) {
+      // Snapshot penuh kelas yang dipublikasikan
+      const sebaran: SebaranOrtuTka = {}
+      if (baris) {
+        for (const mapelTka of [
+          'TKA Bahasa Indonesia',
+          'TKA Matematika',
+          'TKA IPA',
+        ] as MapelTkaNama[]) {
+          const seb = keSebaranOrtu(baris.perMapel[mapelTka]?.sebaran)
+          if (seb) sebaran[MAPEL_KE_ORTU[mapelTka]] = seb
+        }
       }
-    }
 
-    const id = idTkaHasilOrtu(kelas, tahap, s.id)
-    const data: Record<string, unknown> = {
-      kelas,
-      tahap,
-      siswaId: s.id,
-      siswaNama: s.nama,
-      nilai,
-      rataRata: rank ? rank.rataRata : hitungRataRata(nilai, tahap),
-      peringkat: rank ? rank.peringkat : null,
-      jumlahPesertaRanking: jumlahPeserta,
-      published: true,
-      publishedAt: serverTimestamp(),
-      catatanOrtu: catatan,
-      updatedAt: serverTimestamp(),
+      const data: Record<string, unknown> = {
+        kelas: kelasSiswa,
+        tahap,
+        siswaId: s.id,
+        siswaNama: s.nama,
+        nilai,
+        rataRata: rank ? rank.rataRata : hitungRataRata(nilai, tahap),
+        peringkat: rank ? rank.peringkat : null,
+        jumlahPesertaRanking: jumlahPeserta,
+        published: true,
+        publishedAt: serverTimestamp(),
+        catatanOrtu: catatan,
+        updatedAt: serverTimestamp(),
+      }
+      if (Object.keys(sebaran).length) data.sebaran = sebaran
+      ops.push({ ref: refHasil, data })
+    } else {
+      // Kelas paralel: hanya selaraskan field ranking (jangan ubah published/nilai bila belum pernah publish)
+      // merge: jika dokumen belum ada, jangan membuat snapshot "published" palsu — hanya update bila perlu rank
+      ops.push({
+        ref: refHasil,
+        data: {
+          kelas: kelasSiswa,
+          tahap,
+          siswaId: s.id,
+          siswaNama: s.nama,
+          // nilai ikut di-refresh dari rekap agar rata & rank konsisten dengan top10
+          nilai,
+          rataRata: rank ? rank.rataRata : hitungRataRata(nilai, tahap),
+          peringkat: rank ? rank.peringkat : null,
+          jumlahPesertaRanking: jumlahPeserta,
+          updatedAt: serverTimestamp(),
+        },
+      })
     }
-    if (Object.keys(sebaran).length) data.sebaran = sebaran
-
-    ops.push({ ref: doc(db, 'lms_tka_hasil_ortu', id), data })
   }
 
   ops.push({
