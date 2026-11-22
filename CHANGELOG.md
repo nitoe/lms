@@ -1,3 +1,9 @@
+## 2026-11-22 — Catatan operasional: `kuis.ts` dan `SiswaLombaDetail.tsx` milik LMS, jangan dihapus
+
+- Saat membersihkan salinan nyasar di repo SDM01Penilaian, perintah `git rm` sempat dijalankan di folder repo `lms` sehingga `src/lib/kuis.ts` dan `src/pages/siswa/SiswaLombaDetail.tsx` hilang dari folder kerja (`npx tsc -b` gagal 18 error: modul `lib/kuis` dan `SiswaLombaDetail` tidak ditemukan).
+- Dipulihkan dengan `git restore --source=HEAD --staged --worktree` untuk kedua file; belum sempat di-commit, jadi riwayat Git tidak berubah. Tidak ada perubahan kode pada repo ini; `npx tsc -b` kembali bersih.
+- Antiregresi: §Operasional.Repo.
+
 ## 2026-11-21 — TKA: peringkat gabungan konsisten (seri berbagi peringkat, penanda «sementara», patch kelas paralel aman)
 
 - **Masalah:** kartu portal «#6 · 65,40» tidak cocok dengan tabel 10 besar (#6 = 72,00); label «gabungan 6A & 6B» padahal hanya siswa dengan nilai lengkap yang diperingkat (mis. baru 6B yang punya IPA tahap II); rata-rata sama mendapat peringkat berbeda; patch peringkat kelas paralel (commit sebelumnya) ditolak rules untuk wali kelas yang bukan admin sehingga seluruh publish gagal.

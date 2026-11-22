@@ -1612,3 +1612,10 @@ Jangan memaksa satu kolom sempit di desktop.
 4. Rules hanya mengizinkan wali kelas menulis `lms_tka_hasil_ortu` rombelnya sendiri. Patch kelas paralel TIDAK boleh digabung ke batch utama (atomik → seluruh publish gagal). Bila gagal, portal mendeteksi ketidaksinkronan lewat `rankingId` dan menyembunyikan peringkat sampai kelas itu publish ulang.
 5. Setelah data rekap berubah (impor/nilai baru), publish ulang KEDUA kelas. Snapshot tidak dihitung ulang otomatis.
 6. **Tes:** publish 6B saja → kartu & tabel 10 besar cocok; ubah satu nilai lalu publish 6A → kartu 6B cocok atau tampil «sedang diperbarui», tidak pernah kontradiktif.
+
+## §Operasional.Repo — jangan menghapus file LMS; cek repo sebelum `git rm` (2026-11-22)
+
+1. `src/lib/kuis.ts` dan `src/pages/siswa/SiswaLombaDetail.tsx` adalah file MILIK repo ini (dipakai `App.tsx`, `KuisPanel`, `KuisDetail`, `HasilKuisPanel`, `rekapNilai`, `rekapTka`, `ringkasanRuang`, `RekapKuis`, `SiswaLomba`, `TkaKuisAktif`). Menghapusnya memutus build (`npx tsc -b` → 18 error). Salinan identik yang pernah nyasar di repo SDM01Penilaian-lah yang harus dihapus, bukan yang di sini.
+2. Sebelum perintah `git rm`/`Remove-Item` yang menghapus file, pastikan repo benar: `git remote -v` harus menampilkan nama repo yang dituju, dan baca awal baris terminal (`...\GitHub\lms` vs `...\GitHub\sdm01kks`).
+3. Pemulihan bila terhapus di folder kerja (belum di-commit): `git restore --source=HEAD --staged --worktree <file>`. Bila sudah di-commit: `git checkout <hash-sebelum-hapus> -- <file>` lalu commit.
+4. Setelah perubahan apa pun di repo ini jalankan `npx tsc -b`; harus tanpa error sebelum push/deploy.
