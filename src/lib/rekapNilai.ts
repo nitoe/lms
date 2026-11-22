@@ -11,8 +11,8 @@ import {
   setDoc,
 } from 'firebase/firestore'
 import { auth, db } from './firebase'
-import { daftarTugas } from './tugas'
-import { daftarKuis } from './kuis'
+import { daftarTugas, daftarTugasGuru } from './tugas'
+import { daftarKuis, daftarKuisDibuatOleh } from './kuis'
 import { daftarNilaiTugas } from './nilaiTugas'
 import {
   daftarJawabanKuis,
@@ -115,35 +115,87 @@ export function normalisasiKePersen(bobotList: number[]): number[] {
   })
 }
 
-function tugasMemuatTp(t: TugasLms, tpId: string): boolean {
-  if (Array.isArray(t.tpList) && t.tpList.some((x) => x.id === tpId)) return true
+/** Normalisasi nama TP: huruf kecil, spasi rapat, tanpa awalan «TP 3.». */
+function normNamaTp(s: unknown): string {
+  return String(s ?? '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toLowerCase()
+    .replace(/^tp\s*\d+\s*[.:)-]*\s*/, '')
+}
+
+/**
+ * Tugas terhubung ke TP bila id cocok ATAU nama TP cocok (tpList sering hanya berisi nama,
+ * dan TP tugas lama disimpan lewat nama).
+ */
+function tugasMemuatTp(t: TugasLms, tpId: string, tpNama?: string): boolean {
+  const nama = tpNama ? normNamaTp(tpNama) : ''
+  if (Array.isArray(t.tpList)) {
+    for (const x of t.tpList) {
+      if (!x) continue
+      if (x.id === tpId) return true
+      if (nama && normNamaTp(x.nama) === nama) return true
+    }
+  }
   if (t.tpId && t.tpId === tpId) return true
+  const legacyNama = (t as { tpNama?: string }).tpNama
+  if (nama && legacyNama && normNamaTp(legacyNama) === nama) return true
   return false
 }
 
-function kuisMemuatTp(k: KuisLms, tpId: string): boolean {
-  return Array.isArray(k.tpIds) && k.tpIds.includes(tpId)
+/**
+ * Kuis menyimpan TP di `tpIds` dan `tpNamaList`; isinya bisa id TP ATAU nama TP
+ * (form «Atur kuis» menyimpan nama). Cocokkan keduanya.
+ */
+function kuisMemuatTp(k: KuisLms, tpId: string, tpNama?: string): boolean {
+  const nama = tpNama ? normNamaTp(tpNama) : ''
+  const labels = [
+    ...(Array.isArray(k.tpIds) ? k.tpIds : []),
+    ...(Array.isArray(k.tpNamaList) ? k.tpNamaList : []),
+  ]
+  for (const l of labels) {
+    if (l === tpId) return true
+    if (nama && normNamaTp(l) === nama) return true
+  }
+  return false
+}
+
+function samaKelas(kelas: string, k: { kelas?: string; kelasList?: string[] }): boolean {
+  const u = kelas.toUpperCase()
+  if (String(k.kelas || '').toUpperCase() === u) return true
+  return Array.isArray(k.kelasList) && k.kelasList.some((x) => String(x).toUpperCase() === u)
 }
 
 /**
  * Temukan sumber SLM untuk satu TP: tugas yang terhubung TP + kuis jenis=slm.
  * Tidak memuat nilai — hanya metadata sumber.
+ * Termasuk tugas/kuis buatan guru ini yang mapel utamanya berbeda (proyek lintas mapel)
+ * dan yang TP-nya disimpan lewat nama.
  */
 export async function temukanSumberSlm(
   kelas: string,
   mapel: string,
   tpId: string,
+  tpNama?: string,
 ): Promise<SumberNilaiSlm[]> {
   const kelasU = String(kelas).toUpperCase()
-  const [tugasList, kuisList] = await Promise.all([
+  const [tugasA, tugasB, kuisA, kuisB] = await Promise.all([
     daftarTugas(kelasU, mapel).catch(() => [] as TugasLms[]),
+    daftarTugasGuru([{ kelas: kelasU, mapel }]).catch(() => [] as TugasLms[]),
     daftarKuis(kelasU, mapel).catch(() => [] as KuisLms[]),
+    daftarKuisDibuatOleh().catch(() => [] as KuisLms[]),
   ])
+  const tugasList = [...new Map([...tugasA, ...tugasB].map((t) => [t.id, t])).values()].filter((t) =>
+    samaKelas(kelasU, t),
+  )
+  const kuisList = [...new Map([...kuisA, ...kuisB].map((k) => [k.id, k])).values()].filter((k) =>
+    samaKelas(kelasU, k),
+  )
 
   const sumber: SumberNilaiSlm[] = []
 
   for (const t of tugasList) {
-    if (!tugasMemuatTp(t, tpId)) continue
+    if (!tugasMemuatTp(t, tpId, tpNama)) continue
     // Hanya tugas SLM (default legacy tanpa field = slm). Latihan/STS/SAS tidak masuk SLM.
     const jp = (t as { jenisPenilaian?: string }).jenisPenilaian
     if (jp === 'latihan' || jp === 'sts' || jp === 'sas') continue
@@ -152,6 +204,7 @@ export async function temukanSumberSlm(
       jenis: 'tugas',
       sumberId: t.id,
       judul: t.judul || `Tugas ${t.id.slice(0, 6)}`,
+      mapel: t.mapel,
       bobot: 0, // diisi merata di gabungSumberDenganBobot
     })
   }
@@ -159,12 +212,13 @@ export async function temukanSumberSlm(
   for (const k of kuisList) {
     const jenis = k.jenisPenilaian ?? 'latihan'
     if (jenis !== 'slm') continue
-    if (!kuisMemuatTp(k, tpId)) continue
+    if (!kuisMemuatTp(k, tpId, tpNama)) continue
     sumber.push({
       id: `kuis:${k.id}`,
       jenis: 'kuis',
       sumberId: k.id,
       judul: k.judul || `Kuis ${k.id.slice(0, 6)}`,
+      mapel: k.mapel,
       bobot: 0,
     })
   }
@@ -308,11 +362,16 @@ export async function muatNilaiPerSumberSlm(
       const perSiswa: Record<string, number | null> = {}
       try {
         if (s.jenis === 'tugas') {
-          const list = await daftarNilaiTugas(s.sumberId, kelasU, mapel)
-          for (const n of list) {
-            if (!n.siswaId) continue
-            perSiswa[n.siswaId] =
-              typeof n.nilai === 'number' && !Number.isNaN(n.nilai) ? n.nilai : null
+          // Nilai tugas tersimpan per kelas+mapel tempat guru menilai; tugas proyek lintas mapel
+          // bisa tersimpan di mapel sumber ATAU mapel layar → baca keduanya dan gabungkan.
+          const mapelKandidat = [...new Set([s.mapel || mapel, mapel])]
+          for (const m of mapelKandidat) {
+            const list = await daftarNilaiTugas(s.sumberId, kelasU, m).catch(() => [])
+            for (const n of list) {
+              if (!n.siswaId) continue
+              const v = typeof n.nilai === 'number' && !Number.isNaN(n.nilai) ? n.nilai : null
+              if (perSiswa[n.siswaId] == null) perSiswa[n.siswaId] = v
+            }
           }
         } else {
           const jawaban = await daftarJawabanKuis(s.sumberId, kelasU, mapel)
@@ -362,6 +421,7 @@ export async function temukanSumberStsSas(
   mapel: string,
   tpId: string,
   jenis: 'sts' | 'sas',
+  tpNama?: string,
 ): Promise<SumberNilaiSlm[]> {
   const kelasU = String(kelas).toUpperCase()
   const [kuisList, tugasList] = await Promise.all([
@@ -372,7 +432,8 @@ export async function temukanSumberStsSas(
 
   for (const k of kuisList) {
     if ((k.jenisPenilaian ?? 'latihan') !== jenis) continue
-    if (k.tpIds && k.tpIds.length > 0 && !k.tpIds.includes(tpId)) continue
+    const punyaTp = (k.tpIds?.length ?? 0) > 0 || (k.tpNamaList?.length ?? 0) > 0
+    if (punyaTp && !kuisMemuatTp(k, tpId, tpNama)) continue
     sumber.push({
       id: `kuis:${k.id}`,
       jenis: 'kuis',
@@ -384,11 +445,12 @@ export async function temukanSumberStsSas(
 
   for (const t of tugasList) {
     if ((t as { jenisPenilaian?: string }).jenisPenilaian !== jenis) continue
-    if (!tugasMemuatTp(t, tpId)) continue
+    if (!tugasMemuatTp(t, tpId, tpNama)) continue
     sumber.push({
       id: `tugas:${t.id}`,
       jenis: 'tugas',
       sumberId: t.id,
+      mapel: t.mapel,
       judul: t.judul || `Tugas ${jenis.toUpperCase()}`,
       bobot: 100,
     })

@@ -26,6 +26,8 @@ export type SumberNilaiSlm = {
   /** ID dokumen sumber (tugasId / kuisId) */
   sumberId: string
   judul: string
+  /** Mapel utama dokumen sumber (bisa berbeda dari mapel layar pada proyek lintas mapel). */
+  mapel?: string
   /** Bobot dalam persen (0–100). Jumlah semua sumber idealnya 100. */
   bobot: number
 }

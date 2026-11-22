@@ -1619,3 +1619,12 @@ Jangan memaksa satu kolom sempit di desktop.
 2. Sebelum perintah `git rm`/`Remove-Item` yang menghapus file, pastikan repo benar: `git remote -v` harus menampilkan nama repo yang dituju, dan baca awal baris terminal (`...\GitHub\lms` vs `...\GitHub\sdm01kks`).
 3. Pemulihan bila terhapus di folder kerja (belum di-commit): `git restore --source=HEAD --staged --worktree <file>`. Bila sudah di-commit: `git checkout <hash-sebelum-hapus> -- <file>` lalu commit.
 4. Setelah perubahan apa pun di repo ini jalankan `npx tsc -b`; harus tanpa error sebelum push/deploy.
+
+## §Rekap.Sumber — pencarian sumber nilai harus cocok id DAN nama, dan selaras dengan sinkron (2026-11-22)
+
+1. TP pada tugas/kuis bisa tersimpan sebagai id (`tp_kktp`) atau nama (kadang berawalan «TP 3.»). `kuis.tpIds` dan `kuis.tpNamaList` keduanya bisa berisi nama. Pencocokan WAJIB id atau `normNamaTp(nama)`; jangan kembali ke `tpIds.includes(tpId)` saja.
+2. Query `daftarTugas/daftarKuis(kelas, mapel)` hanya memuat dokumen bermapel sama. Tugas proyek lintas mapel dilengkapi lewat `daftarTugasGuru`/`daftarKuisDibuatOleh` lalu difilter kelas+TP. Query kelas-saja tanpa mapel ditolak rules (ANTIREGRESI §128), jangan dipakai.
+3. Nilai tugas (`lms_nilai_tugas`) dibaca per kelas+mapel; baca mapel sumber dan mapel layar, gabungkan.
+4. Rumus nilai SLM Rekap Nilai (`hitungNilaiBerbobot`: rata berbobot persen dari `lms_bobot_slm`, 1 desimal; bobot tersimpan dipakai hanya bila mencakup SEMUA sumber terdeteksi, selain itu rata) HARUS identik dengan agregator sinkron di SDM01Penilaian (`functions/agregasiSlmLms.js`: `bobotSumber`, `nilaiBerbobot`, `idBobotSlm`). Ubah keduanya sekaligus.
+5. Tampilan: judul kolom sumber dan angka nilai sama-sama `text-center`.
+6. **Tes:** (a) kuis dengan `tpIds` berisi nama TP muncul sebagai kolom; (b) tugas yang `tpList`-nya hanya bernama muncul; (c) bobot 70/30 menghasilkan nilai akhir sama dengan nilai SLM di aplikasi penilaian setelah sinkron.

@@ -1,3 +1,12 @@
+## 2026-11-22 — Rekap Nilai: semua tugas/kuis SLM ikut tampil, kolom nilai di tengah
+
+- **Gejala:** tidak semua nilai tugas muncul di Rekap Nilai; nilai berada di sisi kanan kolom, bukan di bawah nama tugas.
+- **Penyebab (kode):** `temukanSumberSlm` hanya mencocokkan TP lewat **id** (tugas: `tpList[].id`; kuis: `tpIds`), padahal tugas lama menyimpan TP lewat nama dan form «Atur kuis» menyimpan **nama TP** di `tpIds`/`tpNamaList`; sumbernya hanya dari query mapel×kelas sehingga tugas proyek lintas mapel (mapel utama lain) tidak muncul; nilai tugas dibaca hanya dari mapel layar.
+- `src/lib/rekapNilai.ts`: pencocokan TP lewat id ATAU nama ternormalisasi (awalan «TP n.» dibuang) untuk tugas dan kuis (SLM/STS/SAS); sumber ditambah tugas/kuis buatan guru ini; nilai tugas dibaca dari mapel sumber dan mapel layar lalu digabung; `SumberNilaiSlm.mapel` (tipe di `src/types/rekapNilai.ts`).
+- `src/pages/RekapNilai.tsx`: nama TP diteruskan ke pencarian sumber; judul kolom dan nilai SLM/sumber rata tengah, judul boleh 2 baris (tidak terpotong satu baris).
+- **Selaras dengan Penilaian:** sinkron ke aplikasi penilaian kini memakai bobot persen dari `lms_bobot_slm` seperti layar ini (sebelumnya rata biasa). Lihat CHANGELOG SDM01Penilaian 2026-11-22b.
+- Antiregresi: §Rekap.Sumber.
+
 ## 2026-11-22 — Catatan operasional: `kuis.ts` dan `SiswaLombaDetail.tsx` milik LMS, jangan dihapus
 
 - Saat membersihkan salinan nyasar di repo SDM01Penilaian, perintah `git rm` sempat dijalankan di folder repo `lms` sehingga `src/lib/kuis.ts` dan `src/pages/siswa/SiswaLombaDetail.tsx` hilang dari folder kerja (`npx tsc -b` gagal 18 error: modul `lib/kuis` dan `SiswaLombaDetail` tidak ditemukan).

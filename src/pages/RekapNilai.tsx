@@ -229,7 +229,7 @@ export default function RekapNilai() {
 
       // SLM
       const [terdeteksi, bobotDok] = await Promise.all([
-        temukanSumberSlm(kelas, mapel, tpAktifId),
+        temukanSumberSlm(kelas, mapel, tpAktifId, tpAktif?.namaTp),
         muatBobotSlm(kelas, mapel, tpAktifId),
       ])
       const sumber = gabungSumberDenganBobot(terdeteksi, bobotDok)
@@ -249,12 +249,12 @@ export default function RekapNilai() {
       }
 
       // STS
-      const srcSts = await temukanSumberStsSas(kelas, mapel, tpAktifId, 'sts')
+      const srcSts = await temukanSumberStsSas(kelas, mapel, tpAktifId, 'sts', tpAktif?.namaTp)
       setSumberSts(srcSts)
       setNilaiSts(await muatNilaiStsSas(kelas, mapel, srcSts, roster))
 
       // SAS
-      const srcSas = await temukanSumberStsSas(kelas, mapel, tpAktifId, 'sas')
+      const srcSas = await temukanSumberStsSas(kelas, mapel, tpAktifId, 'sas', tpAktif?.namaTp)
       setSumberSas(srcSas)
       setNilaiSas(await muatNilaiStsSas(kelas, mapel, srcSas, roster))
     } catch (e) {
@@ -265,7 +265,7 @@ export default function RekapNilai() {
     } finally {
       setBusyNilai(false)
     }
-  }, [kelas, mapel, tpAktifId, siswa])
+  }, [kelas, mapel, tpAktifId, tpAktif?.namaTp, siswa])
 
   useEffect(() => {
     void muatNilaiTp()
@@ -894,8 +894,8 @@ function TabelNilaiSlm({
                 Nama siswa
               </th>
               {sumber.map((s) => (
-                <th key={s.id} className="px-3 py-2.5 text-right font-semibold" title={s.judul}>
-                  <span className="block max-w-[7.5rem] truncate normal-case tracking-normal text-slate-700">
+                <th key={s.id} className="min-w-[6.5rem] px-3 py-2.5 text-center align-bottom font-semibold" title={s.judul}>
+                  <span className="mx-auto line-clamp-2 max-w-[8.5rem] break-words normal-case leading-snug tracking-normal text-slate-700">
                     {s.judul}
                   </span>
                   <span className="mt-0.5 block font-normal normal-case text-[10px] text-slate-400">
@@ -903,7 +903,7 @@ function TabelNilaiSlm({
                   </span>
                 </th>
               ))}
-              <th className="px-3 py-2.5 text-right font-semibold text-muh-800">Nilai SLM</th>
+              <th className="px-3 py-2.5 text-center align-bottom font-semibold text-muh-800">Nilai SLM</th>
             </tr>
           </thead>
           <tbody>
@@ -923,12 +923,12 @@ function TabelNilaiSlm({
                   {sumber.map((src) => (
                     <td
                       key={src.id}
-                      className={`px-3 py-2.5 text-right tabular-nums ${skorClass(row?.perSumber?.[src.id])}`}
+                      className={`px-3 py-2.5 text-center tabular-nums ${skorClass(row?.perSumber?.[src.id])}`}
                     >
                       {formatNilai(row?.perSumber?.[src.id])}
                     </td>
                   ))}
-                  <td className="px-3 py-2.5 text-right">
+                  <td className="px-3 py-2.5 text-center">
                     <span
                       className={`inline-flex min-w-[2.5rem] justify-center rounded-md px-2 py-0.5 text-sm font-bold tabular-nums ${skorBadgeClass(row?.nilaiAkhir)}`}
                     >
