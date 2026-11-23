@@ -1358,3 +1358,19 @@
   opacity: 0.45;
   cursor: not-allowed;
 }
+
+/* Blok video/audio pada halaman materi (ANTIREGRESI §Materi.Media) */
+.mh-blok--media {
+  margin: 14px 0;
+}
+.mh-blok--media video,
+.mh-blok--media audio {
+  display: block;
+  width: 100%;
+}
+.mh-media-cap {
+  margin-top: 6px;
+  font-size: 0.85rem;
+  color: #475569;
+  text-align: center;
+}

@@ -3,6 +3,7 @@ import { bersihHtmlMateri, materiPunyaRumus } from '../../lib/html'
 import { htmlDenganRumus, useKatexSiap } from '../../lib/matematika'
 import type { MateriHalaman, MateriLms } from '../../types/materi'
 import MateriGambarZoom from './MateriGambarZoom'
+import { MateriMediaTampil } from './MateriMediaBlok'
 
 type Props = {
   materi: MateriLms
@@ -113,6 +114,9 @@ export default function MateriHalamanViewer({ materi, awal = 0, onTutup, mode = 
                 caption={b.caption}
               />
             )
+          }
+          if (b.tipe === 'video' || b.tipe === 'audio') {
+            return <MateriMediaTampil key={b.id} blok={b} />
           }
           return null
         })}

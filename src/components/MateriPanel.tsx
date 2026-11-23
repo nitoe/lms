@@ -17,6 +17,7 @@ import MateriMediaViewer, {
 } from './materi/MateriMediaViewer'
 import { ekstrakYoutubeId } from '../lib/materi'
 import { jumlahHalaman } from '../lib/materiUi'
+import { cetakMateriPdf } from '../lib/exportMateriCetak'
 
 type Props = {
   kelas: string
@@ -146,6 +147,25 @@ export default function MateriPanel({ kelas, mapel, lombaId, tpKelas }: Props) {
   const [list, setList] = useState<MateriLms[] | null>(null)
   const [tpList, setTpList] = useState<TpRingkas[]>([])
   const [error, setError] = useState('')
+
+  /** Cetak materi (halaman / HTML) ke PDF lewat jendela cetak browser. */
+  async function cetakMateri(m: MateriLms) {
+    setError('')
+    try {
+      await cetakMateriPdf({
+        judul: m.judul,
+        mapel: m.mapel,
+        kelas: m.kelas,
+        bab: m.bab,
+        deskripsi: m.deskripsi,
+        tp: m.tpNama ? `${m.tpNomor ? `TP ${m.tpNomor}. ` : ''}${m.tpNama}` : undefined,
+        halaman: m.jenis === 'halaman' ? m.halaman : undefined,
+        kontenHtml: m.jenis === 'html' ? m.kontenHtml : undefined,
+      })
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Gagal menyiapkan PDF.')
+    }
+  }
   const [busy, setBusy] = useState(false)
   const [mode, setMode] = useState<ModeForm>('tutup')
   const [q, setQ] = useState('')
@@ -886,15 +906,33 @@ export default function MateriPanel({ kelas, mapel, lombaId, tpKelas }: Props) {
                       >
                         Edit
                       </button>
+                      <button
+                        type="button"
+                        className="lms-btn-secondary"
+                        title="Cetak / simpan materi sebagai PDF untuk dipakai offline"
+                        onClick={() => void cetakMateri(m)}
+                      >
+                        PDF
+                      </button>
                     </>
                   ) : m.jenis === 'html' && m.kontenHtml ? (
-                    <button
-                      type="button"
-                      className="lms-btn-secondary"
-                      onClick={() => setBacaHtml(m)}
-                    >
-                      Baca
-                    </button>
+                    <>
+                      <button
+                        type="button"
+                        className="lms-btn-secondary"
+                        onClick={() => setBacaHtml(m)}
+                      >
+                        Baca
+                      </button>
+                      <button
+                        type="button"
+                        className="lms-btn-secondary"
+                        title="Cetak / simpan materi sebagai PDF untuk dipakai offline"
+                        onClick={() => void cetakMateri(m)}
+                      >
+                        PDF
+                      </button>
+                    </>
                   ) : m.url &&
                     (m.jenis === 'youtube' ||
                       m.jenis === 'gambar' ||

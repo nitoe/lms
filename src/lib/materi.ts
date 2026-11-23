@@ -16,6 +16,7 @@ import {
   getDownloadURL,
   ref,
   uploadBytes,
+  uploadBytesResumable,
 } from 'firebase/storage'
 import { auth, db, storage } from './firebase'
 import type {
@@ -358,7 +359,7 @@ export function halamanKosong(urutan = 0): MateriHalaman {
   }
 }
 
-function normalisasiHalaman(list: MateriHalaman[] | undefined): MateriHalaman[] {
+export function normalisasiHalaman(list: MateriHalaman[] | undefined): MateriHalaman[] {
   if (!Array.isArray(list) || list.length === 0) {
     return [halamanKosong(0)]
   }
@@ -403,6 +404,38 @@ function normalisasiHalaman(list: MateriHalaman[] | undefined): MateriHalaman[] 
         if (caption) item.caption = caption
         if (petunjuk) item.petunjukGambar = petunjuk
         bersih.push(item)
+      } else if (b.tipe === 'video' || b.tipe === 'audio') {
+        const url = typeof b.url === 'string' ? b.url.trim() : ''
+        if (!url) continue // placeholder kosong dibuang (seperti gambar tanpa url)
+        if (!/^https:\/\//i.test(url)) {
+          // blob:/data:/http: tidak boleh masuk dokumen — media harus lewat Storage atau tautan https.
+          throw new Error(
+            `Ada blok ${b.tipe} yang belum diunggah ke penyimpanan atau tautannya bukan https. Unggah ulang atau perbaiki tautannya.`,
+          )
+        }
+        const id = b.id || idBaru('b')
+        const caption = typeof b.caption === 'string' ? b.caption.trim().slice(0, 300) : ''
+        const storagePath =
+          typeof b.storagePath === 'string' && b.storagePath.trim() ? b.storagePath.trim() : ''
+        const contentType =
+          typeof b.contentType === 'string' && b.contentType.trim() ? b.contentType.trim() : ''
+        if (b.tipe === 'video') {
+          const sumber = b.sumber === 'youtube' ? 'youtube' : 'unggah'
+          if (sumber === 'youtube' && !ekstrakYoutubeId(url)) {
+            throw new Error('Tautan YouTube pada blok video tidak dikenali. Periksa tautannya.')
+          }
+          const item: Extract<MateriBlok, { tipe: 'video' }> = { id, tipe: 'video', sumber, url }
+          if (storagePath && sumber === 'unggah') item.storagePath = storagePath
+          if (contentType) item.contentType = contentType
+          if (caption) item.caption = caption
+          bersih.push(item)
+        } else {
+          const item: Extract<MateriBlok, { tipe: 'audio' }> = { id, tipe: 'audio', url }
+          if (storagePath) item.storagePath = storagePath
+          if (contentType) item.contentType = contentType
+          if (caption) item.caption = caption
+          bersih.push(item)
+        }
       }
     }
     if (bersih.length === 0) {
@@ -423,7 +456,9 @@ function kumpulkanStoragePath(halaman: MateriHalaman[]): string[] {
   const out: string[] = []
   for (const h of halaman) {
     for (const b of h.blok) {
-      if (b.tipe === 'gambar' && b.storagePath) out.push(b.storagePath)
+      if ((b.tipe === 'gambar' || b.tipe === 'video' || b.tipe === 'audio') && b.storagePath) {
+        out.push(b.storagePath)
+      }
     }
   }
   return out
@@ -771,6 +806,79 @@ export async function unggahDataUrlHalaman(
   await uploadBytes(r, blob, { contentType })
   const url = await getDownloadURL(r)
   return { url, storagePath }
+}
+
+const TIPE_VIDEO_OK = ['video/mp4', 'video/webm', 'video/ogg', 'video/quicktime']
+const TIPE_AUDIO_OK = [
+  'audio/mpeg',
+  'audio/mp3',
+  'audio/mp4',
+  'audio/x-m4a',
+  'audio/aac',
+  'audio/wav',
+  'audio/x-wav',
+  'audio/ogg',
+  'audio/webm',
+]
+const EKS_VIDEO: Record<string, string> = { mp4: 'video/mp4', m4v: 'video/mp4', webm: 'video/webm', ogv: 'video/ogg', mov: 'video/quicktime' }
+const EKS_AUDIO: Record<string, string> = {
+  mp3: 'audio/mpeg',
+  m4a: 'audio/mp4',
+  aac: 'audio/aac',
+  wav: 'audio/wav',
+  ogg: 'audio/ogg',
+  oga: 'audio/ogg',
+  weba: 'audio/webm',
+}
+
+/** Tipe konten file media; browser kadang mengosongkan `file.type` (mis. .m4a) → tebak dari ekstensi. */
+export function tipeKontenMedia(file: File, jenis: 'video' | 'audio'): string {
+  const ok = jenis === 'video' ? TIPE_VIDEO_OK : TIPE_AUDIO_OK
+  if (file.type && ok.includes(file.type)) return file.type
+  const eks = (file.name.split('.').pop() || '').toLowerCase()
+  return (jenis === 'video' ? EKS_VIDEO : EKS_AUDIO)[eks] || ''
+}
+
+/**
+ * Unggah video/audio untuk blok halaman ke `lms/materi/{KELAS}/…` (storage.rules: video < 50 MB, audio < 15 MB).
+ * Siswa membuka lewat download URL bertoken (tanpa melewati rules).
+ */
+export async function unggahMediaHalaman(
+  kelas: string,
+  file: File,
+  jenis: 'video' | 'audio',
+  onProgres?: (persen: number) => void,
+): Promise<{ url: string; storagePath: string; contentType: string }> {
+  const contentType = tipeKontenMedia(file, jenis)
+  if (!contentType) {
+    throw new Error(
+      jenis === 'video'
+        ? 'Format video tidak didukung. Gunakan MP4 (disarankan), WebM, OGV, atau MOV.'
+        : 'Format audio tidak didukung. Gunakan MP3 (disarankan), M4A, AAC, WAV, atau OGG.',
+    )
+  }
+  const batas = jenis === 'video' ? BATAS_UKURAN.video : BATAS_UKURAN.audio
+  if (file.size >= batas) {
+    throw new Error(`Ukuran ${jenis} melebihi batas ${Math.round(batas / (1024 * 1024))} MB. Kecilkan dulu filenya.`)
+  }
+  if (!auth.currentUser?.uid) throw new Error('Anda harus masuk terlebih dahulu.')
+  const k = String(kelas).toUpperCase()
+  const base = file.name.replace(/\.[^.]+$/, '') || jenis
+  const aman = base.replace(/[^\w.\-()+ ]/g, '_').slice(0, 80)
+  const eks = (file.name.split('.').pop() || (jenis === 'video' ? 'mp4' : 'mp3')).toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 5)
+  const storagePath = `lms/materi/${k}/${jenis}_${Date.now()}_${aman}.${eks || 'bin'}`
+  const r = ref(storage, storagePath)
+  const tugas = uploadBytesResumable(r, file, { contentType })
+  await new Promise<void>((resolve, reject) => {
+    tugas.on(
+      'state_changed',
+      (snap) => onProgres?.(snap.totalBytes ? Math.round((snap.bytesTransferred / snap.totalBytes) * 100) : 0),
+      reject,
+      () => resolve(),
+    )
+  })
+  const url = await getDownloadURL(r)
+  return { url, storagePath, contentType }
 }
 
 async function hapusStoragePaths(paths: string[]) {

@@ -184,6 +184,7 @@ export function soalKeBarisImport(s: Soal): Record<string, unknown> {
     waktuMenit: s.waktuMenit,
     ...(s.pembahasan ? { pembahasan: s.pembahasan } : {}),
     ...(s.tipeMateri ? { tipeMateri: s.tipeMateri } : {}),
+    ...(s.indikator ? { indikator: s.indikator } : {}),
     ...(s.rumus ? { rumus: true } : {}),
     // Informasi saja: gambar tidak ikut file (lihat catatan di JSON); id dipertahankan untuk rujukan.
     ...(s.gambarId ? { gambarId: s.gambarId } : {}),

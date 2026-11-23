@@ -15,7 +15,7 @@
  * Kompatibilitas: array «halaman» dengan tepat 1 elemen masih diterima.
  */
 import { bersihHtmlMateri, htmlKosong } from './html'
-import { idBaru } from './materi'
+import { ekstrakYoutubeId, idBaru } from './materi'
 import type { MateriBlok, MateriHalaman, TpRingkas } from '../types/materi'
 import { BATAS_BLOK_PER_HALAMAN } from '../types/materi'
 
@@ -160,8 +160,30 @@ function normalisasiBlok(
     return { blok: item }
   }
 
+  if (tipe === 'video' || tipe === 'audio') {
+    const url = typeof o.url === 'string' ? o.url.trim() : ''
+    if (!/^https:\/\//i.test(url)) {
+      return { galat: `Blok ${indexBlok + 1}: ${tipe} wajib punya url https.` }
+    }
+    const caption = typeof o.caption === 'string' ? o.caption.trim().slice(0, 300) : ''
+    if (tipe === 'audio') {
+      const item: Extract<MateriBlok, { tipe: 'audio' }> = { id: idBaru('b'), tipe: 'audio', url }
+      if (caption) item.caption = caption
+      return { blok: item }
+    }
+    const youtube = !!ekstrakYoutubeId(url)
+    const item: Extract<MateriBlok, { tipe: 'video' }> = {
+      id: idBaru('b'),
+      tipe: 'video',
+      sumber: youtube ? 'youtube' : 'unggah',
+      url,
+    }
+    if (caption) item.caption = caption
+    return { blok: item }
+  }
+
   return {
-    galat: `Blok ${indexBlok + 1}: tipe «${tipe || 'kosong'}» tidak dikenali (teks|gambar).`,
+    galat: `Blok ${indexBlok + 1}: tipe «${tipe || 'kosong'}» tidak dikenali (teks|gambar|video|audio).`,
   }
 }
 
@@ -512,6 +534,11 @@ export function eksporSatuHalamanKeJson(
       blok: halaman.blok.map((b) => {
         if (b.tipe === 'teks') {
           return { tipe: 'teks' as const, html: b.html || '' }
+        }
+        if (b.tipe === 'video' || b.tipe === 'audio') {
+          // Berkas unggahan diekspor sebagai tautan; tidak ikut terhapus bila materi asal dihapus
+          // hanya jika tidak ada storagePath — catatan di ANTIREGRESI §Materi.Media.
+          return { tipe: b.tipe, url: b.url || '', caption: b.caption || '' }
         }
         return {
           tipe: 'gambar' as const,

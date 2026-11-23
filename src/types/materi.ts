@@ -9,7 +9,7 @@ export type JenisMateri =
   /** Konten HTML (paste kode atau unggah .html) — gambar eksternal (imgbb, Postimages, Drive, dll.) didukung. */
   | 'html'
 
-/** Blok konten di dalam satu halaman materi (V1: teks + gambar). */
+/** Blok konten di dalam satu halaman materi: teks, gambar, video, audio. */
 export type MateriBlok =
   | { id: string; tipe: 'teks'; html: string }
   | {
@@ -25,6 +25,28 @@ export type MateriBlok =
        * Dihapus dari payload simpan bila url sudah terisi (opsional dipertahankan).
        */
       petunjukGambar?: string
+    }
+  /**
+   * Video: file yang diunggah ke Storage (`sumber: 'unggah'`) atau tautan YouTube (`sumber: 'youtube'`).
+   * Kosong string = placeholder menunggu unggah / tautan.
+   */
+  | {
+      id: string
+      tipe: 'video'
+      sumber: 'unggah' | 'youtube'
+      url: string
+      storagePath?: string
+      contentType?: string
+      caption?: string
+    }
+  /** Audio (narasi, lagu, bacaan): file unggahan atau tautan https langsung. */
+  | {
+      id: string
+      tipe: 'audio'
+      url: string
+      storagePath?: string
+      contentType?: string
+      caption?: string
     }
 
 /** Satu halaman dalam materi jenis halaman. */
@@ -111,6 +133,8 @@ export const BATAS_UKURAN = {
    */
   gambarHalaman: 4 * 1024 * 1024,
   video: 50 * 1024 * 1024,
+  /** Audio blok halaman (selaras storage.rules lmsAudio: < 15 MB). */
+  audio: 15 * 1024 * 1024,
 } as const
 
 /** Batas praktis materi halaman (ANTIREGRESI). */

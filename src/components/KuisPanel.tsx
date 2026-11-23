@@ -32,12 +32,15 @@ import {
 } from '../lib/kuisDraf'
 import { daftarJawabanKuis, daftarJawabanKuisLomba } from '../lib/jawabanKuis'
 import { daftarPaketLomba, daftarPaketLombaSemua, ringkasanPaket } from '../lib/soal'
-import type { FilterSusunKuis, KuisLms, ModeSusunKuis, SoalKuis, TahapTryOutTka } from '../types/kuis'
+import type { FilterSusunKuis, KuisLms, ModeSusunKuis, SoalKuis, StatusKuis, TahapTryOutTka } from '../types/kuis'
 import {
   DAFTAR_TAHAP_TRYOUT_TKA,
+  KETERANGAN_STATUS_KUIS,
+  LABEL_STATUS_KUIS,
   NAMA_JENIS_PENILAIAN,
   NAMA_JENIS_PENILAIAN_SISWA,
   NAMA_TAHAP_TRYOUT_TKA,
+  normalisasiStatusKuis,
 } from '../types/kuis'
 import type { KompleksitasSoal, PaketSoal, TipeSoal } from '../types/soal'
 import {
@@ -57,6 +60,7 @@ import KuisDetail, { INSTRUKSI_TIPE } from './KuisDetail'
 import HasilKuisPanel from './HasilKuisPanel'
 import OfflineKuisPanel from './OfflineKuisPanel'
 import { unduhKuisCetak, cetakKuisPdf } from '../lib/exportKuisCetak'
+import { kisiKisiDariKuis, unduhKisiKisiWord, unduhKisiKisiXlsx } from '../lib/kisiKisi'
 import { KnKembali, KuisKepala, type ChipKepala } from './KuisNav'
 import { IkonAtur, IkonGrafik, IkonInput } from './ikonRuang'
 import PilihSoalManual from './soal/PilihSoalManual'
@@ -141,6 +145,7 @@ export default function KuisPanel({ kelas, mapel, lombaId, mapelGabungan }: Prop
   const [berbagiTarget, setBerbagiTarget] = useState<KuisLms | null>(null)
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
+  const [filterStatus, setFilterStatus] = useState<'semua' | StatusKuis | 'arsip'>('semua')
   const [langkah, setLangkah] = useState<Langkah>('daftar')
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [detailTab, setDetailTab] = useState<'atur' | 'hasil' | 'offline'>('atur')
@@ -699,7 +704,7 @@ export default function KuisPanel({ kelas, mapel, lombaId, mapelGabungan }: Prop
         nama={k.judul}
         rincian={rincian}
         peringatan={peringatan}
-        saran="Hanya ingin menyembunyikan dari siswa? Pakai «Nonaktifkan» — data tetap aman."
+        saran="Hanya ingin menyembunyikan dari siswa? Pakai «Arsipkan» atau ubah status ke «Aktif guru» — data tetap aman."
         busy={busy}
         onBatal={() => setHapusTarget(null)}
         onKonfirmasi={() => void konfirmasiHapus()}
@@ -707,17 +712,43 @@ export default function KuisPanel({ kelas, mapel, lombaId, mapelGabungan }: Prop
     )
   }
 
-  async function onToggleAktif(k: KuisLms) {
+  /** Status efektif kuis (dokumen lama diturunkan dari `aktif`). */
+  function statusOf(k: KuisLms): StatusKuis {
+    return normalisasiStatusKuis(k.statusKuis, k.aktif, k.modePelaksanaan)
+  }
+
+  async function ubahKuis(k: KuisLms, data: Parameters<typeof updateKuis>[1], gagal: string) {
     setBusy(true)
     setError('')
     try {
-      await updateKuis(k.id, { aktif: !k.aktif })
+      await updateKuis(k.id, data)
       await muat()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Gagal mengubah status.')
+      setError(err instanceof Error ? err.message : gagal)
     } finally {
       setBusy(false)
     }
+  }
+
+  async function onSetStatus(k: KuisLms, st: StatusKuis) {
+    await ubahKuis(k, { statusKuis: st }, 'Gagal mengubah status.')
+  }
+
+  /** Arsipkan: sembunyikan dari daftar utama + tidak terlihat siswa. Nilai/hasil tetap aman. */
+  async function onArsipkan(k: KuisLms) {
+    if (
+      !window.confirm(
+        `Arsipkan «${k.judul}»? Kuis disembunyikan dari daftar utama dan tidak terlihat siswa. Hasil dan nilai tetap aman.`,
+      )
+    )
+      return
+    const st = statusOf(k)
+    // Selaras tugas: status penilaian tetap, tetapi aktif siswa → aktif guru agar siswa tidak melihat.
+    await ubahKuis(k, { arsip: true, statusKuis: st === 'aktif_siswa' ? 'aktif_guru' : st }, 'Gagal mengarsipkan.')
+  }
+
+  async function onKeluarkanArsip(k: KuisLms) {
+    await ubahKuis(k, { arsip: false }, 'Gagal mengeluarkan dari arsip.')
   }
 
   if (langkah === 'detail' && selectedId) {
@@ -748,11 +779,14 @@ export default function KuisPanel({ kelas, mapel, lombaId, mapelGabungan }: Prop
       chips.push({ teks: NAMA_JENIS_PENILAIAN_SISWA[jp], nada: 'jenis', title: NAMA_JENIS_PENILAIAN[jp] })
     }
     chips.push({ teks: offline ? 'Offline' : 'Online', nada: offline ? 'offline' : 'online' })
-    chips.push({
-      teks: kuis.aktif ? 'Aktif' : 'Nonaktif',
-      nada: kuis.aktif ? 'aktif' : 'nonaktif',
-      title: kuis.aktif ? 'Terlihat oleh siswa' : 'Belum terlihat oleh siswa',
-    })
+    {
+      const st = statusOf(kuis)
+      chips.push({
+        teks: kuis.arsip ? 'Arsip' : LABEL_STATUS_KUIS[st],
+        nada: st === 'aktif_siswa' && !kuis.arsip ? 'aktif' : 'nonaktif',
+        title: kuis.arsip ? 'Kuis diarsipkan' : KETERANGAN_STATUS_KUIS[st],
+      })
+    }
     chips.push({ teks: `${kuis.jumlahSoal} soal` })
 
     return (
@@ -804,6 +838,33 @@ export default function KuisPanel({ kelas, mapel, lombaId, mapelGabungan }: Prop
                   onClick={() => { void unduhKuisCetak(kuis, { sertakanKunci: true }) }}
                 >
                   Word + kunci
+                </button>
+                <button
+                  type="button"
+                  className="kn-aksi-unduh"
+                  title="Unduh kisi-kisi soal kuis ini (Word, lanskap)"
+                  onClick={() => {
+                    void kisiKisiDariKuis(kuis)
+                      .then((d) => {
+                        unduhKisiKisiWord(d)
+                        if (d.tanpaIndikator > 0) alert(`Catatan: ${d.tanpaIndikator} dari ${d.rekap.jumlahSoal} soal belum punya indikator. Isi di editor soal pada kolom «Indikator soal» paket asalnya.`)
+                      })
+                      .catch((e) => alert(e instanceof Error ? e.message : 'Gagal membuat kisi-kisi'))
+                  }}
+                >
+                  Kisi-kisi
+                </button>
+                <button
+                  type="button"
+                  className="kn-aksi-unduh"
+                  title="Unduh kisi-kisi soal kuis ini (Excel)"
+                  onClick={() => {
+                    void kisiKisiDariKuis(kuis)
+                      .then((d) => unduhKisiKisiXlsx(d))
+                      .catch((e) => alert(e instanceof Error ? e.message : 'Gagal membuat kisi-kisi'))
+                  }}
+                >
+                  Kisi-kisi XLSX
                 </button>
               </>
             ) : undefined
@@ -1624,9 +1685,47 @@ export default function KuisPanel({ kelas, mapel, lombaId, mapelGabungan }: Prop
         </div>
       )}
 
-      {list && list.length > 0 && (
+      {list && list.length > 0 && (() => {
+        const hitung = {
+          semua: list.filter((k) => !k.arsip).length,
+          draf: list.filter((k) => !k.arsip && statusOf(k) === 'draf').length,
+          aktif_guru: list.filter((k) => !k.arsip && statusOf(k) === 'aktif_guru').length,
+          aktif_siswa: list.filter((k) => !k.arsip && statusOf(k) === 'aktif_siswa').length,
+          arsip: list.filter((k) => k.arsip).length,
+        }
+        const tampil = list.filter((k) =>
+          filterStatus === 'arsip' ? !!k.arsip : !k.arsip && (filterStatus === 'semua' || statusOf(k) === filterStatus),
+        )
+        const opsiFilter: { v: 'semua' | StatusKuis | 'arsip'; teks: string; n: number }[] = [
+          { v: 'semua', teks: 'Semua', n: hitung.semua },
+          { v: 'draf', teks: 'Draf', n: hitung.draf },
+          { v: 'aktif_guru', teks: 'Aktif guru', n: hitung.aktif_guru },
+          { v: 'aktif_siswa', teks: 'Aktif siswa', n: hitung.aktif_siswa },
+          { v: 'arsip', teks: 'Arsip', n: hitung.arsip },
+        ]
+        return (
+        <>
+        <div className="pk-aksi" role="group" aria-label="Saring status kuis" style={{ marginBottom: 10, flexWrap: 'wrap' }}>
+          {opsiFilter.map((o) => (
+            <button
+              key={o.v}
+              type="button"
+              className={`pk-btn${filterStatus === o.v ? ' pk-btn--utama' : ''}`}
+              aria-pressed={filterStatus === o.v}
+              onClick={() => setFilterStatus(o.v)}
+            >
+              {o.teks} ({o.n})
+            </button>
+          ))}
+        </div>
+        {tampil.length === 0 && (
+          <div className="pk-kosong">
+            <b>{filterStatus === 'arsip' ? 'Arsip kosong' : 'Tidak ada kuis pada status ini'}</b>
+          </div>
+        )}
         <ul className="pk-grid">
-          {list.map((k) => {
+          {tampil.map((k) => {
+            const stK = statusOf(k)
             const jumlah = k.jumlahSoal ?? k.soal?.length ?? 0
             const tahapKosong = isTka && !k.tahapTryOutTka
             const labelAtas = isTka
@@ -1649,14 +1748,17 @@ export default function KuisPanel({ kelas, mapel, lombaId, mapelGabungan }: Prop
               setLangkah('detail')
             }
             return (
-              <li key={k.id} className={`pk-kartu pk-kartu--${k.aktif ? 'siap' : 'draf'}`}>
+              <li key={k.id} className={`pk-kartu pk-kartu--${stK === 'aktif_siswa' && !k.arsip ? 'siap' : 'draf'}`} style={k.arsip ? { opacity: 0.75 } : undefined}>
                 <div className="pk-utama">
                   <div className="pk-atas">
                     <span className={`pk-materi${tahapKosong ? ' pk-materi--kosong' : ''}`} title={labelAtas}>
                       {labelAtas}
                     </span>
-                    <span className={`pk-status pk-status--${k.aktif ? 'siap' : 'draf'}`}>
-                      {k.aktif ? 'Aktif' : 'Draf'}
+                    <span
+                      className={`pk-status pk-status--${stK === 'aktif_siswa' && !k.arsip ? 'siap' : 'draf'}`}
+                      title={k.arsip ? 'Kuis diarsipkan' : KETERANGAN_STATUS_KUIS[stK]}
+                    >
+                      {k.arsip ? 'Arsip' : LABEL_STATUS_KUIS[stK]}
                     </span>
                     {labelKelasDibagikan(k.kelas, k.kelasList) &&
                       String(k.kelas || '').toUpperCase() === String(kelas).toUpperCase() && (
@@ -1706,9 +1808,37 @@ export default function KuisPanel({ kelas, mapel, lombaId, mapelGabungan }: Prop
                     >
                       Hapus
                     </button>
-                    <button type="button" className="pk-btn" disabled={busy} onClick={() => void onToggleAktif(k)}>
-                      {k.aktif ? 'Nonaktifkan' : 'Aktifkan'}
-                    </button>
+                    {!k.arsip && (
+                      <label className="pk-btn" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                        <span style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0 0 0 0)' }}>Status</span>
+                        <select
+                          disabled={busy}
+                          value={stK}
+                          aria-label={`Status kuis ${k.judul}`}
+                          onChange={(e) => void onSetStatus(k, e.target.value as StatusKuis)}
+                          style={{ border: 'none', background: 'transparent', font: 'inherit', cursor: 'pointer' }}
+                        >
+                          <option value="draf">{LABEL_STATUS_KUIS.draf}</option>
+                          <option value="aktif_guru">{LABEL_STATUS_KUIS.aktif_guru}</option>
+                          <option value="aktif_siswa">{LABEL_STATUS_KUIS.aktif_siswa}</option>
+                        </select>
+                      </label>
+                    )}
+                    {k.arsip ? (
+                      <button type="button" className="pk-btn" disabled={busy} onClick={() => void onKeluarkanArsip(k)}>
+                        Keluarkan arsip
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        className="pk-btn"
+                        disabled={busy}
+                        onClick={() => void onArsipkan(k)}
+                        title="Arsipkan kuis yang sudah tidak dipakai"
+                      >
+                        Arsipkan
+                      </button>
+                    )}
                     <button type="button" className="pk-btn pk-btn--utama" onClick={bukaKuis}>
                       Buka
                     </button>
@@ -1718,7 +1848,9 @@ export default function KuisPanel({ kelas, mapel, lombaId, mapelGabungan }: Prop
             )
           })}
         </ul>
-      )}
+        </>
+        )
+      })()}
       {dialogHapus()}
       <BerbagiKelasDialog
         open={!!berbagiTarget}

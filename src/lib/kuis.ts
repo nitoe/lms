@@ -22,9 +22,15 @@ import type {
   KuisLms,
   ModeSusunKuis,
   SoalKuis,
+  StatusKuis,
   TahapTryOutTka,
 } from '../types/kuis'
-import { BATAS_PAKET_SUMBER, BATAS_SOAL_PER_KUIS } from '../types/kuis'
+import {
+  BATAS_PAKET_SUMBER,
+  BATAS_SOAL_PER_KUIS,
+  aktifSiswaDariStatusKuis,
+  normalisasiStatusKuis,
+} from '../types/kuis'
 import {
   hitungRingkasanKuis,
   kumpulkanKandidat,
@@ -44,10 +50,19 @@ function bersihkan<T>(x: T): T {
   return JSON.parse(JSON.stringify(x)) as T
 }
 
+/** Field status kuis yang selalu konsisten (dokumen lama hanya punya `aktif`). */
+function bidangStatusKuis(data: Record<string, unknown>): { statusKuis: StatusKuis; arsip: boolean } {
+  return {
+    statusKuis: normalisasiStatusKuis(data.statusKuis, data.aktif, data.modePelaksanaan),
+    arsip: data.arsip === true,
+  }
+}
+
 function mapDokKuis(id: string, data: Record<string, unknown>): KuisLms {
   return {
     id,
     ...data,
+    ...bidangStatusKuis(data),
     kelas: String(data.kelas || '').toUpperCase(),
     kelasList: Array.isArray(data.kelasList)
       ? (data.kelasList as string[]).map((x) => String(x).toUpperCase()).filter(Boolean)
@@ -105,6 +120,7 @@ export async function daftarKuisDibuatOleh(uid?: string): Promise<KuisLms[]> {
     return {
       id: d.id,
       ...data,
+      ...bidangStatusKuis(data),
       kelas: String(data.kelas || '').toUpperCase(),
       kelasList: Array.isArray(data.kelasList)
         ? (data.kelasList as string[]).map((x) => String(x).toUpperCase()).filter(Boolean)
@@ -125,6 +141,7 @@ export async function ambilKuis(id: string): Promise<KuisLms | null> {
   return {
     id: s.id,
     ...data,
+    ...bidangStatusKuis(data),
     sumberPaketIds: Array.isArray(data.sumberPaketIds) ? data.sumberPaketIds : [],
     soal: Array.isArray(data.soal) ? data.soal : [],
     modeSusun: (data.modeSusun as ModeSusunKuis) || 'manual',
@@ -270,6 +287,8 @@ export async function buatKuisDariPaket(input: InputBuatKuis): Promise<string> {
     acakSoal: !!input.acakSoal,
     acakOpsi: input.acakOpsi !== false,
     aktif: false,
+    statusKuis: 'draf',
+    arsip: false,
     dibuatOleh: uid,
     dibuatOlehNama: input.namaGuru || '',
     tpIds: input.tpIds,
@@ -306,6 +325,8 @@ export async function updateKuis(
       | 'nilaiPerTp'
       | 'sumberNilai'
       | 'aktif'
+      | 'statusKuis'
+      | 'arsip'
       | 'filterSusun'
       | 'modeSusun'
       | 'sumberPaketIds'
@@ -322,6 +343,18 @@ export async function updateKuis(
     }
     Object.assign(payload, hitungRingkasanKuis(data.soal))
   }
+  // Selaraskan `aktif` (dipakai rules & query siswa) dengan statusKuis (ANTIREGRESI §Kuis.Status).
+  if (data.statusKuis !== undefined) {
+    const st = normalisasiStatusKuis(data.statusKuis)
+    payload.statusKuis = st
+    payload.aktif = aktifSiswaDariStatusKuis(st)
+  } else if (data.aktif !== undefined) {
+    // Legacy: tombol aktif → aktif_siswa / draf.
+    const st: StatusKuis = data.aktif === true ? 'aktif_siswa' : 'draf'
+    payload.statusKuis = st
+    payload.aktif = aktifSiswaDariStatusKuis(st)
+  }
+  if (data.arsip !== undefined) payload.arsip = data.arsip === true
   // Izinkan penghapusan tahap: caller kirim null → deleteField
   const hapusTahap = (data as { tahapTryOutTka?: unknown }).tahapTryOutTka === null
   if (hapusTahap) {

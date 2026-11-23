@@ -1,3 +1,33 @@
+## 2026-11-23 — Kuis: status aktif guru / aktif siswa + arsip; Materi: blok video & audio, cetak PDF
+
+### Kuis mata pelajaran
+- **Status seperti tugas:** `statusKuis` = Draf · Aktif guru · Aktif siswa. Aktif guru = siap dipakai guru (input hasil offline, sinkron nilai) tetapi siswa TIDAK melihat; Aktif siswa = tampil & bisa dikerjakan. Boolean `aktif` otomatis diselaraskan (true hanya bila Aktif siswa) sehingga rules dan query siswa tidak berubah.
+- **Arsip seperti tugas:** tombol «Arsipkan» / «Keluarkan arsip»; kuis arsip hilang dari daftar utama dan dari siswa (Aktif siswa otomatis turun ke Aktif guru), hasil dan nilai tetap aman dan tetap dihitung di rekap/sinkron.
+- Daftar kuis: saringan Semua / Draf / Aktif guru / Aktif siswa / Arsip dengan jumlah, selektor status per kartu, badge status.
+- Input jawaban offline diblokir (dengan pesan jelas) bila kuis masih Draf. Kuis lama: aktif → Aktif siswa; tidak aktif + offline → Aktif guru (agar input offline lama tidak terblokir); selain itu Draf.
+- `src/types/kuis.ts` (StatusKuis, normalisasi), `src/lib/kuis.ts` (pemeta dokumen, buat, `updateKuis` menyelaraskan `aktif`), `src/components/KuisPanel.tsx`, `src/components/OfflineKuisPanel.tsx`.
+
+### Materi halaman-per-halaman
+- **Blok video:** unggah file (MP4 disarankan; WebM/OGV/MOV; < 50 MB) atau tautan YouTube. **Blok audio:** unggah file (MP3 disarankan; M4A/AAC/WAV/OGG; < 15 MB) atau tautan https langsung. Tombol «+ Video» dan «+ Audio», progres unggah, pratinjau di editor; pemutar di tampilan siswa; keterangan opsional.
+- `src/types/materi.ts` (blok `video`, `audio`; `BATAS_UKURAN.audio`), `src/lib/materi.ts` (`unggahMediaHalaman`, `tipeKontenMedia`, normalisasi, pembersihan Storage saat materi dihapus), `src/components/materi/MateriMediaBlok.tsx` (baru), `MateriHalamanEditor.tsx`, `MateriHalamanViewer.tsx`, `src/lib/importMateriHalaman.ts` (impor/ekspor JSON mengenali video/audio), `src/styles/materi-halaman.css`. Storage rules sudah mengizinkan (video/audio di `lms/materi/{kelas}`), tidak ada perubahan rules.
+
+### Materi: cetak PDF offline
+- Tombol «PDF» di daftar materi (halaman & HTML) dan di editor (cetak draf yang sedang diedit): kop sekolah, judul, mapel/kelas/TP/bab, tiap halaman di lembar baru, gambar, rumus (KaTeX). Video/audio diganti kotak keterangan (YouTube: tautan tonton; unggahan: «tersedia di LMS halaman n»).
+- `src/lib/exportMateriCetak.ts` (baru), `src/components/MateriPanel.tsx`.
+- Antiregresi: §Kuis.Status, §Materi.Media, §Materi.Cetak.
+
+## 2026-11-22 — Fitur baru: Ekspor kisi-kisi dari paket soal dan kuis
+
+- **Isi kisi-kisi:** No · Tujuan Pembelajaran · Materi · Indikator Soal · Level Kognitif (L1–L3) · Bentuk Soal · Poin · Waktu · Domain (hanya bila ada soal bertanda domain TKA) · Kunci (opsional), ditambah ringkasan sebaran per bentuk soal, level kognitif, dan TP.
+- **Asal data:** TP dan materi dari paket asal soal (kuis menyimpan salinan soal + `sumberPaketId`; bila paket tidak terbaca, TP dari `kuis.tpNamaList`). Indikator dari field baru `soal.indikator`.
+- `src/lib/kisiKisi.ts` (baru): `kisiKisiDariPaket`, `kisiKisiDariKuis`, `unduhKisiKisiWord` (.doc lanskap, kop sekolah), `unduhKisiKisiXlsx` (2 lembar: Kisi-kisi, Ringkasan), `cetakKisiKisi` (dialog cetak/PDF).
+- `src/types/soal.ts`: field opsional `indikator` pada soal. Dipertahankan saat ganti tipe (`ubahTipe`), import JSON (`importSoal.ts`), dan ekspor JSON gabung (`soalKeBarisImport`).
+- `src/components/soal/SoalEditorKartu.tsx`: kolom «Indikator soal (untuk kisi-kisi)» di tiap kartu soal.
+- `src/components/BankSoalPanel.tsx`: tombol «Kisi-kisi» dan «Kisi-kisi XLSX» per paket. `src/components/KuisPanel.tsx`: tombol yang sama di aksi unduh kuis.
+- `src/lib/exportKuisCetak.ts`: `htmlKop` dan `esc` diekspor (dipakai ulang untuk kop). Tidak ada perubahan perilaku.
+- Indikator yang belum diisi dibiarkan kosong (tidak dikarang); setelah unduh muncul catatan jumlah soal tanpa indikator.
+- Tanpa perubahan rules/functions. Antiregresi: §Kisi-kisi.
+
 ## 2026-11-22 — Rekap Nilai: semua tugas/kuis SLM ikut tampil, kolom nilai di tengah
 
 - **Gejala:** tidak semua nilai tugas muncul di Rekap Nilai; nilai berada di sisi kanan kolom, bukan di bawah nama tugas.

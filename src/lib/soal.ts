@@ -75,6 +75,7 @@ export function ubahTipe(s: Soal, tipe: TipeSoal): Soal {
     ...(s.stimulus ? { stimulus: s.stimulus } : {}),
     ...(s.tipeMateri ? { tipeMateri: s.tipeMateri } : {}),
     ...(s.rumus ? { rumus: true } : {}),
+    ...(s.indikator ? { indikator: s.indikator } : {}), // ANTIREGRESI §Kisi-kisi
   }
   if ((s.tipe === 'pg' || s.tipe === 'pgk') && (tipe === 'pg' || tipe === 'pgk')) {
     const opsi = Array.isArray(s.opsi) && s.opsi.length >= 2 ? s.opsi : baru.tipe === 'pg' || baru.tipe === 'pgk' ? (baru as { opsi: typeof s.opsi }).opsi : s.opsi

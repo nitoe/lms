@@ -58,6 +58,56 @@ export interface FilterSusunKuis {
   jumlahPerKompleksitas?: Partial<Record<KompleksitasSoal, number>>
 }
 
+/**
+ * Status kuis (selaras tugas — ANTIREGRESI §Kuis.Status):
+ * - draf: masih disusun; siswa tidak melihat
+ * - aktif_guru: siap dipakai guru (input hasil offline, sinkron nilai); siswa TIDAK melihat
+ * - aktif_siswa: tampil & bisa dikerjakan siswa (sesuai jadwal/token)
+ * Boolean `aktif` diselaraskan: true hanya jika status === 'aktif_siswa' (rules & query siswa memakai `aktif`).
+ */
+export type StatusKuis = 'draf' | 'aktif_guru' | 'aktif_siswa'
+
+export const LABEL_STATUS_KUIS: Record<StatusKuis, string> = {
+  draf: 'Draf',
+  aktif_guru: 'Aktif guru',
+  aktif_siswa: 'Aktif siswa',
+}
+
+export const KETERANGAN_STATUS_KUIS: Record<StatusKuis, string> = {
+  draf: 'Masih disusun — siswa tidak melihat',
+  aktif_guru: 'Siap dipakai guru (input hasil offline, sinkron nilai) — siswa tidak melihat',
+  aktif_siswa: 'Tampil ke siswa dan bisa dikerjakan',
+}
+
+export function statusKuisValid(v: unknown): StatusKuis | undefined {
+  return v === 'draf' || v === 'aktif_guru' || v === 'aktif_siswa' ? v : undefined
+}
+
+/**
+ * Normalisasi dari dokumen. Dokumen lama hanya punya `aktif`:
+ * aktif → aktif_siswa; tidak aktif + kuis offline → aktif_guru (kuis offline memang tidak untuk siswa,
+ * jangan jadi «draf» agar input hasil offline lama tidak terblokir); selain itu draf.
+ */
+export function normalisasiStatusKuis(
+  status: unknown,
+  aktifLegacy?: unknown,
+  modePelaksanaan?: unknown,
+): StatusKuis {
+  const s = statusKuisValid(status)
+  if (s) return s
+  if (aktifLegacy === true) return 'aktif_siswa'
+  return modePelaksanaan === 'offline' ? 'aktif_guru' : 'draf'
+}
+
+export function aktifSiswaDariStatusKuis(s: StatusKuis): boolean {
+  return s === 'aktif_siswa'
+}
+
+/** Guru boleh memasukkan hasil offline / menyinkronkan nilai. */
+export function bolehInputHasilKuis(s: StatusKuis): boolean {
+  return s === 'aktif_guru' || s === 'aktif_siswa'
+}
+
 export type SoalKuis = Soal & {
   sumberPaketId: string
   sumberSoalId: string
@@ -89,6 +139,10 @@ export interface KuisLms {
   acakSoal?: boolean
   acakOpsi?: boolean
   aktif: boolean
+  /** Status kanonis: draf | aktif_guru | aktif_siswa. Dokumen lama = diturunkan dari `aktif`. */
+  statusKuis?: StatusKuis
+  /** Diarsipkan: disembunyikan dari daftar utama dan dari siswa. Nilai tetap dihitung. */
+  arsip?: boolean
   dibuatOleh: string
   dibuatOlehNama?: string
   jumlahSoal: number

@@ -16,6 +16,7 @@ import {
 } from '../lib/analisisKuisAi'
 import { useAuth } from '../context/AuthContext'
 import type { KuisLms, SoalKuis } from '../types/kuis'
+import { bolehInputHasilKuis, normalisasiStatusKuis } from '../types/kuis'
 import { NAMA_TIPE, type TipeSoal } from '../types/soal'
 import RichView from './soal/RichView'
 import { GambarSoal } from './soal/GambarSoal'
@@ -245,7 +246,16 @@ export default function OfflineKuisPanel({ kuis, onTersimpan }: Props) {
     setInfo('Form dikosongkan. Simpan akan membuat percobaan baru.')
   }
 
+  // Kuis berstatus Draf belum boleh diisi hasilnya (selaras tugas). Dokumen lama kuis offline
+  // dinormalisasi menjadi «aktif guru», jadi tidak terblokir.
+  const statusKuis = normalisasiStatusKuis(kuis.statusKuis, kuis.aktif, kuis.modePelaksanaan)
+  const bolehInput = bolehInputHasilKuis(statusKuis)
+
   async function simpan() {
+    if (!bolehInput) {
+      setError('Kuis masih berstatus Draf. Ubah ke «Aktif guru» atau «Aktif siswa» di daftar kuis sebelum memasukkan hasil.')
+      return
+    }
     if (!siswaId) {
       setError('Pilih siswa terlebih dahulu.')
       return
@@ -710,6 +720,12 @@ export default function OfflineKuisPanel({ kuis, onTersimpan }: Props) {
 
   return (
     <div className="space-y-4 pb-28">
+      {!bolehInput && (
+        <div className="rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900" role="status">
+          Kuis ini masih berstatus <b>Draf</b>. Ubah ke «Aktif guru» (siswa tidak melihat) atau «Aktif siswa»
+          di daftar kuis sebelum memasukkan hasil.
+        </div>
+      )}
       {/* Header + pilih siswa */}
       <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
         <div className="flex flex-wrap items-start justify-between gap-3">

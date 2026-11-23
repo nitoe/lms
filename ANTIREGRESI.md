@@ -1628,3 +1628,36 @@ Jangan memaksa satu kolom sempit di desktop.
 4. Rumus nilai SLM Rekap Nilai (`hitungNilaiBerbobot`: rata berbobot persen dari `lms_bobot_slm`, 1 desimal; bobot tersimpan dipakai hanya bila mencakup SEMUA sumber terdeteksi, selain itu rata) HARUS identik dengan agregator sinkron di SDM01Penilaian (`functions/agregasiSlmLms.js`: `bobotSumber`, `nilaiBerbobot`, `idBobotSlm`). Ubah keduanya sekaligus.
 5. Tampilan: judul kolom sumber dan angka nilai sama-sama `text-center`.
 6. **Tes:** (a) kuis dengan `tpIds` berisi nama TP muncul sebagai kolom; (b) tugas yang `tpList`-nya hanya bernama muncul; (c) bobot 70/30 menghasilkan nilai akhir sama dengan nilai SLM di aplikasi penilaian setelah sinkron.
+
+## §Kisi-kisi — ekspor kisi-kisi (2026-11-22)
+
+1. Kisi-kisi dibangun dari data yang ada; **indikator tidak boleh dikarang otomatis**. Sumbernya hanya `soal.indikator` (kosong = sel kosong). Untuk kuis, indikator salinan yang kosong boleh dilengkapi dari soal paket asal (`sumberPaketId`+`sumberSoalId`).
+2. `indikator` HARUS ikut di semua tempat yang membangun ulang objek soal: `ubahTipe` (soal.ts), `normalisasiSoalDariImport` (importSoal.ts), `soalKeBarisImport` (gabungPaket.ts). `salinSoal` memakai JSON sehingga otomatis ikut. Jangan menulis `indikator: undefined` ke Firestore (spread bersyarat).
+3. Dokumen Word memakai atribut HTML dasar (`border`, `cellpadding`, `width`, `align`) — CSS saja tidak menggambar garis tabel di semua penampil. Jangan menghapus atribut itu.
+4. Kolom «Domain» hanya muncul bila ada soal ber-`domainTka`; kolom «Kunci» hanya untuk versi guru (opsi `sertakanKunci`).
+5. `kisiKisiDariKuis` membaca paket asal lewat `ambilPaket`; kegagalan baca satu paket tidak boleh membatalkan ekspor (jatuh ke `tpNamaList`).
+6. Uji manual: paket 3 soal (PG, B/S, uraian) → Word lanskap berisi tabel + ringkasan; XLSX 2 lembar; kuis dari paket lalu isi indikator di paket → kisi-kisi kuis ikut terisi.
+
+## §Kuis.Status — status kuis & arsip selaras tugas (2026-11-23)
+
+1. `statusKuis` (draf | aktif_guru | aktif_siswa) adalah sumber kebenaran; `aktif` (boolean) HARUS selalu = `statusKuis === 'aktif_siswa'`. Rules dan query siswa (`where('aktif','==',true)`, `SiswaTka`, `ringkasanRuang`) memakai `aktif`. Selalu ubah lewat `updateKuis` (menyelaraskan keduanya); jangan `updateDoc` langsung.
+2. Dokumen lama tanpa `statusKuis` dinormalisasi di pemeta (`bidangStatusKuis`): aktif→aktif_siswa; tidak aktif + offline→aktif_guru; selain itu draf. Jangan mengubah aturan «offline lama → aktif_guru» (mencegah input offline lama terblokir).
+3. Arsip menyembunyikan kuis dari daftar utama dan dari siswa; status aktif_siswa diturunkan ke aktif_guru saat diarsipkan. Nilai/hasil kuis arsip TETAP dihitung (rekap, sinkron SLM ke penilaian). Jangan menambah filter `arsip` pada agregasi nilai.
+4. Input jawaban offline hanya untuk aktif_guru/aktif_siswa (`bolehInputHasilKuis`).
+5. **Tes:** (a) kuis aktif siswa diarsipkan → siswa tidak melihat, nilai tetap muncul di Rekap Nilai; (b) kuis offline lama (tanpa statusKuis) masih bisa diinput; (c) mengubah status ke Aktif guru → siswa tidak melihat.
+
+## §Materi.Media — blok video/audio di materi halaman (2026-11-23)
+
+1. Blok `video` (`sumber: 'unggah' | 'youtube'`) dan `audio` hanya boleh tersimpan dengan URL **https**. `blob:`/`data:`/`http:` DITOLAK saat simpan (`normalisasiHalaman`); blok tanpa URL dibuang. Jangan menulis `undefined` ke Firestore (spread bersyarat).
+2. Berkas diunggah ke `lms/materi/{KELAS}/video_*|audio_*` (rules: video < 50 MB, audio < 15 MB, `fileName` ≤ 200). `storagePath` disimpan agar ikut dibersihkan (`kumpulkanStoragePath`) saat materi dihapus. Tipe konten ditebak dari ekstensi bila `file.type` kosong (`tipeKontenMedia`).
+3. YouTube memakai `youtube-nocookie.com/embed/{id}` dan `ekstrakYoutubeId`; tautan tak dikenali ditolak saat simpan.
+4. Impor JSON halaman: video/audio diterima hanya dengan url https; berkas unggahan masuk sebagai tautan TANPA `storagePath` (tidak ikut terhapus; bila materi asal dihapus, tautan di salinan bisa mati).
+5. Gambar tetap memakai alur lama (`gambar` tidak berubah).
+6. **Tes:** unggah MP4 < 50 MB → tersimpan & terputar di tampilan siswa; hapus materi → file Storage terhapus; paste tautan YouTube salah → pesan galat saat simpan.
+
+## §Materi.Cetak — cetak/PDF materi (2026-11-23)
+
+1. Cetak lewat jendela `window.open` dari klik langsung (popup-blocker), CSS cetak sendiri + salinan stylesheet aplikasi (agar KaTeX tampil). Jangan membuat pustaka PDF baru.
+2. Video/audio TIDAK pernah dicetak sebagai URL bertoken Storage; YouTube dicetak sebagai tautan tonton, unggahan sebagai «tersedia di LMS». Teks dibersihkan `bersihHtmlMateri` (tanpa skrip).
+3. Halaman tanpa isi tidak dicetak; tiap halaman memulai lembar baru (opsi `halamanBaru`).
+4. **Tes:** materi 3 halaman berisi teks+rumus+gambar+video → PDF 3 lembar, rumus terbaca, gambar muncul, kotak video tampil.

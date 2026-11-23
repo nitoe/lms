@@ -160,6 +160,7 @@ export function normalisasiSoalDariImport(raw: Record<string, unknown>, index: n
     waktuMenit: Number(raw.waktuMenit) > 0 ? Number(raw.waktuMenit) : dasar.waktuMenit,
     pembahasan: String(raw.pembahasan || raw.penjelasan || '').trim() || undefined,
     ...(stimulusRaw ? { stimulus: stimulusRaw } : {}),
+    ...(String(raw.indikator || '').trim() ? { indikator: String(raw.indikator).trim() } : {}),
     ...(String(raw.tipeMateri || raw.materi || '').trim()
       ? { tipeMateri: String(raw.tipeMateri || raw.materi).trim() }
       : {}),

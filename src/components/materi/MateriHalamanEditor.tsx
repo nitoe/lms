@@ -34,6 +34,8 @@ import {
 import { bersihHtmlMateri, materiPunyaStrukturLanjut } from '../../lib/html'
 import { ambilGambarDariClipboardApi } from '../../lib/gambar'
 import MateriRichEditor from './MateriRichEditor'
+import { MateriMediaEditor } from './MateriMediaBlok'
+import { cetakMateriPdf } from '../../lib/exportMateriCetak'
 import MateriHalamanViewer from './MateriHalamanViewer'
 
 type Props = {
@@ -65,6 +67,9 @@ function salinHalaman(list: MateriHalaman[]): MateriHalaman[] {
     blok: (h.blok || []).map((b) => {
       if (b.tipe === 'teks') {
         return { id: b.id || idBaru('b'), tipe: 'teks' as const, html: b.html || '' }
+      }
+      if (b.tipe === 'video' || b.tipe === 'audio') {
+        return { ...b, id: b.id || idBaru('b') }
       }
       return {
         id: b.id || idBaru('b'),
@@ -227,12 +232,30 @@ export default function MateriHalamanEditor({
         if (b.tipe === 'teks' && (patch as { html?: string }).html !== undefined) {
           return { ...b, html: (patch as { html: string }).html }
         }
-        if (b.tipe === 'gambar') {
+        if (b.tipe === 'gambar' || b.tipe === 'video' || b.tipe === 'audio') {
           return { ...b, ...patch } as MateriBlok
         }
         return b
       }),
     }))
+  }
+
+  /** Cetak draf yang sedang diedit (termasuk perubahan yang belum disimpan). */
+  async function cetakDraf() {
+    setError('')
+    try {
+      await cetakMateriPdf({
+        judul: meta.judul || 'Materi',
+        mapel,
+        kelas: kelas,
+        bab: meta.bab || undefined,
+        deskripsi: meta.deskripsi || undefined,
+        tp: tpTerpilih ? `TP ${tpTerpilih.nomorTp}. ${tpTerpilih.namaTp}` : undefined,
+        halaman,
+      })
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Gagal menyiapkan PDF.')
+    }
   }
 
   function tambahBlokTeks() {
@@ -245,6 +268,25 @@ export default function MateriHalamanEditor({
     updateAktif((h) => ({
       ...h,
       blok: [...h.blok, { id: idBaru('b'), tipe: 'teks', html: '' }],
+    }))
+  }
+
+  /** Tambah blok video/audio kosong; unggah/tautan diisi di dalam blok. */
+  function tambahBlokMedia(jenis: 'video' | 'audio') {
+    if (!aktif) return
+    if (aktif.blok.length >= BATAS_BLOK_PER_HALAMAN) {
+      setError(`Maksimal ${BATAS_BLOK_PER_HALAMAN} blok per halaman.`)
+      return
+    }
+    setError('')
+    updateAktif((h) => ({
+      ...h,
+      blok: [
+        ...h.blok,
+        jenis === 'video'
+          ? { id: idBaru('b'), tipe: 'video', sumber: 'unggah', url: '' }
+          : { id: idBaru('b'), tipe: 'audio', url: '' },
+      ],
     }))
   }
 
@@ -936,6 +978,15 @@ export default function MateriHalamanEditor({
           <button
             type="button"
             className="lms-btn-secondary"
+            onClick={() => void cetakDraf()}
+            disabled={busy}
+            title="Cetak / simpan draf materi ini sebagai PDF untuk dipakai offline"
+          >
+            PDF
+          </button>
+          <button
+            type="button"
+            className="lms-btn-secondary"
             onClick={() => setMode('pratinjau')}
             disabled={busy}
           >
@@ -1258,7 +1309,7 @@ export default function MateriHalamanEditor({
                   >
                     <div className="mh-blok-card-head">
                       <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-                        {b.tipe === 'teks' ? 'Teks' : 'Gambar'} · {bi + 1}
+                        {b.tipe === 'teks' ? 'Teks' : b.tipe === 'gambar' ? 'Gambar' : b.tipe === 'video' ? 'Video' : 'Audio'} · {bi + 1}
                       </span>
                       <div className="mh-blok-card-actions">
                         <button type="button" disabled={bi === 0} onClick={() => pindahBlok(b.id, -1)} title="Naik">
@@ -1341,7 +1392,7 @@ export default function MateriHalamanEditor({
                           />
                         )}
                       </div>
-                    ) : (
+                    ) : b.tipe === 'gambar' ? (
                       <div className="mh-img-edit">
                         {b.url ? (
                           <img src={b.url} alt={b.alt || ''} className="mh-img-preview" />
@@ -1437,6 +1488,14 @@ export default function MateriHalamanEditor({
                           </div>
                         )}
                       </div>
+                    ) : (
+                      <MateriMediaEditor
+                        blok={b}
+                        kelas={kelas}
+                        disabled={busy}
+                        onChange={(patch) => updateBlok(b.id, patch)}
+                        onError={setError}
+                      />
                     )}
                   </div>
                 ))}
@@ -1448,6 +1507,12 @@ export default function MateriHalamanEditor({
                 </button>
                 <button type="button" className="lms-btn-secondary" onClick={mulaiUnggahGambar} disabled={busy}>
                   + Gambar
+                </button>
+                <button type="button" className="lms-btn-secondary" onClick={() => tambahBlokMedia('video')} disabled={busy}>
+                  + Video
+                </button>
+                <button type="button" className="lms-btn-secondary" onClick={() => tambahBlokMedia('audio')} disabled={busy}>
+                  + Audio
                 </button>
                 <span className="mh-hint">Gambar max {maxMb} MB · JPG/PNG/WebP · atau <strong>tempel (Ctrl+V)</strong> / tombol «Tempel gambar» pada blok</span>
               </div>

@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import SoalGandaDialog from './soal/SoalGandaDialog'
 import { useAuth } from '../context/AuthContext'
 import { buatPaket, daftarPaket, daftarPaketLomba, hapusPaket, simpanPaket } from '../lib/soal'
+import { kisiKisiDariPaket, unduhKisiKisiWord, unduhKisiKisiXlsx } from '../lib/kisiKisi'
 import { KELAS_LOMBA_BANK } from '../lib/lombaAkses'
 import { getTpMapelKelas } from '../lib/tpData'
 import { adalahMapelTka, materiTkaUntuk, MAPEL_TKA, TIPE_SOAL_TKA, KELAS_TKA_BANK, LABEL_MAPEL_TKA } from '../lib/tkaAkses'
@@ -882,6 +883,28 @@ export default function BankSoalPanel({ kelas, mapel, ruangId, lombaId, tpKelas 
               title="Unduh soal paket ini sebagai JSON"
             >
               Export
+            </button>
+            <button
+              type="button"
+              className="pk-btn"
+              disabled={busy || (p.soal?.length ?? 0) === 0}
+              title="Unduh kisi-kisi paket ini (Word)"
+              onClick={() => {
+                const d = kisiKisiDariPaket(p)
+                unduhKisiKisiWord(d)
+                if (d.tanpaIndikator > 0) alert(`Catatan: ${d.tanpaIndikator} dari ${d.rekap.jumlahSoal} soal belum punya indikator. Isi di editor soal pada kolom «Indikator soal».`)
+              }}
+            >
+              Kisi-kisi
+            </button>
+            <button
+              type="button"
+              className="pk-btn"
+              disabled={busy || (p.soal?.length ?? 0) === 0}
+              title="Unduh kisi-kisi paket ini (Excel)"
+              onClick={() => unduhKisiKisiXlsx(kisiKisiDariPaket(p))}
+            >
+              Kisi-kisi XLSX
             </button>
             <button
               type="button"

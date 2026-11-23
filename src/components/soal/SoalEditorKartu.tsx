@@ -132,6 +132,22 @@ export default function SoalEditorKartu({
         </div>
       </div>
 
+      <div className="soal-kaki-kolom" style={{ width: '100%', margin: '4px 0 8px' }}>
+        <label style={{ display: 'block' }}>
+          <span>Indikator soal (untuk kisi-kisi)</span>
+          <input
+            type="text"
+            className="soal-input"
+            style={{ width: '100%' }}
+            maxLength={300}
+            value={soal.indikator ?? ''}
+            placeholder="Contoh: Disajikan gambar rantai makanan, peserta didik dapat menentukan produsen."
+            onChange={(e) => onChange({ ...soal, indikator: e.target.value })}
+            aria-label="Indikator soal"
+          />
+        </label>
+      </div>
+
       <footer className="soal-kartu-kaki">
         {punyaAcak && (soal.tipe === 'pg' || soal.tipe === 'pgk') && (
           <label className="soal-kaki-kolom">

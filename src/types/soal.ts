@@ -91,6 +91,11 @@ interface SoalDasar {
    * pengetahuan | keterampilan_proses (pilih yang lebih dominan).
    */
   domainTka?: DomainTka
+  /**
+   * Indikator soal untuk kisi-kisi (teks biasa, mis. «Disajikan ..., peserta didik dapat ...»).
+   * Opsional; diisi guru di editor soal. Kosong = kolom indikator kisi-kisi kosong.
+   */
+  indikator?: string
 }
 
 export interface SoalPg extends SoalDasar {
