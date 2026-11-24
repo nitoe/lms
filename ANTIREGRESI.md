@@ -1,3 +1,10 @@
+## §Kuis.CetakNomor — Nomor soal PDF/Word berurutan (2026-11-24)
+
+1. **Nomor di lembar cetak = urutan setelah pengelompokan bentuk**, bukan indeks mentah array `kuis.soal` sebelum partisi. Alur: partisi objektif → isian → uraian (stable, relatif = daftar soal) → `no = 1…n`.
+2. **Jangan** `push({ no: no++, s })` di dalam loop partisi campuran: nomor akan loncat saat bagian dicetak terpisah.
+3. **Kunci jawaban** wajib memakai nomor yang sama (`dataKunci` lewat `susunBagian`), jangan `soal.map((_, i) => i + 1)`.
+4. Uji: kuis dengan PG, uraian, PG, isian → PDF menampilkan objektif 1…k, isian k+1…, uraian …n tanpa loncat; kunci cocok dengan nomor di lembar soal.
+
 
 
 ## §Kuis.ModalTambahSoal — Lightbox tambah soal dari bank (2026-11-24)

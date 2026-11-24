@@ -1,3 +1,11 @@
+## 2026-11-24 — Cetak/PDF kuis: nomor soal berurutan sesuai urutan cetak
+
+- **Bug:** nomor soal di PDF/Word diambil saat traverse `kuis.soal` (urutan daftar), lalu soal **dicetak ulang** per bagian (objektif → isian → uraian). Akibatnya di kertas nomor loncat (mis. 1, 2, 4, 5, 3) — terasa mengikuti «urutan pilih» campuran, bukan daftar yang rapi.
+- **Perbaikan:** `kelompokkan` mempartisi dulu (urutan relatif dalam tiap bentuk = urutan di daftar soal), **baru** memberi nomor 1…n menurut urutan cetak. Tabel kunci jawaban memakai nomor yang sama.
+- File: `src/lib/exportKuisCetak.ts`.
+- Antiregresi: §Kuis.CetakNomor.
+- Tips: di Atur kuis, «Kelompokkan bentuk» menyelaraskan daftar UI dengan urutan cetak.
+
 ## 2026-11-24 — Lightbox «Tambah soal ke kuis» diperbesar (full viewport)
 
 - Modal pemilihan soal dari bank di **Atur kuis** sebelumnya sempit (`~56rem` / max tinggi ~36rem): daftar kiri + pratinjau kanan terasa sesak (terutama multi-paket 200 soal).

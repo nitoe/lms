@@ -1,6 +1,8 @@
 /**
  * Ekspor kuis ke dokumen siap cetak. Layout mengikuti template Asesmen Sumatif
- * SD Muhammadiyah 01 Kukusan: kop, identitas, soal dikelompokkan per bentuk.
+ * SD Muhammadiyah 01 Kukusan: kop, identitas, soal dikelompokkan per bentuk;
+ * nomor soal berurutan 1…n menurut urutan cetak (objektif → isian → uraian),
+ * urutan relatif dalam tiap bentuk mengikuti daftar soal di Atur kuis.
  *
  * Dua jalur (ANTIREGRESI §127):
  *  • PDF  — `cetakKuisPdf`: paginasi DIHITUNG SENDIRI (ukur tinggi tiap blok lalu tempatkan
@@ -159,16 +161,25 @@ function pecahPanjang(p: string, maks = 600): string[] {
 
 type ItemSoal = { no: number; s: SoalKuis }
 
-/** Kelompokkan: objektif → isian → uraian; nomor global berurutan (seperti template sekolah). */
+/**
+ * Kelompokkan: objektif → isian → uraian.
+ * Urutan relatif di dalam tiap kelompok = urutan di daftar soal (`kuis.soal`).
+ * Nomor global diisi SETELAH pengelompokan agar di kertas/PDF berurutan 1…n
+ * (bukan loncat karena nomor diambil saat traverse campuran lalu dicetak per bagian).
+ * ANTIREGRESI §Kuis.CetakNomor.
+ */
 function kelompokkan(soal: SoalKuis[]): { objektif: ItemSoal[]; isian: ItemSoal[]; uraian: ItemSoal[] } {
   const objektif: ItemSoal[] = []
   const isian: ItemSoal[] = []
   const uraian: ItemSoal[] = []
-  let no = 1
   for (const s of soal) {
-    if (s.tipe === 'uraian') uraian.push({ no: no++, s })
-    else if (s.tipe === 'isian') isian.push({ no: no++, s })
-    else objektif.push({ no: no++, s })
+    if (s.tipe === 'uraian') uraian.push({ no: 0, s })
+    else if (s.tipe === 'isian') isian.push({ no: 0, s })
+    else objektif.push({ no: 0, s })
+  }
+  let no = 1
+  for (const it of [...objektif, ...isian, ...uraian]) {
+    it.no = no++
   }
   return { objektif, isian, uraian }
 }
@@ -373,33 +384,54 @@ function potonganSoal(item: ItemSoal, gambar: Map<string, string>): string[] | u
 
 /* ───────────────────────── Kunci jawaban ───────────────────────── */
 
+/** Teks kunci satu soal (tanpa nomor — nomor dari urutan cetak). */
+function teksKunciSatu(s: SoalKuis): string {
+  if (s.tipe === 'pg') {
+    const opsi = s.opsi || []
+    const idx = opsi.findIndex((o) => o.id === s.kunci)
+    return idx >= 0 ? `${HURUF[idx]}. ${teksPolos(opsi[idx].teks)}` : String(s.kunci)
+  }
+  if (s.tipe === 'pgk') {
+    const opsi = s.opsi || []
+    const ids = s.kunci || []
+    return ids
+      .map((id) => {
+        const idx = opsi.findIndex((o) => o.id === id)
+        return idx >= 0 ? HURUF[idx] : id
+      })
+      .join(', ')
+  }
+  if (s.tipe === 'bs') {
+    return (s.pernyataan || []).map((p, j) => `${j + 1}=${p.benar ? 'B' : 'S'}`).join('; ')
+  }
+  if (s.tipe === 'jodoh') {
+    return (s.pasangan || []).map((_, j) => `${j + 1}→${HURUF[j]}`).join(', ')
+  }
+  if (s.tipe === 'isian') {
+    return (s.kunci || []).join(' / ')
+  }
+  if (s.tipe === 'uraian') {
+    return teksPolos(s.kunciJawaban) || '(pedoman di sistem)'
+  }
+  return '—'
+}
+
+/**
+ * Kunci memakai nomor yang sama dengan lembar soal (urutan cetak setelah
+ * kelompokkan bentuk), bukan indeks mentah di `kuis.soal`.
+ */
 function dataKunci(soal: SoalKuis[]): { no: number; tipe: string; kunci: string }[] {
-  return soal.map((s, i) => {
-    let kunci = '—'
-    if (s.tipe === 'pg') {
-      const opsi = s.opsi || []
-      const idx = opsi.findIndex((o) => o.id === s.kunci)
-      kunci = idx >= 0 ? `${HURUF[idx]}. ${teksPolos(opsi[idx].teks)}` : String(s.kunci)
-    } else if (s.tipe === 'pgk') {
-      const opsi = s.opsi || []
-      const ids = s.kunci || []
-      kunci = ids
-        .map((id) => {
-          const idx = opsi.findIndex((o) => o.id === id)
-          return idx >= 0 ? HURUF[idx] : id
-        })
-        .join(', ')
-    } else if (s.tipe === 'bs') {
-      kunci = (s.pernyataan || []).map((p, j) => `${j + 1}=${p.benar ? 'B' : 'S'}`).join('; ')
-    } else if (s.tipe === 'jodoh') {
-      kunci = (s.pasangan || []).map((_, j) => `${j + 1}→${HURUF[j]}`).join(', ')
-    } else if (s.tipe === 'isian') {
-      kunci = (s.kunci || []).join(' / ')
-    } else if (s.tipe === 'uraian') {
-      kunci = teksPolos(s.kunciJawaban) || '(pedoman di sistem)'
+  const out: { no: number; tipe: string; kunci: string }[] = []
+  for (const b of susunBagian(soal)) {
+    for (const it of b.items) {
+      out.push({
+        no: it.no,
+        tipe: NAMA_TIPE[it.s.tipe as TipeSoal] ?? it.s.tipe,
+        kunci: teksKunciSatu(it.s),
+      })
     }
-    return { no: i + 1, tipe: NAMA_TIPE[s.tipe as TipeSoal] ?? s.tipe, kunci }
-  })
+  }
+  return out
 }
 
 /** Kunci untuk Word: satu tabel. */
