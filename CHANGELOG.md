@@ -1,3 +1,15 @@
+## 2026-11-24 — Pengumpulan tugas: multi-file foto (maks. 6)
+
+- **Status sebelumnya:** mode bebas sudah `multiple` tetapi dibatasi **3 foto**; mode bukti berlabel hanya satu file per kartu (harus pilih berulang).
+- **Peningkatan:**
+  - Batas foto mode bebas **3 → 6** (selaras rules `fotoIds.size() <= 6` & slot 1..6).
+  - Mode bukti: input foto per kartu + tombol **«Pilih beberapa foto sekaligus»** mengisi slot foto kosong berurutan; memilih beberapa file di satu kartu juga mengisi slot berikutnya.
+  - Video tetap **satu per kartu bukti** (maks. 2 video/tugas) — multi-file tidak berlaku untuk video.
+- Teks petunjuk siswa diperjelas (bisa pilih beberapa dari galeri).
+- File: `src/lib/pengumpulan.ts`, `src/pages/siswa/PengumpulanSiswa.tsx`, `src/styles/siswa.css`.
+- Antiregresi: §Tugas.MultiFile.
+- Tidak perlu deploy rules (batas 6 sudah di rules).
+
 ## 2026-11-24 — Cetak/PDF kuis: nomor soal berurutan sesuai urutan cetak
 
 - **Bug:** nomor soal di PDF/Word diambil saat traverse `kuis.soal` (urutan daftar), lalu soal **dicetak ulang** per bagian (objektif → isian → uraian). Akibatnya di kertas nomor loncat (mis. 1, 2, 4, 5, 3) — terasa mengikuti «urutan pilih» campuran, bukan daftar yang rapi.

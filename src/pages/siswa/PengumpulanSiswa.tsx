@@ -175,18 +175,77 @@ export default function PengumpulanSiswa({
   }
 
   async function pilihBukti(slot: number, files: FileList | null, input: HTMLInputElement | null) {
-    const f = files?.[0]
-    if (!f) return
+    if (!files || files.length === 0) return
     setGalat('')
     setSukses(false)
     setOlahSlot(slot)
     try {
-      const src = await siapkanFoto(f)
-      setFotoSlot((prev) => ({ ...prev, [slot]: src }))
+      // Satu file → slot ini; beberapa file → isi slot ini lalu slot foto kosong berikutnya.
+      const daftar = Array.from(files)
+      const srcPertama = await siapkanFoto(daftar[0])
+      setFotoSlot((prev) => {
+        const next = { ...prev, [slot]: srcPertama }
+        return next
+      })
+      if (daftar.length > 1) {
+        // Slot foto kosong (bukan video) setelah slot ini, urut slot.
+        const slotFoto = buktiList
+          .filter((b) => b.jenis !== 'video')
+          .map((b) => b.slot)
+          .sort((a, b) => a - b)
+        const kosong = slotFoto.filter((n) => n !== slot && !fotoSlot[n] && n > slot)
+        const ekstra = daftar.slice(1, 1 + kosong.length)
+        for (let i = 0; i < ekstra.length; i++) {
+          const src = await siapkanFoto(ekstra[i])
+          const n = kosong[i]
+          setFotoSlot((prev) => ({ ...prev, [n]: src }))
+        }
+        const sisa = daftar.length - 1 - ekstra.length
+        if (sisa > 0) {
+          setGalat(
+            `Ditambahkan ${1 + ekstra.length} foto ke slot kosong. ${sisa} foto tidak muat (slot foto sudah penuh).`,
+          )
+        }
+      }
     } catch (e) {
       setGalat(e instanceof Error ? e.message : 'Foto tidak bisa diproses.')
     } finally {
       setOlahSlot(null)
+      if (input) input.value = ''
+    }
+  }
+
+  /** Isi beberapa slot foto kosong sekaligus (tombol galeri multi di mode bukti). */
+  async function pilihBeberapaSlotKosong(files: FileList | null, input: HTMLInputElement | null) {
+    if (!files || files.length === 0) return
+    setGalat('')
+    setSukses(false)
+    const slotFoto = buktiList
+      .filter((b) => b.jenis !== 'video')
+      .map((b) => b.slot)
+      .sort((a, b) => a - b)
+    const kosong = slotFoto.filter((n) => !fotoSlot[n])
+    if (kosong.length === 0) {
+      setGalat('Semua slot foto sudah terisi. Hapus salah satu dulu bila ingin mengganti.')
+      if (input) input.value = ''
+      return
+    }
+    setOlah(true)
+    try {
+      const daftar = Array.from(files).slice(0, kosong.length)
+      for (let i = 0; i < daftar.length; i++) {
+        const src = await siapkanFoto(daftar[i])
+        setFotoSlot((prev) => ({ ...prev, [kosong[i]]: src }))
+      }
+      if (files.length > kosong.length) {
+        setGalat(
+          `Ditambahkan ${daftar.length} foto. ${files.length - daftar.length} tidak muat (hanya ${kosong.length} slot kosong).`,
+        )
+      }
+    } catch (e) {
+      setGalat(e instanceof Error ? e.message : 'Foto tidak bisa diproses.')
+    } finally {
+      setOlah(false)
       if (input) input.value = ''
     }
   }
@@ -375,9 +434,9 @@ export default function PengumpulanSiswa({
       {modeBukti ? (
         <>
           <p className="sw-kat-hint">
-            Gurumu meminta {buktiList.length} foto bukti
-            {jumlahWajib < buktiList.length ? ` (${jumlahWajib} wajib)` : ''}. Ambil foto satu per satu
-            sesuai namanya ya.
+            Gurumu meminta {buktiList.length} bukti
+            {jumlahWajib < buktiList.length ? ` ({jumlahWajib} wajib)` : ''}.
+            Isi tiap kartu, atau pakai «Pilih beberapa foto sekaligus» untuk slot foto yang kosong.
           </p>
           {kelompokBuktiPerTahap(buktiList).map((g) => (
             <div key={g.tahap ?? 'lain'} className="sw-bukti-kelompok">
@@ -447,6 +506,7 @@ export default function PengumpulanSiswa({
                       <input
                         type="file"
                         accept="image/*"
+                        multiple
                         className="sw-kumpul-input"
                         id={idInput}
                         disabled={off}
@@ -492,10 +552,33 @@ export default function PengumpulanSiswa({
             </div>
           )}
 
+          {tampilForm && buktiList.some((b) => b.jenis !== 'video' && !fotoSlot[b.slot]) && (
+            <div className="sw-kumpul-multi">
+              <input
+                type="file"
+                accept="image/*"
+                multiple
+                className="sw-kumpul-input"
+                id={`kumpul-multi-${tugas.id}`}
+                disabled={olah || busy}
+                onChange={(e) => void pilihBeberapaSlotKosong(e.target.files, e.target)}
+              />
+              <label
+                htmlFor={`kumpul-multi-${tugas.id}`}
+                className={`sw-kumpul-tambah${olah || busy ? ' sw-kumpul-tambah--off' : ''}`}
+              >
+                {olah ? 'Memproses foto…' : 'Pilih beberapa foto sekaligus'}
+              </label>
+              <p className="sw-kat-hint">
+                Foto diisi berurutan ke slot yang masih kosong. Video tetap dipilih per kartu bukti.
+              </p>
+            </div>
+          )}
+
           {tampilForm && (
             <p className={`sw-bukti-ringkas${kurang.length === 0 ? ' sw-bukti-ringkas--ok' : ''}`}>
               {kurang.length === 0
-                ? `Semua foto yang wajib sudah lengkap (${jumlahFotoBukti} dari ${buktiList.length}).`
+                ? `Semua bukti yang wajib sudah lengkap (${jumlahFotoBukti} dari ${buktiList.length}).`
                 : `Belum lengkap — masih perlu: ${kurang.join(', ')}.`}
             </p>
           )}
@@ -540,11 +623,15 @@ export default function PengumpulanSiswa({
                   olah || busy || items.length >= BATAS_FOTO_PENGUMPULAN ? ' sw-kumpul-tambah--off' : ''
                 }`}
               >
-                {olah ? 'Memproses foto…' : 'Ambil / pilih foto'}
+                {olah
+                  ? 'Memproses foto…'
+                  : items.length > 0
+                    ? 'Tambah foto lagi'
+                    : 'Ambil / pilih beberapa foto'}
               </label>
               <p className="sw-kat-hint">
-                Foto hasil tugasmu, maksimal {BATAS_FOTO_PENGUMPULAN} foto. Pastikan tulisan terlihat
-                jelas.
+                Bisa pilih beberapa foto sekaligus dari galeri (maksimal {BATAS_FOTO_PENGUMPULAN}).
+                Pastikan tulisan dan gambar terlihat jelas.
               </p>
             </>
           )}

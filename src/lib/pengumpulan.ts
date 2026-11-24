@@ -33,8 +33,11 @@ import {
  * boleh menulis ke Storage (storage.rules sengaja tidak mengenal siswa).
  */
 
-/** Mode lama (tanpa bukti berlabel): maksimal foto bebas. */
-export const BATAS_FOTO_PENGUMPULAN = 3
+/**
+ * Mode tanpa bukti berlabel: maksimal foto bebas.
+ * Diselaraskan dengan rules `fotoIds.size() <= 6` dan slot '1'..'6' (ANTIREGRESI §132 / §Tugas.MultiFile).
+ */
+export const BATAS_FOTO_PENGUMPULAN = 6
 /** Slot foto maksimum (bukti berlabel) — selaras rules `fotoIds.size() <= 6` & slot '1'..'6'. */
 export const BATAS_SLOT_FOTO = 6
 export const DAFTAR_SLOT = [1, 2, 3, 4, 5, 6] as const

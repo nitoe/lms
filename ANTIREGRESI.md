@@ -1,3 +1,10 @@
+## §Tugas.MultiFile — Multi-pilih foto pengumpulan (2026-11-24)
+
+1. **Mode bebas:** `input[type=file][multiple]` + `BATAS_FOTO_PENGUMPULAN = 6` (sama dengan `fotoIds.size() <= 6` di rules). Jangan turunkan ke 3 lagi tanpa mengubah rules.
+2. **Mode bukti berlabel:** satu kartu = satu slot; multi-pilih mengisi **slot foto kosong** berurutan (bukan menimpa semua). Slot **video** tidak diisi lewat multi-foto.
+3. **Video:** tetap satu file per slot (`accept="video/*"` tanpa `multiple`); maks. 2 video/tugas (§Tugas.Video).
+4. Uji: (a) mode bebas pilih 4 foto sekali → 4 thumbnail; (b) bukti 3 foto kosong, pilih 3 sekaligus → ketiga slot terisi; (c) pilih 5 saat hanya 2 slot kosong → 2 terisi + pesan sisa.
+
 ## §Kuis.CetakNomor — Nomor soal PDF/Word berurutan (2026-11-24)
 
 1. **Nomor di lembar cetak = urutan setelah pengelompokan bentuk**, bukan indeks mentah array `kuis.soal` sebelum partisi. Alur: partisi objektif → isian → uraian (stable, relatif = daftar soal) → `no = 1…n`.

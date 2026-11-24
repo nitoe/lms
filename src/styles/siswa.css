@@ -2390,3 +2390,11 @@ button.sw-kat-card {
 .sw-video-proses p { margin: 0; }
 .sw-video-bar { height: 0.5rem; border-radius: 999px; background: #e2e8f0; overflow: hidden; }
 .sw-video-bar span { display: block; height: 100%; background: var(--color-muh-600); transition: width 0.3s; }
+
+/* Multi-pilih foto ke slot kosong (mode bukti) */
+.sw-kumpul-multi {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin: 0.5rem 0 0.25rem;
+}
