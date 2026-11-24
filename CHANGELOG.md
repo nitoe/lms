@@ -1,3 +1,19 @@
+## 2026-11-24 — Fix pengumpulan tetap gagal: dokumen foto yatim + penanda langkah galat
+
+### Masalah
+- Setelah rules dipulihkan dan hosting di-deploy, siswa yang **pernah gagal** mengumpulkan masih mendapat «Missing or insufficient permissions».
+- Penyebab: `kirimPengumpulan` menyimpan foto dulu, meta terakhir. Bila meta ditolak (mis. saat rules video belum ada), dokumen `lms_pengumpulan_foto` sudah terbuat tetapi tidak tercatat di `fotoIds` («yatim»). Percobaan berikutnya memanggil `setDoc` pada dokumen yang sudah ada; Firestore menghitungnya **update**, dan `createdAt` ikut berubah, padahal rules update foto hanya mengizinkan `data` + `updatedAt` → permission-denied pada setiap percobaan, walau rules sudah benar.
+
+### Perbaikan
+- `src/lib/pengumpulan.ts`: bila `setDoc` foto baru ditolak, ulangi sebagai `updateDoc({ data, updatedAt })` (cocok untuk dokumen yatim). Dokumen yang memang belum ada tetap dibuat seperti biasa.
+- Tiap langkah (foto-N, meta-baru/meta-ubah, baca-meta) diberi penanda; pesan galat siswa kini memuat `(kode: …)` dan konsol mencatat «Langkah pengiriman gagal: …». Kalau masih gagal, kode itu menunjukkan operasi Firestore yang ditolak.
+- Tanpa perubahan rules/storage/index → **cukup deploy hosting**.
+
+### Uji
+(a) siswa yang sebelumnya gagal kini bisa mengumpulkan ulang; (b) siswa baru foto saja; (c) foto + video; (d) kirim ulang setelah terkumpul; (e) bila gagal, catat `(kode: …)` yang tampil.
+
+- Antiregresi: §Tugas.FotoYatim.
+
 ## 2026-11-24 — Fix pengumpulan tugas siswa gagal (permission-denied): rules kelompok & video disatukan, kueri tugas bersama
 
 ### Masalah

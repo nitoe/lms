@@ -273,20 +273,30 @@ export async function kirimPengumpulan(input: KirimInput): Promise<PengumpulanDo
     const id = idFoto(tugas.id, siswaId, slot - 1)
     const ref = doc(db, 'lms_pengumpulan_foto', id)
     const sudah = !!ada && ada.fotoIds.includes(id)
-    if (sudah) {
-      await updateDoc(ref, { data: src, updatedAt: serverTimestamp() })
-    } else {
-      await setDoc(ref, {
-        tugasId: tugas.id,
-        siswaId,
-        kelas,
-        mapel,
-        slot: SLOT[slot - 1],
-        data: src,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-      })
-    }
+    await langkah(`foto-${slot}`, async () => {
+      if (sudah) {
+        await updateDoc(ref, { data: src, updatedAt: serverTimestamp() })
+        return
+      }
+      try {
+        await setDoc(ref, {
+          tugasId: tugas.id,
+          siswaId,
+          kelas,
+          mapel,
+          slot: SLOT[slot - 1],
+          data: src,
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+        })
+      } catch (e) {
+        if (!izinDitolak(e)) throw e
+        // Dokumen foto YATIM: dibuat percobaan sebelumnya yang gagal di langkah meta, sehingga tidak ada
+        // di ada.fotoIds. setDoc pada dokumen yang sudah ada dihitung UPDATE oleh rules dan createdAt
+        // berubah → ditolak. Ulangi sebagai update murni (hanya data + updatedAt). ANTIREGRESI §Tugas.FotoYatim.
+        await updateDoc(ref, { data: src, updatedAt: serverTimestamp() })
+      }
+    })
     fotoIds.push(id)
   }
 
@@ -305,6 +315,7 @@ export async function kirimPengumpulan(input: KirimInput): Promise<PengumpulanDo
   const ref = doc(db, 'lms_pengumpulan', id)
   const videosDok: Record<string, VideoMeta> = {}
   for (const [k, v] of Object.entries(videoAkhir)) videosDok[k] = v
+  await langkah(ada ? 'meta-ubah' : 'meta-baru', async () => {
   if (ada) {
     await updateDoc(ref, {
       catatan,
@@ -331,21 +342,42 @@ export async function kirimPengumpulan(input: KirimInput): Promise<PengumpulanDo
       updatedAt: serverTimestamp(),
     })
   }
+  })
 
   // Berkas video lama yang tak dipakai lagi (dihapus/diganti, atau ekstensi berubah) — best-effort.
   const pathDipakai = new Set(Object.values(videoAkhir).map((v) => v.path))
   for (const lama of Object.values(videoLama)) {
     if (!pathDipakai.has(lama.path)) await hapusVideoTugas(lama.path)
   }
-  const s = await getDoc(ref)
+  const s = await langkah('baca-meta', () => getDoc(ref))
   return keDok(id, s.data() ?? {})
+}
+
+function izinDitolak(e: unknown): boolean {
+  const code =
+    typeof e === 'object' && e !== null && 'code' in e ? String((e as { code: unknown }).code) : ''
+  return code === 'permission-denied' || code === 'firestore/permission-denied'
+}
+
+/** Jalankan satu langkah pengiriman; galat diberi tanda langkah agar penyebab permission-denied bisa dilacak. */
+async function langkah<T>(nama: string, fn: () => Promise<T>): Promise<T> {
+  try {
+    return await fn()
+  } catch (e) {
+    if (typeof e === 'object' && e !== null && !('langkahKirim' in e)) {
+      Object.assign(e, { langkahKirim: nama })
+    }
+    console.warn('Langkah pengiriman gagal:', nama, e)
+    throw e
+  }
 }
 
 export function pesanGagalKumpul(e: unknown): string {
   const code =
     typeof e === 'object' && e !== null && 'code' in e ? String((e as { code: unknown }).code) : ''
   if (code === 'permission-denied' || code === 'firestore/permission-denied') {
-    return 'Tugas belum bisa dikumpulkan. Mungkin tugas sudah dinilai atau ditutup. Beri tahu gurumu ya.'
+    const l = typeof e === 'object' && e !== null && 'langkahKirim' in e ? String((e as { langkahKirim: unknown }).langkahKirim) : ''
+    return `Tugas belum bisa dikumpulkan. Mungkin tugas sudah dinilai atau ditutup. Beri tahu gurumu ya.${l ? ` (kode: ${l})` : ''}`
   }
   if (e instanceof Error && e.message) return e.message
   return 'Gagal mengumpulkan. Periksa internet lalu coba lagi.'

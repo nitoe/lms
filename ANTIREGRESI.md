@@ -1,3 +1,11 @@
+## §Tugas.FotoYatim — Dokumen foto yatim & penanda langkah pengiriman (2026-11-24)
+
+1. Urutan simpan **foto dulu, meta terakhir** menimbulkan dokumen foto yatim bila meta gagal. `setDoc` pada dokumen yang sudah ada = **update** di mata rules; field `createdAt` berubah sehingga ditolak (update foto hanya `data` + `updatedAt`). Jangan pernah mengandalkan `ada.fotoIds` sebagai satu-satunya penentu dokumen foto sudah ada.
+2. Pola wajib untuk foto baru: `setDoc`; bila `permission-denied` → `updateDoc({ data, updatedAt })`. Rules **tidak** dilonggarkan (createdAt tetap tidak boleh diubah siswa).
+3. Rules bukan filter dan `getDoc` pada dokumen yang tidak ada ditolak oleh rules siswa (resource null), jadi «cek dulu dengan getDoc» bukan solusi.
+4. Setiap langkah tulis di `kirimPengumpulan` dibungkus `langkah(nama, …)`; jangan dihapus. Kode `(kode: …)` pada pesan galat siswa dan log konsol dipakai untuk diagnosis permission-denied.
+5. Bila menambah langkah tulis baru (mis. dokumen kelompok/shadow), bungkus dengan `langkah()` juga.
+
 ## §Rules.Sinkron — Sumber tunggal rules & kueri siswa harus mencerminkan rules (2026-11-24)
 
 1. **Sumber tunggal `firestore.rules` / `storage.rules` / `firestore.indexes.json` = repo SDM01Penilaian (HEAD).** Salinan di repo LMS hanya cermin dan bisa tertinggal. Sebelum menyusun rules: ambil berkas dari SDM01Penilaian terbaru, ubah bagian `lms_*` saja, kirim UTUH ke KEDUA repo.
