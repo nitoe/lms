@@ -1,0 +1,58 @@
+/* Tugas kelompok — sisipkan ke src/styles/tugas.css */
+
+/* Kartu opsi: hindari width:100% pada checkbox (aturan .td-field input) */
+.td-opsi-kelompok {
+  grid-column: 1 / -1;
+  border: 1px solid #e8eaf3;
+  border-radius: 0.85rem;
+  padding: 0.85rem 1rem;
+  background: #fafbfd;
+}
+.td-cek--blok {
+  align-items: flex-start;
+  font-weight: 600;
+  line-height: 1.35;
+}
+.td-cek--blok input {
+  width: 1.05rem;
+  height: 1.05rem;
+  min-height: 0;
+  margin-top: 0.15rem;
+  flex: none;
+  padding: 0;
+  border-radius: 0.25rem;
+  box-shadow: none;
+}
+.td-cek-teks {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 0;
+}
+.td-cek-teks strong {
+  font-size: 0.9rem;
+  font-weight: 750;
+  color: #1a1d33;
+}
+.td-cek-teks small {
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: #64748b;
+  line-height: 1.45;
+}
+.td-opsi-kelompok-detail {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.75rem 1rem;
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid #e8eaf3;
+  padding-left: 1.55rem; /* sejajar teks, di bawah checkbox */
+}
+.td-opsi-kelompok-detail .td-field--sempit {
+  width: 6.5rem;
+}
+.td-opsi-kelompok-detail .td-field--sempit input {
+  text-align: center;
+}

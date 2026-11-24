@@ -1308,37 +1308,41 @@ export default function TugasDetail() {
                 <small className="td-hint">{KETERANGAN_STATUS_TUGAS[statusTugas]}</small>
               </label>
 
-              <div className="td-field td-field--full">
-                <label className="td-check-row" style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem' }}>
+              <div className="td-opsi-kelompok td-field--full">
+                <label className="td-cek td-cek--blok">
                   <input
                     type="checkbox"
                     checked={modeKelompok}
                     onChange={(e) => setModeKelompok(e.target.checked)}
-                    style={{ marginTop: '0.2rem' }}
                   />
-                  <span>
+                  <span className="td-cek-teks">
                     <strong>Tugas kelompok</strong>
-                    <small className="td-hint" style={{ display: 'block', marginTop: '0.15rem' }}>
-                      Siswa membentuk kelompok dan memilih ketua. Hanya ketua yang mengunggah pengumpulan;
-                      anggota otomatis tercatat terkumpul setelah ketua mengirim (tanpa konfirmasi per siswa).
+                    <small>
+                      Siswa membentuk kelompok dan memilih ketua. Hanya ketua yang mengunggah
+                      pengumpulan; anggota otomatis tercatat terkumpul setelah ketua mengirim
+                      (tanpa konfirmasi per siswa).
                     </small>
                   </span>
                 </label>
                 {modeKelompok && (
-                  <label className="td-field" style={{ marginTop: '0.6rem', maxWidth: '12rem' }}>
-                    <span>Maks. anggota per kelompok</span>
-                    <input
-                      type="number"
-                      min={2}
-                      max={12}
-                      value={kelompokMaxAnggota}
-                      onChange={(e) => {
-                        const n = parseInt(e.target.value, 10)
-                        if (!Number.isNaN(n)) setKelompokMaxAnggota(Math.max(2, Math.min(12, n)))
-                      }}
-                    />
-                    <small className="td-hint">Termasuk ketua (2–12). Default 4.</small>
-                  </label>
+                  <div className="td-opsi-kelompok-detail">
+                    <label className="td-field td-field--sempit">
+                      <span>Maks. anggota</span>
+                      <input
+                        type="number"
+                        min={2}
+                        max={12}
+                        value={kelompokMaxAnggota}
+                        onChange={(e) => {
+                          const n = parseInt(e.target.value, 10)
+                          if (!Number.isNaN(n)) setKelompokMaxAnggota(Math.max(2, Math.min(12, n)))
+                        }}
+                      />
+                    </label>
+                    <p className="td-hint" style={{ margin: 0 }}>
+                      Termasuk ketua (2–12). Default 4 orang per kelompok.
+                    </p>
+                  </div>
                 )}
               </div>
 
