@@ -24,7 +24,13 @@ import SiswaIcon from './SiswaIcon'
 import PengumpulanSiswa from './PengumpulanSiswa'
 import KelompokSiswaPanel from './KelompokSiswaPanel'
 import { muatPengumpulanSaya, type PengumpulanDok } from '../../lib/pengumpulan'
-import { kelompokSaya, type TugasKelompokDok, isKetua } from '../../lib/tugasKelompok'
+import {
+  kelompokKelasSaya,
+  kelompokSaya,
+  ketuaSudahMengumpulkan,
+  type TugasKelompokDok,
+  isKetua,
+} from '../../lib/tugasKelompok'
 
 const FILTER_STATUS_LABEL: Record<StatusTugasSiswa | 'semua', string> = {
   semua: 'Semua',
@@ -54,6 +60,10 @@ export default function SiswaTugas() {
   const [detail, setDetail] = useState<TugasLms | null>(null)
   const [kelompokDetail, setKelompokDetail] = useState<TugasKelompokDok | null>(null)
   const [loadingKelompok, setLoadingKelompok] = useState(false)
+  /** Kelompok milik siswa per tugas (untuk lencana katalog). Gagal muat → kosong, katalog tetap jalan. */
+  const [kelompokMap, setKelompokMap] = useState<Record<string, TugasKelompokDok>>({})
+  const [izinMandiri, setIzinMandiri] = useState(false)
+  const [kumpulKetua, setKumpulKetua] = useState<boolean | null>(null)
 
   const muat = useCallback(async () => {
     if (!kelas || !siswaId) return
@@ -74,6 +84,16 @@ export default function SiswaTugas() {
         if (data.tugasId) map[data.tugasId] = { ...data, id: d.id }
       }
       setNilaiMap(map)
+
+      // Kelompok sendiri (lencana katalog): gagal baca tidak boleh menggagalkan daftar tugas.
+      try {
+        const ks = await kelompokKelasSaya(kelas, siswaId)
+        const peta: Record<string, TugasKelompokDok> = {}
+        for (const k of ks) peta[k.tugasId] = k
+        setKelompokMap(peta)
+      } catch (e3) {
+        console.warn('Kelompok siswa gagal dimuat', e3)
+      }
 
       // Pengumpulan sendiri: gagal baca tidak boleh menggagalkan daftar tugas.
       try {
@@ -107,7 +127,7 @@ export default function SiswaTugas() {
     }
     let batal = false
     setLoadingKelompok(true)
-    void kelompokSaya(detail.id, siswaId)
+    void kelompokSaya(detail.id, siswaId, String(kelas).toUpperCase())
       .then((k) => {
         if (!batal) setKelompokDetail(k)
       })
@@ -121,7 +141,20 @@ export default function SiswaTugas() {
     return () => {
       batal = true
     }
-  }, [detail?.id, detail?.modeKelompok, siswaId])
+  }, [detail?.id, detail?.modeKelompok, siswaId, kelas])
+
+  // Anggota non-ketua: apakah ketua sudah mengumpulkan? (hanya baca; null = tidak diketahui)
+  useEffect(() => {
+    setKumpulKetua(null)
+    if (!kelompokDetail || kelompokDetail.ketuaId === siswaId) return
+    let batal = false
+    void ketuaSudahMengumpulkan(kelompokDetail).then((v) => {
+      if (!batal) setKumpulKetua(v)
+    })
+    return () => {
+      batal = true
+    }
+  }, [kelompokDetail, siswaId])
 
   const ringkas = useMemo((): TugasSiswaRingkas[] => {
     if (!list) return []
@@ -339,7 +372,17 @@ export default function SiswaTugas() {
               kelas={String(kelas).toUpperCase()}
               kelompok={kelompokDetail}
               terkunci={st === 'dinilai'}
-              onKelompokChange={setKelompokDetail}
+              onKelompokChange={(k) => {
+                setKelompokDetail(k)
+                if (k) setKelompokMap((prev) => ({ ...prev, [detail.id]: k }))
+                else
+                  setKelompokMap((prev) => {
+                    const n = { ...prev }
+                    delete n[detail.id]
+                    return n
+                  })
+              }}
+              onIzinChange={setIzinMandiri}
             />
           )
         )}
@@ -356,6 +399,8 @@ export default function SiswaTugas() {
           modeKelompok={detail.modeKelompok === true}
           isKetuaKelompok={detail.modeKelompok ? isKetua(kelompokDetail, siswaId) : true}
           punyaKelompok={detail.modeKelompok ? !!kelompokDetail : true}
+          izinMandiri={detail.modeKelompok ? izinMandiri : false}
+          terkumpulLewatKetua={kumpulKetua}
         />
       </div>
     )
@@ -525,6 +570,15 @@ export default function SiswaTugas() {
                         </span>
                         {kumpulMap[t.id] && (
                           <span className="sw-kat-badge sw-kat-badge--info">Terkumpul</span>
+                        )}
+                        {t.modeKelompok && (
+                          <span className="sw-kat-badge sw-kat-badge--info">
+                            {kelompokMap[t.id]
+                              ? kelompokMap[t.id].ketuaId === siswaId
+                                ? 'Ketua kelompok'
+                                : `Kelompok ${kelompokMap[t.id].ketuaNama}`
+                              : 'Tugas kelompok'}
+                          </span>
                         )}
                       </div>
                       <div className="sw-kat-card-actions">

@@ -8,6 +8,7 @@ import {
   type PengumpulanDok,
 } from '../lib/pengumpulan'
 import { adaBukti, namaKategoriBukti } from '../lib/buktiTugas'
+import KelompokGuruRingkas from './KelompokGuruRingkas'
 import { LABEL_TAHAP } from '../types/tugas'
 import { formatDurasi, formatUkuran, urlVideoTugas } from '../lib/videoTugas'
 import { tenggatMs } from '../lib/tugasSiswa'
@@ -141,6 +142,10 @@ export default function PengumpulanPanel({ tugas }: Props) {
           Muat ulang
         </button>
       </div>
+
+      {tugas.modeKelompok === true && list !== null && (
+        <KelompokGuruRingkas tugas={tugas} pengumpulan={list} />
+      )}
 
       {galat && (
         <div className="tg-galat" role="alert">

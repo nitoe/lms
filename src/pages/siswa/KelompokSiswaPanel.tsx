@@ -1,18 +1,27 @@
 /**
- * Panel pembentukan kelompok di detail tugas siswa.
- * ANTIREGRESI §Tugas.Kelompok — tanpa konfirmasi anggota (hasil diskusi di kelas).
+ * Panel kelompok di detail tugas siswa: pembentukan kelompok, pemberitahuan + konfirmasi anggota
+ * (informatif, tidak menghalangi ketua), dan pengajuan kirim mandiri anggota → keputusan ketua.
+ * ANTIREGRESI §Tugas.Kelompok.
  */
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { muatSiswaKelas, type SiswaDasar } from '../../lib/siswaAuth'
 import {
+  BATAS_TEKS_STATUS,
   buatKelompok,
+  daftarKelompokTugas,
+  daftarStatusAnggota,
   keluarKelompok,
   perbaruiAnggotaKelompok,
+  punyaIzinMandiri,
+  putuskanPengajuan,
+  simpanStatusSaya,
+  type StatusAnggotaDok,
   type TugasKelompokDok,
   isKetua,
 } from '../../lib/tugasKelompok'
 import type { TugasLms } from '../../types/tugas'
 import SiswaIcon from './SiswaIcon'
+import '../../styles/kelompok-status.css'
 
 type Props = {
   tugas: TugasLms
@@ -25,6 +34,8 @@ type Props = {
   kelompok: TugasKelompokDok | null
   /** Jika true, form pengumpulan sudah dikunci (sudah dinilai). */
   terkunci: boolean
+  /** Dipanggil saat izin kirim mandiri anggota berubah (true = ketua sudah menerima). */
+  onIzinChange?: (izin: boolean) => void
 }
 
 export default function KelompokSiswaPanel({
@@ -35,6 +46,7 @@ export default function KelompokSiswaPanel({
   onKelompokChange,
   kelompok,
   terkunci,
+  onIzinChange,
 }: Props) {
   const maxAnggota = Math.max(2, Math.min(12, tugas.kelompokMaxAnggota ?? 4))
   const [roster, setRoster] = useState<SiswaDasar[]>([])
@@ -44,6 +56,12 @@ export default function KelompokSiswaPanel({
   const [modeEdit, setModeEdit] = useState(false)
   /** ID teman yang dicentang (belum termasuk diri sendiri). */
   const [pilihIds, setPilihIds] = useState<string[]>([])
+  /** Siswa yang sudah di kelompok LAIN pada tugas ini (id → nama ketua). */
+  const [dikelompokLain, setDikelompokLain] = useState<Record<string, string>>({})
+  /** Status anggota (konfirmasi + pengajuan) untuk kelompok ini. */
+  const [statusList, setStatusList] = useState<StatusAnggotaDok[]>([])
+  const [alasan, setAlasan] = useState('')
+  const [catatan, setCatatan] = useState<Record<string, string>>({})
 
   const muatRoster = useCallback(async () => {
     setLoadingRoster(true)
@@ -62,6 +80,54 @@ export default function KelompokSiswaPanel({
     void muatRoster()
   }, [muatRoster])
 
+  // Kelompok lain pada tugas ini → siswa di dalamnya tidak bisa dipilih lagi.
+  const muatKelompokLain = useCallback(async () => {
+    try {
+      const semua = await daftarKelompokTugas(tugas.id, kelas)
+      const peta: Record<string, string> = {}
+      for (const k of semua) {
+        if (k.id === kelompok?.id) continue
+        for (const a of k.anggotaList) peta[a.id] = k.ketuaNama
+      }
+      setDikelompokLain(peta)
+    } catch (e) {
+      console.warn('kelompok lain', e)
+      setDikelompokLain({})
+    }
+  }, [tugas.id, kelas, kelompok?.id])
+
+  useEffect(() => {
+    void muatKelompokLain()
+  }, [muatKelompokLain])
+
+  // Status anggota kelompok ini. Gagal baca tidak boleh merusak panel (hanya fitur tambahan).
+  const muatStatus = useCallback(async () => {
+    if (!kelompok) {
+      setStatusList([])
+      return
+    }
+    try {
+      const semua = await daftarStatusAnggota(tugas.id, kelas)
+      setStatusList(semua.filter((x) => x.kelompokId === kelompok.id))
+    } catch (e) {
+      console.warn('status anggota kelompok', e)
+      setStatusList([])
+    }
+  }, [kelompok, tugas.id, kelas])
+
+  useEffect(() => {
+    void muatStatus()
+  }, [muatStatus])
+
+  const statusSaya = useMemo(
+    () => statusList.find((x) => x.siswaId === siswaId) ?? null,
+    [statusList, siswaId],
+  )
+
+  useEffect(() => {
+    onIzinChange?.(punyaIzinMandiri(kelompok, statusSaya, siswaId))
+  }, [kelompok, statusSaya, siswaId, onIzinChange])
+
   // Saat buka mode edit / buat, isi centang dari anggota yang sudah ada
   useEffect(() => {
     if (kelompok && isKetua(kelompok, siswaId)) {
@@ -71,11 +137,12 @@ export default function KelompokSiswaPanel({
     }
   }, [kelompok, siswaId])
 
-  const temanTersedia = useMemo(() => {
-    // Sembunyikan siswa yang sudah masuk kelompok lain? Untuk V1 biarkan bebas;
-    // rules + UI nanti bisa diperkuat. Sementara tampilkan semua sekelas.
-    return roster
-  }, [roster])
+  // Siswa yang sudah di kelompok lain disembunyikan; dicek ulang di lib saat simpan.
+  const temanTersedia = useMemo(
+    () => roster.filter((s) => !dikelompokLain[s.id]),
+    [roster, dikelompokLain],
+  )
+  const jumlahDisembunyikan = roster.length - temanTersedia.length
 
   const ketua = isKetua(kelompok, siswaId)
 
@@ -141,6 +208,68 @@ export default function KelompokSiswaPanel({
     }
   }
 
+  async function handleKonfirmasi() {
+    if (!kelompok) return
+    setBusy(true)
+    setError('')
+    try {
+      const baru = await simpanStatusSaya({
+        kelompok,
+        siswa: { id: siswaId, nama: siswaNama, kelas },
+        ada: statusSaya,
+        perubahan: { konfirmasi: true },
+      })
+      setStatusList((prev) => [...prev.filter((x) => x.id !== baru.id), baru])
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Gagal menyimpan konfirmasi')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function handleAjukan() {
+    if (!kelompok) return
+    setBusy(true)
+    setError('')
+    try {
+      const baru = await simpanStatusSaya({
+        kelompok,
+        siswa: { id: siswaId, nama: siswaNama, kelas },
+        ada: statusSaya,
+        perubahan: { pengajuan: 'menunggu', alasan },
+      })
+      setStatusList((prev) => [...prev.filter((x) => x.id !== baru.id), baru])
+      setAlasan('')
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Gagal mengirim pengajuan')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function handlePutuskan(st: StatusAnggotaDok, terima: boolean) {
+    setBusy(true)
+    setError('')
+    try {
+      const baru = await putuskanPengajuan({ status: st, terima, catatan: catatan[st.id] ?? '' })
+      setStatusList((prev) => prev.map((x) => (x.id === baru.id ? baru : x)))
+      setCatatan((prev) => ({ ...prev, [st.id]: '' }))
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Gagal menyimpan keputusan')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  function chipAnggota(id: string) {
+    if (!kelompok || id === kelompok.ketuaId) return null
+    const st = statusList.find((x) => x.siswaId === id)
+    if (st && st.konfirmasiMs > 0) {
+      return <span className="sw-kelompok-chip sw-kelompok-chip--ok">sudah konfirmasi</span>
+    }
+    return <span className="sw-kelompok-chip">belum konfirmasi</span>
+  }
+
   function togglePilih(id: string) {
     setPilihIds((prev) => {
       if (prev.includes(id)) return prev.filter((x) => x !== id)
@@ -172,14 +301,146 @@ export default function KelompokSiswaPanel({
                 {a.nama}
                 {a.id === kelompok.ketuaId ? ' · ketua' : ''}
                 {a.id === siswaId ? ' · Anda' : ''}
+                {chipAnggota(a.id)}
               </li>
             ))}
           </ul>
           <p className="sw-hint">
             {ketua
-              ? 'Hanya Anda (ketua) yang dapat mengunggah pengumpulan. Anggota otomatis tercatat terkumpul setelah Anda mengirim.'
-              : 'Hanya ketua yang dapat mengunggah. Setelah ketua mengirim, status Anda otomatis menjadi terkumpul.'}
+              ? 'Hanya Anda (ketua) yang mengunggah pengumpulan kelompok. Anggota tercatat terkumpul setelah Anda mengirim. Konfirmasi anggota hanya pemberitahuan, tidak menghalangi Anda mengirim.'
+              : 'Hanya ketua yang mengunggah pengumpulan kelompok. Setelah ketua mengirim, status Anda otomatis menjadi terkumpul.'}
           </p>
+
+          {/* Pemberitahuan + konfirmasi (anggota non-ketua) */}
+          {!ketua && !(statusSaya && statusSaya.konfirmasiMs > 0) && (
+            <div className="sw-kelompok-kotak sw-kelompok-kotak--pemberitahuan">
+              <h4>Anda masuk kelompok {kelompok.ketuaNama}</h4>
+              <p>
+                Untuk tugas ini Anda tercatat sebagai anggota. Tekan tombol di bawah agar ketua tahu
+                Anda sudah melihatnya. Ini hanya pemberitahuan; kelompok tetap berjalan walau belum
+                dikonfirmasi.
+              </p>
+              <button
+                type="button"
+                className="sw-btn sw-btn--primary"
+                disabled={busy}
+                onClick={() => void handleKonfirmasi()}
+              >
+                {busy ? 'Menyimpan…' : 'Saya sudah tahu'}
+              </button>
+            </div>
+          )}
+
+          {/* Pengajuan kirim mandiri (anggota non-ketua) */}
+          {!ketua && !terkunci && (
+            <div className="sw-kelompok-kotak">
+              <h4>Ingin mengirim bukti sendiri?</h4>
+              {(!statusSaya || statusSaya.pengajuan === 'tidak' || statusSaya.pengajuan === 'ditolak') && (
+                <>
+                  {statusSaya?.pengajuan === 'ditolak' && (
+                    <p>
+                      <span className="sw-kelompok-chip sw-kelompok-chip--danger">ditolak ketua</span>
+                      {statusSaya.catatanKetua ? ` Catatan ketua: ${statusSaya.catatanKetua}` : ''}
+                    </p>
+                  )}
+                  <p>
+                    Anda bisa meminta izin ketua untuk mengunggah bukti atas nama Anda sendiri.
+                  </p>
+                  <textarea
+                    className="sw-kelompok-alasan"
+                    maxLength={BATAS_TEKS_STATUS}
+                    placeholder="Alasan singkat (boleh dikosongkan)"
+                    value={alasan}
+                    disabled={busy}
+                    onChange={(e) => setAlasan(e.target.value)}
+                  />
+                  <div className="sw-kelompok-aksi">
+                    <button
+                      type="button"
+                      className="sw-btn sw-btn--secondary"
+                      disabled={busy}
+                      onClick={() => void handleAjukan()}
+                    >
+                      {busy ? 'Mengirim…' : 'Ajukan ke ketua'}
+                    </button>
+                  </div>
+                </>
+              )}
+              {statusSaya?.pengajuan === 'menunggu' && (
+                <p>
+                  <span className="sw-kelompok-chip sw-kelompok-chip--warn">menunggu ketua</span>{' '}
+                  Pengajuan Anda sudah terkirim. Tunggu keputusan ketua.
+                </p>
+              )}
+              {statusSaya?.pengajuan === 'diterima' && (
+                <p>
+                  <span className="sw-kelompok-chip sw-kelompok-chip--ok">diterima ketua</span>{' '}
+                  Anda boleh mengunggah bukti sendiri di bagian «Kumpulkan tugas» di bawah.
+                  {statusSaya.catatanKetua ? ` Catatan ketua: ${statusSaya.catatanKetua}` : ''}
+                </p>
+              )}
+            </div>
+          )}
+
+          {/* Keputusan ketua atas pengajuan anggota */}
+          {ketua && !terkunci && statusList.some((x) => x.pengajuan !== 'tidak' && kelompok.anggotaIds.includes(x.siswaId)) && (
+            <div className="sw-kelompok-kotak">
+              <h4>Pengajuan kirim bukti sendiri</h4>
+              <ul className="sw-kelompok-pengajuan-list">
+                {statusList
+                  .filter((x) => x.pengajuan !== 'tidak' && kelompok.anggotaIds.includes(x.siswaId))
+                  .map((x) => (
+                    <li key={x.id}>
+                      <div className="sw-kelompok-pengajuan-nama">
+                        {x.siswaNama}
+                        {x.pengajuan === 'menunggu' && (
+                          <span className="sw-kelompok-chip sw-kelompok-chip--warn">menunggu keputusan</span>
+                        )}
+                        {x.pengajuan === 'diterima' && (
+                          <span className="sw-kelompok-chip sw-kelompok-chip--ok">diizinkan</span>
+                        )}
+                        {x.pengajuan === 'ditolak' && (
+                          <span className="sw-kelompok-chip sw-kelompok-chip--danger">ditolak</span>
+                        )}
+                      </div>
+                      {x.alasan && <p className="sw-kelompok-pengajuan-alasan">Alasan: {x.alasan}</p>}
+                      <input
+                        type="text"
+                        className="sw-kelompok-alasan"
+                        style={{ minHeight: 0 }}
+                        maxLength={BATAS_TEKS_STATUS}
+                        placeholder="Catatan untuk anggota (boleh dikosongkan)"
+                        value={catatan[x.id] ?? ''}
+                        disabled={busy}
+                        onChange={(e) => setCatatan((prev) => ({ ...prev, [x.id]: e.target.value }))}
+                      />
+                      <div className="sw-kelompok-aksi">
+                        {x.pengajuan !== 'diterima' && (
+                          <button
+                            type="button"
+                            className="sw-btn sw-btn--primary"
+                            disabled={busy}
+                            onClick={() => void handlePutuskan(x, true)}
+                          >
+                            Izinkan
+                          </button>
+                        )}
+                        {x.pengajuan !== 'ditolak' && (
+                          <button
+                            type="button"
+                            className="sw-btn sw-btn--ghost"
+                            disabled={busy}
+                            onClick={() => void handlePutuskan(x, false)}
+                          >
+                            {x.pengajuan === 'diterima' ? 'Cabut izin' : 'Tolak'}
+                          </button>
+                        )}
+                      </div>
+                    </li>
+                  ))}
+              </ul>
+            </div>
+          )}
           {!terkunci && (
             <div className="sw-kelompok-aksi">
               {ketua && (
@@ -211,12 +472,18 @@ export default function KelompokSiswaPanel({
           {!kelompok && (
             <p className="sw-hint">
               Diskusikan dulu dengan teman sekelas, lalu ketua memasukkan anggota di sini.
-              Tidak perlu konfirmasi di HP masing-masing.
+              Anggota akan mendapat pemberitahuan di akunnya; konfirmasi mereka hanya sebagai
+              informasi dan tidak menghalangi pengumpulan.
             </p>
           )}
           <p className="sw-kelompok-max">
             Pilih teman (maks. {maxAnggota - 1} + Anda = {maxAnggota} orang)
           </p>
+          {jumlahDisembunyikan > 0 && (
+            <p className="sw-kelompok-sudah-lain">
+              {jumlahDisembunyikan} teman tidak ditampilkan karena sudah masuk kelompok lain.
+            </p>
+          )}
           {loadingRoster ? (
             <p className="sw-hint">Memuat daftar siswa…</p>
           ) : temanTersedia.length === 0 ? (

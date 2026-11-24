@@ -40,6 +40,10 @@ type Props = {
   isKetuaKelompok?: boolean
   /** true jika siswa sudah punya kelompok (atau bukan mode kelompok). */
   punyaKelompok?: boolean
+  /** true jika ketua sudah menerima pengajuan anggota ini untuk mengunggah sendiri. */
+  izinMandiri?: boolean
+  /** Ketua sudah mengirim pengumpulan kelompok (null = tidak diketahui → jangan klaim terkumpul). */
+  terkumpulLewatKetua?: boolean | null
 }
 
 type Item = { key: string; src: string }
@@ -70,6 +74,8 @@ export default function PengumpulanSiswa({
   modeKelompok = false,
   isKetuaKelompok = true,
   punyaKelompok = true,
+  izinMandiri = false,
+  terkumpulLewatKetua = null,
 }: Props) {
   const [items, setItems] = useState<Item[]>([])
   const modeBukti = adaBukti(tugas)
@@ -402,20 +408,25 @@ export default function PengumpulanSiswa({
     )
   }
 
-  // Mode kelompok: non-ketua / belum punya kelompok tidak boleh upload
-  if (modeKelompok && !isKetuaKelompok) {
+  // Mode kelompok: non-ketua tanpa izin ketua / belum punya kelompok tidak boleh upload.
+  // Anggota yang pengajuannya diterima ketua (izinMandiri) memakai form biasa di bawah.
+  if (modeKelompok && !isKetuaKelompok && !izinMandiri) {
     return (
       <section className="sw-kat-panel sw-kumpul">
         <h2>Kumpulkan tugas</h2>
         {ada ? (
           <p className="sw-kumpul-status sw-kumpul-status--ok">
-            <SiswaIcon name="check" size={18} /> Sudah terkumpul lewat kelompok
+            <SiswaIcon name="check" size={18} /> Sudah dikumpulkan
             {ada.diubahMs ? ` · ${waktuTeks(ada.diubahMs)}` : ''}
+          </p>
+        ) : terkumpulLewatKetua === true ? (
+          <p className="sw-kumpul-status sw-kumpul-status--ok">
+            <SiswaIcon name="check" size={18} /> Sudah terkumpul lewat kelompok (dikirim ketua)
           </p>
         ) : (
           <p className="sw-kat-hint">
             {punyaKelompok
-              ? 'Hanya ketua kelompok yang dapat mengunggah. Setelah ketua mengirim, status Anda otomatis menjadi terkumpul.'
+              ? 'Hanya ketua kelompok yang dapat mengunggah. Setelah ketua mengirim, status Anda otomatis menjadi terkumpul. Ingin mengirim sendiri? Ajukan ke ketua di panel Kelompok di atas.'
               : 'Buat atau bergabung ke kelompok dulu (panel di atas), lalu ketua yang mengunggah pengumpulan.'}
           </p>
         )}
@@ -438,7 +449,10 @@ export default function PengumpulanSiswa({
 
   return (
     <section className="sw-kat-panel sw-kumpul">
-      <h2>Kumpulkan tugas{modeKelompok ? ' (sebagai ketua)' : ''}</h2>
+      <h2>
+        Kumpulkan tugas
+        {modeKelompok ? (isKetuaKelompok ? ' (sebagai ketua)' : ' (izin dari ketua)') : ''}
+      </h2>
 
       {ada && (
         <p className="sw-kumpul-status sw-kumpul-status--ok">

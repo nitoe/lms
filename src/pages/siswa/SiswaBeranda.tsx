@@ -6,6 +6,7 @@ import { aksenMapel, inisialMapel } from '../../lib/uiAksen'
 import { formatTenggatRelatif, tenggatMs, type TugasSiswaRingkas } from '../../lib/tugasSiswa'
 import SiswaIcon, { type SiswaIconName } from './SiswaIcon'
 import type { SiswaTone } from './SiswaLayout'
+import KelompokBannerBeranda from './KelompokBannerBeranda'
 import { useBerandaSiswa } from './useBerandaSiswa'
 import { useLombaSiswa } from './useLombaSiswa'
 
@@ -258,6 +259,8 @@ export default function SiswaBeranda() {
           </div>
         </div>
       </section>
+
+      <KelompokBannerBeranda kelas={sesi?.kelas ?? ''} siswaId={sesi?.id ?? ''} tugas={tugas} />
 
       <div className="sw-beranda-grid">
         <section className="sw-area-menu">

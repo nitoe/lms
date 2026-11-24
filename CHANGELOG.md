@@ -1,3 +1,32 @@
+## 2026-11-25 — Tugas kelompok: pemberitahuan anggota, konfirmasi, dan pengajuan kirim bukti sendiri
+
+### Latar
+- Sebelumnya siswa yang dimasukkan ketua ke sebuah kelompok tidak mendapat pemberitahuan apa pun; ia baru tahu bila kebetulan membuka detail tugas. Tidak ada konfirmasi, dan anggota tidak bisa meminta mengirim bukti sendiri.
+- Saat menelusuri kode ditemukan tiga celah: (1) kueri kelompok siswa tidak memuat `kelas` sehingga ditolak rules dan anggota tidak pernah melihat kelompoknya; (2) status «terkumpul lewat kelompok» tidak pernah tampil bagi anggota karena pengumpulan ketua tidak bisa dibaca; (3) satu siswa bisa masuk beberapa kelompok pada tugas yang sama.
+
+### Fitur baru
+- **Pemberitahuan anggota:** banner di Beranda siswa («Kamu masuk kelompok X … Anggota: …»), lencana «Ketua kelompok / Kelompok X / Tugas kelompok» di katalog tugas, dan kotak pemberitahuan di detail tugas dengan tombol «Saya sudah tahu».
+- **Konfirmasi anggota (informatif):** tidak menghalangi pengumpulan ketua. Ketua dan guru melihat chip «sudah/belum konfirmasi».
+- **Pengajuan kirim bukti sendiri:** anggota mengajukan ke ketua (alasan opsional, maks. 200 huruf); ketua «Izinkan» atau «Tolak» dengan catatan opsional (bisa dicabut/diubah). Bila diizinkan, anggota memakai form unggah biasa dengan judul «(izin dari ketua)».
+- **Pemberitahuan ke ketua:** banner beranda bila ada pengajuan yang menunggu.
+- **Status terkumpul anggota:** anggota melihat «Sudah terkumpul lewat kelompok (dikirim ketua)» setelah ketua mengirim.
+- **Satu kelompok per siswa:** siswa yang sudah di kelompok lain disembunyikan dari pilihan dan dicek ulang saat simpan.
+- **Guru:** tab Pengumpulan menampilkan ringkasan kelompok (ketua, anggota, konfirmasi, pengajuan, lewat ketua/mengirim sendiri).
+
+### Berkas
+- **firestore.rules (lengkap, kedua repo):** koleksi baru `lms_tugas_kelompok_anggota`; id kelompok baru wajib `{tugasId}_{ketuaId}`; anggota kelompok boleh membaca pengumpulan ketuanya. Rules pengumpulan/foto/video lain tidak berubah (`diff` terhadap HEAD hanya 2 baris lama yang diganti).
+- **Klien (LMS):** `lib/tugasKelompok.ts`, `KelompokSiswaPanel.tsx`, `PengumpulanSiswa.tsx`, `SiswaTugas.tsx`, `SiswaBeranda.tsx`, `PengumpulanPanel.tsx`; baru: `KelompokBannerBeranda.tsx`, `KelompokGuruRingkas.tsx`, `styles/kelompok-status.css`.
+- Tidak ada index baru (semua kueri hanya memakai `==`).
+
+### Deploy
+1. Dari SDM01Penilaian: `firebase deploy --only firestore:rules` (DAHULU).
+2. Baru deploy hosting LMS. Hosting lebih dulu = pembuatan kelompok ditolak rules baru/lama yang tidak cocok.
+
+### Catatan
+- Kelompok yang dibuat sebelum update memakai id acak: tetap berfungsi, tetapi anggotanya tidak melihat status «terkumpul lewat ketua». Hapus lalu buat ulang bila perlu.
+- Izin kirim mandiri ditegakkan di tampilan; rules pengumpulan sengaja tidak diubah. Nilai kelompok tetap diinput per siswa.
+- `npm run build` dan `oxlint` lulus; rules belum diuji di emulator — jalankan daftar uji di ANTIREGRESI §Tugas.Kelompok.Konfirmasi butir 11.
+
 ## 2026-11-24 — Fix guru tidak bisa memutar video pengumpulan (storage/unauthorized)
 
 ### Masalah

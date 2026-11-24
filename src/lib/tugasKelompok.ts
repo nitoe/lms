@@ -2,14 +2,21 @@
  * Tugas kelompok — ANTIREGRESI §Tugas.Kelompok.
  *
  * Satu dokumen per kelompok di `lms_tugas_kelompok/{id}`.
- * - Siswa membentuk kelompok + pilih ketua (tanpa konfirmasi anggota — hasil diskusi di kelas).
- * - Hanya ketua yang boleh mengunggah pengumpulan; anggota otomatis dianggap terkumpul
- *   setelah ketua mengirim (status dihitung di klien dari keanggotaan + pengumpulan ketua).
+ * - Kelompok BARU memakai id deterministik `{tugasId}_{ketuaId}` (sama dengan id pengumpulan ketua,
+ *   dipakai rules agar anggota boleh membaca status pengumpulan ketuanya). Kelompok lama (id acak)
+ *   tetap berfungsi, hanya tanpa status «terkumpul lewat ketua» di sisi anggota.
+ * - Siswa membentuk kelompok + pilih ketua. Konfirmasi anggota hanya INFORMATIF: tidak pernah
+ *   menghalangi pengumpulan ketua (keputusan guru: anggota disusun lewat diskusi antar siswa).
+ * - Status per anggota (konfirmasi + pengajuan kirim mandiri) ada di koleksi terpisah
+ *   `lms_tugas_kelompok_anggota/{kelompokId}_{siswaId}` agar rules kelompok lama tidak diubah.
+ * - Hanya ketua yang mengunggah pengumpulan kelompok; anggota dianggap terkumpul setelah ketua
+ *   mengirim. Anggota boleh mengunggah sendiri HANYA jika pengajuannya diterima ketua.
  * - Tidak ada dokumen shadow pengumpulan untuk anggota (hindari regresi rules & storage).
+ * - Query siswa WAJIB menyertakan `kelas` (rules mengevaluasi resource.data.kelas); query guru
+ *   WAJIB menyertakan tugasId + kelas per rombel (ANTIREGRESI §Tugas.Kelompok).
  */
 
 import {
-  addDoc,
   collection,
   deleteDoc,
   doc,
@@ -17,11 +24,13 @@ import {
   getDocs,
   query,
   serverTimestamp,
+  setDoc,
   updateDoc,
   where,
 } from 'firebase/firestore'
 import { db } from './firebase'
 import type { SiswaDasar } from './siswaAuth'
+import { idPengumpulan } from './pengumpulan'
 
 export type AnggotaKelompok = {
   id: string
@@ -91,31 +100,52 @@ function docKeKelompok(id: string, data: Record<string, unknown>): TugasKelompok
   }
 }
 
-/** Semua kelompok untuk satu tugas (guru + siswa sekelas). */
-export async function daftarKelompokTugas(tugasId: string): Promise<TugasKelompokDok[]> {
-  const snap = await getDocs(query(koleksi(), where('tugasId', '==', tugasId)))
+/** Id deterministik kelompok baru: sama dengan id pengumpulan ketua. */
+export function idKelompokBaru(tugasId: string, ketuaId: string): string {
+  return `${tugasId}_${ketuaId}`
+}
+
+/**
+ * Semua kelompok satu tugas pada SATU rombel (guru + siswa sekelas).
+ * `kelas` wajib: rules mengevaluasi resource.data.kelas, query tanpa kelas ditolak.
+ */
+export async function daftarKelompokTugas(
+  tugasId: string,
+  kelas: string,
+): Promise<TugasKelompokDok[]> {
+  const snap = await getDocs(
+    query(
+      koleksi(),
+      where('tugasId', '==', tugasId),
+      where('kelas', '==', String(kelas).toUpperCase()),
+    ),
+  )
   const list = snap.docs.map((d) => docKeKelompok(d.id, d.data() as Record<string, unknown>))
   list.sort((a, b) => a.ketuaNama.localeCompare(b.ketuaNama, 'id'))
   return list
 }
 
-/** Kelompok yang memuat siswa tertentu pada tugas ini (0 atau 1). */
+/** Kelompok yang memuat siswa tertentu pada tugas ini (0 atau 1). Disaring di klien. */
 export async function kelompokSaya(
   tugasId: string,
   siswaId: string,
+  kelas: string,
 ): Promise<TugasKelompokDok | null> {
-  if (!tugasId || !siswaId) return null
-  const snap = await getDocs(
-    query(
-      koleksi(),
-      where('tugasId', '==', tugasId),
-      where('anggotaIds', 'array-contains', siswaId),
-    ),
-  )
-  if (snap.empty) return null
-  // Ambil yang pertama (seharusnya maksimal satu)
-  const d = snap.docs[0]
-  return docKeKelompok(d.id, d.data() as Record<string, unknown>)
+  if (!tugasId || !siswaId || !kelas) return null
+  const list = await daftarKelompokTugas(tugasId, kelas)
+  return list.find((k) => k.anggotaIds.includes(siswaId)) ?? null
+}
+
+/** Semua kelompok yang memuat siswa di satu kelas (semua tugas) — untuk beranda & katalog. */
+export async function kelompokKelasSaya(
+  kelas: string,
+  siswaId: string,
+): Promise<TugasKelompokDok[]> {
+  if (!kelas || !siswaId) return []
+  const snap = await getDocs(query(koleksi(), where('kelas', '==', String(kelas).toUpperCase())))
+  return snap.docs
+    .map((d) => docKeKelompok(d.id, d.data() as Record<string, unknown>))
+    .filter((k) => k.anggotaIds.includes(siswaId))
 }
 
 export async function ambilKelompok(id: string): Promise<TugasKelompokDok | null> {
@@ -124,10 +154,48 @@ export async function ambilKelompok(id: string): Promise<TugasKelompokDok | null
   return docKeKelompok(snap.id, snap.data() as Record<string, unknown>)
 }
 
+function susunAnggota(ketua: SiswaDasar, anggotaLain: SiswaDasar[], max: number): AnggotaKelompok[] {
+  const seen = new Set<string>([ketua.id])
+  const list: AnggotaKelompok[] = [{ id: ketua.id, nama: ketua.nama || ketua.id }]
+  for (const s of anggotaLain) {
+    if (!s?.id || seen.has(s.id)) continue
+    if (list.length >= max) break
+    seen.add(s.id)
+    list.push({ id: s.id, nama: s.nama || s.id })
+  }
+  return list
+}
+
+/**
+ * Pastikan tidak ada calon anggota yang sudah berada di kelompok LAIN pada tugas yang sama.
+ * Rules tidak bisa menegakkan ini (tidak ada dokumen keanggotaan per siswa), jadi dicek di klien
+ * tepat sebelum simpan. Melempar Error berisi nama siswa yang bentrok.
+ */
+export async function pastikanTanpaBentrok(params: {
+  tugasId: string
+  kelas: string
+  anggota: AnggotaKelompok[]
+  kelompokIdSendiri?: string
+}): Promise<void> {
+  const semua = await daftarKelompokTugas(params.tugasId, params.kelas)
+  const terpakai = new Map<string, string>()
+  for (const k of semua) {
+    if (k.id === params.kelompokIdSendiri) continue
+    for (const a of k.anggotaList) terpakai.set(a.id, k.ketuaNama)
+  }
+  const bentrok = params.anggota.filter((a) => terpakai.has(a.id))
+  if (bentrok.length > 0) {
+    throw new Error(
+      `${bentrok.map((a) => a.nama).join(', ')} sudah masuk kelompok lain untuk tugas ini. ` +
+        'Keluarkan dari pilihan lalu simpan lagi.',
+    )
+  }
+}
+
 /**
  * Buat kelompok baru. Pembuat otomatis menjadi ketua.
- * `anggota` boleh berisi teman yang dipilih (tanpa konfirmasi).
- * Ketua selalu dimasukkan.
+ * `anggotaLain` = teman yang dipilih; ketua selalu dimasukkan.
+ * Id deterministik `{tugasId}_{ketuaId}` → satu ketua hanya bisa punya satu kelompok per tugas.
  */
 export async function buatKelompok(params: {
   tugasId: string
@@ -138,18 +206,14 @@ export async function buatKelompok(params: {
 }): Promise<TugasKelompokDok> {
   const { tugasId, kelas, ketua, anggotaLain, maxAnggota } = params
   const max = Math.max(2, Math.min(12, maxAnggota || 4))
-  const seen = new Set<string>([ketua.id])
-  const list: AnggotaKelompok[] = [{ id: ketua.id, nama: ketua.nama || ketua.id }]
-  for (const s of anggotaLain) {
-    if (!s?.id || seen.has(s.id)) continue
-    if (list.length >= max) break
-    seen.add(s.id)
-    list.push({ id: s.id, nama: s.nama || s.id })
-  }
+  const list = susunAnggota(ketua, anggotaLain, max)
+  const kelasUp = String(kelas).toUpperCase()
+  await pastikanTanpaBentrok({ tugasId, kelas: kelasUp, anggota: list })
+  const id = idKelompokBaru(tugasId, ketua.id)
   const now = Date.now()
   const payload = {
     tugasId,
-    kelas: String(kelas).toUpperCase(),
+    kelas: kelasUp,
     ketuaId: ketua.id,
     ketuaNama: ketua.nama || ketua.id,
     anggotaIds: list.map((a) => a.id),
@@ -160,14 +224,13 @@ export async function buatKelompok(params: {
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   }
-  const ref = await addDoc(koleksi(), payload)
-  return { id: ref.id, ...payload, createdAt: undefined, updatedAt: undefined } as TugasKelompokDok
+  await setDoc(doc(db, 'lms_tugas_kelompok', id), payload)
+  return { id, ...payload, createdAt: undefined, updatedAt: undefined } as TugasKelompokDok
 }
 
 /**
- * Perbarui daftar anggota + (opsional) ketua.
- * Hanya boleh dipanggil oleh ketua saat ini (dicek di UI + rules).
- * Tidak ada konfirmasi dari anggota baru.
+ * Perbarui daftar anggota. Hanya ketua (dicek di UI + rules).
+ * Anggota yang dikeluarkan: dokumen statusnya dihapus (best-effort).
  */
 export async function perbaruiAnggotaKelompok(params: {
   kelompokId: string
@@ -177,14 +240,15 @@ export async function perbaruiAnggotaKelompok(params: {
 }): Promise<TugasKelompokDok> {
   const { kelompokId, ketua, anggotaLain, maxAnggota } = params
   const max = Math.max(2, Math.min(12, maxAnggota || 4))
-  const seen = new Set<string>([ketua.id])
-  const list: AnggotaKelompok[] = [{ id: ketua.id, nama: ketua.nama || ketua.id }]
-  for (const s of anggotaLain) {
-    if (!s?.id || seen.has(s.id)) continue
-    if (list.length >= max) break
-    seen.add(s.id)
-    list.push({ id: s.id, nama: s.nama || s.id })
-  }
+  const lama = await ambilKelompok(kelompokId)
+  if (!lama) throw new Error('Kelompok tidak ditemukan.')
+  const list = susunAnggota(ketua, anggotaLain, max)
+  await pastikanTanpaBentrok({
+    tugasId: lama.tugasId,
+    kelas: lama.kelas,
+    anggota: list,
+    kelompokIdSendiri: kelompokId,
+  })
   const now = Date.now()
   await updateDoc(doc(db, 'lms_tugas_kelompok', kelompokId), {
     ketuaId: ketua.id,
@@ -194,6 +258,10 @@ export async function perbaruiAnggotaKelompok(params: {
     diubahMs: now,
     updatedAt: serverTimestamp(),
   })
+  const baru = new Set(list.map((a) => a.id))
+  for (const a of lama.anggotaList) {
+    if (!baru.has(a.id)) await hapusStatusAnggota(kelompokId, a.id)
+  }
   const updated = await ambilKelompok(kelompokId)
   if (!updated) throw new Error('Kelompok tidak ditemukan setelah diperbarui.')
   return updated
@@ -205,6 +273,7 @@ export async function keluarKelompok(
   siswaId: string,
 ): Promise<'hapus' | 'update'> {
   if (kelompok.ketuaId === siswaId) {
+    await hapusStatusSemuaAnggota(kelompok)
     await deleteDoc(doc(db, 'lms_tugas_kelompok', kelompok.id))
     return 'hapus'
   }
@@ -216,6 +285,7 @@ export async function keluarKelompok(
     diubahMs: Date.now(),
     updatedAt: serverTimestamp(),
   })
+  await hapusStatusAnggota(kelompok.id, siswaId)
   return 'update'
 }
 
@@ -232,4 +302,224 @@ export function isKetua(kelompok: TugasKelompokDok | null | undefined, siswaId: 
 /** Apakah siswa anggota (termasuk ketua). */
 export function isAnggota(kelompok: TugasKelompokDok | null | undefined, siswaId: string): boolean {
   return !!kelompok && kelompok.anggotaIds.includes(siswaId)
+}
+
+// ---------------------------------------------------------------------------
+// Status anggota: konfirmasi (informatif) + pengajuan kirim mandiri
+// ---------------------------------------------------------------------------
+
+export type StatusPengajuan = 'tidak' | 'menunggu' | 'diterima' | 'ditolak'
+
+/** Dokumen `lms_tugas_kelompok_anggota/{kelompokId}_{siswaId}`. */
+export type StatusAnggotaDok = {
+  id: string
+  kelompokId: string
+  tugasId: string
+  kelas: string
+  siswaId: string
+  siswaNama: string
+  ketuaId: string
+  /** 0 = belum konfirmasi. Hanya informasi — tidak menghalangi pengumpulan ketua. */
+  konfirmasiMs: number
+  pengajuan: StatusPengajuan
+  /** Alasan anggota ingin mengirim sendiri (maks. 200 huruf). */
+  alasan: string
+  /** Catatan ketua saat menerima/menolak (maks. 200 huruf). */
+  catatanKetua: string
+  diubahMs: number
+}
+
+export const BATAS_TEKS_STATUS = 200
+
+export function idStatusAnggota(kelompokId: string, siswaId: string): string {
+  return `${kelompokId}_${siswaId}`
+}
+
+function koleksiStatus() {
+  return collection(db, 'lms_tugas_kelompok_anggota')
+}
+
+function docKeStatus(id: string, data: Record<string, unknown>): StatusAnggotaDok {
+  const p = String(data.pengajuan || 'tidak')
+  return {
+    id,
+    kelompokId: String(data.kelompokId || ''),
+    tugasId: String(data.tugasId || ''),
+    kelas: String(data.kelas || '').toUpperCase(),
+    siswaId: String(data.siswaId || ''),
+    siswaNama: String(data.siswaNama || ''),
+    ketuaId: String(data.ketuaId || ''),
+    konfirmasiMs: typeof data.konfirmasiMs === 'number' ? data.konfirmasiMs : 0,
+    pengajuan: p === 'menunggu' || p === 'diterima' || p === 'ditolak' ? p : 'tidak',
+    alasan: String(data.alasan || ''),
+    catatanKetua: String(data.catatanKetua || ''),
+    diubahMs: typeof data.diubahMs === 'number' ? data.diubahMs : 0,
+  }
+}
+
+/** Semua status anggota pada satu tugas + rombel (siswa sekelas & guru mapel×kelas). */
+export async function daftarStatusAnggota(
+  tugasId: string,
+  kelas: string,
+): Promise<StatusAnggotaDok[]> {
+  const snap = await getDocs(
+    query(
+      koleksiStatus(),
+      where('tugasId', '==', tugasId),
+      where('kelas', '==', String(kelas).toUpperCase()),
+    ),
+  )
+  return snap.docs.map((d) => docKeStatus(d.id, d.data() as Record<string, unknown>))
+}
+
+/** Status milik siswa di satu kelas (semua tugas) — beranda. */
+export async function statusAnggotaSaya(
+  kelas: string,
+  siswaId: string,
+): Promise<StatusAnggotaDok[]> {
+  if (!kelas || !siswaId) return []
+  const snap = await getDocs(
+    query(
+      koleksiStatus(),
+      where('kelas', '==', String(kelas).toUpperCase()),
+      where('siswaId', '==', siswaId),
+    ),
+  )
+  return snap.docs.map((d) => docKeStatus(d.id, d.data() as Record<string, unknown>))
+}
+
+/** Pengajuan yang masuk ke ketua di satu kelas (semua tugas) — beranda ketua. */
+export async function statusUntukKetua(
+  kelas: string,
+  ketuaId: string,
+): Promise<StatusAnggotaDok[]> {
+  if (!kelas || !ketuaId) return []
+  const snap = await getDocs(
+    query(
+      koleksiStatus(),
+      where('kelas', '==', String(kelas).toUpperCase()),
+      where('ketuaId', '==', ketuaId),
+    ),
+  )
+  return snap.docs.map((d) => docKeStatus(d.id, d.data() as Record<string, unknown>))
+}
+
+function potong(s: string): string {
+  return String(s || '').trim().slice(0, BATAS_TEKS_STATUS)
+}
+
+/**
+ * Simpan perubahan status MILIK SENDIRI (anggota non-ketua). `ada` = dokumen yang sudah dimuat
+ * (null jika belum pernah dibuat). Dokumen dibuat saat konfirmasi/pengajuan pertama.
+ */
+export async function simpanStatusSaya(params: {
+  kelompok: TugasKelompokDok
+  siswa: SiswaDasar
+  ada: StatusAnggotaDok | null
+  perubahan: { konfirmasi?: boolean; pengajuan?: 'menunggu'; alasan?: string }
+}): Promise<StatusAnggotaDok> {
+  const { kelompok, siswa, ada, perubahan } = params
+  const now = Date.now()
+  const id = idStatusAnggota(kelompok.id, siswa.id)
+  const konfirmasiMs = perubahan.konfirmasi ? now : (ada?.konfirmasiMs ?? 0)
+  const pengajuan: StatusPengajuan = perubahan.pengajuan ?? ada?.pengajuan ?? 'tidak'
+  const alasan = perubahan.pengajuan ? potong(perubahan.alasan ?? '') : (ada?.alasan ?? '')
+  if (ada) {
+    await updateDoc(doc(db, 'lms_tugas_kelompok_anggota', id), {
+      konfirmasiMs,
+      pengajuan,
+      alasan,
+      diubahMs: now,
+    })
+  } else {
+    await setDoc(doc(db, 'lms_tugas_kelompok_anggota', id), {
+      kelompokId: kelompok.id,
+      tugasId: kelompok.tugasId,
+      kelas: kelompok.kelas,
+      siswaId: siswa.id,
+      siswaNama: siswa.nama || siswa.id,
+      ketuaId: kelompok.ketuaId,
+      konfirmasiMs,
+      pengajuan,
+      alasan,
+      catatanKetua: '',
+      diubahMs: now,
+    })
+  }
+  return {
+    id,
+    kelompokId: kelompok.id,
+    tugasId: kelompok.tugasId,
+    kelas: kelompok.kelas,
+    siswaId: siswa.id,
+    siswaNama: siswa.nama || siswa.id,
+    ketuaId: kelompok.ketuaId,
+    konfirmasiMs,
+    pengajuan,
+    alasan,
+    catatanKetua: ada?.catatanKetua ?? '',
+    diubahMs: now,
+  }
+}
+
+/** Ketua menerima/menolak pengajuan kirim mandiri seorang anggota. */
+export async function putuskanPengajuan(params: {
+  status: StatusAnggotaDok
+  terima: boolean
+  catatan?: string
+}): Promise<StatusAnggotaDok> {
+  const { status, terima } = params
+  const catatanKetua = potong(params.catatan ?? '')
+  const pengajuan: StatusPengajuan = terima ? 'diterima' : 'ditolak'
+  const now = Date.now()
+  await updateDoc(doc(db, 'lms_tugas_kelompok_anggota', status.id), {
+    pengajuan,
+    catatanKetua,
+    diubahMs: now,
+  })
+  return { ...status, pengajuan, catatanKetua, diubahMs: now }
+}
+
+/** Hapus status satu anggota (best-effort: galat tidak boleh menggagalkan aksi utama). */
+export async function hapusStatusAnggota(kelompokId: string, siswaId: string): Promise<void> {
+  try {
+    await deleteDoc(doc(db, 'lms_tugas_kelompok_anggota', idStatusAnggota(kelompokId, siswaId)))
+  } catch (e) {
+    console.warn('hapusStatusAnggota', e)
+  }
+}
+
+/** Hapus status semua anggota satu kelompok (best-effort). */
+export async function hapusStatusSemuaAnggota(kelompok: TugasKelompokDok): Promise<void> {
+  for (const a of kelompok.anggotaList) {
+    if (a.id !== kelompok.ketuaId) await hapusStatusAnggota(kelompok.id, a.id)
+  }
+}
+
+/**
+ * Apakah ketua sudah mengirim pengumpulan kelompok? `null` = tidak diketahui (kelompok lama
+ * berid acak atau rules belum diperbarui) — UI tidak boleh menampilkan «terkumpul» pada null.
+ */
+export async function ketuaSudahMengumpulkan(
+  kelompok: TugasKelompokDok,
+): Promise<boolean | null> {
+  if (kelompok.id !== idKelompokBaru(kelompok.tugasId, kelompok.ketuaId)) return null
+  try {
+    const snap = await getDoc(
+      doc(db, 'lms_pengumpulan', idPengumpulan(kelompok.tugasId, kelompok.ketuaId)),
+    )
+    return snap.exists()
+  } catch (e) {
+    console.warn('ketuaSudahMengumpulkan', e)
+    return null
+  }
+}
+
+/** Anggota boleh mengunggah sendiri: pengajuan diterima ketua DAN masih tercatat anggota. */
+export function punyaIzinMandiri(
+  kelompok: TugasKelompokDok | null | undefined,
+  status: StatusAnggotaDok | null | undefined,
+  siswaId: string,
+): boolean {
+  return !!kelompok && !!status && status.pengajuan === 'diterima' && kelompok.anggotaIds.includes(siswaId)
 }
