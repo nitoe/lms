@@ -322,7 +322,7 @@ export default function KelompokSiswaPanel({
               </p>
               <button
                 type="button"
-                className="sw-btn sw-btn--primary"
+                className="sw-btn-primary"
                 disabled={busy}
                 onClick={() => void handleKonfirmasi()}
               >
@@ -357,7 +357,7 @@ export default function KelompokSiswaPanel({
                   <div className="sw-kelompok-aksi">
                     <button
                       type="button"
-                      className="sw-btn sw-btn--secondary"
+                      className="sw-btn-secondary"
                       disabled={busy}
                       onClick={() => void handleAjukan()}
                     >
@@ -418,7 +418,7 @@ export default function KelompokSiswaPanel({
                         {x.pengajuan !== 'diterima' && (
                           <button
                             type="button"
-                            className="sw-btn sw-btn--primary"
+                            className="sw-btn-primary"
                             disabled={busy}
                             onClick={() => void handlePutuskan(x, true)}
                           >
@@ -428,7 +428,7 @@ export default function KelompokSiswaPanel({
                         {x.pengajuan !== 'ditolak' && (
                           <button
                             type="button"
-                            className="sw-btn sw-btn--ghost"
+                            className="sw-btn-bahaya"
                             disabled={busy}
                             onClick={() => void handlePutuskan(x, false)}
                           >
@@ -446,7 +446,7 @@ export default function KelompokSiswaPanel({
               {ketua && (
                 <button
                   type="button"
-                  className="sw-btn sw-btn--secondary"
+                  className="sw-btn-secondary"
                   disabled={busy}
                   onClick={() => setModeEdit(true)}
                 >
@@ -455,7 +455,7 @@ export default function KelompokSiswaPanel({
               )}
               <button
                 type="button"
-                className="sw-btn sw-btn--ghost"
+                className="sw-btn-bahaya"
                 disabled={busy}
                 onClick={() => void handleKeluar()}
               >
@@ -510,7 +510,7 @@ export default function KelompokSiswaPanel({
               <>
                 <button
                   type="button"
-                  className="sw-btn sw-btn--primary"
+                  className="sw-btn-primary"
                   disabled={busy}
                   onClick={() => void handleSimpanAnggota()}
                 >
@@ -518,7 +518,7 @@ export default function KelompokSiswaPanel({
                 </button>
                 <button
                   type="button"
-                  className="sw-btn sw-btn--ghost"
+                  className="sw-btn-ghost"
                   disabled={busy}
                   onClick={() => setModeEdit(false)}
                 >
@@ -528,7 +528,7 @@ export default function KelompokSiswaPanel({
             ) : (
               <button
                 type="button"
-                className="sw-btn sw-btn--primary"
+                className="sw-btn-primary"
                 disabled={busy}
                 onClick={() => void handleBuat()}
               >

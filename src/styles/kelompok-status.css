@@ -57,3 +57,51 @@
 .sw-kelompok-banner li { padding: 0.4rem 0; border-top: 1px solid #dbeafe; font-size: 0.9rem; }
 .sw-kelompok-banner li:first-child { border-top: 0; }
 .sw-kelompok-banner a { font-weight: 600; text-decoration: underline; }
+
+/* Tombol panel kelompok. Kelas lama `sw-btn sw-btn--*` TIDAK pernah didefinisikan sehingga tombol
+   tampil polos; pakai sw-btn-primary / sw-btn-ghost (siswa.css) + dua varian di bawah.
+   Hierarki: primary = aksi utama, secondary = aksi lanjutan, ghost = batal, bahaya = hapus/keluar/tolak. */
+.sw-kelompok .sw-kelompok-aksi,
+.sw-kelompok-kotak .sw-kelompok-aksi {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin-top: 0.75rem;
+}
+.sw-kelompok-aksi .sw-btn-primary,
+.sw-kelompok-aksi .sw-btn-secondary,
+.sw-kelompok-aksi .sw-btn-ghost,
+.sw-kelompok-aksi .sw-btn-bahaya,
+.sw-kelompok-kotak > .sw-btn-primary {
+  min-height: 2.75rem;
+  padding: 0.5rem 1.25rem;
+  font-size: 0.9rem;
+}
+.sw-btn-secondary,
+.sw-btn-bahaya {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  font-family: inherit;
+  font-weight: 800;
+  cursor: pointer;
+  background: #fff;
+}
+.sw-btn-secondary {
+  border: 2px solid #313083;
+  color: #313083;
+}
+.sw-btn-secondary:hover { background: #eef0ff; }
+.sw-btn-bahaya {
+  border: 2px solid #dc2626;
+  color: #b91c1c;
+}
+.sw-btn-bahaya:hover { background: #fef2f2; }
+.sw-btn-secondary:disabled,
+.sw-btn-bahaya:disabled { opacity: 0.5; cursor: not-allowed; }
+.sw-kelompok .sw-btn-ghost { border: 2px solid #cbd5e1; color: #334155; }
+@media (max-width: 480px) {
+  .sw-kelompok .sw-kelompok-aksi > button,
+  .sw-kelompok-kotak > .sw-btn-primary { flex: 1 1 100%; }
+}

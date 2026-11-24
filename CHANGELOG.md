@@ -1,3 +1,17 @@
+## 2026-11-25 — Fix tombol panel Kelompok tidak terlihat jelas
+
+### Masalah
+- Tombol «Buat kelompok», «Simpan anggota», «Ubah anggota», «Ajukan ke ketua», «Izinkan», dan lainnya tampil polos sehingga siswa bingung mana yang harus ditekan.
+- Penyebab: panel memakai kelas `sw-btn sw-btn--primary/--secondary/--ghost` yang tidak pernah didefinisikan di CSS.
+
+### Perbaikan
+- Panel memakai kelas yang sudah ada (`sw-btn-primary`, `sw-btn-ghost`) dan dua varian baru di `kelompok-status.css`: `sw-btn-secondary` (garis ungu) dan `sw-btn-bahaya` (garis merah untuk Hapus/Keluar kelompok, Tolak, Cabut izin).
+- Satu aksi utama per kotak; tombol minimal 2,75 rem tingginya dan melebar penuh di HP kecil.
+- Tidak ada perubahan rules, data, maupun logika.
+
+### Deploy
+- Hosting LMS saja.
+
 ## 2026-11-25 — Tugas kelompok: pemberitahuan anggota, konfirmasi, dan pengajuan kirim bukti sendiri
 
 ### Latar
