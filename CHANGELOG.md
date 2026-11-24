@@ -1,3 +1,12 @@
+## 2026-11-24 — Cetak materi: kode QR untuk video YouTube (dan audio tautan luar)
+
+- Di PDF materi, blok video YouTube kini berisi **kode QR** ke tautan pendek `https://youtu.be/{id}` + petunjuk «Pindai kode QR dengan kamera HP» + teks tautan, sehingga siswa bisa menonton dari kertas. Audio dari tautan luar yang pendek (≤ 106 byte) juga diberi QR.
+- Video/audio unggahan tetap tanpa QR dan tanpa URL (URL bertoken Storage tidak dicetak): «tersedia di LMS halaman n».
+- `src/lib/qrKode.ts` (baru): pembuat QR tanpa dependensi (mode byte, koreksi galat M, versi 1–6, hingga 106 byte; pilih mask berpenalti terendah; keluaran SVG). Tidak ada perubahan `package.json`.
+- `src/lib/exportMateriCetak.ts`: `kotakQr`, gaya `.media.qr`.
+- Diuji: 56 kombinasi (7 teks × 8 pola mask) + mask otomatis terpindai benar oleh pemindai QR (jsQR), termasuk UTF-8 dan panjang maksimum; QR di HTML hasil cetak dipindai dari SVG-nya dan menghasilkan tautan YouTube yang benar.
+- Antiregresi: §Materi.Cetak butir 5–7.
+
 ## 2026-11-24 — Pengumpulan: pratinjau lengkap multi-foto
 
 - **Masalah:** siswa memilih beberapa foto sekaligus, tetapi pratinjau terasa hanya 1 foto → ragu apakah semua akan terkirim.

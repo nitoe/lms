@@ -1696,3 +1696,9 @@ Jangan memaksa satu kolom sempit di desktop.
 2. Video/audio TIDAK pernah dicetak sebagai URL bertoken Storage; YouTube dicetak sebagai tautan tonton, unggahan sebagai «tersedia di LMS». Teks dibersihkan `bersihHtmlMateri` (tanpa skrip).
 3. Halaman tanpa isi tidak dicetak; tiap halaman memulai lembar baru (opsi `halamanBaru`).
 4. **Tes:** materi 3 halaman berisi teks+rumus+gambar+video → PDF 3 lembar, rumus terbaca, gambar muncul, kotak video tampil.
+
+## §Materi.Cetak (tambahan 2026-11-24) — kode QR
+
+5. QR dibuat oleh `src/lib/qrKode.ts` (tanpa dependensi; jangan menambah paket QR hanya untuk ini). Batas 106 byte UTF-8 (versi 1–6, level M); teks lebih panjang → `buatMatriksQr` melempar galat dan cetak jatuh ke keterangan «tersedia di LMS» (`kotakQr` mengembalikan kosong). Bila batas ini perlu dinaikkan, tambah tabel versi (data/EC/blok) dan pola alignment untuk versi ≥ 7 (termasuk bit informasi versi) — jangan mengubah sebagian.
+6. QR hanya untuk tautan publik yang aman dicetak: YouTube (`youtu.be/{id}`) dan audio dari tautan luar tanpa `storagePath`. URL file Storage (bertoken) TIDAK dicetak dan TIDAK dijadikan QR.
+7. **Tes (wajib bila `qrKode.ts` diubah):** buat matriks untuk beberapa teks (pendek, ±43, ±90, 106 byte, UTF-8) pada ke-8 mask, render ke gambar dengan zona tenang 4 modul, lalu pindai dengan pemindai QR sungguhan (mis. jsQR); hasilnya harus sama persis dengan teks. Tes manual: cetak PDF materi berisi video YouTube, pindai dari layar/kertas dengan HP.

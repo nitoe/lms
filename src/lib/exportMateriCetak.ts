@@ -10,6 +10,7 @@ import { bersihHtmlMateri, materiPunyaRumus } from './html'
 import { htmlDenganRumus, muatKatex } from './matematika'
 import { ekstrakYoutubeId } from './materi'
 import { esc, htmlKop } from './exportKuisCetak'
+import { BATAS_BYTE_QR, svgQr } from './qrKode'
 
 export type MateriCetak = {
   judul: string
@@ -51,6 +52,9 @@ const STYLE = `
   figcaption { font-size: 9.5pt; color: #444; margin-top: 3px; }
   .media { border: 1.5px dashed #64748b; border-radius: 8px; padding: 8px 12px; margin: 10px 0; font-size: 10.5pt; page-break-inside: avoid; background: #f8fafc; }
   .media b { color: #0b5a39; } .media .tautan { word-break: break-all; font-family: Consolas, monospace; font-size: 9.5pt; }
+  .media.qr { display: flex; gap: 14px; align-items: center; }
+  .media.qr .qr-kode { flex: 0 0 auto; line-height: 0; } .media.qr .qr-kode svg { width: 3cm; height: 3cm; display: block; }
+  .media.qr .qr-teks { flex: 1 1 auto; }
   .kop-logo img { display: block; } table.kop { width: 100%; border-collapse: collapse; margin-bottom: 4px; }
   .sekolah { font-size: 14pt; font-weight: bold; margin: 0; } .judul-utama { font-size: 12pt; font-weight: bold; margin: 2px 0; } .tahun { margin: 0; font-size: 10.5pt; }
   .kop-tengah { text-align: center; } .garis-ganda { border-top: 3px double #000; margin: 4px 0 8px; }
@@ -61,6 +65,21 @@ function htmlTeks(html: string, rumus: boolean): string {
   const bersih = bersihHtmlMateri(html || '')
   if (!bersih) return ''
   return rumus && materiPunyaRumus(bersih) ? htmlDenganRumus(bersih) : bersih
+}
+
+/** Kotak media dengan kode QR; null bila tautan terlalu panjang untuk QR. */
+function kotakQr(judul: string, petunjuk: string, tautan: string): string {
+  if (new TextEncoder().encode(tautan).length > BATAS_BYTE_QR) return ''
+  let svg = ''
+  try {
+    svg = svgQr(tautan, '3cm')
+  } catch {
+    return ''
+  }
+  return (
+    `<div class="media qr"><div class="qr-kode">${svg}</div>` +
+    `<div class="qr-teks"><b>${judul}</b><br/>${esc(petunjuk)}<br/><span class="tautan">${esc(tautan)}</span></div></div>`
+  )
 }
 
 function htmlBlok(b: MateriHalaman['blok'][number], nomorHalaman: number, rumus: boolean): string {
@@ -77,13 +96,21 @@ function htmlBlok(b: MateriHalaman['blok'][number], nomorHalaman: number, rumus:
     if (!b.url) return ''
     const yt = b.sumber === 'youtube' ? ekstrakYoutubeId(b.url) : null
     const cap = b.caption ? `: ${esc(b.caption)}` : ''
-    return yt
-      ? `<div class="media"><b>▶ Video${cap}</b><br/>Tonton secara daring: <span class="tautan">https://www.youtube.com/watch?v=${esc(yt)}</span></div>`
-      : `<div class="media"><b>▶ Video${cap}</b><br/>Video ini tersedia di LMS (halaman ${nomorHalaman} materi ini).</div>`
+    if (yt) {
+      // Kode QR ke tautan pendek YouTube agar bisa dipindai langsung dari kertas.
+      const tautan = `https://youtu.be/${yt}`
+      return kotakQr(`▶ Video${cap}`, 'Pindai kode QR dengan kamera HP untuk menonton, atau buka tautan:', tautan)
+    }
+    return `<div class="media"><b>▶ Video${cap}</b><br/>Video ini tersedia di LMS (halaman ${nomorHalaman} materi ini).</div>`
   }
   if (b.tipe === 'audio') {
     if (!b.url) return ''
     const cap = b.caption ? `: ${esc(b.caption)}` : ''
+    // Hanya tautan luar yang pendek yang diberi QR; file unggahan (URL bertoken Storage) tidak dicetak.
+    if (!b.storagePath && /^https:\/\//i.test(b.url) && !/firebasestorage|googleapis\.com/i.test(b.url)) {
+      const kotak = kotakQr(`🔊 Audio${cap}`, 'Pindai kode QR dengan kamera HP untuk mendengarkan, atau buka tautan:', b.url)
+      if (kotak) return kotak
+    }
     return `<div class="media"><b>🔊 Audio${cap}</b><br/>Audio ini tersedia di LMS (halaman ${nomorHalaman} materi ini).</div>`
   }
   return ''
