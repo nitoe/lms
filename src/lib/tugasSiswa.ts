@@ -61,6 +61,14 @@ function docKeTugas(id: string, data: Record<string, unknown>): TugasLms {
       const b = rapikanBuktiList(data.buktiList)
       return b.length ? b : undefined
     })(),
+    lampiranList: Array.isArray(data.lampiranList)
+      ? (data.lampiranList as TugasLms['lampiranList'])
+      : undefined,
+    modeKelompok: data.modeKelompok === true,
+    kelompokMaxAnggota:
+      typeof data.kelompokMaxAnggota === 'number' && data.kelompokMaxAnggota >= 2
+        ? Math.min(12, Math.floor(data.kelompokMaxAnggota))
+        : undefined,
     createdAt: data.createdAt,
     updatedAt: data.updatedAt,
   }

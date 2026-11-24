@@ -1,3 +1,24 @@
+## 2026-11-24 — Tugas kelompok (UI + mekanisme lengkap)
+
+### Guru
+- Tab **Pengaturan**: centang «Tugas kelompok» + maks. anggota per kelompok (2–12, default 4).
+- Field `modeKelompok` + `kelompokMaxAnggota` sudah ada di tipe; sekarang tersimpan dari UI.
+
+### Siswa
+- Panel **Kelompok** di detail tugas: buat kelompok (otomatis jadi ketua), pilih teman sekelas, ubah anggota, keluar/hapus.
+- **Tanpa konfirmasi per anggota** — hasil diskusi di kelas, ketua yang memasukkan (cocok untuk siswa tanpa HP sendiri).
+- Hanya **ketua** yang dapat mengunggah pengumpulan. Anggota melihat status «terkumpul lewat kelompok» setelah ketua mengirim (dihitung di klien dari keanggotaan + pengumpulan ketua; tanpa dokumen shadow).
+
+### Data & rules
+- Koleksi baru `lms_tugas_kelompok/{id}`: ketuaId, anggotaIds, anggotaList, kelas, tugasId.
+- Rules: siswa sekelas buat/baca/update (ketua) / keluar; guru mapel×kelas + admin baca & hapus.
+- `docKeTugas` di `tugasSiswa.ts` dilengkapi `modeKelompok`, `kelompokMaxAnggota`, `lampiranList`.
+
+### File
+- Baru: `src/lib/tugasKelompok.ts`, `src/pages/siswa/KelompokSiswaPanel.tsx`
+- Ubah: `src/pages/TugasDetail.tsx`, `src/pages/siswa/SiswaTugas.tsx`, `src/pages/siswa/PengumpulanSiswa.tsx`, `src/lib/tugasSiswa.ts`, `firestore.rules`
+- Antiregresi: §Tugas.Kelompok (diperbarui dari rencana → implementasi).
+
 ## 2026-11-24 — Reset pengumpulan tugas + lampiran file guru
 
 ### Reset attempt pengumpulan (guru/admin)

@@ -10,12 +10,17 @@
 2. Siswa unduh lewat `url` bertoken — jangan mengandalkan `isLoggedIn()` Storage untuk token siswa.
 3. Batas: 8 berkas, 50 MB; jenis dari content-type + ekstensi.
 
-## §Tugas.Kelompok — Mekanisme (rencana, 2026-11-24)
+## §Tugas.Kelompok — Mekanisme (2026-11-24)
 
-1. Guru menandai `modeKelompok`. Siswa pilih anggota + ketua (`lms_tugas_kelompok`).
-2. Hanya ketua yang `kirimPengumpulan`; anggota mendapat status «terkumpul lewat kelompok» (baca meta ketua atau flag `kelompokId` pada pengumpulan).
-3. Penilaian: nilai sama ke semua anggota atau input per anggota dari bukti yang sama — putuskan di UI nilai.
-4. Belum diimplementasikan penuh di UI; field tipe sudah disiapkan.
+1. **Guru** menandai `modeKelompok` + `kelompokMaxAnggota` (2–12) di tab Pengaturan.
+2. **Siswa** membentuk kelompok di panel Kelompok (`lms_tugas_kelompok`):
+   - Buat kelompok → pembuat otomatis ketua.
+   - Pilih teman sekelas (tanpa konfirmasi di akun masing-masing — hasil diskusi kelas).
+   - Ketua boleh ubah anggota; ketua keluar = hapus kelompok; anggota keluar = lepas diri.
+3. **Pengumpulan:** hanya ketua yang memanggil `kirimPengumpulan`. Anggota non-ketua melihat pesan; status «terkumpul» dihitung di klien jika ketua sudah mengirim (tidak ada dokumen shadow pengumpulan per anggota — hindari regresi rules foto).
+4. **Penilaian (lanjutan):** nilai dari bukti ketua; guru bisa salin ke semua anggota di tab nilai (belum otomatis di V1 — input per siswa tetap tersedia).
+5. **Rules:** create hanya jika tugas `modeKelompok == true` & aktif & kelas cocok; update anggota hanya ketua (atau non-ketua mengurangi diri); delete ketua/guru/admin.
+6. Jangan menambahkan field wajib baru ke `lms_pengumpulan` hasOnly tanpa memperbarui rules.
 
 ## §Tugas.MultiFile — Multi-pilih foto pengumpulan (2026-11-24)
 

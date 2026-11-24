@@ -34,6 +34,12 @@ type Props = {
   /** Tugas sudah dinilai → dikunci (rules juga menolak). */
   terkunci: boolean
   onTersimpan: (d: PengumpulanDok) => void
+  /** Tugas mode kelompok (ANTIREGRESI §Tugas.Kelompok). */
+  modeKelompok?: boolean
+  /** true jika siswa adalah ketua kelompok (atau bukan mode kelompok). */
+  isKetuaKelompok?: boolean
+  /** true jika siswa sudah punya kelompok (atau bukan mode kelompok). */
+  punyaKelompok?: boolean
 }
 
 type Item = { key: string; src: string }
@@ -61,6 +67,9 @@ export default function PengumpulanSiswa({
   ada,
   terkunci,
   onTersimpan,
+  modeKelompok = false,
+  isKetuaKelompok = true,
+  punyaKelompok = true,
 }: Props) {
   const [items, setItems] = useState<Item[]>([])
   const modeBukti = adaBukti(tugas)
@@ -393,11 +402,43 @@ export default function PengumpulanSiswa({
     )
   }
 
+  // Mode kelompok: non-ketua / belum punya kelompok tidak boleh upload
+  if (modeKelompok && !isKetuaKelompok) {
+    return (
+      <section className="sw-kat-panel sw-kumpul">
+        <h2>Kumpulkan tugas</h2>
+        {ada ? (
+          <p className="sw-kumpul-status sw-kumpul-status--ok">
+            <SiswaIcon name="check" size={18} /> Sudah terkumpul lewat kelompok
+            {ada.diubahMs ? ` · ${waktuTeks(ada.diubahMs)}` : ''}
+          </p>
+        ) : (
+          <p className="sw-kat-hint">
+            {punyaKelompok
+              ? 'Hanya ketua kelompok yang dapat mengunggah. Setelah ketua mengirim, status Anda otomatis menjadi terkumpul.'
+              : 'Buat atau bergabung ke kelompok dulu (panel di atas), lalu ketua yang mengunggah pengumpulan.'}
+          </p>
+        )}
+      </section>
+    )
+  }
+
+  if (modeKelompok && !punyaKelompok) {
+    return (
+      <section className="sw-kat-panel sw-kumpul">
+        <h2>Kumpulkan tugas</h2>
+        <p className="sw-kat-hint">
+          Buat kelompok dulu (Anda akan menjadi ketua), lalu unggah pengumpulan di sini.
+        </p>
+      </section>
+    )
+  }
+
   const tampilForm = !ada || ubah
 
   return (
     <section className="sw-kat-panel sw-kumpul">
-      <h2>Kumpulkan tugas</h2>
+      <h2>Kumpulkan tugas{modeKelompok ? ' (sebagai ketua)' : ''}</h2>
 
       {ada && (
         <p className="sw-kumpul-status sw-kumpul-status--ok">

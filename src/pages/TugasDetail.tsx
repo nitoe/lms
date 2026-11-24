@@ -151,6 +151,8 @@ export default function TugasDetail() {
   const [buktiList, setBuktiList] = useState<BuktiTugas[]>([])
   const [tenggatStr, setTenggatStr] = useState('')
   const [statusTugas, setStatusTugas] = useState<StatusTugas>('draf')
+  const [modeKelompok, setModeKelompok] = useState(false)
+  const [kelompokMaxAnggota, setKelompokMaxAnggota] = useState(4)
   const [berbagiOpen, setBerbagiOpen] = useState(false)
   const [jenisPenilaian, setJenisPenilaian] = useState<JenisPenilaianTugas>('slm')
   const [tpDipilih, setTpDipilih] = useState<TpTugas[]>([])
@@ -250,6 +252,12 @@ export default function TugasDetail() {
     setLampiranList(t.lampiranList ?? [])
     setTenggatStr(tenggatKeInput(t.tenggat))
     setStatusTugas(normalisasiStatusTugas(t.statusTugas, t.aktif))
+    setModeKelompok(t.modeKelompok === true)
+    setKelompokMaxAnggota(
+      typeof t.kelompokMaxAnggota === 'number' && t.kelompokMaxAnggota >= 2
+        ? Math.min(12, t.kelompokMaxAnggota)
+        : 4,
+    )
     setJenisPenilaian(
       t.jenisPenilaian === 'latihan' ||
         t.jenisPenilaian === 'sts' ||
@@ -439,6 +447,8 @@ export default function TugasDetail() {
           statusTugas,
           aktif: statusTugas === 'aktif_siswa',
           pengaturanPenilaian: pengaturan,
+          modeKelompok,
+          kelompokMaxAnggota: modeKelompok ? kelompokMaxAnggota : undefined,
           namaGuru: profil?.nama,
         })
         setSukses('Tugas berhasil dibuat.')
@@ -459,6 +469,8 @@ export default function TugasDetail() {
           aktif: statusTugas === 'aktif_siswa',
           pengaturanPenilaian: pengaturan,
           lampiranList,
+          modeKelompok,
+          kelompokMaxAnggota: modeKelompok ? kelompokMaxAnggota : undefined,
         })
         setSukses('Perubahan disimpan.')
         const t = await ambilTugas(tugasId)
@@ -1295,6 +1307,41 @@ export default function TugasDetail() {
                 </select>
                 <small className="td-hint">{KETERANGAN_STATUS_TUGAS[statusTugas]}</small>
               </label>
+
+              <div className="td-field td-field--full">
+                <label className="td-check-row" style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem' }}>
+                  <input
+                    type="checkbox"
+                    checked={modeKelompok}
+                    onChange={(e) => setModeKelompok(e.target.checked)}
+                    style={{ marginTop: '0.2rem' }}
+                  />
+                  <span>
+                    <strong>Tugas kelompok</strong>
+                    <small className="td-hint" style={{ display: 'block', marginTop: '0.15rem' }}>
+                      Siswa membentuk kelompok dan memilih ketua. Hanya ketua yang mengunggah pengumpulan;
+                      anggota otomatis tercatat terkumpul setelah ketua mengirim (tanpa konfirmasi per siswa).
+                    </small>
+                  </span>
+                </label>
+                {modeKelompok && (
+                  <label className="td-field" style={{ marginTop: '0.6rem', maxWidth: '12rem' }}>
+                    <span>Maks. anggota per kelompok</span>
+                    <input
+                      type="number"
+                      min={2}
+                      max={12}
+                      value={kelompokMaxAnggota}
+                      onChange={(e) => {
+                        const n = parseInt(e.target.value, 10)
+                        if (!Number.isNaN(n)) setKelompokMaxAnggota(Math.max(2, Math.min(12, n)))
+                      }}
+                    />
+                    <small className="td-hint">Termasuk ketua (2–12). Default 4.</small>
+                  </label>
+                )}
+              </div>
+
               {tugas && (
                 <div className="td-field td-field--full" style={{ marginTop: '0.5rem' }}>
                   <span className="td-label" style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, marginBottom: '0.35rem' }}>

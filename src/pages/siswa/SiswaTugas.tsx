@@ -22,7 +22,9 @@ import {
 import type { NilaiTugasDok } from '../../lib/nilaiTugas'
 import SiswaIcon from './SiswaIcon'
 import PengumpulanSiswa from './PengumpulanSiswa'
+import KelompokSiswaPanel from './KelompokSiswaPanel'
 import { muatPengumpulanSaya, type PengumpulanDok } from '../../lib/pengumpulan'
+import { kelompokSaya, type TugasKelompokDok, isKetua } from '../../lib/tugasKelompok'
 
 const FILTER_STATUS_LABEL: Record<StatusTugasSiswa | 'semua', string> = {
   semua: 'Semua',
@@ -50,6 +52,8 @@ export default function SiswaTugas() {
   const [filterStatus, setFilterStatus] = useState<FilterStatus>('semua')
   const [filterMapel, setFilterMapel] = useState<string>('semua')
   const [detail, setDetail] = useState<TugasLms | null>(null)
+  const [kelompokDetail, setKelompokDetail] = useState<TugasKelompokDok | null>(null)
+  const [loadingKelompok, setLoadingKelompok] = useState(false)
 
   const muat = useCallback(async () => {
     if (!kelas || !siswaId) return
@@ -92,7 +96,32 @@ export default function SiswaTugas() {
     if (!id || !list) return
     const t = list.find((x) => x.id === id)
     if (t) setDetail(t)
+    else setDetail(null)
   }, [params, list])
+
+  // Muat kelompok siswa untuk tugas detail (modeKelompok)
+  useEffect(() => {
+    if (!detail?.modeKelompok || !siswaId) {
+      setKelompokDetail(null)
+      return
+    }
+    let batal = false
+    setLoadingKelompok(true)
+    void kelompokSaya(detail.id, siswaId)
+      .then((k) => {
+        if (!batal) setKelompokDetail(k)
+      })
+      .catch((e) => {
+        console.warn('kelompokSaya', e)
+        if (!batal) setKelompokDetail(null)
+      })
+      .finally(() => {
+        if (!batal) setLoadingKelompok(false)
+      })
+    return () => {
+      batal = true
+    }
+  }, [detail?.id, detail?.modeKelompok, siswaId])
 
   const ringkas = useMemo((): TugasSiswaRingkas[] => {
     if (!list) return []
@@ -299,6 +328,22 @@ export default function SiswaTugas() {
           </section>
         )}
 
+        {detail.modeKelompok && (
+          loadingKelompok ? (
+            <p className="sw-hint">Memuat info kelompok…</p>
+          ) : (
+            <KelompokSiswaPanel
+              tugas={detail}
+              siswaId={siswaId}
+              siswaNama={sesi?.nama ?? ''}
+              kelas={String(kelas).toUpperCase()}
+              kelompok={kelompokDetail}
+              terkunci={st === 'dinilai'}
+              onKelompokChange={setKelompokDetail}
+            />
+          )
+        )}
+
         <PengumpulanSiswa
           key={detail.id}
           tugas={detail}
@@ -308,6 +353,9 @@ export default function SiswaTugas() {
           ada={kumpulMap[detail.id] ?? null}
           terkunci={st === 'dinilai'}
           onTersimpan={(d) => setKumpulMap((prev) => ({ ...prev, [detail.id]: d }))}
+          modeKelompok={detail.modeKelompok === true}
+          isKetuaKelompok={detail.modeKelompok ? isKetua(kelompokDetail, siswaId) : true}
+          punyaKelompok={detail.modeKelompok ? !!kelompokDetail : true}
         />
       </div>
     )
