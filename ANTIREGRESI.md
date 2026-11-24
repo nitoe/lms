@@ -9,7 +9,10 @@
 7. **`.td-tabs` 4 kolom** di ≥761px, 2 kolom 561–760px, 1 kolom di bawahnya. Jangan kembalikan ke 3 kolom (tab ke-4 turun baris sendirian).
 8. **Hapus tugas** lewat `KonfirmasiHapusDialog`; `hapusTugas` hanya menghapus dokumen `lms_tugas` (pengumpulan/nilai tidak ikut) — teks dialog harus tetap jujur soal itu.
 9. **Snippet CSS wajib digabung ke berkas yang diimpor.** `kelompok-guru-snippet.css` dan `kelompok-snippet.css` berisi komentar «sisipkan ke …» tetapi tidak pernah diimpor, sehingga tampilan Tugas kelompok (guru & siswa) tidak bergaya. Sekarang sudah digabung ke `tugas.css` dan `siswa.css`. Jangan membuat berkas `*-snippet.css` baru; kalau CSS baru muncul untuk komponen, pastikan kelasnya ada di CSS yang diimpor (cek dengan `grep` nama kelas) sebelum dianggap selesai.
-10. Uji: (a) klik ubin «Segera berakhir» → daftar tersaring & tombol segmen ikut aktif; (b) buka tugas Aktif siswa tanpa `?tab` → langsung Pengumpulan; (c) ubah judul → penanda kuning, simpan → hijau; (d) buat tugas baru → mendarat di Isi tugas; (e) HP 360px: bilah simpan tidak menutupi tombol, status jadi satu kolom.
+10. **Status baris Daftar nilai** dihitung oleh `statusBarisNilai()` (membandingkan draf dengan baris server via `draftSamaDenganServer`). Setelah `simpanSatuNilai` baris server (`barisNilai`) dan draf harus sama-sama di-update (sudah dilakukan) — kalau salah satu tidak, baris selamanya «Belum disimpan». Bila format simpan berubah (mis. pembulatan), ubah juga snapshot di `statusBarisNilai` dan `muatNilai`.
+11. **`Simpan semua` hanya baris berstatus `ubah`** (bukan semua yang berisi data) — jangan dikembalikan, karena menyimpan ulang puluhan baris tak berubah memperlambat dan menimpa `diubahPada`.
+12. Tombol saringan Daftar nilai memakai kelas `tg-seg` yang sudah ada; jangan membuat kelas segmen baru. Tabel `td-tabel--nilai`: tetap DILARANG mengubah `display` pada `th/td`; sel nama tetap `position: sticky` dan harus ikut diberi warna latar pada baris `--ubah`.
+13. Uji: (a) klik ubin «Segera berakhir» → daftar tersaring & tombol segmen ikut aktif; (b) buka tugas Aktif siswa tanpa `?tab` → langsung Pengumpulan; (c) ubah judul → penanda kuning, simpan → hijau; (d) buat tugas baru → mendarat di Isi tugas; (e) HP 360px: bilah simpan tidak menutupi tombol, status jadi satu kolom.
 
 ## §Tugas.Reset — Reset pengumpulan siswa (2026-11-24)
 

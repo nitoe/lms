@@ -243,6 +243,9 @@ export default function TugasDetail() {
   const [draft, setDraft] = useState<Record<string, DraftBaris>>({})
   const [menyimpanSiswaId, setMenyimpanSiswaId] = useState<string | null>(null)
   const [genAiBusy, setGenAiBusy] = useState(false)
+  /** Saringan & pencarian pada Daftar nilai siswa. */
+  const [filterNilai, setFilterNilai] = useState<'semua' | 'kosong' | 'ubah'>('semua')
+  const [cariNilai, setCariNilai] = useState('')
 
   useEffect(() => {
     let batal = false
@@ -651,6 +654,30 @@ export default function TugasDetail() {
   }
 
   /**
+   * Status baris: `ok` = sama dengan yang tersimpan; `ubah` = ada isian/perubahan yang belum
+   * disimpan; `kosong` = belum pernah dinilai dan belum diisi.
+   */
+  function statusBarisNilai(r: BarisNilaiTugas): 'kosong' | 'ubah' | 'ok' {
+    const d = draft[r.siswaId]
+    if (!draftBerisiData(d)) return r.sudahAda ? 'ubah' : 'kosong'
+    const per: Record<string, string> = {}
+    for (const k of kategoriAktif) {
+      const v = r.perKategori[k.id]
+      per[k.id] = v === null || v === undefined ? '' : String(v)
+    }
+    let pred = r.predikat
+    if (!pred && r.nilaiAkhir !== null) pred = predikatOtomatis(r.nilaiAkhir, pengaturan.rentangPredikat)
+    const srv: DraftBaris = {
+      perKategori: per,
+      nilaiAkhir: r.nilaiAkhir === null ? '' : String(r.nilaiAkhir),
+      predikat: pred,
+      komentar: r.komentar || '',
+    }
+    if (draftSamaDenganServer(d as DraftBaris, srv)) return r.sudahAda ? 'ok' : 'ubah'
+    return 'ubah'
+  }
+
+  /**
    * Muat daftar nilai dari server.
    * `force: true` menimpa seluruh draf (tombol Muat ulang).
    * Default: pertahankan draf lokal yang berbeda dari server (hasil generate AI / edit belum disimpan).
@@ -924,9 +951,9 @@ export default function TugasDetail() {
   /** Simpan semua baris yang punya data di draf. */
   async function simpanSemuaDraft() {
     if (!tugas || !barisNilai?.length) return
-    const kandidat = barisNilai.filter((r) => draftBerisiData(draft[r.siswaId]))
+    const kandidat = barisNilai.filter((r) => statusBarisNilai(r) === 'ubah')
     if (!kandidat.length) {
-      setError('Tidak ada nilai yang perlu disimpan.')
+      setError('Tidak ada perubahan nilai yang perlu disimpan.')
       return
     }
     setMenyimpanSiswaId('__semua__')
@@ -1121,6 +1148,28 @@ export default function TugasDetail() {
       setBusy(false)
     }
   }
+
+  /** Ringkasan & hasil saringan Daftar nilai siswa. */
+  const statusNilai: Record<string, 'kosong' | 'ubah' | 'ok'> = {}
+  let nilaiOk = 0
+  let nilaiUbah = 0
+  let nilaiKosong = 0
+  for (const r of barisNilai ?? []) {
+    const st = statusBarisNilai(r)
+    statusNilai[r.siswaId] = st
+    if (st === 'ok') nilaiOk++
+    else if (st === 'ubah') nilaiUbah++
+    else nilaiKosong++
+  }
+  const kataCari = cariNilai.trim().toLowerCase()
+  const barisTampil = (barisNilai ?? [])
+    .map((r, i) => ({ r, no: i + 1 }))
+    .filter(({ r }) => {
+      if (kataCari && !r.siswaNama.toLowerCase().includes(kataCari)) return false
+      if (filterNilai === 'kosong') return statusNilai[r.siswaId] === 'kosong'
+      if (filterNilai === 'ubah') return statusNilai[r.siswaId] === 'ubah'
+      return true
+    })
 
   /** Tanda perubahan belum tersimpan (hanya untuk tugas yang sudah ada). */
   const sigForm = sigPengaturan({
@@ -1766,6 +1815,23 @@ export default function TugasDetail() {
                   ) : (
                     pengaturan.kategori.map((k, i) => (
                       <div key={k.id} className="td-kat-item">
+                        <div className="td-kat-kepala">
+                          <span className="td-kat-no">{i + 1}</span>
+                          <b>{k.nama.trim() || 'Kategori baru'}</b>
+                          <button
+                            type="button"
+                            className="tg-btn tg-btn--bahaya"
+                            title="Hapus kategori"
+                            onClick={() =>
+                              setPengaturan((p) => ({
+                                ...p,
+                                kategori: p.kategori.filter((_, j) => j !== i),
+                              }))
+                            }
+                          >
+                            Hapus
+                          </button>
+                        </div>
                         <div className="td-kat-baris">
                           <label className="td-field td-field--grow">
                             <span>Nama kategori</span>
@@ -1859,19 +1925,6 @@ export default function TugasDetail() {
                               }}
                             />
                           </label>
-                          <button
-                            type="button"
-                            className="tg-btn tg-btn--bahaya"
-                            title="Hapus kategori"
-                            onClick={() =>
-                              setPengaturan((p) => ({
-                                ...p,
-                                kategori: p.kategori.filter((_, j) => j !== i),
-                              }))
-                            }
-                          >
-                            Hapus
-                          </button>
                         </div>
                         <label className="td-field">
                           <span>Deskripsi (opsional)</span>
@@ -1969,15 +2022,17 @@ export default function TugasDetail() {
                 </div>
               </section>
 
-              <div className="td-aksi">
-                <button
-                  type="button"
-                  className="tg-btn tg-btn--utama tg-btn--besar"
-                  disabled={busy || isBaru}
-                  onClick={() => void simpanPengaturanNilai()}
-                >
-                  {busy ? 'Menyimpan…' : 'Simpan pengaturan penilaian'}
-                </button>
+              <div className="td-aksi td-aksi--lekat">
+                <div className="td-aksi-tombol">
+                  <button
+                    type="button"
+                    className="tg-btn tg-btn--utama tg-btn--besar"
+                    disabled={busy || isBaru}
+                    onClick={() => void simpanPengaturanNilai()}
+                  >
+                    {busy ? 'Menyimpan…' : 'Simpan pengaturan penilaian'}
+                  </button>
+                </div>
               </div>
             </div>
           )}
@@ -2001,22 +2056,26 @@ export default function TugasDetail() {
               ) : (
                 <>
                   <div className="td-nilai-toolbar">
-                    <div>
+                    <div className="td-nilai-judul">
                       <h2 className="td-subjudul">Daftar nilai siswa</h2>
                       <p className="td-hint">
-                        Isi skor per kategori; nilai akhir & predikat menyesuaikan.
-                        Generate AI menyimpan otomatis. Draf siswa lain tidak hilang saat menyimpan satu baris.
+                        Isi skor per kategori; nilai akhir &amp; predikat menyesuaikan. Generate AI menyimpan
+                        otomatis. Draf siswa lain tidak hilang saat menyimpan satu baris.
                       </p>
                     </div>
                     <div className="td-kepala-aksi">
                       <button
                         type="button"
                         className="tg-btn tg-btn--utama"
-                        disabled={loadingNilai || menyimpanSiswaId === '__semua__'}
+                        disabled={loadingNilai || menyimpanSiswaId === '__semua__' || nilaiUbah === 0}
                         onClick={() => void simpanSemuaDraft()}
-                        title="Simpan semua baris yang sudah diisi di draf"
+                        title="Simpan semua baris yang berubah / baru diisi"
                       >
-                        {menyimpanSiswaId === '__semua__' ? 'Menyimpan…' : 'Simpan semua'}
+                        {menyimpanSiswaId === '__semua__'
+                          ? 'Menyimpan…'
+                          : nilaiUbah > 0
+                            ? `Simpan semua (${nilaiUbah})`
+                            : 'Simpan semua'}
                       </button>
                       <button
                         type="button"
@@ -2049,117 +2108,201 @@ export default function TugasDetail() {
                   )}
 
                   {!loadingNilai && barisNilai && barisNilai.length > 0 && (
-                    <div className="td-scroll td-tabel-wrap">
-                      <table className="td-tabel td-tabel--nilai">
-                        <thead>
-                          <tr>
-                            <th className="td-th-nama">Siswa</th>
-                            {kategoriAktif.map((k) => (
-                              <th
-                                key={k.id}
-                                className="td-th-kat"
-                                title={k.deskripsi ? `${k.nama} — ${k.deskripsi}` : k.nama}
-                              >
-                                {k.nama || '—'}
-                              </th>
-                            ))}
-                            <th className="td-th-akhir">Nilai akhir</th>
-                            <th className="td-th-pred">Predikat</th>
-                            {bisaAi && (
-                              <th className="td-th-ai" title="Generate dari predikat">
-                                AI
-                              </th>
-                            )}
-                            <th className="td-th-komen">Komentar</th>
-                            <th className="td-th-aksi" aria-label="Aksi" />
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {barisNilai.map((r) => {
-                            const d = draft[r.siswaId] || {
-                              perKategori: {},
-                              nilaiAkhir: '',
-                              predikat: '',
-                              komentar: '',
-                            }
-                            return (
-                              <tr key={r.siswaId}>
-                                <td className="td-td-nama">
-                                  <b>{r.siswaNama}</b>
-                                </td>
+                    <>
+                      <div className="td-progres">
+                        <div className="td-progres-teks">
+                          <span>
+                            <b>{nilaiOk}</b> dari {barisNilai.length} siswa sudah dinilai
+                          </span>
+                          {nilaiUbah > 0 && (
+                            <span className="td-chip td-chip--warn">{nilaiUbah} belum disimpan</span>
+                          )}
+                        </div>
+                        <div
+                          className="td-progres-bar"
+                          role="progressbar"
+                          aria-label="Kemajuan penilaian"
+                          aria-valuemin={0}
+                          aria-valuemax={barisNilai.length}
+                          aria-valuenow={nilaiOk}
+                        >
+                          <i style={{ width: `${Math.round((nilaiOk / barisNilai.length) * 100)}%` }} />
+                        </div>
+                      </div>
+
+                      <div className="td-nilai-saring">
+                        <input
+                          type="search"
+                          className="td-input-md td-cari"
+                          placeholder="Cari nama siswa…"
+                          value={cariNilai}
+                          onChange={(e) => setCariNilai(e.target.value)}
+                          aria-label="Cari nama siswa"
+                        />
+                        <div className="td-nilai-segmen" role="group" aria-label="Saring daftar nilai">
+                          {(
+                            [
+                              { v: 'semua' as const, teks: 'Semua', n: barisNilai.length },
+                              { v: 'kosong' as const, teks: 'Belum dinilai', n: nilaiKosong },
+                              { v: 'ubah' as const, teks: 'Belum disimpan', n: nilaiUbah },
+                            ] as const
+                          ).map((o) => (
+                            <button
+                              key={o.v}
+                              type="button"
+                              className={`tg-seg${filterNilai === o.v ? ' tg-seg--on' : ''}`}
+                              aria-pressed={filterNilai === o.v}
+                              onClick={() => setFilterNilai(o.v)}
+                            >
+                              {o.teks}
+                              <i>{o.n}</i>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {barisTampil.length === 0 ? (
+                        <div className="td-kosong-kecil">
+                          <b>Tidak ada siswa yang cocok</b>
+                          <p>Ubah kata pencarian atau pilih saringan «Semua».</p>
+                        </div>
+                      ) : (
+                        <div className="td-scroll td-tabel-wrap">
+                          <table className="td-tabel td-tabel--nilai">
+                            <thead>
+                              <tr>
+                                <th className="td-th-nama">Siswa</th>
                                 {kategoriAktif.map((k) => (
-                                  <td key={k.id} className="td-td-skor">
-                                    <input
-                                      type="text"
-                                      inputMode="decimal"
-                                      className="td-input-sm"
-                                      value={d.perKategori[k.id] ?? ''}
-                                      onChange={(e) => onSkorKategori(r.siswaId, k.id, e.target.value)}
-                                      aria-label={`${k.nama} — ${r.siswaNama}`}
-                                    />
-                                  </td>
+                                  <th
+                                    key={k.id}
+                                    className="td-th-kat"
+                                    title={k.deskripsi ? `${k.nama} — ${k.deskripsi}` : k.nama}
+                                  >
+                                    {k.nama || '—'}
+                                  </th>
                                 ))}
-                                <td className="td-td-akhir">
-                                  <input
-                                    type="text"
-                                    inputMode="decimal"
-                                    className="td-input-sm td-input--tebal"
-                                    value={d.nilaiAkhir}
-                                    onChange={(e) => onNilaiAkhirChange(r.siswaId, e.target.value)}
-                                    aria-label={`Nilai akhir — ${r.siswaNama}`}
-                                  />
-                                </td>
-                                <td className="td-td-pred">
-                                  <select
-                                    className="td-select-sm"
-                                    value={d.predikat}
-                                    onChange={(e) => patchDraft(r.siswaId, { predikat: e.target.value })}
-                                    aria-label={`Predikat — ${r.siswaNama}`}
-                                  >
-                                    <option value="">—</option>
-                                    {daftarPredikat.map((p) => (
-                                      <option key={p} value={p}>{p}</option>
-                                    ))}
-                                  </select>
-                                </td>
+                                <th className="td-th-akhir">Nilai akhir</th>
+                                <th className="td-th-pred">Predikat</th>
                                 {bisaAi && (
-                                  <td>
-                                    <button
-                                      type="button"
-                                      className="td-btn-ai td-btn-ai--ikon"
-                                      title="Generate skor dari predikat lalu simpan otomatis"
-                                      disabled={!d.predikat || menyimpanSiswaId === r.siswaId || menyimpanSiswaId === '__semua__'}
-                                      onClick={() => void generateDariPredikat(r.siswaId)}
-                                    >
-                                      <IconSparkle />
-                                    </button>
-                                  </td>
+                                  <th className="td-th-ai" title="Generate dari predikat">
+                                    AI
+                                  </th>
                                 )}
-                                <td>
-                                  <input
-                                    type="text"
-                                    className="td-input-md"
-                                    placeholder="…"
-                                    value={d.komentar}
-                                    onChange={(e) => patchDraft(r.siswaId, { komentar: e.target.value })}
-                                  />
-                                </td>
-                                <td>
-                                  <button
-                                    type="button"
-                                    className="tg-btn tg-btn--utama"
-                                    disabled={menyimpanSiswaId === r.siswaId || menyimpanSiswaId === '__semua__'}
-                                    onClick={() => void simpanSatuNilai(r.siswaId, r.siswaNama)}
-                                  >
-                                    {menyimpanSiswaId === r.siswaId ? '…' : 'Simpan'}
-                                  </button>
-                                </td>
+                                <th className="td-th-komen">Komentar</th>
+                                <th className="td-th-aksi" aria-label="Aksi" />
                               </tr>
-                            )
-                          })}
-                        </tbody>
-                      </table>
-                    </div>
+                            </thead>
+                            <tbody>
+                              {barisTampil.map(({ r, no }) => {
+                                const d = draft[r.siswaId] || {
+                                  perKategori: {},
+                                  nilaiAkhir: '',
+                                  predikat: '',
+                                  komentar: '',
+                                }
+                                const st = statusNilai[r.siswaId] ?? 'kosong'
+                                const sibuk =
+                                  menyimpanSiswaId === r.siswaId || menyimpanSiswaId === '__semua__'
+                                return (
+                                  <tr key={r.siswaId} className={`td-baris-nilai td-baris-nilai--${st}`}>
+                                    <td className="td-td-nama">
+                                      <span className="td-nama-wrap">
+                                        <span className="td-no">{no}</span>
+                                        <span className="td-nama-teks">
+                                          <b>{r.siswaNama}</b>
+                                          <small className={`td-status-baris td-status-baris--${st}`}>
+                                            {st === 'ok'
+                                              ? 'Tersimpan'
+                                              : st === 'ubah'
+                                                ? 'Belum disimpan'
+                                                : 'Belum dinilai'}
+                                          </small>
+                                        </span>
+                                      </span>
+                                    </td>
+                                    {kategoriAktif.map((k) => (
+                                      <td key={k.id} className="td-td-skor">
+                                        <input
+                                          type="text"
+                                          inputMode="decimal"
+                                          className="td-input-sm"
+                                          placeholder="0–100"
+                                          value={d.perKategori[k.id] ?? ''}
+                                          onChange={(e) => onSkorKategori(r.siswaId, k.id, e.target.value)}
+                                          aria-label={`${k.nama} — ${r.siswaNama}`}
+                                        />
+                                      </td>
+                                    ))}
+                                    <td className="td-td-akhir">
+                                      <input
+                                        type="text"
+                                        inputMode="decimal"
+                                        className="td-input-sm td-input--tebal"
+                                        placeholder="—"
+                                        value={d.nilaiAkhir}
+                                        onChange={(e) => onNilaiAkhirChange(r.siswaId, e.target.value)}
+                                        aria-label={`Nilai akhir — ${r.siswaNama}`}
+                                      />
+                                    </td>
+                                    <td className="td-td-pred">
+                                      <select
+                                        className="td-select-sm"
+                                        value={d.predikat}
+                                        onChange={(e) => patchDraft(r.siswaId, { predikat: e.target.value })}
+                                        aria-label={`Predikat — ${r.siswaNama}`}
+                                      >
+                                        <option value="">—</option>
+                                        {daftarPredikat.map((p) => (
+                                          <option key={p} value={p}>{p}</option>
+                                        ))}
+                                      </select>
+                                    </td>
+                                    {bisaAi && (
+                                      <td className="td-td-ai">
+                                        <button
+                                          type="button"
+                                          className="td-btn-ai td-btn-ai--ikon"
+                                          title="Generate skor dari predikat lalu simpan otomatis"
+                                          aria-label={`Generate dari predikat — ${r.siswaNama}`}
+                                          disabled={!d.predikat || sibuk}
+                                          onClick={() => void generateDariPredikat(r.siswaId)}
+                                        >
+                                          <IconSparkle />
+                                        </button>
+                                      </td>
+                                    )}
+                                    <td className="td-td-komen">
+                                      <input
+                                        type="text"
+                                        className="td-input-md"
+                                        placeholder="Komentar (opsional)"
+                                        value={d.komentar}
+                                        onChange={(e) => patchDraft(r.siswaId, { komentar: e.target.value })}
+                                        aria-label={`Komentar — ${r.siswaNama}`}
+                                      />
+                                    </td>
+                                    <td className="td-td-aksi">
+                                      <button
+                                        type="button"
+                                        className={`td-btn-baris${st === 'ubah' ? ' td-btn-baris--utama' : ''}`}
+                                        disabled={sibuk || st !== 'ubah'}
+                                        onClick={() => void simpanSatuNilai(r.siswaId, r.siswaNama)}
+                                      >
+                                        {menyimpanSiswaId === r.siswaId
+                                          ? '…'
+                                          : st === 'ok'
+                                            ? '✓ Tersimpan'
+                                            : 'Simpan'}
+                                      </button>
+                                    </td>
+                                  </tr>
+                                )
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+                    </>
                   )}
                 </>
               )}

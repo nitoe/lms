@@ -15,6 +15,8 @@
 - Tab **Pengumpulan** menampilkan lencana jumlah kiriman; tab utama kini 4 kolom di layar lebar (sebelumnya 3 kolom sehingga tab ke-4 turun baris).
 - Panel Pengumpulan: ringkasan berupa chip (terkumpul · terlambat · bukti kurang).
 - **Perbaikan tampilan «Tugas kelompok»:** kartu opsi (judul, penjelasan, maks. anggota) yang sebelumnya berdempetan kini tertata; gayanya ternyata tidak pernah aktif karena tertinggal di berkas snippet. Gaya tugas kelompok sisi siswa (`sw-kelompok-*`) ikut diaktifkan di `siswa.css`.
+- **Daftar nilai siswa dirombak agar lega & jelas:** nomor urut dan status per siswa (Tersimpan / Belum disimpan / Belum dinilai), bilah kemajuan «X dari Y siswa sudah dinilai», pencarian nama, saringan Semua / Belum dinilai / Belum disimpan, baris yang belum disimpan ditandai kuning. Tombol **Simpan** per baris kini ringan dan hanya berwarna saat ada perubahan (sebelumnya 25+ tombol cokelat tebal). **Simpan semua (n)** hanya menyimpan baris yang berubah. Kolom hasil (nilai akhir, komentar) dipisah garis dari kolom skor; input lebih tinggi dengan petunjuk «0–100».
+- **Pengaturan penilaian:** kartu kategori bernomor dengan tombol Hapus di kepala kartu (tidak lagi berdesakan di baris isian); tombol simpan lekat di bawah layar.
 - Gaya inline di bagian «Berbagi ke kelas paralel» dan tombol reset dipindah ke CSS.
 
 ### File

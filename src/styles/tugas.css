@@ -943,3 +943,106 @@ a.tg-kumpul:focus-visible { outline: 2px solid var(--tg-a, var(--color-muh-600))
 .td-opsi-kelompok-detail .td-field--sempit { width: 6.5rem; }
 .td-opsi-kelompok-detail .td-field--sempit input { text-align: center; }
 .td-opsi-kelompok-detail .td-hint { padding-bottom: 0.65rem; }
+
+
+/* ===========================================================================
+   Daftar nilai siswa & Pengaturan penilaian — lebih lega, status per baris
+   (2026-11-24). JANGAN ubah display <th>/<td> (lihat catatan di atas).
+   =========================================================================== */
+.td-nilai-toolbar { gap: 0.75rem 1.25rem; margin-bottom: 0.25rem; }
+.td-nilai-judul { min-width: 0; flex: 1 1 22rem; display: flex; flex-direction: column; gap: 0.3rem; }
+.td-nilai-judul .td-hint { max-width: 46rem; }
+.td-chip--warn { background: #fffbeb; color: #92400e; border: 1px solid #fde68a; }
+
+/* Kemajuan penilaian */
+.td-progres {
+  display: flex; flex-direction: column; gap: 0.45rem; padding: 0.75rem 0.95rem;
+  background: #fff; border: 1px solid var(--color-border); border-radius: 0.95rem;
+}
+.td-progres-teks { display: flex; flex-wrap: wrap; align-items: center; gap: 0.35rem 0.75rem; font-size: 0.8rem; color: #334155; }
+.td-progres-teks b { font-weight: 800; color: #1a1d33; font-variant-numeric: tabular-nums; }
+.td-progres-bar { height: 0.45rem; border-radius: 999px; background: #eef1f7; overflow: hidden; }
+.td-progres-bar i { display: block; height: 100%; border-radius: 999px; background: #22c55e; transition: width 0.25s; }
+@media (prefers-reduced-motion: reduce) { .td-progres-bar i { transition: none; } }
+
+/* Pencarian + saringan */
+.td-nilai-saring { display: flex; flex-wrap: wrap; align-items: center; gap: 0.6rem 1rem; }
+.td-nilai-saring .td-cari { width: 16rem; max-width: 100%; min-height: 2.35rem; padding-left: 0.75rem; }
+.td-nilai-segmen { display: flex; flex-wrap: wrap; gap: 0.35rem; }
+
+/* Tabel: lebih lega, kolom hasil dipisah dari kolom skor */
+.td-tabel--nilai th { padding: 0.7rem 0.5rem; text-align: center; background: #f6f8fc; }
+.td-tabel--nilai .td-th-nama { text-align: left; padding-left: 0.9rem; min-width: 11.5rem; max-width: 14rem; }
+.td-tabel--nilai .td-th-komen { text-align: left; min-width: 11rem; max-width: none; }
+.td-tabel--nilai td { padding: 0.65rem 0.45rem; border-bottom: 1px solid #eef1f7; }
+.td-tabel--nilai .td-td-nama { padding-left: 0.9rem; min-width: 11.5rem; max-width: 14rem; box-shadow: 1px 0 0 #eef1f7; }
+.td-tabel--nilai .td-th-nama { box-shadow: 1px 0 0 #e8eaf3; }
+.td-tabel--nilai .td-th-akhir,
+.td-tabel--nilai .td-td-akhir,
+.td-tabel--nilai .td-th-komen,
+.td-tabel--nilai .td-td-komen { border-left: 1px solid #eef1f7; }
+.td-tabel--nilai .td-td-komen { padding-left: 0.7rem; padding-right: 0.7rem; }
+.td-tabel--nilai .td-td-aksi { text-align: right; padding-right: 0.8rem; white-space: nowrap; }
+.td-tabel--nilai .td-td-ai { text-align: center; }
+
+.td-tabel--nilai .td-input-sm,
+.td-tabel--nilai .td-input-md,
+.td-tabel--nilai .td-select-sm { min-height: 2.35rem; border-color: #cfd6e4; background: #fff; border-radius: 0.55rem; }
+.td-tabel--nilai .td-input-sm::placeholder,
+.td-tabel--nilai .td-input-md::placeholder { color: #a8b1c3; font-weight: 500; font-size: 0.74rem; }
+.td-tabel--nilai .td-td-skor .td-input-sm,
+.td-tabel--nilai .td-td-akhir .td-input-sm { width: 4.1rem; }
+.td-tabel--nilai .td-td-akhir .td-input-sm { background: #f8faff; }
+.td-tabel--nilai .td-select-sm { max-width: 5.25rem; }
+
+/* Nama siswa + nomor + status */
+.td-nama-wrap { display: flex; align-items: center; gap: 0.6rem; min-width: 0; }
+.td-no {
+  flex: none; min-width: 1.5rem; height: 1.5rem; display: inline-flex; align-items: center; justify-content: center;
+  border-radius: 999px; background: #eef1f7; color: #64748b; font-size: 0.68rem; font-weight: 800; font-variant-numeric: tabular-nums;
+}
+.td-nama-teks { display: flex; flex-direction: column; gap: 0.12rem; min-width: 0; }
+.td-nama-teks b { font-size: 0.84rem; line-height: 1.25; }
+.td-status-baris { font-size: 0.68rem; font-weight: 700; display: inline-flex; align-items: center; gap: 0.3rem; }
+.td-status-baris::before { content: ''; width: 0.42rem; height: 0.42rem; border-radius: 50%; background: #cbd5e1; }
+.td-status-baris--ok { color: #15803d; }
+.td-status-baris--ok::before { background: #22c55e; }
+.td-status-baris--ubah { color: #b45309; }
+.td-status-baris--ubah::before { background: #f59e0b; }
+.td-status-baris--kosong { color: #94a3b8; }
+
+/* Baris yang belum disimpan ditandai lembut (sel nama sticky ikut berwarna) */
+.td-tabel--nilai tbody tr.td-baris-nilai--ubah td,
+.td-tabel--nilai tbody tr.td-baris-nilai--ubah:hover td,
+.td-tabel--nilai tbody tr.td-baris-nilai--ubah .td-td-nama { background: #fffcf0; }
+.td-tabel--nilai tbody tr.td-baris-nilai--ubah .td-td-nama { box-shadow: inset 3px 0 0 #f59e0b, 1px 0 0 #eef1f7; }
+
+/* Tombol simpan per baris: ringan; berwarna hanya bila ada perubahan */
+.td-btn-baris {
+  font-family: inherit; font-size: 0.76rem; font-weight: 700; cursor: pointer; white-space: nowrap;
+  padding: 0.42rem 0.8rem; min-height: 2.35rem; border-radius: 0.55rem;
+  background: #fff; color: #64748b; border: 1px solid var(--color-border);
+}
+.td-btn-baris:disabled { cursor: default; background: transparent; border-color: transparent; color: #15803d; }
+.td-btn-baris--utama { background: var(--tg-a, var(--color-muh-600)); border-color: var(--tg-a, var(--color-muh-600)); color: #fff; }
+.td-btn-baris--utama:hover:not(:disabled) { filter: brightness(1.08); }
+.td-btn-baris--utama:disabled { background: #e2e8f0; border-color: #e2e8f0; color: #94a3b8; }
+.td-btn-baris:focus-visible { outline: 2px solid var(--tg-a, var(--color-muh-600)); outline-offset: 2px; }
+
+/* Pengaturan penilaian: kartu kategori bernomor */
+.td-kat-item { padding: 0.85rem 0.95rem 0.95rem; background: #fff; border-color: #e2e6f0; display: flex; flex-direction: column; gap: 0.1rem; }
+.td-kat-kepala { display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.7rem; padding-bottom: 0.6rem; border-bottom: 1px dashed #e2e6f0; }
+.td-kat-kepala b { flex: 1; min-width: 0; font-size: 0.86rem; font-weight: 800; color: #1a1d33; overflow-wrap: anywhere; }
+.td-kat-no {
+  flex: none; width: 1.6rem; height: 1.6rem; display: inline-flex; align-items: center; justify-content: center;
+  border-radius: 999px; background: color-mix(in srgb, var(--tg-a, #313083) 10%, #fff); color: var(--tg-a, #313083);
+  font-size: 0.74rem; font-weight: 800;
+}
+.td-kat-baris { margin-bottom: 0.7rem; gap: 0.7rem; }
+.td-kartu-badan .td-tabel td { padding: 0.5rem 0.65rem; }
+.td-kartu-badan .td-tabel th { padding: 0.6rem 0.65rem; }
+
+@media (max-width: 640px) {
+  .td-nilai-saring .td-cari { width: 100%; }
+  .td-tabel--nilai .td-th-nama, .td-tabel--nilai .td-td-nama { min-width: 9.5rem; }
+}
