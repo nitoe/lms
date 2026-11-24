@@ -231,6 +231,18 @@ export interface TugasLms {
    * tanpa label. Dokumen lama tanpa field ini tetap bekerja.
    */
   buktiList?: BuktiTugas[]
+  /**
+   * Berkas dilampirkan guru (template, worksheet, media) — siswa unduh dari detail tugas.
+   * Disimpan di Storage `lms/tugas/{tugasId}/…`; meta di dokumen tugas.
+   */
+  lampiranList?: LampiranTugas[]
+  /**
+   * true = tugas kelompok. Siswa membentuk kelompok + pilih ketua; hanya ketua yang mengumpulkan
+   * (mewakili anggota). Fondasi — UI lengkap menyusul (ANTIREGRESI §Tugas.Kelompok).
+   */
+  modeKelompok?: boolean
+  /** Maks. anggota per kelompok (termasuk ketua). Default 4. */
+  kelompokMaxAnggota?: number
   createdAt?: unknown
   updatedAt?: unknown
 }
@@ -253,10 +265,43 @@ export type TugasInput = {
   arsip?: boolean
   pengaturanPenilaian?: PengaturanPenilaianTugas
   buktiList?: BuktiTugas[]
+  lampiranList?: LampiranTugas[]
+  modeKelompok?: boolean
+  kelompokMaxAnggota?: number
   namaGuru?: string
 }
 
-export const BATAS_UKURAN_FILE_TUGAS = 10 * 1024 * 1024 // 10 MB
+
+/** File yang dilampirkan guru pada tugas (template, worksheet, media). */
+export type JenisLampiranTugas =
+  | 'dokumen'
+  | 'spreadsheet'
+  | 'presentasi'
+  | 'gambar'
+  | 'audio'
+  | 'video'
+  | 'lain'
+
+export interface LampiranTugas {
+  id: string
+  /** Nama tampil, mis. «Lembar kerja.xlsx». */
+  nama: string
+  jenis: JenisLampiranTugas
+  /** Download URL bertoken (siswa buka tanpa Storage rules). */
+  url: string
+  storagePath: string
+  contentType: string
+  ukuran: number
+  /** Keterangan singkat opsional. */
+  keterangan?: string
+}
+
+/** Maks. ukuran per berkas lampiran guru (50 MB — video pendek / presentasi). */
+export const BATAS_UKURAN_LAMPIRAN_TUGAS = 50 * 1024 * 1024
+/** Maks. jumlah lampiran per tugas. */
+export const BATAS_JUMLAH_LAMPIRAN_TUGAS = 8
+
+export const BATAS_UKURAN_FILE_TUGAS = 10 * 1024 * 1024 // 10 MB (legacy; prefer BATAS_UKURAN_LAMPIRAN_TUGAS)
 
 export function labelJenisTugas(j: JenisTugas): string {
   return j === 'proyek' ? 'Proyek' : 'Mapel'

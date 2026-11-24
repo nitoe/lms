@@ -2,7 +2,14 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { cakupanTugas } from '../lib/cakupanTugas'
-import { ambilTugas, aturBerbagiTugas, buatTugas, updateTugas } from '../lib/tugas'
+import {
+  ambilTugas,
+  aturBerbagiTugas,
+  buatTugas,
+  hapusBerkasLampiranTugas,
+  unggahLampiranTugas,
+  updateTugas,
+} from '../lib/tugas'
 import BerbagiKelasDialog from '../components/BerbagiKelasDialog'
 import PengumpulanPanel from '../components/PengumpulanPanel'
 import BuktiTugasEditor from '../components/BuktiTugasEditor'
@@ -57,6 +64,9 @@ import {
   semuaMapelTugas,
   tahapValid,
   type StatusTugas,
+  type LampiranTugas,
+  BATAS_JUMLAH_LAMPIRAN_TUGAS,
+  BATAS_UKURAN_LAMPIRAN_TUGAS,
 } from '../types/tugas'
 import type { TpRingkas } from '../types/materi'
 
@@ -134,6 +144,9 @@ export default function TugasDetail() {
     { key: 'utama', mapel: '' },
   ])
   const [deskripsi, setDeskripsi] = useState('')
+  const [lampiranList, setLampiranList] = useState<LampiranTugas[]>([])
+  const [unggahLampiranBusy, setUnggahLampiranBusy] = useState(false)
+  const [progresLampiran, setProgresLampiran] = useState<number | null>(null)
   const [instruksi, setInstruksi] = useState('')
   const [buktiList, setBuktiList] = useState<BuktiTugas[]>([])
   const [tenggatStr, setTenggatStr] = useState('')
@@ -234,6 +247,7 @@ export default function TugasDetail() {
     setDeskripsi(t.deskripsi || '')
     setInstruksi(t.instruksi || '')
     setBuktiList(t.buktiList || [])
+    setLampiranList(t.lampiranList ?? [])
     setTenggatStr(tenggatKeInput(t.tenggat))
     setStatusTugas(normalisasiStatusTugas(t.statusTugas, t.aktif))
     setJenisPenilaian(
@@ -351,6 +365,51 @@ export default function TugasDetail() {
     }
   }
 
+
+  async function tambahLampiran(file: File) {
+    if (isBaru || !tugasId) {
+      setError('Simpan pengaturan tugas dulu, lalu unggah lampiran.')
+      return
+    }
+    if (lampiranList.length >= BATAS_JUMLAH_LAMPIRAN_TUGAS) {
+      setError(`Maksimal ${BATAS_JUMLAH_LAMPIRAN_TUGAS} lampiran.`)
+      return
+    }
+    setUnggahLampiranBusy(true)
+    setProgresLampiran(0)
+    setError('')
+    try {
+      const L = await unggahLampiranTugas(tugasId, file, setProgresLampiran)
+      const next = [...lampiranList, L]
+      setLampiranList(next)
+      await updateTugas(tugasId, { lampiranList: next })
+      setSukses(`Lampiran «${L.nama}» terunggah.`)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Gagal mengunggah lampiran.')
+    } finally {
+      setUnggahLampiranBusy(false)
+      setProgresLampiran(null)
+    }
+  }
+
+  async function hapusLampiran(L: LampiranTugas) {
+    if (!tugasId) return
+    if (!window.confirm(`Hapus lampiran «${L.nama}»?`)) return
+    setBusy(true)
+    setError('')
+    try {
+      await hapusBerkasLampiranTugas(L.storagePath)
+      const next = lampiranList.filter((x) => x.id !== L.id)
+      setLampiranList(next)
+      await updateTugas(tugasId, { lampiranList: next })
+      setSukses('Lampiran dihapus.')
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Gagal menghapus lampiran.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
   async function simpanPengaturan(e?: React.FormEvent) {
     e?.preventDefault()
     setBusy(true)
@@ -399,6 +458,7 @@ export default function TugasDetail() {
           statusTugas,
           aktif: statusTugas === 'aktif_siswa',
           pengaturanPenilaian: pengaturan,
+          lampiranList,
         })
         setSukses('Perubahan disimpan.')
         const t = await ambilTugas(tugasId)
@@ -1168,6 +1228,61 @@ export default function TugasDetail() {
                 <span>Deskripsi singkat</span>
                 <textarea value={deskripsi} onChange={(e) => setDeskripsi(e.target.value)} rows={2} placeholder="Ringkasan singkat untuk kartu katalog…" />
               </label>
+
+              {!isBaru && tugas && (
+                <div className="td-field td-field--full">
+                  <span>Lampiran untuk siswa</span>
+                  <p className="td-hint" style={{ marginTop: 0 }}>
+                    Template / worksheet / media (dokumen, spreadsheet, presentasi, gambar, audio, video).
+                    Maks. {BATAS_JUMLAH_LAMPIRAN_TUGAS} berkas, {Math.round(BATAS_UKURAN_LAMPIRAN_TUGAS / (1024 * 1024))} MB
+                    per berkas. Siswa mengunduh dari detail tugas.
+                  </p>
+                  {lampiranList.length > 0 && (
+                    <ul className="td-lampiran-list">
+                      {lampiranList.map((L) => (
+                        <li key={L.id} className="td-lampiran-item">
+                          <a href={L.url} target="_blank" rel="noreferrer" className="td-lampiran-nama">
+                            {L.nama}
+                          </a>
+                          <span className="td-lampiran-meta">
+                            {L.jenis}
+                            {L.ukuran ? ` · ${(L.ukuran / 1024).toFixed(0)} KB` : ''}
+                          </span>
+                          <button
+                            type="button"
+                            className="tg-btn"
+                            disabled={busy || unggahLampiranBusy}
+                            onClick={() => void hapusLampiran(L)}
+                          >
+                            Hapus
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  {lampiranList.length < BATAS_JUMLAH_LAMPIRAN_TUGAS && (
+                    <label className="td-lampiran-unggah">
+                      <input
+                        type="file"
+                        accept=".pdf,.doc,.docx,.odt,.txt,.xls,.xlsx,.csv,.ods,.ppt,.pptx,.odp,image/*,audio/*,video/*,.mp3,.mp4,.webm,.wav"
+                        disabled={busy || unggahLampiranBusy}
+                        onChange={(e) => {
+                          const f = e.target.files?.[0]
+                          e.target.value = ''
+                          if (f) void tambahLampiran(f)
+                        }}
+                      />
+                      <span className="tg-btn">
+                        {unggahLampiranBusy
+                          ? progresLampiran != null
+                            ? `Mengunggah… ${Math.round(progresLampiran * 100)}%`
+                            : 'Mengunggah…'
+                          : '+ Unggah lampiran'}
+                      </span>
+                    </label>
+                  )}
+                </div>
+              )}
               <label className="td-field td-field--full">
                 <span>Status tugas</span>
                 <select

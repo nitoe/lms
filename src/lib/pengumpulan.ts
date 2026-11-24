@@ -380,3 +380,46 @@ export async function daftarPengumpulanTugas(tugas: TugasLms): Promise<Pengumpul
   hasil.sort((a, b) => a.siswaNama.localeCompare(b.siswaNama, 'id'))
   return hasil
 }
+
+/**
+ * Reset pengumpulan satu siswa (guru/admin): hapus meta + foto Firestore + video Storage.
+ * Opsional hapus nilai agar siswa boleh kumpul lagi setelah dinilai (ANTIREGRESI §Tugas.Reset).
+ */
+export async function hapusPengumpulanSiswa(
+  tugas: TugasLms,
+  dok: PengumpulanDok,
+  opsi?: { hapusNilai?: boolean },
+): Promise<void> {
+  // 1) Video Storage (best-effort)
+  for (const v of Object.values(dok.videos ?? {})) {
+    if (v?.path) await hapusVideoTugas(v.path)
+  }
+  // 2) Foto dokumen
+  for (const id of dok.fotoIds ?? []) {
+    try {
+      await deleteDoc(doc(db, 'lms_pengumpulan_foto', id))
+    } catch (e) {
+      console.warn('hapus foto pengumpulan', id, e)
+    }
+  }
+  // Slot 1..6 cadangan bila fotoIds kosong/tidak lengkap
+  for (const n of DAFTAR_SLOT) {
+    const id = idFoto(tugas.id, dok.siswaId, n - 1)
+    if (dok.fotoIds?.includes(id)) continue
+    try {
+      await deleteDoc(doc(db, 'lms_pengumpulan_foto', id))
+    } catch {
+      /* tidak ada */
+    }
+  }
+  // 3) Meta
+  await deleteDoc(doc(db, 'lms_pengumpulan', dok.id))
+  // 4) Nilai (opsional) — buka kembali kunci pengumpulan
+  if (opsi?.hapusNilai) {
+    try {
+      await deleteDoc(doc(db, 'lms_nilai_tugas', `${tugas.id}_${dok.siswaId}`))
+    } catch (e) {
+      console.warn('hapus nilai tugas saat reset', e)
+    }
+  }
+}

@@ -1,3 +1,19 @@
+## 2026-11-24 — Reset pengumpulan tugas + lampiran file guru
+
+### Reset attempt pengumpulan (guru/admin)
+- Di tab **Pengumpulan**: tombol **Reset pengumpulan** (hapus foto/video kiriman) dan **Reset + hapus nilai** (juga hapus `lms_nilai_tugas` agar siswa bisa kumpul ulang setelah dinilai).
+- Berguna saat siswa salah kirim atau uji sistem. Rules lama sudah mengizinkan hapus meta/foto oleh guru mapel×kelas.
+- File: `src/lib/pengumpulan.ts` (`hapusPengumpulanSiswa`), `src/components/PengumpulanPanel.tsx`, `src/styles/tugas.css`.
+
+### Lampiran tugas (pengaturan guru)
+- Guru mengunggah template/worksheet/media di tab **Pengaturan** (setelah tugas tersimpan): PDF, Word, Excel, PowerPoint, gambar, audio, video (maks. 8 berkas, 50 MB/berkas).
+- Storage `lms/tugas/{tugasId}/…`; meta `lms_tugas.lampiranList`. Siswa melihat unduhan di detail tugas.
+- File: `src/types/tugas.ts`, `src/lib/tugas.ts`, `src/pages/TugasDetail.tsx`, `src/pages/siswa/SiswaTugas.tsx`, `src/styles/tugas.css`, `src/styles/siswa.css`, `storage.rules`.
+- **Wajib deploy storage** (+ hosting). Firestore rules tugas tidak memakai hasOnly — field baru OK tanpa ubah rules.
+
+### Tugas kelompok (fondasi tipe)
+- Field opsional `modeKelompok` + `kelompokMaxAnggota` pada tipe tugas (UI penuh menyusul). Mekanisme: ketua kumpul mewakili anggota — lihat ANTIREGRESI §Tugas.Kelompok.
+
 ## 2026-11-24 — Pengumpulan: multi-pilih galeri tetap, tanpa nyebrang otomatis
 
 - **Regresi:** setelah isolasi slot, atribut `multiple` di «Dari galeri» mode bukti dihapus → siswa tidak bisa centang beberapa foto di pemilih sistem.

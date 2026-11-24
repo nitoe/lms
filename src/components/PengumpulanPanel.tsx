@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   daftarPengumpulanTugas,
   DAFTAR_SLOT,
+  hapusPengumpulanSiswa,
   muatFotoBerslot,
   slotDariFotoId,
   type PengumpulanDok,
@@ -37,6 +38,7 @@ export default function PengumpulanPanel({ tugas }: Props) {
   const [foto, setFoto] = useState<Record<string, Record<number, string> | 'memuat'>>({})
   /** URL putar video per pengumpulan (dimuat saat baris dibuka; berisi token akses, jangan disimpan). */
   const [videoUrl, setVideoUrl] = useState<Record<string, Record<number, string>>>({})
+  const [busyResetId, setBusyResetId] = useState<string | null>(null)
 
   const muat = useCallback(async () => {
     setGalat('')
@@ -60,6 +62,36 @@ export default function PengumpulanPanel({ tugas }: Props) {
   }, [muat])
 
   const batas = useMemo(() => tenggatMs(tugas.tenggat), [tugas.tenggat])
+
+  async function resetKumpul(d: PengumpulanDok, hapusNilai: boolean) {
+    const extra = hapusNilai
+      ? ' Nilai yang sudah diisi juga dihapus agar siswa bisa mengumpulkan ulang.'
+      : ' Nilai (jika ada) tetap — siswa hanya bisa kumpul ulang jika belum dinilai.'
+    if (
+      !window.confirm(
+        `Reset pengumpulan ${d.siswaNama}? Foto/video kiriman dihapus.${extra}`,
+      )
+    ) {
+      return
+    }
+    setBusyResetId(d.id)
+    setGalat('')
+    try {
+      await hapusPengumpulanSiswa(tugas, d, { hapusNilai })
+      setList((prev) => (prev ? prev.filter((x) => x.id !== d.id) : prev))
+      setBuka((b) => (b === d.id ? null : b))
+      setFoto((p) => {
+        const n = { ...p }
+        delete n[d.id]
+        return n
+      })
+    } catch (e) {
+      console.warn('reset pengumpulan', e)
+      setGalat(e instanceof Error ? e.message : 'Gagal mereset pengumpulan.')
+    } finally {
+      setBusyResetId(null)
+    }
+  }
 
   async function toggle(d: PengumpulanDok) {
     if (buka === d.id) {

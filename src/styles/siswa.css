@@ -2468,3 +2468,9 @@ button.sw-kat-card {
   border: 1.5px dashed #fbbf24;
   background: #fffbeb;
 }
+
+/* Lampiran tugas (siswa) */
+.sw-lampiran-list { list-style: none; margin: 0.5rem 0 0; padding: 0; display: flex; flex-direction: column; gap: 0.45rem; }
+.sw-lampiran-list li { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.35rem 0.75rem; padding: 0.55rem 0.7rem; border-radius: 0.85rem; border: 1px solid #99f6e4; background: #f0fdfa; }
+.sw-lampiran-tautan { font-weight: 800; font-size: 0.92rem; color: #0f766e; word-break: break-word; }
+.sw-lampiran-meta { font-size: 0.75rem; color: #64748b; }

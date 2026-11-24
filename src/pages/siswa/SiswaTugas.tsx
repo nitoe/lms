@@ -278,6 +278,27 @@ export default function SiswaTugas() {
           </div>
         )}
 
+        
+        {detail.lampiranList && detail.lampiranList.length > 0 && (
+          <section className="sw-kat-panel sw-lampiran">
+            <h2>Berkas dari gurumu</h2>
+            <p className="sw-kat-hint">Unduh template atau file pendukung, lalu kerjakan sesuai instruksi.</p>
+            <ul className="sw-lampiran-list">
+              {detail.lampiranList.map((L) => (
+                <li key={L.id}>
+                  <a href={L.url} target="_blank" rel="noreferrer" className="sw-lampiran-tautan">
+                    {L.nama}
+                  </a>
+                  <span className="sw-lampiran-meta">
+                    {L.jenis}
+                    {L.ukuran ? ` · ${L.ukuran >= 1048576 ? `${(L.ukuran / 1048576).toFixed(1)} MB` : `${Math.round(L.ukuran / 1024)} KB`}` : ''}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
+
         <PengumpulanSiswa
           key={detail.id}
           tugas={detail}

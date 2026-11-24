@@ -1,3 +1,22 @@
+## §Tugas.Reset — Reset pengumpulan siswa (2026-11-24)
+
+1. Guru/admin menghapus `lms_pengumpulan` + `lms_pengumpulan_foto` + video Storage; opsional `lms_nilai_tugas` agar kunci `lmsSudahDinilai` terbuka.
+2. Jangan biarkan siswa menghapus meta sendiri setelah dinilai (rules sudah melarang).
+3. UI: konfirmasi eksplisit; dua tombol terpisah (dengan/tanpa hapus nilai).
+
+## §Tugas.Lampiran — Berkas lampiran guru (2026-11-24)
+
+1. Path Storage hanya `lms/tugas/{tugasId}/{id}_{nama}` lewat `unggahLampiranTugas`.
+2. Siswa unduh lewat `url` bertoken — jangan mengandalkan `isLoggedIn()` Storage untuk token siswa.
+3. Batas: 8 berkas, 50 MB; jenis dari content-type + ekstensi.
+
+## §Tugas.Kelompok — Mekanisme (rencana, 2026-11-24)
+
+1. Guru menandai `modeKelompok`. Siswa pilih anggota + ketua (`lms_tugas_kelompok`).
+2. Hanya ketua yang `kirimPengumpulan`; anggota mendapat status «terkumpul lewat kelompok» (baca meta ketua atau flag `kelompokId` pada pengumpulan).
+3. Penilaian: nilai sama ke semua anggota atau input per anggota dari bukti yang sama — putuskan di UI nilai.
+4. Belum diimplementasikan penuh di UI; field tipe sudah disiapkan.
+
 ## §Tugas.MultiFile — Multi-pilih foto pengumpulan (2026-11-24)
 
 1. **Mode bebas:** `input[type=file][multiple]` + `BATAS_FOTO_PENGUMPULAN = 6` (sama dengan `fotoIds.size() <= 6` di rules). Jangan turunkan ke 3 lagi tanpa mengubah rules.

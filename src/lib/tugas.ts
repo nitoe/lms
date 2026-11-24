@@ -11,9 +11,12 @@ import {
   where,
   Timestamp,
 } from 'firebase/firestore'
-import { auth, db } from './firebase'
+import { deleteObject, getDownloadURL, ref, uploadBytesResumable } from 'firebase/storage'
+import { auth, db, storage } from './firebase'
 import type {
+  JenisLampiranTugas,
   JenisPenilaianTugas,
+  LampiranTugas,
   PengaturanPenilaianTugas,
   StatusTugas,
   TugasInput,
@@ -21,6 +24,8 @@ import type {
   TpTugas,
 } from '../types/tugas'
 import {
+  BATAS_JUMLAH_LAMPIRAN_TUGAS,
+  BATAS_UKURAN_LAMPIRAN_TUGAS,
   aktifSiswaDariStatus,
   normalisasiStatusTugas,
   tahapValid,
@@ -98,6 +103,131 @@ function normalisasiTpList(list?: TpTugas[]): TpTugas[] | undefined {
     }))
 }
 
+
+function jenisDariContentType(ct: string, nama: string): JenisLampiranTugas {
+  const c = (ct || '').toLowerCase()
+  const n = nama.toLowerCase()
+  if (c.startsWith('image/')) return 'gambar'
+  if (c.startsWith('audio/')) return 'audio'
+  if (c.startsWith('video/')) return 'video'
+  if (
+    c.includes('spreadsheet') ||
+    c.includes('excel') ||
+    n.endsWith('.xlsx') ||
+    n.endsWith('.xls') ||
+    n.endsWith('.csv') ||
+    n.endsWith('.ods')
+  )
+    return 'spreadsheet'
+  if (
+    c.includes('presentation') ||
+    c.includes('powerpoint') ||
+    n.endsWith('.pptx') ||
+    n.endsWith('.ppt') ||
+    n.endsWith('.odp')
+  )
+    return 'presentasi'
+  if (
+    c.includes('pdf') ||
+    c.includes('word') ||
+    c.includes('document') ||
+    n.endsWith('.doc') ||
+    n.endsWith('.docx') ||
+    n.endsWith('.odt') ||
+    n.endsWith('.txt')
+  )
+    return 'dokumen'
+  return 'lain'
+}
+
+function normalisasiLampiranList(raw: unknown): LampiranTugas[] | undefined {
+  if (!Array.isArray(raw) || raw.length === 0) return undefined
+  const out: LampiranTugas[] = []
+  for (const x of raw) {
+    if (!x || typeof x !== 'object') continue
+    const o = x as Record<string, unknown>
+    const id = typeof o.id === 'string' ? o.id : ''
+    const nama = typeof o.nama === 'string' ? o.nama : ''
+    const url = typeof o.url === 'string' ? o.url : ''
+    const storagePath = typeof o.storagePath === 'string' ? o.storagePath : ''
+    if (!id || !nama || !url || !storagePath) continue
+    const jenis = (
+      ['dokumen', 'spreadsheet', 'presentasi', 'gambar', 'audio', 'video', 'lain'] as const
+    ).includes(o.jenis as JenisLampiranTugas)
+      ? (o.jenis as JenisLampiranTugas)
+      : jenisDariContentType(String(o.contentType || ''), nama)
+    out.push({
+      id,
+      nama: nama.slice(0, 200),
+      jenis,
+      url,
+      storagePath: storagePath.slice(0, 400),
+      contentType: typeof o.contentType === 'string' ? o.contentType.slice(0, 120) : 'application/octet-stream',
+      ukuran: typeof o.ukuran === 'number' ? o.ukuran : 0,
+      keterangan: typeof o.keterangan === 'string' ? o.keterangan.slice(0, 300) : undefined,
+    })
+    if (out.length >= BATAS_JUMLAH_LAMPIRAN_TUGAS) break
+  }
+  return out.length ? out : undefined
+}
+
+function namaFileAman(nama: string): string {
+  return nama.replace(/[^a-zA-Z0-9._\-()\s\u00C0-\u024F]+/g, '_').slice(0, 120) || 'berkas'
+}
+
+/**
+ * Unggah berkas lampiran tugas ke Storage `lms/tugas/{tugasId}/{id}_{nama}`.
+ * Siswa mengunduh lewat URL bertoken (tanpa perlu claim Storage).
+ */
+export async function unggahLampiranTugas(
+  tugasId: string,
+  file: File,
+  onProgress?: (p: number) => void,
+): Promise<LampiranTugas> {
+  if (!tugasId) throw new Error('ID tugas belum ada — simpan pengaturan dulu.')
+  if (file.size > BATAS_UKURAN_LAMPIRAN_TUGAS) {
+    throw new Error(
+      `Berkas terlalu besar (maks. ${Math.round(BATAS_UKURAN_LAMPIRAN_TUGAS / (1024 * 1024))} MB).`,
+    )
+  }
+  const id = `lp-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`
+  const aman = namaFileAman(file.name)
+  const storagePath = `lms/tugas/${tugasId}/${id}_${aman}`
+  const r = ref(storage, storagePath)
+  const task = uploadBytesResumable(r, file, {
+    contentType: file.type || 'application/octet-stream',
+  })
+  await new Promise<void>((resolve, reject) => {
+    task.on(
+      'state_changed',
+      (s) => {
+        if (s.totalBytes > 0) onProgress?.(s.bytesTransferred / s.totalBytes)
+      },
+      reject,
+      () => resolve(),
+    )
+  })
+  const url = await getDownloadURL(r)
+  return {
+    id,
+    nama: file.name.slice(0, 200) || aman,
+    jenis: jenisDariContentType(file.type, file.name),
+    url,
+    storagePath,
+    contentType: file.type || 'application/octet-stream',
+    ukuran: file.size,
+  }
+}
+
+export async function hapusBerkasLampiranTugas(storagePath: string): Promise<void> {
+  if (!storagePath.startsWith('lms/tugas/')) return
+  try {
+    await deleteObject(ref(storage, storagePath))
+  } catch (e) {
+    console.warn('hapus lampiran storage', storagePath, e)
+  }
+}
+
 function docKeTugas(id: string, data: Record<string, unknown>): TugasLms {
   const jenis = data.jenis === 'proyek' ? 'proyek' : 'mapel'
   const jenisPenilaian = normalisasiJenisPenilaian(data.jenisPenilaian)
@@ -146,6 +276,12 @@ function docKeTugas(id: string, data: Record<string, unknown>): TugasLms {
       const b = rapikanBuktiList(data.buktiList)
       return b.length ? b : undefined
     })(),
+    lampiranList: normalisasiLampiranList(data.lampiranList),
+    modeKelompok: data.modeKelompok === true,
+    kelompokMaxAnggota:
+      typeof data.kelompokMaxAnggota === 'number' && data.kelompokMaxAnggota >= 2
+        ? Math.min(12, Math.floor(data.kelompokMaxAnggota))
+        : undefined,
     createdAt: data.createdAt,
     updatedAt: data.updatedAt,
   }
@@ -394,6 +530,17 @@ export async function updateTugas(
   if (data.buktiList !== undefined) {
     const bukti = sanitasiBuktiList(data.buktiList)
     payload.buktiList = bukti.length ? bukti : null
+  }
+  if (data.lampiranList !== undefined) {
+    payload.lampiranList = normalisasiLampiranList(data.lampiranList) ?? null
+  }
+  if (data.modeKelompok !== undefined) {
+    payload.modeKelompok = data.modeKelompok === true
+  }
+  if (data.kelompokMaxAnggota !== undefined) {
+    const n = data.kelompokMaxAnggota
+    payload.kelompokMaxAnggota =
+      typeof n === 'number' && n >= 2 ? Math.min(12, Math.floor(n)) : null
   }
 
   // Hapus undefined di top-level (nested sudah dirapikan sanitasi)
