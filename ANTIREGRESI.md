@@ -1,7 +1,8 @@
 ## §Tugas.MultiFile — Multi-pilih foto pengumpulan (2026-11-24)
 
 1. **Mode bebas:** `input[type=file][multiple]` + `BATAS_FOTO_PENGUMPULAN = 6` (sama dengan `fotoIds.size() <= 6` di rules). Jangan turunkan ke 3 lagi tanpa mengubah rules.
-2. **Mode bukti berlabel:** satu kartu = satu slot; multi-pilih mengisi **slot foto kosong** berurutan (bukan menimpa semua). Slot **video** tidak diisi lewat multi-foto.
+2. **Mode bukti berlabel — isolasi slot (wajib):** satu kartu = satu slot = satu foto/video. `pilihBukti(slot, files)` HANYA menulis `fotoSlot[slot]` (file pertama bila pemilih mengembalikan banyak). **Jangan** mengisi slot bukti lain dari sisa file — dokumentasi antar bukti berbeda peruntukan. Tombol global «Pilih beberapa foto sekaligus» **tidak** dipakai (redundant & memicu nyebrang).
+
 3. **Video:** tetap satu file per slot (`accept="video/*"` tanpa `multiple`); maks. 2 video/tugas (§Tugas.Video).
 4. Uji: (a) mode bebas pilih 4 foto sekali → 4 thumbnail; (b) bukti 3 foto kosong, pilih 3 sekaligus → ketiga slot terisi; (c) pilih 5 saat hanya 2 slot kosong → 2 terisi + pesan sisa.
 5. **Android:** jangan mengandalkan satu tombol dengan `accept="image/*"` saja — di banyak HP muncul dialog sistem «Select an image» (Camera | Browse) dengan thumbnail kosong bila izin media belum diberikan. Sediakan **dua input**: galeri (tanpa `capture`, `multiple`, MIME eksplisit + HEIC) dan kamera (`capture="environment"`). Jangan pasang `capture` pada input galeri (memaksa kamera).

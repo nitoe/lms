@@ -174,72 +174,29 @@ export default function PengumpulanSiswa({
     }
   }
 
+  /**
+   * Satu kartu bukti = satu slot = satu foto (ANTIREGRESI §Tugas.MultiFile).
+   * Jangan mengisi slot bukti lain — dokumentasi tiap bukti berbeda peruntukannya.
+   * Jika pemilih sistem mengembalikan beberapa file, hanya file pertama dipakai.
+   */
   async function pilihBukti(slot: number, files: FileList | null, input: HTMLInputElement | null) {
-    if (!files || files.length === 0) return
+    const f = files?.[0]
+    if (!f) return
     setGalat('')
     setSukses(false)
     setOlahSlot(slot)
     try {
-      // Satu file → slot ini; beberapa file → slot ini + slot foto kosong lain (satu setState agar semua pratinjau tampil).
-      const daftar = Array.from(files)
-      const slotFoto = buktiList
-        .filter((b) => b.jenis !== 'video')
-        .map((b) => b.slot)
-        .sort((a, b) => a - b)
-      const kosongLain = slotFoto.filter((n) => n !== slot && !fotoSlot[n])
-      const targetSlots = [slot, ...kosongLain]
-      const dipakai = daftar.slice(0, targetSlots.length)
-      const isi: Record<number, string> = {}
-      for (let i = 0; i < dipakai.length; i++) {
-        isi[targetSlots[i]] = await siapkanFoto(dipakai[i])
-      }
-      setFotoSlot((prev) => ({ ...prev, ...isi }))
-      const sisa = daftar.length - dipakai.length
-      if (sisa > 0) {
+      const src = await siapkanFoto(f)
+      setFotoSlot((prev) => ({ ...prev, [slot]: src }))
+      if (files && files.length > 1) {
         setGalat(
-          `${dipakai.length} foto masuk pratinjau. ${sisa} tidak muat (slot foto sudah penuh — maks. satu foto per bukti).`,
+          `Bukti ini hanya satu foto. ${files.length - 1} foto lain tidak dipakai — pilih lewat kartu bukti yang sesuai.`,
         )
       }
     } catch (e) {
       setGalat(e instanceof Error ? e.message : 'Foto tidak bisa diproses.')
     } finally {
       setOlahSlot(null)
-      if (input) input.value = ''
-    }
-  }
-
-  /** Isi beberapa slot foto kosong sekaligus (tombol galeri multi di mode bukti). */
-  async function pilihBeberapaSlotKosong(files: FileList | null, input: HTMLInputElement | null) {
-    if (!files || files.length === 0) return
-    setGalat('')
-    setSukses(false)
-    const slotFoto = buktiList
-      .filter((b) => b.jenis !== 'video')
-      .map((b) => b.slot)
-      .sort((a, b) => a - b)
-    const kosong = slotFoto.filter((n) => !fotoSlot[n])
-    if (kosong.length === 0) {
-      setGalat('Semua slot foto sudah terisi. Hapus salah satu dulu bila ingin mengganti.')
-      if (input) input.value = ''
-      return
-    }
-    setOlah(true)
-    try {
-      const daftar = Array.from(files).slice(0, kosong.length)
-      const isi: Record<number, string> = {}
-      for (let i = 0; i < daftar.length; i++) {
-        isi[kosong[i]] = await siapkanFoto(daftar[i])
-      }
-      setFotoSlot((prev) => ({ ...prev, ...isi }))
-      if (files.length > kosong.length) {
-        setGalat(
-          `${daftar.length} foto masuk pratinjau. ${files.length - daftar.length} tidak muat (hanya ${kosong.length} slot kosong).`,
-        )
-      }
-    } catch (e) {
-      setGalat(e instanceof Error ? e.message : 'Foto tidak bisa diproses.')
-    } finally {
-      setOlah(false)
       if (input) input.value = ''
     }
   }
@@ -435,7 +392,7 @@ export default function PengumpulanSiswa({
           <p className="sw-kat-hint">
             Gurumu meminta {buktiList.length} bukti
             {jumlahWajib < buktiList.length ? ` ({jumlahWajib} wajib)` : ''}.
-            Isi tiap kartu, atau pakai «Pilih beberapa foto sekaligus» untuk slot foto yang kosong.
+            Isi tiap kartu sesuai namanya — satu foto per bukti, jangan tertukar.
           </p>
           {kelompokBuktiPerTahap(buktiList).map((g) => (
             <div key={g.tahap ?? 'lain'} className="sw-bukti-kelompok">
@@ -508,7 +465,6 @@ export default function PengumpulanSiswa({
                       <input
                         type="file"
                         accept="image/jpeg,image/png,image/webp,image/heic,image/heif,.jpg,.jpeg,.png,.webp,.heic,.heif"
-                        multiple
                         className="sw-kumpul-input"
                         id={idInput}
                         disabled={off}
@@ -568,29 +524,6 @@ export default function PengumpulanSiswa({
                   </div>
                 ))}
               </div>
-            </div>
-          )}
-
-          {tampilForm && buktiList.some((b) => b.jenis !== 'video' && !fotoSlot[b.slot]) && (
-            <div className="sw-kumpul-multi">
-              <input
-                type="file"
-                accept="image/jpeg,image/png,image/webp,image/heic,image/heif,.jpg,.jpeg,.png,.webp,.heic,.heif"
-                multiple
-                className="sw-kumpul-input"
-                id={`kumpul-multi-${tugas.id}`}
-                disabled={olah || busy}
-                onChange={(e) => void pilihBeberapaSlotKosong(e.target.files, e.target)}
-              />
-              <label
-                htmlFor={`kumpul-multi-${tugas.id}`}
-                className={`sw-kumpul-tambah${olah || busy ? ' sw-kumpul-tambah--off' : ''}`}
-              >
-                {olah ? 'Memproses foto…' : 'Pilih beberapa foto sekaligus'}
-              </label>
-              <p className="sw-kat-hint">
-                Foto diisi berurutan ke slot yang masih kosong. Video tetap dipilih per kartu bukti.
-              </p>
             </div>
           )}
 

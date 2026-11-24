@@ -1,3 +1,11 @@
+## 2026-11-24 — Pengumpulan bukti: foto tidak nyebrang ke bukti lain
+
+- **Bug:** memilih foto di satu kartu bukti bisa mengisi slot bukti lain (sisa file multi-pilih / tombol «Pilih beberapa foto sekaligus»). Dokumentasi antar bukti sering berbeda peruntukan → tertukar.
+- **Perbaikan:** satu kartu bukti = **hanya** slot itu; file tambahan diabaikan dengan pesan singkat. Tombol **«Pilih beberapa foto sekaligus»** dihapus (redundant — pemilih sistem sudah multi di mode bebas; mode bukti sengaja per kartu).
+- Mode bebas (tanpa bukti berlabel) tetap multi-file + pratinjau lengkap.
+- File: `src/pages/siswa/PengumpulanSiswa.tsx`.
+- Antiregresi: §Tugas.MultiFile (isolasi slot).
+
 ## 2026-11-24 — Cetak materi: kode QR untuk video YouTube (dan audio tautan luar)
 
 - Di PDF materi, blok video YouTube kini berisi **kode QR** ke tautan pendek `https://youtu.be/{id}` + petunjuk «Pindai kode QR dengan kamera HP» + teks tautan, sehingga siswa bisa menonton dari kertas. Audio dari tautan luar yang pendek (≤ 106 byte) juga diberi QR.
