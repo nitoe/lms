@@ -8,7 +8,8 @@
 6. **Bilah simpan lekat** (`.td-aksi--lekat`) memakai `position: sticky`; jangan beri `overflow` pada leluhur `.td-form`/`.lms-content` karena sticky akan mati. Umpan balik katalog (`.tg-info`) memakai `top: 4.25rem` agar tidak tertutup topbar sticky (z-index 20).
 7. **`.td-tabs` 4 kolom** di ≥761px, 2 kolom 561–760px, 1 kolom di bawahnya. Jangan kembalikan ke 3 kolom (tab ke-4 turun baris sendirian).
 8. **Hapus tugas** lewat `KonfirmasiHapusDialog`; `hapusTugas` hanya menghapus dokumen `lms_tugas` (pengumpulan/nilai tidak ikut) — teks dialog harus tetap jujur soal itu.
-9. Uji: (a) klik ubin «Segera berakhir» → daftar tersaring & tombol segmen ikut aktif; (b) buka tugas Aktif siswa tanpa `?tab` → langsung Pengumpulan; (c) ubah judul → penanda kuning, simpan → hijau; (d) buat tugas baru → mendarat di Isi tugas; (e) HP 360px: bilah simpan tidak menutupi tombol, status jadi satu kolom.
+9. **Snippet CSS wajib digabung ke berkas yang diimpor.** `kelompok-guru-snippet.css` dan `kelompok-snippet.css` berisi komentar «sisipkan ke …» tetapi tidak pernah diimpor, sehingga tampilan Tugas kelompok (guru & siswa) tidak bergaya. Sekarang sudah digabung ke `tugas.css` dan `siswa.css`. Jangan membuat berkas `*-snippet.css` baru; kalau CSS baru muncul untuk komponen, pastikan kelasnya ada di CSS yang diimpor (cek dengan `grep` nama kelas) sebelum dianggap selesai.
+10. Uji: (a) klik ubin «Segera berakhir» → daftar tersaring & tombol segmen ikut aktif; (b) buka tugas Aktif siswa tanpa `?tab` → langsung Pengumpulan; (c) ubah judul → penanda kuning, simpan → hijau; (d) buat tugas baru → mendarat di Isi tugas; (e) HP 360px: bilah simpan tidak menutupi tombol, status jadi satu kolom.
 
 ## §Tugas.Reset — Reset pengumpulan siswa (2026-11-24)
 

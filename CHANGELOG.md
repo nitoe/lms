@@ -14,10 +14,11 @@
 - **Status tugas** berupa tiga kartu pilihan beserta penjelasannya (sebelumnya dropdown).
 - Tab **Pengumpulan** menampilkan lencana jumlah kiriman; tab utama kini 4 kolom di layar lebar (sebelumnya 3 kolom sehingga tab ke-4 turun baris).
 - Panel Pengumpulan: ringkasan berupa chip (terkumpul · terlambat · bukti kurang).
+- **Perbaikan tampilan «Tugas kelompok»:** kartu opsi (judul, penjelasan, maks. anggota) yang sebelumnya berdempetan kini tertata; gayanya ternyata tidak pernah aktif karena tertinggal di berkas snippet. Gaya tugas kelompok sisi siswa (`sw-kelompok-*`) ikut diaktifkan di `siswa.css`.
 - Gaya inline di bagian «Berbagi ke kelas paralel» dan tombol reset dipindah ke CSS.
 
 ### File
-- Ubah: `src/pages/TugasDashboard.tsx`, `src/pages/TugasDetail.tsx`, `src/components/PengumpulanPanel.tsx`, `src/styles/tugas.css`, `CHANGELOG.md`, `ANTIREGRESI.md`.
+- Ubah: `src/pages/TugasDashboard.tsx`, `src/pages/TugasDetail.tsx`, `src/components/PengumpulanPanel.tsx`, `src/styles/tugas.css`, `src/styles/siswa.css`, `CHANGELOG.md`, `ANTIREGRESI.md`.
 - Tanpa perubahan rules/storage/data model → **cukup deploy hosting**.
 - Antiregresi: §Tugas.UiGuru.
 
