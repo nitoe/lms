@@ -1,3 +1,19 @@
+## 2026-11-25 — Fix galat konsol «hapusStatusAnggota: Missing or insufficient permissions»
+
+### Masalah
+- Saat anggota keluar kelompok, ketua mengubah/mengeluarkan anggota, atau ketua menghapus kelompok, konsol siswa menampilkan `hapusStatusAnggota FirebaseError: Missing or insufficient permissions`. Fitur tetap berjalan (galat hanya dicatat), tetapi mengotori konsol yang dipakai untuk diagnosis rules.
+- Penyebab: aplikasi menghapus dokumen status per anggota secara buta, padahal anggota yang belum pernah konfirmasi atau mengajukan tidak punya dokumen itu. Rules menolak penghapusan dokumen yang tidak ada.
+
+### Perbaikan
+- `hapusStatusKelompok` memuat daftar status lewat kueri, lalu menghapus hanya dokumen yang terbukti ada. Berlaku untuk keluar kelompok, ubah anggota, dan hapus kelompok.
+- Tidak ada perubahan rules, data, atau tampilan.
+
+### Catatan
+- Peringatan `@firebase/firestore … BloomFilterError` berasal dari SDK Firestore, bukan dari aplikasi, dan tidak berbahaya.
+
+### Deploy
+- Hosting LMS saja.
+
 ## 2026-11-25 — Fix tombol panel Kelompok tidak terlihat jelas
 
 ### Masalah

@@ -259,9 +259,10 @@ export async function perbaruiAnggotaKelompok(params: {
     updatedAt: serverTimestamp(),
   })
   const baru = new Set(list.map((a) => a.id))
-  for (const a of lama.anggotaList) {
-    if (!baru.has(a.id)) await hapusStatusAnggota(kelompokId, a.id)
-  }
+  await hapusStatusKelompok(
+    lama,
+    lama.anggotaList.filter((a) => !baru.has(a.id)).map((a) => a.id),
+  )
   const updated = await ambilKelompok(kelompokId)
   if (!updated) throw new Error('Kelompok tidak ditemukan setelah diperbarui.')
   return updated
@@ -273,7 +274,10 @@ export async function keluarKelompok(
   siswaId: string,
 ): Promise<'hapus' | 'update'> {
   if (kelompok.ketuaId === siswaId) {
-    await hapusStatusSemuaAnggota(kelompok)
+    await hapusStatusKelompok(
+      kelompok,
+      kelompok.anggotaList.filter((a) => a.id !== kelompok.ketuaId).map((a) => a.id),
+    )
     await deleteDoc(doc(db, 'lms_tugas_kelompok', kelompok.id))
     return 'hapus'
   }
@@ -285,7 +289,7 @@ export async function keluarKelompok(
     diubahMs: Date.now(),
     updatedAt: serverTimestamp(),
   })
-  await hapusStatusAnggota(kelompok.id, siswaId)
+  await hapusStatusKelompok(kelompok, [siswaId])
   return 'update'
 }
 
@@ -480,19 +484,29 @@ export async function putuskanPengajuan(params: {
   return { ...status, pengajuan, catatanKetua, diubahMs: now }
 }
 
-/** Hapus status satu anggota (best-effort: galat tidak boleh menggagalkan aksi utama). */
-export async function hapusStatusAnggota(kelompokId: string, siswaId: string): Promise<void> {
+/**
+ * Hapus dokumen status milik `siswaIds` pada kelompok ini (best-effort: galat hanya `console.warn`).
+ * Hanya dokumen yang TERBUKTI ada (dari hasil kueri) yang dihapus: `deleteDoc` pada dokumen yang
+ * tidak ada ditolak rules (resource null; §Tugas.FotoYatim.3) dan memunculkan galat konsol.
+ * Anggota yang belum pernah konfirmasi/mengajukan memang tidak punya dokumen status.
+ */
+export async function hapusStatusKelompok(
+  kelompok: TugasKelompokDok,
+  siswaIds: string[],
+): Promise<void> {
+  if (siswaIds.length === 0) return
   try {
-    await deleteDoc(doc(db, 'lms_tugas_kelompok_anggota', idStatusAnggota(kelompokId, siswaId)))
+    const ada = await daftarStatusAnggota(kelompok.tugasId, kelompok.kelas)
+    for (const st of ada) {
+      if (st.kelompokId !== kelompok.id || !siswaIds.includes(st.siswaId)) continue
+      try {
+        await deleteDoc(doc(db, 'lms_tugas_kelompok_anggota', st.id))
+      } catch (e) {
+        console.warn('hapusStatusKelompok', st.id, e)
+      }
+    }
   } catch (e) {
-    console.warn('hapusStatusAnggota', e)
-  }
-}
-
-/** Hapus status semua anggota satu kelompok (best-effort). */
-export async function hapusStatusSemuaAnggota(kelompok: TugasKelompokDok): Promise<void> {
-  for (const a of kelompok.anggotaList) {
-    if (a.id !== kelompok.ketuaId) await hapusStatusAnggota(kelompok.id, a.id)
+    console.warn('hapusStatusKelompok', e)
   }
 }
 
