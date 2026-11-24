@@ -125,6 +125,9 @@ export default function PengumpulanPanel({ tugas }: Props) {
     return bukti.filter((b) => b.wajib && !terisi.has(b.slot)).map((b) => b.label)
   }
 
+  const jumlahTerlambat = list ? list.filter((d) => batas > 0 && d.diubahMs > batas).length : 0
+  const jumlahKurang = list ? list.filter((d) => buktiKurang(d).length > 0).length : 0
+
   return (
     <div className="td-form td-kumpul">
       <div className="td-kumpul-head">
@@ -151,7 +154,21 @@ export default function PengumpulanPanel({ tugas }: Props) {
 
       {list && list.length > 0 && (
         <>
-          <p className="td-kumpul-ringkas">{list.length} siswa sudah mengumpulkan.</p>
+          <div className="td-kumpul-ringkas">
+            <span className="td-kumpul-chip td-kumpul-chip--ok">
+              <b>{list.length}</b> siswa sudah mengumpulkan
+            </span>
+            {jumlahTerlambat > 0 && (
+              <span className="td-kumpul-chip td-kumpul-chip--warn">
+                <b>{jumlahTerlambat}</b> terlambat
+              </span>
+            )}
+            {jumlahKurang > 0 && (
+              <span className="td-kumpul-chip td-kumpul-chip--warn">
+                <b>{jumlahKurang}</b> bukti kurang
+              </span>
+            )}
+          </div>
           <ul className="td-kumpul-list">
             {list.map((d) => {
               const terlambat = batas > 0 && d.diubahMs > batas
@@ -245,7 +262,7 @@ export default function PengumpulanPanel({ tugas }: Props) {
                             ))}
                         </div>
                       )}
-                      <div className="td-kumpul-reset" style={{ marginTop: '0.75rem', display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                      <div className="td-kumpul-reset">
                         <button
                           type="button"
                           className="tg-btn"

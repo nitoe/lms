@@ -1,3 +1,26 @@
+## 2026-11-24 — Penyegaran UI halaman Tugas (akun guru)
+
+### Daftar tugas (`/tugas`)
+- **Ubin ringkasan jadi saringan:** klik «Aktif guru / Aktif siswa / Segera berakhir / Selesai / Arsip» langsung menyaring daftar (klik lagi = kembali ke Semua). Saringan status baru **Segera berakhir**.
+- **Kartu lebih ringkas:** baris utama kini `Buka` · `Nilai` (langsung ke input nilai, tidak untuk draf/arsip) · status · `Lainnya`. «Tandai selesai», «Arsipkan/Keluarkan arsip», dan «Hapus…» dipindah ke baris **Lainnya** agar tombol berbahaya tidak berdampingan dengan tombol harian.
+- Kotak **Terkumpul** pada kartu menjadi tautan ke tab Pengumpulan tugas itu.
+- **Hapus tugas** memakai dialog ketik «HAPUS» (sebelumnya `confirm` biasa) dengan saran memakai Arsip.
+- **Umpan balik** singkat setelah ubah status / selesai / arsip / hapus.
+
+### Detail tugas (`/tugas/:id`)
+- **Tab tersimpan di URL** (`?tab=pengaturan|isi|kumpul|nilai`): muat ulang dan tombol kembali tetap di tab yang sama.
+- **Tab awal cerdas** untuk tugas yang sudah ada: Aktif siswa → Pengumpulan, Aktif guru → Input nilai, Draf → Pengaturan. Setelah **Buat tugas** langsung ke tab **Isi tugas**.
+- **Bilah simpan lekat** di bawah layar (Pengaturan & Isi tugas) dengan penanda «Ada perubahan yang belum disimpan / Semua perubahan tersimpan».
+- **Status tugas** berupa tiga kartu pilihan beserta penjelasannya (sebelumnya dropdown).
+- Tab **Pengumpulan** menampilkan lencana jumlah kiriman; tab utama kini 4 kolom di layar lebar (sebelumnya 3 kolom sehingga tab ke-4 turun baris).
+- Panel Pengumpulan: ringkasan berupa chip (terkumpul · terlambat · bukti kurang).
+- Gaya inline di bagian «Berbagi ke kelas paralel» dan tombol reset dipindah ke CSS.
+
+### File
+- Ubah: `src/pages/TugasDashboard.tsx`, `src/pages/TugasDetail.tsx`, `src/components/PengumpulanPanel.tsx`, `src/styles/tugas.css`, `CHANGELOG.md`, `ANTIREGRESI.md`.
+- Tanpa perubahan rules/storage/data model → **cukup deploy hosting**.
+- Antiregresi: §Tugas.UiGuru.
+
 ## 2026-11-24 — Tugas kelompok (UI + mekanisme lengkap)
 
 ### Guru

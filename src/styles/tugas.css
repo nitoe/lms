@@ -815,3 +815,101 @@
 .td-kumpul-reset { display: flex; flex-wrap: wrap; gap: 0.35rem; margin-top: 0.35rem; }
 .td-kumpul-reset-btn { font-size: 0.78rem !important; padding: 0.25rem 0.55rem !important; }
 .td-kumpul-reset-btn--nilai { border-color: #fca5a5 !important; color: #b91c1c !important; }
+
+
+/* ===========================================================================
+   Penyegaran UI guru (2026-11-24, sesi «halaman tugas»)
+   — ubin ringkasan = saringan, baris «Lainnya» di kartu, tab tersimpan di URL,
+     bilah simpan lekat, kartu status, ringkasan pengumpulan.
+   Lihat CHANGELOG & ANTIREGRESI §Tugas.UiGuru.
+   =========================================================================== */
+
+/* Ubin ringkasan yang bisa diklik (reset gaya <button> bawaan) */
+.tg-ringkas-item--tombol {
+  font: inherit; text-align: left; cursor: pointer; appearance: none; -webkit-appearance: none;
+  transition: border-color 0.12s, box-shadow 0.12s, transform 0.12s;
+}
+.tg-ringkas-item--tombol:hover { border-color: var(--tg-s, var(--color-muh-300)); transform: translateY(-1px); }
+.tg-ringkas-item--tombol:focus-visible { outline: 2px solid var(--tg-s, var(--color-muh-600)); outline-offset: 2px; }
+.tg-ringkas-item--on { border-color: var(--tg-s, var(--color-muh-600)); box-shadow: 0 0 0 2px color-mix(in srgb, var(--tg-s, #313083) 35%, #fff); }
+@media (prefers-reduced-motion: reduce) { .tg-ringkas-item--tombol { transition: none; } .tg-ringkas-item--tombol:hover { transform: none; } }
+
+/* Umpan balik singkat di katalog */
+.tg-info { position: sticky; top: 4.25rem; z-index: 6; box-shadow: 0 6px 18px rgba(23, 23, 57, 0.1); }
+
+/* Kartu: «Terkumpul» jadi tautan ke tab Pengumpulan */
+a.tg-kumpul { color: inherit; text-decoration: none; transition: border-color 0.12s, background 0.12s; }
+a.tg-kumpul:hover { border-color: var(--tg-a, var(--color-muh-600)); background: #f8f9fd; }
+a.tg-kumpul:focus-visible { outline: 2px solid var(--tg-a, var(--color-muh-600)); outline-offset: 2px; }
+
+/* Kartu: baris aksi sekunder (selesai · arsip · hapus) */
+.tg-btn--ikon { gap: 0.35rem; }
+.tg-btn--on { background: #eef0f8; border-color: var(--color-muh-300); }
+.tg-lain {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem;
+  padding: 0.55rem 0.9rem 0.6rem 1.3rem; border-top: 1px dashed #dfe3ee; background: #fff;
+}
+
+/* Detail: lencana jumlah pada tab */
+.td-tab-label { display: inline-flex; align-items: center; gap: 0.4rem; }
+.td-tab-badge {
+  font-style: normal; font-size: 0.66rem; font-weight: 800; line-height: 1; min-width: 1.25rem; text-align: center;
+  padding: 0.18rem 0.4rem; border-radius: 999px; font-variant-numeric: tabular-nums;
+  background: var(--tg-a, #313083); color: #fff;
+}
+/* Tab utama: 4 kolom pada layar lebar (sebelumnya 3 kolom → tab ke-4 jatuh ke baris baru) */
+@media (min-width: 761px) { .td-tabs { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+@media (max-width: 760px) and (min-width: 561px) { .td-tabs { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+/* Detail: bilah simpan lekat di bawah layar */
+.td-aksi--lekat {
+  position: sticky; bottom: 0.6rem; z-index: 8; align-items: center; justify-content: space-between;
+  gap: 0.6rem 1rem; padding: 0.6rem 0.8rem; margin-top: 0.25rem;
+  background: rgba(255, 255, 255, 0.94); border: 1px solid var(--color-border); border-radius: 0.95rem;
+  box-shadow: 0 8px 24px rgba(23, 23, 57, 0.12);
+}
+@supports (backdrop-filter: blur(6px)) {
+  .td-aksi--lekat { background: rgba(255, 255, 255, 0.82); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+}
+.td-aksi-tombol { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-left: auto; }
+.td-ubah { display: inline-flex; align-items: center; gap: 0.4rem; font-size: 0.76rem; font-weight: 650; color: #64748b; }
+.td-ubah::before { content: ''; width: 0.5rem; height: 0.5rem; border-radius: 50%; background: #22c55e; }
+.td-ubah--ada { color: #92400e; }
+.td-ubah--ada::before { background: #f59e0b; }
+@media (max-width: 520px) {
+  .td-aksi--lekat { bottom: 0.4rem; }
+  .td-aksi-tombol { width: 100%; }
+  .td-aksi-tombol > * { flex: 1; justify-content: center; text-align: center; }
+}
+
+/* Detail: pilihan status berupa kartu */
+.td-status-set { border: 0; margin: 0; padding: 0; min-width: 0; }
+.td-status-set legend { padding: 0; margin-bottom: 0.4rem; font-size: 0.72rem; font-weight: 750; color: #475569; letter-spacing: 0.01em; }
+.td-status-kartu { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.5rem; }
+.td-status-opsi {
+  position: relative; display: flex; flex-direction: column; gap: 0.2rem; cursor: pointer;
+  padding: 0.65rem 0.8rem 0.7rem 2.1rem; border: 1.5px solid var(--color-border); border-radius: 0.8rem; background: #fff;
+  transition: border-color 0.12s, background 0.12s;
+}
+.td-status-opsi:hover { border-color: #b8bfd6; background: #fafbfd; }
+.td-status-opsi input { position: absolute; left: 0.75rem; top: 0.78rem; width: 1rem; height: 1rem; margin: 0; accent-color: var(--tg-a, var(--color-muh-600)); }
+.td-status-opsi b { font-size: 0.84rem; font-weight: 800; color: #1a1d33; }
+.td-status-opsi small { font-size: 0.72rem; line-height: 1.4; color: var(--color-muted); }
+.td-status-opsi--on { border-color: var(--tg-a, var(--color-muh-600)); background: color-mix(in srgb, var(--tg-a, #313083) 6%, #fff); }
+.td-status-opsi:focus-within { outline: 2px solid var(--tg-a, var(--color-muh-600)); outline-offset: 2px; }
+@media (max-width: 760px) { .td-status-kartu { grid-template-columns: minmax(0, 1fr); } }
+
+/* Detail: bagian berbagi kelas (menggantikan gaya inline) */
+.td-berbagi { display: flex; flex-direction: column; align-items: flex-start; gap: 0.35rem; margin-top: 0.25rem; padding-top: 0.75rem; border-top: 1px dashed #e2e6f0; }
+.td-berbagi-label { font-size: 0.72rem; font-weight: 750; color: #475569; letter-spacing: 0.01em; }
+
+/* Pengumpulan: ringkasan berupa chip */
+.td-kumpul-ringkas { display: flex; flex-wrap: wrap; gap: 0.4rem; margin: 0; }
+.td-kumpul-chip {
+  display: inline-flex; align-items: center; gap: 0.35rem; font-size: 0.76rem; font-weight: 650;
+  padding: 0.25rem 0.65rem; border-radius: 999px; border: 1px solid transparent;
+}
+.td-kumpul-chip b { font-weight: 800; font-variant-numeric: tabular-nums; }
+.td-kumpul-chip--ok { background: #ecfdf5; border-color: #a7f3d0; color: #065f46; }
+.td-kumpul-chip--warn { background: #fffbeb; border-color: #fde68a; color: #92400e; }
+.td-kumpul-reset { margin-top: 0.75rem; gap: 0.5rem; }

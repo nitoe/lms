@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { cakupanTugas } from '../lib/cakupanTugas'
 import {
@@ -71,6 +71,23 @@ import {
 import type { TpRingkas } from '../types/materi'
 
 type TabId = 'pengaturan' | 'isi' | 'kumpul' | 'nilai'
+
+const DAFTAR_TAB: TabId[] = ['pengaturan', 'isi', 'kumpul', 'nilai']
+
+function tabValid(v: string | null): v is TabId {
+  return v !== null && (DAFTAR_TAB as string[]).includes(v)
+}
+
+/**
+ * Tab awal tugas yang sudah ada: ke pekerjaan guru berikutnya, bukan selalu «Pengaturan».
+ * Aktif siswa → Pengumpulan (cek kiriman); Aktif guru → Input nilai; Draf → Pengaturan.
+ */
+function tabAwalUntuk(t: TugasLms): TabId {
+  const st = normalisasiStatusTugas(t.statusTugas, t.aktif)
+  if (st === 'aktif_siswa') return 'kumpul'
+  if (st === 'aktif_guru') return 'nilai'
+  return 'pengaturan'
+}
 type SubNilai = 'pengaturan-nilai' | 'daftar-nilai'
 
 type DraftBaris = {
@@ -96,6 +113,45 @@ function tenggatKeInput(tenggat: unknown): string {
 
 function idBaru(): string {
   return `kat-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`
+}
+
+type FormPengaturanSig = {
+  judul: string
+  jenis: string
+  kelas: string
+  mapel: string[]
+  deskripsi: string
+  tenggat: string
+  status: string
+  kelompok: boolean
+  kelompokMax: number
+  jp: string
+  tp: string[]
+}
+
+function sigPengaturan(f: FormPengaturanSig): string {
+  return JSON.stringify([
+    f.judul,
+    f.jenis,
+    f.kelas,
+    f.mapel,
+    f.deskripsi,
+    f.tenggat,
+    f.status,
+    f.kelompok,
+    f.kelompok ? f.kelompokMax : 0,
+    f.jp,
+    [...f.tp].sort(),
+  ])
+}
+
+/** Tanda sudah/belum tersimpan di bilah aksi bawah. */
+function PenandaUbah({ ubah }: { ubah: boolean }) {
+  return (
+    <span className={`td-ubah${ubah ? ' td-ubah--ada' : ''}`} role="status" aria-live="polite">
+      {ubah ? 'Ada perubahan yang belum disimpan' : 'Semua perubahan tersimpan'}
+    </span>
+  )
 }
 
 function IconSparkle({ className = '' }: { className?: string }) {
@@ -128,7 +184,27 @@ export default function TugasDetail() {
   const { user, profil } = useAuth()
   const bisaAi = bolehAiTugas(user?.uid)
 
-  const [tab, setTab] = useState<TabId>('pengaturan')
+  const [searchParams, setSearchParams] = useSearchParams()
+  const [tab, setTabState] = useState<TabId>(() => {
+    const q = searchParams.get('tab')
+    return tabValid(q) ? q : 'pengaturan'
+  })
+  /** true bila tab sudah ditentukan (lewat URL atau klik) → jangan ditimpa tab awal otomatis. */
+  const tabDitentukan = useRef(tabValid(searchParams.get('tab')))
+  /** Pindah tab + simpan di URL (?tab=) agar muat ulang / tombol kembali tetap di tab yang sama. */
+  function setTab(t: TabId) {
+    tabDitentukan.current = true
+    setSukses('')
+    setTabState(t)
+    setSearchParams(
+      (prev) => {
+        const n = new URLSearchParams(prev)
+        n.set('tab', t)
+        return n
+      },
+      { replace: true },
+    )
+  }
   const [subNilai, setSubNilai] = useState<SubNilai>('pengaturan-nilai')
   const [loading, setLoading] = useState(!isBaru)
   const [busy, setBusy] = useState(false)
@@ -288,6 +364,7 @@ export default function TugasDetail() {
         } else {
           setTugas(t)
           isiFormDariTugas(t)
+          if (!tabDitentukan.current) setTabState(tabAwalUntuk(t))
         }
       } catch (e) {
         if (!batal) setError(e instanceof Error ? e.message : 'Gagal memuat tugas.')
@@ -451,8 +528,9 @@ export default function TugasDetail() {
           kelompokMaxAnggota: modeKelompok ? kelompokMaxAnggota : undefined,
           namaGuru: profil?.nama,
         })
-        setSukses('Tugas berhasil dibuat.')
-        navigate(`/tugas/${id}`, { replace: true })
+        setSukses('Tugas berhasil dibuat. Lanjutkan dengan menulis instruksi untuk siswa.')
+        tabDitentukan.current = true
+        navigate(`/tugas/${id}?tab=isi`, { replace: true })
       } else {
         await updateTugas(tugasId, {
           judul,
@@ -1044,6 +1122,52 @@ export default function TugasDetail() {
     }
   }
 
+  /** Tanda perubahan belum tersimpan (hanya untuk tugas yang sudah ada). */
+  const sigForm = sigPengaturan({
+    judul,
+    jenis,
+    kelas,
+    mapel: blokMapel.map((b) => b.mapel),
+    deskripsi,
+    tenggat: tenggatStr,
+    status: statusTugas,
+    kelompok: modeKelompok,
+    kelompokMax: kelompokMaxAnggota,
+    jp: jenisPenilaian,
+    tp: tpDipilih.map((x) => x.id),
+  })
+  const sigTersimpan =
+    !isBaru && tugas
+      ? sigPengaturan({
+          judul: tugas.judul,
+          jenis: tugas.jenis || 'mapel',
+          kelas: tugas.kelas,
+          mapel: [
+            tugas.mapel || '',
+            ...(Array.isArray(tugas.mapelLain) ? tugas.mapelLain.filter(Boolean) : []),
+          ],
+          deskripsi: tugas.deskripsi || '',
+          tenggat: tenggatKeInput(tugas.tenggat),
+          status: normalisasiStatusTugas(tugas.statusTugas, tugas.aktif),
+          kelompok: tugas.modeKelompok === true,
+          kelompokMax:
+            typeof tugas.kelompokMaxAnggota === 'number' && tugas.kelompokMaxAnggota >= 2
+              ? Math.min(12, tugas.kelompokMaxAnggota)
+              : 4,
+          jp:
+            tugas.jenisPenilaian === 'latihan' ||
+            tugas.jenisPenilaian === 'sts' ||
+            tugas.jenisPenilaian === 'sas' ||
+            tugas.jenisPenilaian === 'slm'
+              ? tugas.jenisPenilaian
+              : 'slm',
+          tp: (tugas.tpList || []).map((x) => x.id),
+        })
+      : null
+  const ubahPengaturan = sigTersimpan !== null && sigTersimpan !== sigForm
+  const ubahIsi =
+    !isBaru && !!tugas && (instruksi !== (tugas.instruksi || '') || deskripsi !== (tugas.deskripsi || ''))
+
   if (loading) {
     return (
       <div className="tg-halaman">
@@ -1119,13 +1243,18 @@ export default function TugasDetail() {
         </div>
       </header>
 
-      <nav className="td-tabs" role="tablist" aria-label="Bag tugas">
+      <nav className="td-tabs" role="tablist" aria-label="Bagian tugas">
         {(
           [
-            { id: 'pengaturan' as const, label: 'Pengaturan', hint: 'Identitas & TP' },
-            { id: 'isi' as const, label: 'Isi tugas', hint: 'Instruksi siswa' },
-            { id: 'kumpul' as const, label: 'Pengumpulan', hint: 'Foto dari siswa' },
-            { id: 'nilai' as const, label: 'Input nilai', hint: 'Rubrik & daftar' },
+            { id: 'pengaturan' as const, label: 'Pengaturan', hint: 'Identitas & TP', badge: 0 },
+            { id: 'isi' as const, label: 'Isi tugas', hint: 'Instruksi siswa', badge: 0 },
+            {
+              id: 'kumpul' as const,
+              label: 'Pengumpulan',
+              hint: 'Foto dari siswa',
+              badge: isBaru ? 0 : (tugas?.jumlahPengumpulan ?? 0),
+            },
+            { id: 'nilai' as const, label: 'Input nilai', hint: 'Rubrik & daftar', badge: 0 },
           ] as const
         ).map((t) => (
           <button
@@ -1136,7 +1265,14 @@ export default function TugasDetail() {
             className={`td-tab${tab === t.id ? ' td-tab--on' : ''}`}
             onClick={() => setTab(t.id)}
           >
-            <span className="td-tab-label">{t.label}</span>
+            <span className="td-tab-label">
+              {t.label}
+              {t.badge > 0 && (
+                <i className="td-tab-badge" title={`${t.badge} pengumpulan`}>
+                  {t.badge}
+                </i>
+              )}
+            </span>
             <span className="td-tab-hint">{t.hint}</span>
           </button>
         ))}
@@ -1295,18 +1431,27 @@ export default function TugasDetail() {
                   )}
                 </div>
               )}
-              <label className="td-field td-field--full">
-                <span>Status tugas</span>
-                <select
-                  value={statusTugas}
-                  onChange={(e) => setStatusTugas(e.target.value as StatusTugas)}
-                >
-                  <option value="draf">{LABEL_STATUS_TUGAS.draf}</option>
-                  <option value="aktif_guru">{LABEL_STATUS_TUGAS.aktif_guru}</option>
-                  <option value="aktif_siswa">{LABEL_STATUS_TUGAS.aktif_siswa}</option>
-                </select>
-                <small className="td-hint">{KETERANGAN_STATUS_TUGAS[statusTugas]}</small>
-              </label>
+              <fieldset className="td-status-set td-field--full">
+                <legend>Status tugas</legend>
+                <div className="td-status-kartu">
+                  {(['draf', 'aktif_guru', 'aktif_siswa'] as StatusTugas[]).map((st) => (
+                    <label
+                      key={st}
+                      className={`td-status-opsi td-status-opsi--${st}${statusTugas === st ? ' td-status-opsi--on' : ''}`}
+                    >
+                      <input
+                        type="radio"
+                        name="status-tugas"
+                        value={st}
+                        checked={statusTugas === st}
+                        onChange={() => setStatusTugas(st)}
+                      />
+                      <b>{LABEL_STATUS_TUGAS[st]}</b>
+                      <small>{KETERANGAN_STATUS_TUGAS[st]}</small>
+                    </label>
+                  ))}
+                </div>
+              </fieldset>
 
               <div className="td-opsi-kelompok td-field--full">
                 <label className="td-cek td-cek--blok">
@@ -1347,11 +1492,9 @@ export default function TugasDetail() {
               </div>
 
               {tugas && (
-                <div className="td-field td-field--full" style={{ marginTop: '0.5rem' }}>
-                  <span className="td-label" style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, marginBottom: '0.35rem' }}>
-                    Berbagi ke kelas paralel
-                  </span>
-                  <p style={{ margin: '0 0 0.4rem', fontSize: '0.8rem', color: '#64748b' }}>
+                <div className="td-berbagi td-field--full">
+                  <span className="td-berbagi-label">Berbagi ke kelas paralel</span>
+                  <p className="td-hint">
                     {labelKelasDibagikan(tugas.kelas, tugas.kelasList)
                       ? `Saat ini dibagikan ke: ${labelKelasDibagikan(tugas.kelas, tugas.kelasList)}`
                       : 'Belum dibagikan ke kelas lain. Hanya kelas yang Anda ampu untuk mapel ini.'}
@@ -1454,11 +1597,14 @@ export default function TugasDetail() {
             </div>
           </section>
 
-          <div className="td-aksi">
-            <Link to="/tugas" className="tg-btn">Batal</Link>
-            <button type="submit" className="tg-btn tg-btn--utama tg-btn--besar" disabled={busy || (isBaru && cakupan.kosong)}>
-              {busy ? 'Menyimpan…' : isBaru ? 'Buat tugas' : 'Simpan pengaturan'}
-            </button>
+          <div className="td-aksi td-aksi--lekat">
+            {!isBaru && <PenandaUbah ubah={ubahPengaturan} />}
+            <div className="td-aksi-tombol">
+              <Link to="/tugas" className="tg-btn">{isBaru || ubahPengaturan ? 'Batal' : 'Kembali'}</Link>
+              <button type="submit" className="tg-btn tg-btn--utama tg-btn--besar" disabled={busy || (isBaru && cakupan.kosong)}>
+                {busy ? 'Menyimpan…' : isBaru ? 'Buat tugas' : 'Simpan pengaturan'}
+              </button>
+            </div>
           </div>
         </form>
       )}
@@ -1515,15 +1661,18 @@ export default function TugasDetail() {
           </section>
 
           <BuktiTugasEditor bukti={buktiList} kategori={pengaturan.kategori} onChange={setBuktiList} />
-          <div className="td-aksi">
-            <button
-              type="button"
-              className="tg-btn tg-btn--utama tg-btn--besar"
-              disabled={busy || isBaru}
-              onClick={() => void simpanIsi()}
-            >
-              {busy ? 'Menyimpan…' : 'Simpan isi tugas'}
-            </button>
+          <div className="td-aksi td-aksi--lekat">
+            {!isBaru && <PenandaUbah ubah={ubahIsi} />}
+            <div className="td-aksi-tombol">
+              <button
+                type="button"
+                className="tg-btn tg-btn--utama tg-btn--besar"
+                disabled={busy || isBaru}
+                onClick={() => void simpanIsi()}
+              >
+                {busy ? 'Menyimpan…' : 'Simpan isi tugas'}
+              </button>
+            </div>
           </div>
         </div>
       )}

@@ -1,3 +1,15 @@
+## §Tugas.UiGuru — Penyegaran UI halaman Tugas guru (2026-11-24)
+
+1. **Jangan pakai dropdown absolut di dalam `.tg-kartu`** — kartu `overflow: hidden` (untuk bar aksen) sehingga menu terpotong. Aksi sekunder memakai baris inline «Lainnya» (`.tg-lain`).
+2. **Ubin ringkasan = `<button>`** dengan reset gaya (`font: inherit`, `appearance: none`). Ubin «Pengumpulan» sengaja bukan saringan (tetap `div`).
+3. **Radio status memakai `<fieldset class="td-status-set">`, JANGAN diberi kelas `.td-field`** — `.td-field input` menimpa gaya radio (padding/border) dan merusak tampilan.
+4. **Tab di URL:** `setTab` wajib lewat wrapper (menulis `?tab=` dengan `replace`). Ref `tabDitentukan` mencegah tab awal otomatis (`tabAwalUntuk`) menimpa tab pilihan pengguna/URL; setelah «Buat tugas» arahkan ke `?tab=isi` dan set ref sebelum `navigate`.
+5. **Penanda «belum disimpan»** membandingkan `sigPengaturan(form)` dengan `sigPengaturan(tugas)`. Bila menambah field baru ke form Pengaturan, tambahkan ke KEDUA sisi (dan ke `isiFormDariTugas`), kalau tidak penanda salah menyala/padam.
+6. **Bilah simpan lekat** (`.td-aksi--lekat`) memakai `position: sticky`; jangan beri `overflow` pada leluhur `.td-form`/`.lms-content` karena sticky akan mati. Umpan balik katalog (`.tg-info`) memakai `top: 4.25rem` agar tidak tertutup topbar sticky (z-index 20).
+7. **`.td-tabs` 4 kolom** di ≥761px, 2 kolom 561–760px, 1 kolom di bawahnya. Jangan kembalikan ke 3 kolom (tab ke-4 turun baris sendirian).
+8. **Hapus tugas** lewat `KonfirmasiHapusDialog`; `hapusTugas` hanya menghapus dokumen `lms_tugas` (pengumpulan/nilai tidak ikut) — teks dialog harus tetap jujur soal itu.
+9. Uji: (a) klik ubin «Segera berakhir» → daftar tersaring & tombol segmen ikut aktif; (b) buka tugas Aktif siswa tanpa `?tab` → langsung Pengumpulan; (c) ubah judul → penanda kuning, simpan → hijau; (d) buat tugas baru → mendarat di Isi tugas; (e) HP 360px: bilah simpan tidak menutupi tombol, status jadi satu kolom.
+
 ## §Tugas.Reset — Reset pengumpulan siswa (2026-11-24)
 
 1. Guru/admin menghapus `lms_pengumpulan` + `lms_pengumpulan_foto` + video Storage; opsional `lms_nilai_tugas` agar kunci `lmsSudahDinilai` terbuka.
