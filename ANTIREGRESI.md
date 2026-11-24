@@ -1,4 +1,12 @@
 
+
+## §Kuis.ModalTambahSoal — Lightbox tambah soal dari bank (2026-11-24)
+
+1. **Jangan mengunci lebar modal pemilihan soal di ~46–56rem.** Dual-pane (daftar + pratinjau lengkap) butuh hampir full viewport: kelas `soal-modal-kotak--lebar` (`width: min(96rem, 100vw − …)`, `height: calc(100vh − …)`).
+2. **Badan modal harus flex + `min-height: 0`** agar `.pilih-soal-layout` mengisi sisa tinggi; jangan hanya `overflow-y: auto` pada badan tanpa memberi tinggi pada picker (daftar akan pendek meski layar besar).
+3. **Import `styles/soal.css` dari `KuisDetail`** (atau entry yang selalu memuat panel kuis). Mengandalkan import hanya di `BankSoalPanel` membuat modal tanpa gaya jika guru belum membuka Bank soal di sesi yang sama.
+4. HP (`max-width: 900px`): stack satu kolom; daftar/pratinjau boleh `max-height` viewport-fraksi, bukan memaksa tinggi full-screen yang memotong footer aksi.
+
 ## §Kuis.MultiTp — Multi-TP & jenis penilaian (2026-11-24)
 
 1. **`tpIds` = ID kanonis dari paket (`paket.tpId`), `tpNamaList` = label tampilan.** Jangan pernah menulis nama ke `tpIds` saat simpan dari Atur kuis. Regresi lama: `daftarTp = tpList` (nama) ditulis ke keduanya → sinkron rapor/STS multi-TP rusak dan UI TP “runtuh”.

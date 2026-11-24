@@ -1,3 +1,11 @@
+## 2026-11-24 — Lightbox «Tambah soal ke kuis» diperbesar (full viewport)
+
+- Modal pemilihan soal dari bank di **Atur kuis** sebelumnya sempit (`~56rem` / max tinggi ~36rem): daftar kiri + pratinjau kanan terasa sesak (terutama multi-paket 200 soal).
+- Kotak modal memakai kelas `soal-modal-kotak--lebar`: lebar hingga ~96rem / hampir full viewport, tinggi `100vh − padding`; badan flex agar panel `PilihSoalManual` mengisi sisa ruang.
+- Layout picker di luar modal (wizard susun) juga dinaikkan max-height (`48rem` / 75vh) dan kolom pratinjau sedikit lebih lebar.
+- File: `src/styles/soal.css`, `src/components/KuisDetail.tsx` (class + import CSS).
+- Antiregresi: §Kuis.ModalTambahSoal.
+
 ## 2026-11-24 — Fix multi-TP kuis + simpan jenis penilaian tidak menghapus soal
 
 - **Bug:** setelah menyusun kuis dari beberapa paket (beberapa TP), mengubah **jenis penilaian** (SLM/STS/SAS) lalu simpan bisa membuat daftar TP “runtuh” ke satu item dan soal terasa hilang. Akar: `KuisDetail.simpan` menulis **nama TP ke field `tpIds`** (mestinya ID kanonis), sehingga data TP corrupt; state hanya satu array campuran ID/nama.

@@ -21,6 +21,7 @@ import { useAuth } from '../context/AuthContext'
 import PilihSoalManual, { type PilihanSoalRef } from './soal/PilihSoalManual'
 import SoalGandaDialog from './soal/SoalGandaDialog'
 import { sidikJariSoal } from '../lib/soalGanda'
+import '../styles/soal.css'
 
 /** Instruksi lengkap per bentuk soal (untuk siswa dan nantinya cetak). */
 export const INSTRUKSI_TIPE: Record<TipeSoal, string> = {
@@ -977,7 +978,7 @@ export default function KuisDetail({ kuis, onUpdated }: Props) {
           aria-modal="true"
           aria-label="Tambah soal dari bank"
         >
-          <div className="soal-modal-kotak" style={{ width: 'min(56rem, 100%)' }}>
+          <div className="soal-modal-kotak soal-modal-kotak--lebar">
             <header className="soal-modal-kepala">
               <div className="min-w-0">
                 <p className="soal-modal-sub">Bank soal</p>

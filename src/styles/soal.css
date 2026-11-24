@@ -349,13 +349,83 @@
 .soal-nav { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0.5rem; }
 
 /* —— Pratinjau & tampilan siswa —— */
-.soal-modal { position: fixed; inset: 0; z-index: 60; display: grid; place-items: center; padding: 1rem; background: rgba(14, 14, 36, 0.55); }
-.soal-modal-kotak { display: flex; flex-direction: column; width: min(46rem, 100%); max-height: 100%; background: var(--color-surface-2); border-radius: 1rem; overflow: hidden; box-shadow: 0 24px 60px rgba(0, 0, 0, 0.3); }
-.soal-modal-kepala, .soal-modal-kaki { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; padding: 0.85rem 1.1rem; background: #fff; }
+.soal-modal { position: fixed; inset: 0; z-index: 60; display: grid; place-items: center; padding: 0.65rem; background: rgba(14, 14, 36, 0.55); }
+.soal-modal-kotak {
+  display: flex;
+  flex-direction: column;
+  width: min(46rem, 100%);
+  max-height: calc(100vh - 1.25rem);
+  background: var(--color-surface-2);
+  border-radius: 1rem;
+  overflow: hidden;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.3);
+}
+/* Lightbox pemilihan soal (Atur kuis / wizard): hampir full viewport agar daftar + pratinjau lega */
+.soal-modal-kotak--lebar {
+  width: min(96rem, calc(100vw - 1.25rem));
+  height: calc(100vh - 1.25rem);
+  max-height: calc(100vh - 1.25rem);
+}
+@media (max-width: 900px) {
+  .soal-modal-kotak--lebar {
+    width: 100%;
+    height: calc(100vh - 0.75rem);
+    max-height: calc(100vh - 0.75rem);
+    border-radius: 0.75rem;
+  }
+}
+.soal-modal-kepala, .soal-modal-kaki { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; padding: 0.85rem 1.1rem; background: #fff; flex-shrink: 0; }
 .soal-modal-kepala { border-bottom: 1px solid var(--color-border); }
 .soal-modal-kaki { border-top: 1px solid var(--color-border); }
 .soal-modal-sub { margin: 0; font-size: 0.7rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--color-muted); }
-.soal-modal-badan { overflow-y: auto; padding: 1rem; display: grid; gap: 0.85rem; }
+.soal-modal-badan {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+  padding: 0.85rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+.soal-modal-badan > * { flex-shrink: 0; }
+/* Picker soal mengisi sisa tinggi lightbox */
+.soal-modal-badan > .pilih-soal {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  overflow: hidden;
+}
+.soal-modal-badan .pilih-soal-toolbar { flex-shrink: 0; }
+.soal-modal-badan .pilih-soal-layout {
+  flex: 1 1 auto;
+  min-height: 14rem;
+  max-height: none;
+  height: auto;
+}
+.soal-modal-badan .pilih-soal-daftar,
+.soal-modal-badan .pilih-soal-pratinjau {
+  min-height: 0;
+  max-height: none;
+  height: 100%;
+}
+@media (max-width: 900px) {
+  .soal-modal-badan {
+    overflow-y: auto;
+  }
+  .soal-modal-badan > .pilih-soal {
+    flex: 0 0 auto;
+    overflow: visible;
+    min-height: auto;
+  }
+  .soal-modal-badan .pilih-soal-layout {
+    max-height: none;
+    height: auto;
+  }
+  .soal-modal-badan .pilih-soal-daftar { max-height: 40vh; height: auto; }
+  .soal-modal-badan .pilih-soal-pratinjau { max-height: 50vh; height: auto; }
+}
 
 .tampil { background: #fff; border: 1px solid var(--color-border); border-radius: 0.9rem; padding: 1rem 1.1rem; display: grid; gap: 0.7rem; }
 .tampil--benar { border-color: #86efac; }
@@ -832,10 +902,10 @@
 }
 .pilih-soal-layout {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr);
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.35fr);
   gap: 0.75rem;
   min-height: 22rem;
-  max-height: min(70vh, 36rem);
+  max-height: min(75vh, 48rem);
 }
 @media (max-width: 900px) {
   .pilih-soal-layout {
