@@ -1,3 +1,11 @@
+## 2026-11-24 — Pengumpulan: multi-pilih galeri tetap, tanpa nyebrang otomatis
+
+- **Regresi:** setelah isolasi slot, atribut `multiple` di «Dari galeri» mode bukti dihapus → siswa tidak bisa centang beberapa foto di pemilih sistem.
+- **Perbaikan:** `multiple` dikembalikan. File pertama → kartu yang dibuka; **sisanya masuk antrian** (bukan otomatis ke bukti lain). Siswa memasang antrian lewat «Pasang foto dari antrian» pada kartu kosong — isolasi tetap terjaga.
+- Mode bebas tidak berubah (multi langsung ke pratinjau).
+- File: `src/pages/siswa/PengumpulanSiswa.tsx`, `src/styles/siswa.css`.
+- Antiregresi: §Tugas.MultiFile (antrian).
+
 ## 2026-11-24 — Pengumpulan bukti: foto tidak nyebrang ke bukti lain
 
 - **Bug:** memilih foto di satu kartu bukti bisa mengisi slot bukti lain (sisa file multi-pilih / tombol «Pilih beberapa foto sekaligus»). Dokumentasi antar bukti sering berbeda peruntukan → tertukar.

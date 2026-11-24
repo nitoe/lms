@@ -2459,3 +2459,12 @@ button.sw-kat-card {
   max-height: none;
   overflow: visible;
 }
+
+/* Antrian foto multi-pilih (mode bukti — pasang manual, tidak nyebrang) */
+.sw-kumpul-antrian {
+  margin: 0.75rem 0 0.5rem;
+  padding: 0.75rem;
+  border-radius: 1rem;
+  border: 1.5px dashed #fbbf24;
+  background: #fffbeb;
+}

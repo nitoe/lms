@@ -1,7 +1,8 @@
 ## §Tugas.MultiFile — Multi-pilih foto pengumpulan (2026-11-24)
 
 1. **Mode bebas:** `input[type=file][multiple]` + `BATAS_FOTO_PENGUMPULAN = 6` (sama dengan `fotoIds.size() <= 6` di rules). Jangan turunkan ke 3 lagi tanpa mengubah rules.
-2. **Mode bukti berlabel — isolasi slot (wajib):** satu kartu = satu slot = satu foto/video. `pilihBukti(slot, files)` HANYA menulis `fotoSlot[slot]` (file pertama bila pemilih mengembalikan banyak). **Jangan** mengisi slot bukti lain dari sisa file — dokumentasi antar bukti berbeda peruntukan. Tombol global «Pilih beberapa foto sekaligus» **tidak** dipakai (redundant & memicu nyebrang).
+2. **Mode bukti berlabel — isolasi + multi-galeri:** `multiple` di «Dari galeri» **tetap ada**. File pertama → `fotoSlot[slot]` kartu yang diklik. Sisa file → **antrian** (`antrianFoto`); siswa memasang manual lewat «Pasang foto dari antrian» pada kartu kosong. **Jangan** mengisi slot lain otomatis (nyebrang). Tombol global «Pilih beberapa foto sekaligus» tidak dipakai.
+
 
 3. **Video:** tetap satu file per slot (`accept="video/*"` tanpa `multiple`); maks. 2 video/tugas (§Tugas.Video).
 4. Uji: (a) mode bebas pilih 4 foto sekali → 4 thumbnail; (b) bukti 3 foto kosong, pilih 3 sekaligus → ketiga slot terisi; (c) pilih 5 saat hanya 2 slot kosong → 2 terisi + pesan sisa.

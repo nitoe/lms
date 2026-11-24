@@ -65,6 +65,8 @@ export default function PengumpulanSiswa({
   const [items, setItems] = useState<Item[]>([])
   const modeBukti = adaBukti(tugas)
   const [fotoSlot, setFotoSlot] = useState<Record<number, string>>({})
+  /** Sisa foto multi-pilih galeri — dipasang manual ke kartu bukti kosong (bukan otomatis nyebrang). */
+  const [antrianFoto, setAntrianFoto] = useState<string[]>([])
   const [olahSlot, setOlahSlot] = useState<number | null>(null)
   // Video bukti (ANTIREGRESI §Tugas.Video): keadaan per slot, video lama yang dihapus, URL putar lama.
   const [videoUI, setVideoUI] = useState<Record<number, VideoUI>>({})
@@ -176,22 +178,24 @@ export default function PengumpulanSiswa({
 
   /**
    * Satu kartu bukti = satu slot = satu foto (ANTIREGRESI §Tugas.MultiFile).
-   * Jangan mengisi slot bukti lain — dokumentasi tiap bukti berbeda peruntukannya.
-   * Jika pemilih sistem mengembalikan beberapa file, hanya file pertama dipakai.
+   * Multi-pilih dari galeri: file pertama → slot ini; sisanya masuk antrian untuk
+   * dipasang manual ke kartu kosong (tidak otomatis nyebrang ke bukti lain).
    */
   async function pilihBukti(slot: number, files: FileList | null, input: HTMLInputElement | null) {
-    const f = files?.[0]
-    if (!f) return
+    if (!files || files.length === 0) return
     setGalat('')
     setSukses(false)
     setOlahSlot(slot)
     try {
-      const src = await siapkanFoto(f)
-      setFotoSlot((prev) => ({ ...prev, [slot]: src }))
-      if (files && files.length > 1) {
-        setGalat(
-          `Bukti ini hanya satu foto. ${files.length - 1} foto lain tidak dipakai — pilih lewat kartu bukti yang sesuai.`,
-        )
+      const daftar = Array.from(files)
+      const srcPertama = await siapkanFoto(daftar[0])
+      setFotoSlot((prev) => ({ ...prev, [slot]: srcPertama }))
+      if (daftar.length > 1) {
+        const sisa: string[] = []
+        for (const f of daftar.slice(1)) {
+          sisa.push(await siapkanFoto(f))
+        }
+        setAntrianFoto((prev) => [...prev, ...sisa])
       }
     } catch (e) {
       setGalat(e instanceof Error ? e.message : 'Foto tidak bisa diproses.')
@@ -199,6 +203,22 @@ export default function PengumpulanSiswa({
       setOlahSlot(null)
       if (input) input.value = ''
     }
+  }
+
+  /** Pasang foto berikutnya dari antrian multi-pilih ke slot bukti yang masih kosong. */
+  function pasangDariAntrian(slot: number) {
+    setAntrianFoto((prev) => {
+      if (prev.length === 0) return prev
+      const [kepala, ...rest] = prev
+      setFotoSlot((fs) => ({ ...fs, [slot]: kepala }))
+      setSukses(false)
+      setGalat('')
+      return rest
+    })
+  }
+
+  function buangAntrian() {
+    setAntrianFoto([])
   }
 
   function hapusBukti(slot: number) {
@@ -392,7 +412,8 @@ export default function PengumpulanSiswa({
           <p className="sw-kat-hint">
             Gurumu meminta {buktiList.length} bukti
             {jumlahWajib < buktiList.length ? ` ({jumlahWajib} wajib)` : ''}.
-            Isi tiap kartu sesuai namanya — satu foto per bukti, jangan tertukar.
+            Isi tiap kartu sesuai namanya (satu foto per bukti). Dari galeri bisa centang beberapa:
+            foto pertama ke kartu ini, sisanya antri lalu kamu pasang ke bukti kosong.
           </p>
           {kelompokBuktiPerTahap(buktiList).map((g) => (
             <div key={g.tahap ?? 'lain'} className="sw-bukti-kelompok">
@@ -460,11 +481,22 @@ export default function PengumpulanSiswa({
                   ) : (
                     <div className="sw-bukti-kosong">Belum ada foto</div>
                   )}
+                  {tampilForm && !src && antrianFoto.length > 0 && (
+                    <button
+                      type="button"
+                      className="sw-kumpul-tambah"
+                      disabled={off}
+                      onClick={() => pasangDariAntrian(b.slot)}
+                    >
+                      Pasang foto dari antrian ({antrianFoto.length})
+                    </button>
+                  )}
                   {tampilForm && (
                     <>
                       <input
                         type="file"
                         accept="image/jpeg,image/png,image/webp,image/heic,image/heif,.jpg,.jpeg,.png,.webp,.heic,.heif"
+                        multiple
                         className="sw-kumpul-input"
                         id={idInput}
                         disabled={off}
@@ -524,6 +556,31 @@ export default function PengumpulanSiswa({
                   </div>
                 ))}
               </div>
+            </div>
+          )}
+
+          {tampilForm && antrianFoto.length > 0 && (
+            <div className="sw-kumpul-antrian" role="status">
+              <p className="sw-kumpul-pratinjau-judul">
+                Antrian · {antrianFoto.length} foto menunggu dipasang ke bukti kosong
+              </p>
+              <p className="sw-kat-hint" style={{ marginTop: 0 }}>
+                Tidak dipasang otomatis ke bukti lain. Ketuk «Pasang foto dari antrian» pada kartu yang
+                masih kosong.
+              </p>
+              <div className="sw-kumpul-thumbs">
+                {antrianFoto.map((src, i) => (
+                  <div key={`antrian-${i}`} className="sw-kumpul-thumb-wrap">
+                    <span className="sw-kumpul-thumb-no" aria-hidden>
+                      {i + 1}
+                    </span>
+                    <img src={src} alt={`Antrian ${i + 1}`} className="sw-kumpul-thumb" />
+                  </div>
+                ))}
+              </div>
+              <button type="button" className="sw-btn-ghost" onClick={buangAntrian} style={{ marginTop: '0.5rem' }}>
+                Buang antrian
+              </button>
             </div>
           )}
 
