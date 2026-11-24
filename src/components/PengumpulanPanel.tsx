@@ -245,6 +245,31 @@ export default function PengumpulanPanel({ tugas }: Props) {
                             ))}
                         </div>
                       )}
+                      <div className="td-kumpul-reset" style={{ marginTop: '0.75rem', display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                        <button
+                          type="button"
+                          className="tg-btn"
+                          disabled={busyResetId === d.id}
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            void resetKumpul(d, false)
+                          }}
+                        >
+                          {busyResetId === d.id ? 'Mereset…' : 'Reset pengumpulan'}
+                        </button>
+                        <button
+                          type="button"
+                          className="tg-btn"
+                          disabled={busyResetId === d.id}
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            void resetKumpul(d, true)
+                          }}
+                          title="Hapus juga nilai agar siswa bisa kumpul ulang setelah dinilai"
+                        >
+                          Reset + hapus nilai
+                        </button>
+                      </div>
                     </div>
                   )}
                 </li>

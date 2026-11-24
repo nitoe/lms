@@ -7,7 +7,6 @@ import { muatSiswaKelas, type SiswaDasar } from '../../lib/siswaAuth'
 import {
   buatKelompok,
   keluarKelompok,
-  kelompokSaya,
   perbaruiAnggotaKelompok,
   type TugasKelompokDok,
   isKetua,
