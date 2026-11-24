@@ -1631,6 +1631,8 @@ Jangan memaksa satu kolom sempit di desktop.
 
 ## §Tugas.Video — bukti video siswa (2026-11-20)
 
+0. **Rules wajib dilengkapi.** Klien menulis field `videos` dan mengunggah ke Storage `lms/pengumpulan/…`. Tanpa match di `storage.rules` dan tanpa `videos` di `hasOnly`/`affectedKeys` firestore.rules, siswa mendapat permission-denied («Tugas belum bisa dikumpulkan…») meski tugas aktif. Deploy `firestore.rules` + `storage.rules` lengkap sebelum menguji di akun ananda. (Ditemukan 2026-11-24.)
+
 1. **Pengecualian terarah atas §132.1:** foto tetap di Firestore, tetapi VIDEO wajib di Cloud Storage (dokumen Firestore ≤ 1 MB). Path tunggal `lms/pengumpulan/{tugasId}/{siswaId}_{slot}.{webm|mp4}` dibuat HANYA oleh `pathVideoTugas`; `storage.rules` mencocokkan nama berkas dengan claim `siswaId` token siswa, jadi jangan mengubah format nama di satu sisi saja.
 2. **Slot bersama:** bukti `jenis: 'video'` memakai slot 1..6 yang sama dengan bukti foto (total ≤ 6) tetapi TIDAK membuat `lms_pengumpulan_foto`; `fotoIds` hanya berisi foto, video ada di `videos` (peta slot → `{path,tipe,ukuran,durasi}`). Maks. 2 video per tugas (`BATAS_BUKTI_VIDEO`, dipaksa `rapikanBuktiList` dan rules `videos.size() <= 2`). Pengumpulan tanpa foto (hanya video) sah: rules menerima `fotoIds` kosong bila `videos` ada.
 3. **Durasi > 60 dtk DITOLAK sebelum konversi** (`periksaVideo`); jangan menambahkan konversi/pemotongan otomatis. Pemeriksaan durasi hanya di klien (rules tidak bisa); ukuran < 15 MB dan tipe `video/(webm|mp4)` dijaga `storage.rules`. Ubah batas durasi/ukuran/bitrate hanya lewat konstanta di `videoTugas.ts` + rules (15 MB) bersamaan.

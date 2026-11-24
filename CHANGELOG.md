@@ -1,3 +1,35 @@
+## 2026-11-24 — Fix pengumpulan video: rules Firestore + Storage belum mengizinkan video
+
+### Masalah
+- Siswa mengunggah video (progress bar jalan) lalu mendapat «Tugas belum bisa dikumpulkan. Mungkin tugas sudah dinilai atau ditutup…».
+- Penyebab: `permission-denied`. Klien sudah menulis field `videos` dan mengunggah ke `lms/pengumpulan/…`, tetapi:
+  1. **firestore.rules** `lms_pengumpulan` create/update memakai `keys().hasOnly(...)` **tanpa** `videos`, dan memaksa `fotoIds.size() >= 1`.
+  2. **storage.rules** **tidak punya** match `lms/pengumpulan/{tugasId}/{fileName}` (hanya catch-all deny).
+- Fitur video (klien + ANTIREGRESI §Tugas.Video) sudah ada sejak 2026-11-20, tetapi aturan di repo main belum selaras.
+
+### Perbaikan
+- **firestore.rules** (lengkap):
+  - Create/update boleh field `videos` (map slot `'1'..'6'`, maks 2 entri).
+  - `fotoIds` boleh kosong jika ada `videos` (pengumpulan hanya video).
+  - Tambah `!lmsSudahDinilai` pada create.
+  - Helper `lmsVideosSah` + `lmsAdaBuktiKumpul`.
+- **storage.rules** (lengkap):
+  - Path `lms/pengumpulan/{tugasId}/{siswaId}_{slot}.{webm|mp4}`: siswa tulis/hapus milik sendiri (tugas aktif, belum dinilai); baca pemilik + guru/admin (`guruStorage`, bukan orang tua).
+  - Path `lms/tugas/{tugasId}/…` lampiran guru (tulis staf, baca publik) — ikut dilengkapi karena changelog 24 Nov menyebutnya tetapi file rules belum memuatnya.
+- Tidak ada perubahan klien; cukup deploy rules.
+
+### Deploy
+```
+firebase deploy --only firestore:rules,storage
+```
+Salin **kedua** file utuh ke repo SDM01Penilaian (rules project Firebase bersama) lalu deploy dari sana bila itu jalur biasa.
+
+### Uji
+(a) Tugas aktif siswa, bukti video + foto → kumpulkan berhasil; (b) hanya video → berhasil; (c) hanya foto (tanpa videos) → tetap berhasil; (d) tugas sudah dinilai → ditolak; (e) orang tua tidak bisa baca path video.
+
+- Antiregresi: §Tugas.Video (diperjelas bahwa rules harus dilengkapi bila klien sudah menulis `videos`).
+
+
 ## 2026-11-24 — Penyegaran UI halaman Tugas (akun guru)
 
 ### Daftar tugas (`/tugas`)
