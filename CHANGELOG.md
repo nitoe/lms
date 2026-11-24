@@ -1,3 +1,21 @@
+## 2026-11-24 — Fix guru tidak bisa memutar video pengumpulan (storage/unauthorized)
+
+### Masalah
+- Pengumpulan siswa sudah berhasil, tetapi akun guru melihat video bukti gagal dimuat: `403 … storage/unauthorized` pada `lms/pengumpulan/{tugasId}/{siswaId}_1.mp4`.
+- Penyebab: `guruStorage()` di **storage.rules** hanya mengizinkan role `guru` dan `admin`. Akun dengan role `guru_akademik` (dan `guru_tahsin_tahfizh`) ditolak, padahal `isGuru()` di firestore.rules mengizinkan keempat role. Hapus video saat reset pengumpulan oleh role tersebut juga ikut ditolak.
+
+### Perbaikan
+- **storage.rules (lengkap)**: `guruStorage()` memakai `['admin','guru','guru_akademik','guru_tahsin_tahfizh']`. Orang tua tetap tidak bisa membaca. Salinan di SDM01Penilaian dan LMS identik.
+- Tidak ada perubahan klien dan firestore.rules → cukup `firebase deploy --only storage` dari SDM01Penilaian.
+
+### Catatan
+- Galat konsol guru `daftarTugas kelasList … Missing or insufficient permissions` adalah keterbatasan lama yang sudah dicatat (ANTIREGRESI §93.5 dan §128): kueri tugas yang dibagikan dari kelas lain tidak bisa dibuktikan oleh evaluasi rules list. Kueri kelas utama tetap berhasil dan daftar tugas/pengumpulan guru tidak terpengaruh. Efeknya hanya tugas milik guru lain yang dibagikan ke rombel Anda belum muncul. Belum diubah karena memerlukan perancangan rules tersendiri.
+
+### Uji
+(a) guru (role guru_akademik) membuka pengumpulan siswa berisi video → video terputar; (b) guru reset pengumpulan berisi video → berkas terhapus; (c) akun orang tua tetap tidak bisa membuka URL video langsung tanpa token; (d) siswa tetap hanya bisa membaca videonya sendiri.
+
+- Antiregresi: §Tugas.Video (daftar role guru), §Rules.Sinkron.
+
 ## 2026-11-24 — Fix pengumpulan tetap gagal: dokumen foto yatim + penanda langkah galat
 
 ### Masalah

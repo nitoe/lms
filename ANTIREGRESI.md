@@ -1,3 +1,10 @@
+## §Tugas.Video.Role — Role guru di storage.rules harus selaras isGuru() (2026-11-24)
+
+1. `guruStorage()` (storage.rules) wajib memuat SEMUA role guru yang ada di `isGuru()` (firestore.rules): `admin`, `guru`, `guru_akademik`, `guru_tahsin_tahfizh`. Menambah role baru ke `isGuru()` berarti menambahkannya juga di `guruStorage()`. Daftar role yang berbeda menimbulkan `storage/unauthorized` (403) hanya pada akun role tertentu sehingga sulit terlihat saat uji dengan akun lain.
+2. Orang tua (`orangtua`) sengaja TIDAK termasuk (ANTIREGRESI §Tugas.Video.6).
+3. Revisi §Rules.Sinkron butir 5: «galat `console.warn` kueri bersama = bug» berlaku untuk kueri SISWA. Galat guru `daftarTugas/daftarKuis kelasList` adalah keterbatasan yang sudah dicatat di §93.5/§128 dan boleh muncul selama kueri kelas utama berhasil.
+4. Uji video sebagai guru dengan role non-`guru` (mis. `guru_akademik`), bukan hanya akun admin.
+
 ## §Tugas.FotoYatim — Dokumen foto yatim & penanda langkah pengiriman (2026-11-24)
 
 1. Urutan simpan **foto dulu, meta terakhir** menimbulkan dokumen foto yatim bila meta gagal. `setDoc` pada dokumen yang sudah ada = **update** di mata rules; field `createdAt` berubah sehingga ditolak (update foto hanya `data` + `updatedAt`). Jangan pernah mengandalkan `ada.fotoIds` sebagai satu-satunya penentu dokumen foto sudah ada.
