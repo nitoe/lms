@@ -1,3 +1,12 @@
+
+## §Kuis.MultiTp — Multi-TP & jenis penilaian (2026-11-24)
+
+1. **`tpIds` = ID kanonis dari paket (`paket.tpId`), `tpNamaList` = label tampilan.** Jangan pernah menulis nama ke `tpIds` saat simpan dari Atur kuis. Regresi lama: `daftarTp = tpList` (nama) ditulis ke keduanya → sinkron rapor/STS multi-TP rusak dan UI TP “runtuh”.
+2. **State UI harus paralel:** hapus satu baris TP menghapus index yang sama di `tpIds` dan `tpNamaList`. «Perbarui dari paket» membangun ulang Map `tpId → label` dari **semua** `sumberPaketIds` (boleh banyak TP).
+3. **Ubah jenis penilaian (latihan↔SLM/STS/SAS) tidak boleh menyentuh array `soal`.** Simpan wajib mengirim snapshot soal utuh; jika state lokal soal kosong padahal dokumen punya soal, **batalkan simpan** (pengaman anti-wipe).
+4. **SLM “biasanya 1 TP” adalah panduan pedagogis, bukan batasan teknis.** STS/SAS dan kuis multi-paket boleh banyak TP; jangan hard-code `tpIds.length === 1` saat jenis = slm.
+5. **`daftarKuis` query `kelasList` array-contains** boleh gagal permission bila ada dokumen berbagi dengan `kelasList` yang gagal evaluasi rules (list >6 / struktur aneh). Query kelas utama tetap dijalankan; jangan biarkan error itu menggagalkan seluruh daftar. Lihat juga §128.
+
 ## §Materi.HtmlBlok — blok teks halaman: elemen lanjutan, kunci jawaban lipat, gambar base64 (2026-11-19)
 
 1. **Kunci jawaban lipat = `<details><summary>…</summary>…</details>`** di blok teks materi halaman. Daftar tag ada di `TAG_MATERI` (`lib/html.ts`) dan dipakai SEMUA jalur: impor JSON, simpan (`normalisasiHalaman`), editor (mode HTML + pratinjau), pembaca. Jangan menghapus `details`/`summary` dari daftar itu: akibatnya jawaban tampil terbuka permanen tanpa tombol (kasus «Mengenal Nilai, Norma, dan Aturan»).

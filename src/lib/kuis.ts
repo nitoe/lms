@@ -88,6 +88,8 @@ export async function daftarKuis(kelas: string, mapel: string): Promise<KuisLms[
 
   // Query harus menyertakan mapel agar rules list evaluation lolos
   // (lmsLihatViaKelasList + mapel ter-constraint). ANTIREGRESI §128.
+  // Bila satu dokumen kelasList tidak lolos evaluasi rules (list >6, struktur aneh, dll.),
+  // seluruh query list gagal permission — tangkap agar daftar kelas utama tetap tampil.
   try {
     const snap2 = await getDocs(
       query(koleksi(), where('mapel', '==', mapel), where('kelasList', 'array-contains', k)),
@@ -97,7 +99,11 @@ export async function daftarKuis(kelas: string, mapel: string): Promise<KuisLms[
       map.set(d.id, mapDokKuis(d.id, d.data() as Record<string, unknown>))
     }
   } catch (e) {
-    console.warn('daftarKuis kelasList', e)
+    // Permission / index: kuis berbagi lewat kelasList mungkin tidak ikut; kuis kelas utama sudah di map.
+    const code = (e as { code?: string } | null)?.code
+    if (code !== 'permission-denied') {
+      console.warn('daftarKuis kelasList', e)
+    }
   }
 
   const list = [...map.values()]

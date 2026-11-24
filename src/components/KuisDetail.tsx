@@ -62,7 +62,17 @@ export default function KuisDetail({ kuis, onUpdated }: Props) {
   const [jenisPenilaian, setJenisPenilaian] = useState<JenisPenilaianKuis>(kuis.jenisPenilaian ?? 'latihan')
   const [modePelaksanaan, setModePelaksanaan] = useState<ModePelaksanaanKuis>(kuis.modePelaksanaan === 'offline' ? 'offline' : 'online')
   const [tahapTryOutTka, setTahapTryOutTka] = useState<TahapTryOutTka | ''>(kuis.tahapTryOutTka ?? '')
-  const [tpList, setTpList] = useState<string[]>((kuis.tpNamaList ?? kuis.tpIds ?? []).map(bersihNamaTp).filter(Boolean))
+  /** ID TP kanonis (dari paket). Jangan diisi nama — sinkron rapor butuh ID. */
+  const [tpIds, setTpIds] = useState<string[]>(() =>
+    Array.isArray(kuis.tpIds) ? kuis.tpIds.map(String).filter(Boolean) : [],
+  )
+  /** Label tampilan TP (paralel dengan tpIds; boleh lebih panjang dari ID bila data lama hanya punya nama). */
+  const [tpList, setTpList] = useState<string[]>(() => {
+    const names = (kuis.tpNamaList ?? []).map(bersihNamaTp).filter(Boolean)
+    if (names.length) return names
+    // Dokumen lama / corrupt: tpIds sempat diisi nama di simpan lama
+    return (kuis.tpIds ?? []).map(bersihNamaTp).filter(Boolean)
+  })
   const [nilaiPerTp, setNilaiPerTp] = useState<Record<string, number>>(kuis.nilaiPerTp ?? {})
   const [sumberPaketIds, setSumberPaketIds] = useState<string[]>(() => [...(kuis.sumberPaketIds ?? [])])
   /** Modal tambah soal dari bank (Atur kuis). */
@@ -109,7 +119,13 @@ export default function KuisDetail({ kuis, onUpdated }: Props) {
     setJenisPenilaian(kuis.jenisPenilaian ?? 'latihan')
     setModePelaksanaan(kuis.modePelaksanaan === 'offline' ? 'offline' : 'online')
     setTahapTryOutTka(kuis.tahapTryOutTka ?? '')
-    setTpList((kuis.tpNamaList ?? kuis.tpIds ?? []).map(bersihNamaTp).filter(Boolean))
+    {
+      const ids = Array.isArray(kuis.tpIds) ? kuis.tpIds.map(String).filter(Boolean) : []
+      const names = (kuis.tpNamaList ?? []).map(bersihNamaTp).filter(Boolean)
+      setTpIds(ids)
+      // Jika hanya ada nama (atau tpIds sempat di-corrupt jadi nama), tampilkan nama
+      setTpList(names.length ? names : ids.map(bersihNamaTp).filter(Boolean))
+    }
     setNilaiPerTp(kuis.nilaiPerTp ?? {})
     setSumberPaketIds([...(kuis.sumberPaketIds ?? [])])
   }, [kuis])
@@ -287,7 +303,8 @@ export default function KuisDetail({ kuis, onUpdated }: Props) {
   }
 
   async function perbaruiTpDariPaket() {
-    if (!kuis.sumberPaketIds?.length) {
+    const idsPaket = sumberPaketIds.length ? sumberPaketIds : (kuis.sumberPaketIds ?? [])
+    if (!idsPaket.length) {
       setInfo('Kuis ini tidak memiliki paket sumber.')
       return
     }
@@ -296,22 +313,23 @@ export default function KuisDetail({ kuis, onUpdated }: Props) {
     try {
       const semua = await daftarPaketUntukKuis(kuis)
       const tpMap = new Map<string, string>()
-      for (const pid of kuis.sumberPaketIds) {
+      for (const pid of idsPaket) {
         const pk = semua.find((x) => x.id === pid)
         if (pk?.tpId && pk.tpNama) {
           const namaBersih = bersihNamaTp(String(pk.tpNama ?? ''))
           const label = pk.tpNomor ? `TP ${pk.tpNomor}. ${namaBersih}` : namaBersih
-          tpMap.set(pk.tpId, label)
+          tpMap.set(String(pk.tpId), label)
         }
       }
       const ids = [...tpMap.keys()]
       const names = [...tpMap.values()]
+      setTpIds(ids)
       setTpList(names)
       await updateKuis(kuis.id, {
         tpIds: ids.length ? ids : undefined,
         tpNamaList: names.length ? names : undefined,
       })
-      setInfo(ids.length ? `TP diperbarui (${ids.length} TP).` : 'Tidak ada TP ditemukan pada paket sumber.')
+      setInfo(ids.length ? `TP diperbarui (${ids.length} TP dari ${idsPaket.length} paket).` : 'Tidak ada TP ditemukan pada paket sumber.')
       onUpdated?.()
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Gagal memperbarui TP.')
@@ -329,7 +347,39 @@ export default function KuisDetail({ kuis, onUpdated }: Props) {
     setError('')
     setInfo('')
     try {
-      const daftarTp = isTka ? [] : tpList
+      // Jangan pernah mengosongkan soal yang sudah ada hanya karena ubah jenis/TP.
+      const soalAwal = kuis.soal?.length ?? 0
+      if (soalAwal > 0 && soal.length === 0) {
+        setError(
+          'Daftar soal kosong padahal kuis ini sebelumnya punya soal. Simpan dibatalkan agar soal tidak hilang. Muat ulang halaman atau klik «Tambah dari bank» bila perlu.',
+        )
+        setBusy(false)
+        return
+      }
+
+      // tpIds = ID kanonis; tpNamaList = label. Jangan menulis nama ke tpIds
+      // (regresi lama: simpan menimpa ID dengan nama → multi-TP rusak di rapor).
+      let idsOut: string[] = []
+      let namesOut: string[] = []
+      if (!isTka) {
+        namesOut = tpList.map(bersihNamaTp).filter(Boolean)
+        if (tpIds.length === namesOut.length && tpIds.length > 0) {
+          idsOut = tpIds.map(String)
+        } else if (tpIds.length > 0 && namesOut.length === 0) {
+          // Hanya ID (label kosong) — pakai ID juga sebagai label sementara
+          idsOut = tpIds.map(String)
+          namesOut = idsOut
+        } else if (namesOut.length > 0 && tpIds.length === 0) {
+          // Data lama / baru diisi manual: belum punya ID terpisah
+          idsOut = namesOut
+        } else if (tpIds.length > 0 && namesOut.length > 0) {
+          // Panjang beda: prioritaskan pasangan min, jangan buang yang ada
+          const n = Math.min(tpIds.length, namesOut.length)
+          idsOut = tpIds.slice(0, n).map(String)
+          namesOut = namesOut.slice(0, n)
+        }
+      }
+
       await updateKuis(kuis.id, {
         judul: judul.trim(),
         deskripsi: deskripsi.trim() || undefined,
@@ -344,8 +394,8 @@ export default function KuisDetail({ kuis, onUpdated }: Props) {
         // TKA: selalu latihan (bukan SLM/STS/SAS rapor)
         jenisPenilaian: isTka ? 'latihan' : jenisPenilaian,
         modePelaksanaan,
-        tpIds: daftarTp.length ? daftarTp : undefined,
-        tpNamaList: daftarTp.length ? daftarTp : undefined,
+        tpIds: idsOut.length ? idsOut : undefined,
+        tpNamaList: namesOut.length ? namesOut : undefined,
         nilaiPerTp: !isTka && Object.keys(nilaiPerTp).length ? nilaiPerTp : undefined,
         sumberNilai: !isTka && Object.keys(nilaiPerTp).length ? 'manual' : undefined,
         // TKA: tahap Try Out untuk rekap nilai per tahap
@@ -623,7 +673,10 @@ export default function KuisDetail({ kuis, onUpdated }: Props) {
                       <button
                         type="button"
                         className="shrink-0 text-xs font-semibold text-red-600 hover:text-red-700"
-                        onClick={() => setTpList((prev) => prev.filter((_, idx) => idx !== i))}
+                        onClick={() => {
+                          setTpList((prev) => prev.filter((_, idx) => idx !== i))
+                          setTpIds((prev) => prev.filter((_, idx) => idx !== i))
+                        }}
                       >
                         Hapus
                       </button>

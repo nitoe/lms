@@ -1,3 +1,16 @@
+## 2026-11-24 — Fix multi-TP kuis + simpan jenis penilaian tidak menghapus soal
+
+- **Bug:** setelah menyusun kuis dari beberapa paket (beberapa TP), mengubah **jenis penilaian** (SLM/STS/SAS) lalu simpan bisa membuat daftar TP “runtuh” ke satu item dan soal terasa hilang. Akar: `KuisDetail.simpan` menulis **nama TP ke field `tpIds`** (mestinya ID kanonis), sehingga data TP corrupt; state hanya satu array campuran ID/nama.
+- **Perbaikan:**
+  - State terpisah `tpIds` (ID) dan `tpList`/`tpNamaList` (label).
+  - Simpan menulis ID ke `tpIds` dan label ke `tpNamaList`; tidak lagi menimpa ID dengan nama.
+  - Hapus satu TP di UI menghapus pasangan ID+label.
+  - «Perbarui dari paket» memakai `sumberPaketIds` state (bukan hanya prop) dan mengisi ulang semua TP unik dari paket sumber.
+  - Pengaman: jika kuis sebelumnya punya soal tetapi state lokal kosong, simpan **dibatalkan** agar soal tidak terhapus dari Firestore.
+- **Console:** `daftarKuis kelasList Missing or insufficient permissions` tidak lagi di-log sebagai warn bila `permission-denied` (query sekunder berbagi kelas; daftar kelas utama tetap aman). ANTIREGRESI §128.
+- File: `src/components/KuisDetail.tsx`, `src/lib/kuis.ts`.
+- Tidak perlu deploy rules.
+
 ## 2026-11-23 — Kuis: status aktif guru / aktif siswa + arsip; Materi: blok video & audio, cetak PDF
 
 ### Kuis mata pelajaran
