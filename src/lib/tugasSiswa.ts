@@ -92,9 +92,16 @@ export async function daftarTugasAktifKelas(kelas: string): Promise<TugasLms[]> 
     map.set(d.id, docKeTugas(d.id, d.data() as Record<string, unknown>))
   }
 
-  // Share: array-contains saja (filter aktif di klien) agar tidak butuh index compound baru
+  // Share ke rombel paralel. Rules siswa untuk cabang kelasList mensyaratkan aktif == true, dan rules
+  // BUKAN filter: kueri wajib memuat predikat yang sama (kelasList array-contains + aktif == true),
+  // kalau tidak seluruh kueri ditolak permission-denied. Butuh index lms_tugas (kelasList, aktif)
+  // di firestore.indexes.json. ANTIREGRESI §Rules.Sinkron.
   try {
-    const q2 = query(collection(db, 'lms_tugas'), where('kelasList', 'array-contains', k))
+    const q2 = query(
+      collection(db, 'lms_tugas'),
+      where('kelasList', 'array-contains', k),
+      where('aktif', '==', true),
+    )
     const snap2 = await getDocs(q2)
     for (const d of snap2.docs) {
       if (map.has(d.id)) continue

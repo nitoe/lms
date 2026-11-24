@@ -1,3 +1,12 @@
+## §Rules.Sinkron — Sumber tunggal rules & kueri siswa harus mencerminkan rules (2026-11-24)
+
+1. **Sumber tunggal `firestore.rules` / `storage.rules` / `firestore.indexes.json` = repo SDM01Penilaian (HEAD).** Salinan di repo LMS hanya cermin dan bisa tertinggal. Sebelum menyusun rules: ambil berkas dari SDM01Penilaian terbaru, ubah bagian `lms_*` saja, kirim UTUH ke KEDUA repo.
+2. **Regresi 2026-11-24:** rules kelompok (12:58) dan rules video (19:04) saling menghapus karena masing-masing disusun dari salinan LMS yang usang. Setelah mengubah rules, wajib cek keberadaan SEMUA penanda ini sebelum dikirim: `match /lms_tugas_kelompok/`, `function lmsVideosSah`, `function lmsAdaBuktiKumpul`, `match /lms_pengumpulan/`, `match /lms_pengumpulan_foto/`, `match /lms_jawaban/`. Cara cepat: `grep -c` tiap penanda dan bandingkan dengan HEAD sebelumnya; `diff` terhadap HEAD hanya boleh menampilkan baris yang memang disengaja.
+3. **Rules bukan filter.** Kueri siswa wajib memuat SEMUA predikat yang dipakai cabang rules yang dituju. Cabang `kelasList` di `lms_tugas` mensyaratkan `aktif == true`, jadi kueri wajib `where('kelasList','array-contains',k)` + `where('aktif','==',true)`. Jangan lagi «filter aktif di klien».
+4. Kueri `array-contains` + `==` butuh index komposit di `firestore.indexes.json` (sudah ditambahkan untuk `lms_tugas`). Deploy index DULU dan tunggu Enabled sebelum hosting; kalau belum siap, kueri gagal `failed-precondition` dan tugas bersama tidak tampil.
+5. Galat kueri bersama yang hanya `console.warn` (mis. `daftarTugasAktifKelas kelasList`) tetap dianggap gejala bug, bukan kebisingan: periksa konsol siswa setiap selesai mengubah rules atau kueri.
+6. Tugas kelompok dan video bergantung pada rules yang berbeda tetapi harus hidup bersamaan: `lms_tugas_kelompok` (Firestore) + `videos` pada `lms_pengumpulan` + `lms/pengumpulan/…` (Storage). Menghilangkan salah satunya menimbulkan «Missing or insufficient permissions» pada siswa.
+
 ## §Tugas.UiGuru — Penyegaran UI halaman Tugas guru (2026-11-24)
 
 1. **Jangan pakai dropdown absolut di dalam `.tg-kartu`** — kartu `overflow: hidden` (untuk bar aksen) sehingga menu terpotong. Aksi sekunder memakai baris inline «Lainnya» (`.tg-lain`).

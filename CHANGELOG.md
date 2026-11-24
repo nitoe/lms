@@ -1,3 +1,31 @@
+## 2026-11-24 — Fix pengumpulan tugas siswa gagal (permission-denied): rules kelompok & video disatukan, kueri tugas bersama
+
+### Masalah
+- Siswa mendapat «Missing or insufficient permissions» saat **Kumpulkan**, dan konsol juga mencatat `daftarTugasAktifKelas kelasList … Missing or insufficient permissions`.
+- Akar masalah 1 — **rules saling menimpa.** Pengiriman `lms-tugas-kelompok` (12:57) disusun dari salinan `firestore.rules` di repo LMS yang sudah usang, sehingga **rules video hilang** (`videos` tidak lagi diizinkan). Pengiriman `lms-fix-pengumpulan-video` (19:04) memulihkan video tetapi disusun dari salinan usang yang sama, sehingga **rules `lms_tugas_kelompok` hilang**. Hasil akhir di SDM01Penilaian: tidak ada rules kelompok.
+- Akar masalah 2 — **salinan repo LMS tertinggal.** Commit 19:04 di repo LMS hanya memuat CHANGELOG/ANTIREGRESI; `firestore.rules` dan `storage.rules` di repo LMS belum memuat rules video/kelompok.
+- Akar masalah 3 — **kueri tugas bersama ditolak.** `daftarTugasAktifKelas` menjalankan `where('kelasList','array-contains', kelas)` tanpa `aktif == true`, padahal rules siswa untuk cabang `kelasList` mensyaratkan `aktif == true`. Rules bukan filter, jadi seluruh kueri ditolak dan tugas yang dibagikan ke rombel paralel tidak pernah muncul (galatnya hanya `console.warn`).
+
+### Perbaikan
+- **firestore.rules (lengkap)**: berangkat dari versi terbaru di SDM01Penilaian, lalu `lms_tugas_kelompok` dipulihkan persis seperti versi 12:58. Video (`lmsVideosSah`, `lmsAdaBuktiKumpul`, `!lmsSudahDinilai` pada create) tetap ada. Catatan «sumber tunggal» ditambahkan di kepala berkas.
+- **storage.rules (lengkap)**: tidak berubah dari SDM01Penilaian; hanya disalin ke repo LMS agar kedua salinan identik (salinan LMS sebelumnya tidak punya `lms/tugas/…` dan `lms/pengumpulan/…`).
+- **firestore.indexes.json (lengkap)**: tambah index `lms_tugas` (`kelasList` array-contains + `aktif` ascending).
+- **src/lib/tugasSiswa.ts**: kueri `kelasList` kini menyertakan `where('aktif','==',true)`.
+
+### Deploy (urutan penting)
+```
+# dari repo SDM01Penilaian (salin 3 berkas dari folder SDM01Penilaian/ di zip)
+firebase deploy --only firestore:indexes
+# tunggu index berstatus Enabled di Console (beberapa menit), lalu:
+firebase deploy --only firestore:rules,storage
+```
+Lalu push folder `lms/` ke repo LMS dan deploy hosting.
+
+### Uji
+(a) tugas biasa foto saja → terkumpul; (b) tugas dengan video → terkumpul; (c) tugas kelompok: buat kelompok sebagai ketua, ketua mengumpulkan, anggota melihat «terkumpul lewat kelompok»; (d) tugas yang dibagikan ke rombel paralel muncul di akun siswa rombel itu dan tidak ada lagi galat `kelasList` di konsol; (e) tugas sudah dinilai tetap ditolak; (f) tugas berstatus «Aktif guru» tidak tampil di siswa.
+
+- Antiregresi: §Rules.Sinkron (baru), §Tugas.Kelompok dan §Tugas.Video (rules wajib ada bersamaan).
+
 ## 2026-11-24 — Fix pengumpulan video: rules Firestore + Storage belum mengizinkan video
 
 ### Masalah
