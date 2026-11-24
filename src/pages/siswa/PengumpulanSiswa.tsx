@@ -180,32 +180,25 @@ export default function PengumpulanSiswa({
     setSukses(false)
     setOlahSlot(slot)
     try {
-      // Satu file → slot ini; beberapa file → isi slot ini lalu slot foto kosong berikutnya.
+      // Satu file → slot ini; beberapa file → slot ini + slot foto kosong lain (satu setState agar semua pratinjau tampil).
       const daftar = Array.from(files)
-      const srcPertama = await siapkanFoto(daftar[0])
-      setFotoSlot((prev) => {
-        const next = { ...prev, [slot]: srcPertama }
-        return next
-      })
-      if (daftar.length > 1) {
-        // Slot foto kosong (bukan video) setelah slot ini, urut slot.
-        const slotFoto = buktiList
-          .filter((b) => b.jenis !== 'video')
-          .map((b) => b.slot)
-          .sort((a, b) => a - b)
-        const kosong = slotFoto.filter((n) => n !== slot && !fotoSlot[n] && n > slot)
-        const ekstra = daftar.slice(1, 1 + kosong.length)
-        for (let i = 0; i < ekstra.length; i++) {
-          const src = await siapkanFoto(ekstra[i])
-          const n = kosong[i]
-          setFotoSlot((prev) => ({ ...prev, [n]: src }))
-        }
-        const sisa = daftar.length - 1 - ekstra.length
-        if (sisa > 0) {
-          setGalat(
-            `Ditambahkan ${1 + ekstra.length} foto ke slot kosong. ${sisa} foto tidak muat (slot foto sudah penuh).`,
-          )
-        }
+      const slotFoto = buktiList
+        .filter((b) => b.jenis !== 'video')
+        .map((b) => b.slot)
+        .sort((a, b) => a - b)
+      const kosongLain = slotFoto.filter((n) => n !== slot && !fotoSlot[n])
+      const targetSlots = [slot, ...kosongLain]
+      const dipakai = daftar.slice(0, targetSlots.length)
+      const isi: Record<number, string> = {}
+      for (let i = 0; i < dipakai.length; i++) {
+        isi[targetSlots[i]] = await siapkanFoto(dipakai[i])
+      }
+      setFotoSlot((prev) => ({ ...prev, ...isi }))
+      const sisa = daftar.length - dipakai.length
+      if (sisa > 0) {
+        setGalat(
+          `${dipakai.length} foto masuk pratinjau. ${sisa} tidak muat (slot foto sudah penuh — maks. satu foto per bukti).`,
+        )
       }
     } catch (e) {
       setGalat(e instanceof Error ? e.message : 'Foto tidak bisa diproses.')
@@ -233,13 +226,14 @@ export default function PengumpulanSiswa({
     setOlah(true)
     try {
       const daftar = Array.from(files).slice(0, kosong.length)
+      const isi: Record<number, string> = {}
       for (let i = 0; i < daftar.length; i++) {
-        const src = await siapkanFoto(daftar[i])
-        setFotoSlot((prev) => ({ ...prev, [kosong[i]]: src }))
+        isi[kosong[i]] = await siapkanFoto(daftar[i])
       }
+      setFotoSlot((prev) => ({ ...prev, ...isi }))
       if (files.length > kosong.length) {
         setGalat(
-          `Ditambahkan ${daftar.length} foto. ${files.length - daftar.length} tidak muat (hanya ${kosong.length} slot kosong).`,
+          `${daftar.length} foto masuk pratinjau. ${files.length - daftar.length} tidak muat (hanya ${kosong.length} slot kosong).`,
         )
       }
     } catch (e) {
@@ -367,6 +361,11 @@ export default function PengumpulanSiswa({
   const kurang = modeBukti ? buktiWajibKurang(tugas, fotoSlot, videoAda) : []
   const jumlahWajib = buktiList.filter((b) => b.wajib).length
   const jumlahFotoBukti = buktiList.filter((b) => (b.jenis === 'video' ? videoAda[b.slot] : fotoSlot[b.slot])).length
+  /** Daftar foto siap kirim (mode bukti) — untuk pratinjau lengkap. */
+  const pratinjauBuktiFoto = buktiList
+    .filter((b) => b.jenis !== 'video' && fotoSlot[b.slot])
+    .map((b) => ({ slot: b.slot, label: b.label, src: fotoSlot[b.slot]! }))
+  const jumlahVideoSiap = buktiList.filter((b) => b.jenis === 'video' && videoAda[b.slot]).length
 
   /* —— Sudah dinilai: hanya tampilkan —— */
   if (terkunci) {
@@ -486,6 +485,9 @@ export default function PengumpulanSiswa({
                     <>
                   {src ? (
                     <div className="sw-kumpul-thumb-wrap sw-bukti-foto">
+                      <span className="sw-kumpul-thumb-no sw-kumpul-thumb-no--ok" aria-hidden>
+                        ✓
+                      </span>
                       <img src={src} alt={`Foto: ${b.label}`} className="sw-kumpul-thumb" />
                       {tampilForm && (
                         <button
@@ -592,10 +594,33 @@ export default function PengumpulanSiswa({
             </div>
           )}
 
+          {/* Pratinjau lengkap semua foto yang akan dikirim (bukan hanya 1 kartu). */}
+          {pratinjauBuktiFoto.length > 0 && (
+            <div className="sw-kumpul-pratinjau" aria-label="Pratinjau foto yang akan dikirim">
+              <p className="sw-kumpul-pratinjau-judul">
+                Pratinjau · {pratinjauBuktiFoto.length} foto
+                {jumlahVideoSiap > 0 ? ` · ${jumlahVideoSiap} video` : ''} siap dikirim
+              </p>
+              <div className="sw-kumpul-thumbs">
+                {pratinjauBuktiFoto.map((p, i) => (
+                  <div key={p.slot} className="sw-kumpul-thumb-wrap">
+                    <span className="sw-kumpul-thumb-no" aria-hidden>
+                      {i + 1}
+                    </span>
+                    <img src={p.src} alt={p.label} className="sw-kumpul-thumb" />
+                    <span className="sw-kumpul-thumb-label">{p.label}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {tampilForm && (
             <p className={`sw-bukti-ringkas${kurang.length === 0 ? ' sw-bukti-ringkas--ok' : ''}`}>
               {kurang.length === 0
-                ? `Semua bukti yang wajib sudah lengkap (${jumlahFotoBukti} dari ${buktiList.length}).`
+                ? `Semua bukti yang wajib sudah lengkap (${jumlahFotoBukti} foto` +
+                  (jumlahVideoSiap ? ` + ${jumlahVideoSiap} video` : '') +
+                  ` dari ${buktiList.length} bukti).`
                 : `Belum lengkap — masih perlu: ${kurang.join(', ')}.`}
             </p>
           )}
@@ -603,22 +628,31 @@ export default function PengumpulanSiswa({
       ) : (
         <>
           {items.length > 0 && (
-            <div className="sw-kumpul-thumbs">
-              {items.map((x, i) => (
-                <div key={x.key} className="sw-kumpul-thumb-wrap">
-                  <img src={x.src} alt={`Foto tugas ${i + 1}`} className="sw-kumpul-thumb" />
-                  {tampilForm && (
-                    <button
-                      type="button"
-                      className="sw-kumpul-hapus"
-                      onClick={() => hapus(x.key)}
-                      aria-label={`Hapus foto ${i + 1}`}
-                    >
-                      ×
-                    </button>
-                  )}
-                </div>
-              ))}
+            <div className="sw-kumpul-pratinjau" aria-label="Pratinjau foto yang akan dikirim">
+              <p className="sw-kumpul-pratinjau-judul">
+                Pratinjau · {items.length} foto siap dikirim
+                {items.length >= BATAS_FOTO_PENGUMPULAN ? ' (batas maksimal)' : ''}
+              </p>
+              <div className="sw-kumpul-thumbs">
+                {items.map((x, i) => (
+                  <div key={x.key} className="sw-kumpul-thumb-wrap">
+                    <span className="sw-kumpul-thumb-no" aria-hidden>
+                      {i + 1}
+                    </span>
+                    <img src={x.src} alt={`Foto tugas ${i + 1}`} className="sw-kumpul-thumb" />
+                    {tampilForm && (
+                      <button
+                        type="button"
+                        className="sw-kumpul-hapus"
+                        onClick={() => hapus(x.key)}
+                        aria-label={`Hapus foto ${i + 1}`}
+                      >
+                        ×
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
             </div>
           )}
 

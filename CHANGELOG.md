@@ -1,3 +1,11 @@
+## 2026-11-24 — Pengumpulan: pratinjau lengkap multi-foto
+
+- **Masalah:** siswa memilih beberapa foto sekaligus, tetapi pratinjau terasa hanya 1 foto → ragu apakah semua akan terkirim.
+- **Perbaikan:** panel **«Pratinjau · N foto siap dikirim»** menampilkan semua foto (nomor + label bukti). Mode bebas dan mode bukti.
+- State multi-isi slot digabung satu `setFotoSlot` agar semua thumbnail muncul bersamaan.
+- File: `src/pages/siswa/PengumpulanSiswa.tsx`, `src/styles/siswa.css`.
+- Antiregresi: §Tugas.MultiFile (pratinjau).
+
 ## 2026-11-24 — Pengumpulan: tombol Galeri vs Kamera (akses foto Android)
 
 - Layar «Select an image» dengan Camera / Browse + kotak abu-abu adalah **pemilih sistem Android**, bukan UI LMS. Kotak kosong biasanya izin foto browser belum diberikan.
