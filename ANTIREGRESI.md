@@ -4,6 +4,8 @@
 2. **Mode bukti berlabel:** satu kartu = satu slot; multi-pilih mengisi **slot foto kosong** berurutan (bukan menimpa semua). Slot **video** tidak diisi lewat multi-foto.
 3. **Video:** tetap satu file per slot (`accept="video/*"` tanpa `multiple`); maks. 2 video/tugas (§Tugas.Video).
 4. Uji: (a) mode bebas pilih 4 foto sekali → 4 thumbnail; (b) bukti 3 foto kosong, pilih 3 sekaligus → ketiga slot terisi; (c) pilih 5 saat hanya 2 slot kosong → 2 terisi + pesan sisa.
+5. **Android:** jangan mengandalkan satu tombol dengan `accept="image/*"` saja — di banyak HP muncul dialog sistem «Select an image» (Camera | Browse) dengan thumbnail kosong bila izin media belum diberikan. Sediakan **dua input**: galeri (tanpa `capture`, `multiple`, MIME eksplisit + HEIC) dan kamera (`capture="environment"`). Jangan pasang `capture` pada input galeri (memaksa kamera).
+6. Jelaskan ke siswa: Settings → Apps → Browser → Permissions → Photos/Media → Allow; atau ketuk **Browse** di dialog sistem.
 
 ## §Kuis.CetakNomor — Nomor soal PDF/Word berurutan (2026-11-24)
 

@@ -505,19 +505,36 @@ export default function PengumpulanSiswa({
                     <>
                       <input
                         type="file"
-                        accept="image/*"
+                        accept="image/jpeg,image/png,image/webp,image/heic,image/heif,.jpg,.jpeg,.png,.webp,.heic,.heif"
                         multiple
                         className="sw-kumpul-input"
                         id={idInput}
                         disabled={off}
                         onChange={(e) => void pilihBukti(b.slot, e.target.files, e.target)}
                       />
-                      <label
-                        htmlFor={idInput}
-                        className={`sw-kumpul-tambah${off ? ' sw-kumpul-tambah--off' : ''}`}
-                      >
-                        {sibuk ? 'Memproses foto…' : src ? 'Ganti foto' : 'Ambil / pilih foto'}
-                      </label>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        capture="environment"
+                        className="sw-kumpul-input"
+                        id={`${idInput}-kamera`}
+                        disabled={off}
+                        onChange={(e) => void pilihBukti(b.slot, e.target.files, e.target)}
+                      />
+                      <div className="sw-kumpul-aksi">
+                        <label
+                          htmlFor={idInput}
+                          className={`sw-kumpul-tambah${off ? ' sw-kumpul-tambah--off' : ''}`}
+                        >
+                          {sibuk ? 'Memproses…' : src ? 'Ganti dari galeri' : 'Dari galeri'}
+                        </label>
+                        <label
+                          htmlFor={`${idInput}-kamera`}
+                          className={`sw-kumpul-tambah sw-kumpul-tambah--sekunder${off ? ' sw-kumpul-tambah--off' : ''}`}
+                        >
+                          Kamera
+                        </label>
+                      </div>
                     </>
                   )}
                     </>
@@ -556,7 +573,7 @@ export default function PengumpulanSiswa({
             <div className="sw-kumpul-multi">
               <input
                 type="file"
-                accept="image/*"
+                accept="image/jpeg,image/png,image/webp,image/heic,image/heif,.jpg,.jpeg,.png,.webp,.heic,.heif"
                 multiple
                 className="sw-kumpul-input"
                 id={`kumpul-multi-${tugas.id}`}
@@ -607,31 +624,49 @@ export default function PengumpulanSiswa({
 
           {tampilForm && (
             <>
+              {/* Galeri: tanpa capture → Android membuka pemilih foto/file (Browse). multiple = centang beberapa. */}
               <input
                 ref={inputRef}
                 type="file"
-                accept="image/*"
+                accept="image/jpeg,image/png,image/webp,image/heic,image/heif,.jpg,.jpeg,.png,.webp,.heic,.heif"
                 multiple
                 className="sw-kumpul-input"
                 onChange={(e) => void pilih(e.target.files)}
                 disabled={olah || busy || items.length >= BATAS_FOTO_PENGUMPULAN}
-                id={`kumpul-${tugas.id}`}
+                id={`kumpul-galeri-${tugas.id}`}
               />
-              <label
-                htmlFor={`kumpul-${tugas.id}`}
-                className={`sw-kumpul-tambah${
-                  olah || busy || items.length >= BATAS_FOTO_PENGUMPULAN ? ' sw-kumpul-tambah--off' : ''
-                }`}
-              >
-                {olah
-                  ? 'Memproses foto…'
-                  : items.length > 0
-                    ? 'Tambah foto lagi'
-                    : 'Ambil / pilih beberapa foto'}
-              </label>
+              {/* Kamera: capture environment → langsung kamera belakang (satu foto). */}
+              <input
+                type="file"
+                accept="image/*"
+                capture="environment"
+                className="sw-kumpul-input"
+                onChange={(e) => void pilih(e.target.files)}
+                disabled={olah || busy || items.length >= BATAS_FOTO_PENGUMPULAN}
+                id={`kumpul-kamera-${tugas.id}`}
+              />
+              <div className="sw-kumpul-aksi">
+                <label
+                  htmlFor={`kumpul-galeri-${tugas.id}`}
+                  className={`sw-kumpul-tambah${
+                    olah || busy || items.length >= BATAS_FOTO_PENGUMPULAN ? ' sw-kumpul-tambah--off' : ''
+                  }`}
+                >
+                  {olah ? 'Memproses…' : items.length > 0 ? 'Tambah dari galeri' : 'Pilih dari galeri'}
+                </label>
+                <label
+                  htmlFor={`kumpul-kamera-${tugas.id}`}
+                  className={`sw-kumpul-tambah sw-kumpul-tambah--sekunder${
+                    olah || busy || items.length >= BATAS_FOTO_PENGUMPULAN ? ' sw-kumpul-tambah--off' : ''
+                  }`}
+                >
+                  Kamera
+                </label>
+              </div>
               <p className="sw-kat-hint">
-                Bisa pilih beberapa foto sekaligus dari galeri (maksimal {BATAS_FOTO_PENGUMPULAN}).
-                Pastikan tulisan dan gambar terlihat jelas.
+                <strong>Pilih dari galeri</strong> membuka foto di HP (bisa centang beberapa, maks.{' '}
+                {BATAS_FOTO_PENGUMPULAN}). Jika kotak foto kosong, izinkan akses foto/media untuk
+                browser, atau ketuk <em>Browse</em>. <strong>Kamera</strong> untuk foto baru.
               </p>
             </>
           )}

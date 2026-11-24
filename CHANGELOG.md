@@ -1,3 +1,11 @@
+## 2026-11-24 — Pengumpulan: tombol Galeri vs Kamera (akses foto Android)
+
+- Layar «Select an image» dengan Camera / Browse + kotak abu-abu adalah **pemilih sistem Android**, bukan UI LMS. Kotak kosong biasanya izin foto browser belum diberikan.
+- Tombol dipisah: **Pilih dari galeri** (tanpa `capture`, `multiple`, accept JPEG/PNG/WebP/HEIC) dan **Kamera** (`capture="environment"`).
+- Petunjuk singkat: izinkan akses foto/media; di dialog sistem ketuk Browse bila galeri kosong.
+- File: `src/pages/siswa/PengumpulanSiswa.tsx`, `src/styles/siswa.css`.
+- Antiregresi: §Tugas.MultiFile (butir Android).
+
 ## 2026-11-24 — Pengumpulan tugas: multi-file foto (maks. 6)
 
 - **Status sebelumnya:** mode bebas sudah `multiple` tetapi dibatasi **3 foto**; mode bukti berlabel hanya satu file per kartu (harus pilih berulang).
