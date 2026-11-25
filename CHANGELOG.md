@@ -1,3 +1,22 @@
+## 2026-11-25 — Bukti berlabel naik menjadi maksimal 10 (sebelumnya 6)
+
+### Perilaku baru
+- Guru kini bisa menambah **sampai 10 bukti berlabel** per tugas (sebelumnya 6), dan siswa bisa mengumpulkan foto serta video pada seluruh 10 slot itu. Dengan ini semua jenis tugas (bebas maupun berbukti berlabel) memakai batas yang sama: **10**.
+- Penilaian AI membaca sampai 10 bukti berlabel per pengumpulan.
+- Generator tugas AI tetap **menyarankan** paling banyak 6 bukti (rubrik 4–6 kategori, satu bukti per kategori); guru boleh menambah manual sampai 10. Maksimal video per pengumpulan tetap 2.
+
+### Berkas
+- Klien (repo lms): `src/types/tugas.ts` (`BATAS_BUKTI_TUGAS` = 10), `src/lib/pengumpulan.ts`, `CHANGELOG.md`, `ANTIREGRESI.md`.
+- Rules (lengkap, kedua repo): `firestore.rules` (kunci `videos` '1'..'10'), `storage.rules` (nama video `_(10|[1-9])`).
+- Cloud Function (repo Penilaian, lengkap): `functions/nilaiTugasLmsAi.js` (bukti berlabel dan slot video sampai 10).
+
+### Deploy
+1. Dari SDM01Penilaian, DAHULU: `firebase deploy --only firestore:rules,storage,functions:nilaiTugasLmsAi`.
+2. Baru deploy hosting LMS. Hosting lebih dulu membuat guru bisa membuat bukti ke-7 sampai ke-10 yang lalu ditolak saat siswa mengunggah video.
+
+### Catatan
+- Tugas lama dengan ≤ 6 bukti tidak berubah. `tsc -b`, `vite build`, `oxlint`, dan uji function lulus; pola nama video diuji pada slot 1, 9, 10 (lulus) serta 0, 11, 110 (ditolak). Belum diuji di HP.
+
 ## 2026-11-25 — Draf foto pengumpulan tersimpan di HP (bertahan saat tab dimuat ulang)
 
 ### Perilaku baru

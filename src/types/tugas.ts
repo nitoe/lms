@@ -136,7 +136,7 @@ export const BATAS_BUKTI_VIDEO = 2
 export interface BuktiTugas {
   /** ID stabil (tidak berubah walau label/urutan diedit). */
   id: string
-  /** Slot foto/video 1..6 yang dipakai bukti ini (unik per tugas). */
+  /** Slot foto/video 1..10 yang dipakai bukti ini (unik per tugas). */
   slot: number
   /** Nama bukti yang tampil ke siswa, mis. «Foto catatan hasil sebelum aktivitas». */
   label: string
@@ -157,11 +157,12 @@ export interface BuktiTugas {
 }
 
 /**
- * Jumlah bukti BERLABEL maksimum per tugas (ditetapkan guru; slot foto/video 1..6). SENGAJA tetap 6 walau
- * ruang slot foto siswa kini 10 (ANTIREGRESI §Tugas.Foto.Batas10): video & storage.rules mengenal slot 1..6,
- * dan generator tugas AI membatasi 6 bukti. Foto bebas (tanpa label) boleh sampai 10.
+ * Jumlah bukti BERLABEL maksimum per tugas (ditetapkan guru; slot foto/video 1..10). Selaras dengan
+ * `BATAS_FOTO_PENGUMPULAN`/`BATAS_SLOT_FOTO` (10), rules `lmsVideosSah` (kunci '1'..'10') dan `storage.rules`
+ * `namaVideoSiswa` (ANTIREGRESI §Tugas.Bukti.Batas10). Generator tugas AI tetap MENYARANKAN ≤ 6 bukti
+ * (rubrik 4–6 kategori); guru boleh menambah manual sampai 10.
  */
-export const BATAS_BUKTI_TUGAS = 6
+export const BATAS_BUKTI_TUGAS = 10
 
 /**
  * Pengaturan penilaian tugas (tab Input Nilai → Pengaturan penilaian).
@@ -236,7 +237,7 @@ export interface TugasLms {
   jumlahPengumpulan?: number
   pengaturanPenilaian?: PengaturanPenilaianTugas
   /**
-   * Bukti pengumpulan berlabel (1–6). Kosong/tidak ada = mode lama: siswa mengunggah 1–3 foto
+   * Bukti pengumpulan berlabel (1–10). Kosong/tidak ada = mode lama: siswa mengunggah 1–3 foto
    * tanpa label. Dokumen lama tanpa field ini tetap bekerja.
    */
   buktiList?: BuktiTugas[]

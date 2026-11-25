@@ -39,7 +39,7 @@ import {
  * Diselaraskan dengan rules `fotoIds.size() <= 10` dan slot '1'..'10' (ANTIREGRESI §132 / §Tugas.Foto.Batas10).
  */
 export const BATAS_FOTO_PENGUMPULAN = 10
-/** Ruang slot foto — selaras rules `fotoIds.size() <= 10` & slot '1'..'10'. Bukti berlabel tetap ≤ 6 (BATAS_BUKTI_TUGAS). */
+/** Ruang slot foto/video — selaras rules `fotoIds.size() <= 10`, slot '1'..'10', `BATAS_BUKTI_TUGAS` (10). */
 export const BATAS_SLOT_FOTO = 10
 export const DAFTAR_SLOT = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10] as const
 export const BATAS_CATATAN = 500
@@ -64,7 +64,7 @@ export type PengumpulanDok = {
   catatan: string
   fotoIds: string[]
   jumlahFoto: number
-  /** Video bukti per slot (1..6; video hanya untuk bukti berlabel) → berkas di Storage (ANTIREGRESI §Tugas.Video). */
+  /** Video bukti per slot (1..10; video hanya untuk bukti berlabel) → berkas di Storage (ANTIREGRESI §Tugas.Video). */
   videos: Record<number, VideoMeta>
   dibuatMs: number
   diubahMs: number
@@ -110,8 +110,8 @@ function videosDariDok(raw: unknown): Record<number, VideoMeta> {
   for (const [k, v] of Object.entries(raw as Record<string, unknown>)) {
     const slot = Number(k)
     const x = v as Record<string, unknown> | null
-    // Video hanya untuk bukti berlabel (slot 1..6) — selaras rules `lmsVideosSah` & storage.rules.
-    if (!Number.isInteger(slot) || slot < 1 || slot > 6 || !x) continue
+    // Video hanya untuk bukti berlabel (slot 1..10) — selaras rules `lmsVideosSah` & storage.rules.
+    if (!Number.isInteger(slot) || slot < 1 || slot > BATAS_SLOT_FOTO || !x) continue
     if (!pathVideoAman(x.path)) continue
     hasil[slot] = {
       path: x.path,

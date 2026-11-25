@@ -1,3 +1,12 @@
+## §Tugas.Bukti.Batas10 — bukti berlabel dan video maksimal 10 (2026-11-25)
+
+1. **Menggantikan keputusan «bukti berlabel sengaja tetap 6»** pada §Tugas.Foto.Batas10 butir 3. Semua slot kini 1..10: `BATAS_BUKTI_TUGAS` (`types/tugas.ts`), `BATAS_SLOT_FOTO`, `videosDariDok` (`slot > BATAS_SLOT_FOTO`), rules `lmsVideosSah` (kunci '1'..'10'), `storage.rules` `namaVideoSiswa`, dan function `nilaiTugasLmsAi.js` (`buktiTugas.slice(0, 10)`, slot video ≤ 10). **Semuanya wajib berubah bersamaan** (rules di KEDUA repo); salah satu tertinggal membuat bukti/video slot 7–10 ditolak atau diabaikan diam-diam.
+2. **Pola nama video:** `'_(10|[1-9])\\.(webm|mp4)$'`. Jangan memakai `[1-9]` saja (slot 10 ditolak) atau `[1-10]` (kelas karakter «1», «0»: salah). Uji: `_1`, `_9`, `_10` lolos; `_0`, `_11`, `_110` ditolak.
+3. **Yang SENGAJA tetap:** `lmsVideosSah` `v.size() <= 2` (maks 2 video per pengumpulan), video ≤ 15 MB dan ≤ 60 detik, serta saran generator tugas AI ≤ 6 bukti (`generateTugasLmsAi.js` `bukti.length >= 6`, prompt «Maksimal 6 bukti», dan `tugasAi.ts` `.slice(0, 6)`). Batas 10 berlaku untuk bukti buatan guru; generator hanya menyarankan. Jangan menaikkan saran AI tanpa menaikkan jumlah kategori (satu bukti per kategori) dan menguji kualitas usulan.
+4. **Urutan deploy:** rules dan storage DAHULU (`firebase deploy --only firestore:rules,storage,functions:nilaiTugasLmsAi` dari Penilaian), baru hosting LMS.
+5. **Uji:** (a) guru membuat tugas dengan 10 bukti (campuran foto dan video; tombol tambah nonaktif di 10); (b) siswa mengumpulkan 10 bukti foto, hasilnya terbaca guru di 10 kartu; (c) bukti ke-8 berjenis video (≤ 2 video) terunggah dan terputar; (d) penilaian AI membaca 10 bukti; (e) tugas lama ≤ 6 bukti tetap normal; (f) bukti ke-10 wajib: tombol kumpul menunggu 10 bukti lengkap.
+6. **Payload:** 10 foto berlabel + 2 video bisa ±2,5 MB foto + 2×(≤ 15 MB). Konkurensi foto tetap 2 (§Tugas.Foto.Kemajuan); batas waktu §Kirim.Diagnostik tetap berlaku per langkah.
+
 ## §Tugas.Draf — draf foto pengumpulan di IndexedDB (2026-11-25)
 
 1. **Tujuan:** foto yang sudah dipilih tidak hilang bila Android mematikan tab saat kamera terbuka (HP RAM kecil) atau halaman dimuat ulang. Implementasi: `lib/drafPengumpulan.ts` (IndexedDB `lms-draf-pengumpulan`, store `draf`, kunci `{tugasId}_{siswaId}`) dan dua `useEffect` di `PengumpulanSiswa.tsx`.
