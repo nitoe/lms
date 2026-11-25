@@ -56,7 +56,7 @@ export default function KelompokBannerBeranda({ kelas, siswaId, tugas }: Props) 
 
   const baris = useMemo(() => {
     if (!tugas || kelompok.length === 0) return []
-    const aktif = new Map(tugas.filter((r) => r.status !== 'dinilai').map((r) => [r.tugas.id, r.tugas]))
+    const aktif = new Map(tugas.filter((r) => r.status !== 'dinilai' && r.status !== 'ditutup').map((r) => [r.tugas.id, r.tugas]))
     const out: { kunci: string; tugasId: string; teks: string }[] = []
     for (const k of kelompok) {
       const t = aktif.get(k.tugasId)

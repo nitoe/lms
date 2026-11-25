@@ -70,7 +70,7 @@ function susunPekan(tugas: TugasSiswaRingkas[]) {
   const senin = hariIni - ((dow + 6) % 7) * HARI_MS
   const tenggatHari = new Map<number, number>()
   for (const r of tugas) {
-    if (r.status === 'dinilai') continue
+    if (r.status === 'dinilai' || r.status === 'ditutup') continue
     const ms = tenggatMs(r.tugas.tenggat)
     if (!ms) continue
     const k = awalHari(ms)
@@ -90,7 +90,7 @@ function susunPekan(tugas: TugasSiswaRingkas[]) {
 
 /** Urutan «Tugas untukmu»: belum dinilai (tenggat terdekat dulu), lalu yang sudah lewat. */
 function urutkanMenunggu(tugas: TugasSiswaRingkas[]): TugasSiswaRingkas[] {
-  const menunggu = tugas.filter((r) => r.status !== 'dinilai')
+  const menunggu = tugas.filter((r) => r.status !== 'dinilai' && r.status !== 'ditutup')
   const skor = (r: TugasSiswaRingkas) => {
     const ms = tenggatMs(r.tugas.tenggat)
     return ms || Number.MAX_SAFE_INTEGER
@@ -199,8 +199,11 @@ export default function SiswaBeranda() {
   const ringkas = useMemo(() => {
     const total = tugas?.length ?? 0
     const dinilai = tugas?.filter((r) => r.status === 'dinilai').length ?? 0
-    const menunggu = total - dinilai
-    return { total, dinilai, menunggu, persen: total ? Math.round((dinilai / total) * 100) : 0 }
+    const ditutup = tugas?.filter((r) => r.status === 'ditutup').length ?? 0
+    const menunggu = total - dinilai - ditutup
+    // Tugas yang ditutup guru tanpa nilai tidak lagi menjadi tanggungan siswa.
+    const dasar = total - ditutup
+    return { total, dinilai, menunggu, persen: dasar > 0 ? Math.round((dinilai / dasar) * 100) : 0 }
   }, [tugas])
 
   const pekan = useMemo(() => susunPekan(tugas ?? []), [tugas])

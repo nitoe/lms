@@ -1,3 +1,14 @@
+## §Tugas.Selesai.Ditutup — «Tandai selesai» menutup penugasan untuk siswa (2026-11-25)
+
+1. **Semantik:** `selesai === true` (tombol guru «Tandai selesai») = penugasan DITUTUP untuk siswa. Sebelumnya flag ini hanya penanda sisi guru dan sama sekali diabaikan sisi siswa dan rules, sehingga siswa masih bisa membuka dan mengirim. Jangan kembali menganggap `selesai` murni label guru.
+2. **Tiga lapis harus tetap sejalan:** (a) UI siswa: `statusTugasSiswa` mengembalikan `ditutup` dan detail tugas hanya menampilkan keterangan «Penugasan telah ditutup» (tanpa deskripsi, instruksi, lampiran, panel kelompok, form pengumpulan); (b) `firestore.rules` `lmsSiswaBolehKumpul` menolak create/update/delete pengumpulan, foto, dan sejenisnya bila `selesai == true`; (c) `storage.rules` `siswaBolehKelolaVideo` menolak unggah/ganti/hapus video. Mengubah salah satu lapis tanpa yang lain menimbulkan tampilan menyesatkan atau celah tulis.
+3. **Urutan status siswa:** `dinilai` > `ditutup` > `lewat` > `belum`. Siswa yang sudah dinilai tetap berlabel «Sudah dinilai/Nilai X» di katalog, tetapi detailnya tetap ditutup. Nilai dilihat di menu nilai, bukan di detail tugas.
+4. **`arsip` tetap berbeda dari `selesai`:** arsip menonaktifkan tugas (`aktif=false`) sehingga HILANG dari menu siswa (kueri `aktif == true`). Selesai TIDAK mengubah `aktif`, jadi tugas tetap tampil di katalog sampai diarsipkan. Jangan menjadikan `selesai` otomatis menyetel `aktif=false`.
+5. **Beranda:** tugas `ditutup` dikeluarkan dari «Tugas untukmu», penanda tenggat pekan, hitungan menunggu, dan persentase (penyebut = total − ditutup). `KelompokBannerBeranda` juga mengabaikan `ditutup`. Setiap tempat yang menyaring `status !== 'dinilai'` harus ikut mengecualikan `ditutup`.
+6. **Guru:** menandai selesai kini meminta konfirmasi (akibatnya berat bagi siswa yang belum mengumpulkan). «Batal selesai» membuka kembali tugas. Menandai selesai tidak menghalangi guru menilai atau mereset pengumpulan (cabang rules guru tidak berubah).
+7. **Rules:** ekspresi baru memakai `'selesai' in doc` sebelum membaca nilainya karena dokumen lama tidak punya field itu (membaca field tak ada = galat = tulis ditolak). Pertahankan pola ini.
+8. **Uji:** (a) tandai selesai tugas yang belum dikumpulkan siswa A → A melihat kartu berlabel «Penugasan ditutup»; membuka kartu hanya menampilkan keterangan; (b) A tidak punya tugas itu di Beranda; (c) kirim lewat konsol/aplikasi lama ditolak `permission-denied`; (d) «Batal selesai» → A bisa membuka dan mengirim lagi; (e) arsipkan → kartu hilang dari katalog A; (f) guru tetap bisa menilai tugas yang ditandai selesai.
+
 ## §Tugas.Terpadu — Menilai per siswa & penyebaran nilai kelompok (2026-11-25)
 
 1. **Satu sumber kebenaran.** `PenilaianTerpadu` tidak menyimpan data nilai: draf (`draft`), status (`statusBarisNilai`), dan penyimpanan (`simpanSatuNilai`) tetap milik `TugasDetail` dan dipakai bersama Daftar nilai. Jangan membuat state nilai kedua di komponen itu.

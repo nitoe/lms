@@ -1,0 +1,7 @@
+/* Keterangan «Penugasan telah ditutup» di detail tugas siswa (ANTIREGRESI §Tugas.Selesai.Ditutup).
+   DIIMPOR langsung oleh SiswaTugas.tsx — jangan dijadikan snippet lepas. */
+.sw-tugas-ditutup {
+  border-left: 4px solid #f59e0b;
+  background: #fffbeb;
+}
+.sw-tugas-ditutup h2 { color: #92400e; }

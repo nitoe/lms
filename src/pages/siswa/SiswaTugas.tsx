@@ -20,6 +20,7 @@ import {
   type TugasLms,
 } from '../../types/tugas'
 import type { NilaiTugasDok } from '../../lib/nilaiTugas'
+import '../../styles/tugas-ditutup.css'
 import SiswaIcon from './SiswaIcon'
 import PengumpulanSiswa from './PengumpulanSiswa'
 import KelompokSiswaPanel from './KelompokSiswaPanel'
@@ -37,6 +38,7 @@ const FILTER_STATUS_LABEL: Record<StatusTugasSiswa | 'semua', string> = {
   belum: 'Belum dinilai',
   dinilai: 'Sudah dinilai',
   lewat: 'Lewat tenggat',
+  ditutup: 'Ditutup',
 }
 
 type FilterStatus = StatusTugasSiswa | 'semua'
@@ -203,7 +205,7 @@ export default function SiswaTugas() {
   }, [terfilter])
 
   const hitungStatus = useMemo(() => {
-    const c: Record<FilterStatus, number> = { semua: 0, belum: 0, dinilai: 0, lewat: 0 }
+    const c: Record<FilterStatus, number> = { semua: 0, belum: 0, dinilai: 0, lewat: 0, ditutup: 0 }
     for (const r of ringkas) {
       if (filterMapel !== 'semua' && r.tugas.mapel !== filterMapel) continue
       c.semua++
@@ -231,9 +233,8 @@ export default function SiswaTugas() {
     const kategoriDinilai = (detail.pengaturanPenilaian?.kategori ?? []).filter((k) =>
       String(k.nama ?? '').trim(),
     )
-    return (
-      <div className="space-y-4">
-        <section className="kelas-hero" style={{ background: a.cover }}>
+    const hero = (
+      <section className="kelas-hero" style={{ background: a.cover }}>
           <div className="kelas-hero-deco" aria-hidden />
           <div className="kelas-hero-inner">
             <button
@@ -260,6 +261,29 @@ export default function SiswaTugas() {
             </div>
           </div>
         </section>
+    )
+
+    // Guru menandai tugas selesai → ditutup untuk siswa: hanya keterangan, tidak ada isi tugas,
+    // kelompok, maupun form pengumpulan. Tugas tetap muncul di katalog sampai diarsipkan guru.
+    // Rules (lmsSiswaBolehKumpul + Storage) menolak tulis juga — ANTIREGRESI §Tugas.Selesai.Ditutup.
+    if (detail.selesai === true) {
+      return (
+        <div className="space-y-4">
+          {hero}
+          <section className="sw-kat-panel sw-tugas-ditutup" role="status">
+            <h2>Penugasan telah ditutup</h2>
+            <p className="m-0 text-sm leading-relaxed text-slate-700">
+              Guru sudah menutup tugas ini, jadi kamu tidak dapat lagi membuka atau mengirimkan
+              tugas ini. Jika ada yang ingin ditanyakan, hubungi gurumu.
+            </p>
+          </section>
+        </div>
+      )
+    }
+
+    return (
+      <div className="space-y-4">
+        {hero}
 
         <div className="sw-kat-detail-meta">
           <span
@@ -438,6 +462,12 @@ export default function SiswaTugas() {
                 <span className="sw-kat-stat-l">Lewat</span>
               </div>
             )}
+            {hitungStatus.ditutup > 0 && (
+              <div className="sw-kat-stat">
+                <span className="sw-kat-stat-n">{hitungStatus.ditutup}</span>
+                <span className="sw-kat-stat-l">Ditutup</span>
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -555,18 +585,22 @@ export default function SiswaTugas() {
                           className={
                             st === 'dinilai'
                               ? 'sw-kat-badge sw-kat-badge--ok'
-                              : st === 'lewat'
-                                ? 'sw-kat-badge sw-kat-badge--danger'
-                                : 'sw-kat-badge sw-kat-badge--warn'
+                              : st === 'ditutup'
+                                ? 'sw-kat-badge sw-kat-badge--info'
+                                : st === 'lewat'
+                                  ? 'sw-kat-badge sw-kat-badge--danger'
+                                  : 'sw-kat-badge sw-kat-badge--warn'
                           }
                         >
                           {st === 'dinilai'
                             ? nilai && typeof nilai.nilai === 'number'
                               ? `Nilai ${nilai.nilai}`
                               : 'Sudah dinilai'
-                            : st === 'lewat'
-                              ? 'Lewat tenggat'
-                              : 'Belum dinilai'}
+                            : st === 'ditutup'
+                              ? 'Penugasan ditutup'
+                              : st === 'lewat'
+                                ? 'Lewat tenggat'
+                                : 'Belum dinilai'}
                         </span>
                         {kumpulMap[t.id] && (
                           <span className="sw-kat-badge sw-kat-badge--info">Terkumpul</span>

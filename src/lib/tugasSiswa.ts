@@ -5,7 +5,7 @@ import type { NilaiTugasDok } from './nilaiTugas'
 import { rapikanBuktiList } from './buktiTugas'
 
 /** Status tugas dari sudut pandang siswa (tanpa pengumpulan file dulu). */
-export type StatusTugasSiswa = 'belum' | 'dinilai' | 'lewat'
+export type StatusTugasSiswa = 'belum' | 'dinilai' | 'lewat' | 'ditutup'
 
 export type TugasSiswaRingkas = {
   tugas: TugasLms
@@ -146,14 +146,17 @@ export function tenggatLewat(tenggat: unknown, sekarang = Date.now()): boolean {
 /**
  * Status tampilan siswa:
  * - dinilai: ada dokumen nilai
+ * - ditutup: guru menandai tugas selesai (`selesai === true`) — siswa tidak bisa membuka/mengirim
+ *   (ANTIREGRESI §Tugas.Selesai.Ditutup)
  * - lewat: belum dinilai dan tenggat sudah lewat
  * - belum: selain itu
  */
 export function statusTugasSiswa(
-  tugas: Pick<TugasLms, 'tenggat'>,
+  tugas: Pick<TugasLms, 'tenggat' | 'selesai'>,
   nilai?: Pick<NilaiTugasDok, 'nilai'> | null,
 ): StatusTugasSiswa {
   if (nilai && typeof nilai.nilai === 'number') return 'dinilai'
+  if (tugas.selesai === true) return 'ditutup'
   if (tenggatLewat(tugas.tenggat)) return 'lewat'
   return 'belum'
 }

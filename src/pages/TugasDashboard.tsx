@@ -319,12 +319,23 @@ export default function TugasDashboard() {
   }
 
   async function onToggleSelesai(t: TugasLms) {
+    if (
+      !t.selesai &&
+      !confirm(
+        `Tandai «${t.judul}» selesai? Penugasan akan DITUTUP untuk siswa: mereka tidak bisa lagi membuka atau mengirim tugas ini. Tugas tetap tampil di daftar siswa (dengan keterangan ditutup) sampai kamu mengarsipkannya.`,
+      )
+    )
+      return
     setBusyId(t.id)
     setError('')
     try {
       await updateTugas(t.id, { selesai: !t.selesai })
       await muat()
-      tampilInfo(t.selesai ? `Tanda selesai «${t.judul}» dibatalkan.` : `«${t.judul}» ditandai selesai dinilai.`)
+      tampilInfo(
+        t.selesai
+          ? `Tanda selesai «${t.judul}» dibatalkan. Tugas dibuka kembali untuk siswa.`
+          : `«${t.judul}» ditandai selesai dan ditutup untuk siswa.`,
+      )
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Gagal mengubah tanda selesai.')
     } finally {
@@ -381,7 +392,7 @@ export default function TugasDashboard() {
         <div className="tg-kepala-teks">
           <h2 className="tg-judul-halaman">Tugas</h2>
           <p className="tg-sub">
-            Katalog tugas mapel dan proyek. Tandai selesai setelah dinilai, arsipkan yang tidak dipakai lagi.
+            Katalog tugas mapel dan proyek. Tandai selesai untuk menutup penugasan (siswa masih melihat keterangan ditutup), arsipkan agar hilang dari menu siswa.
           </p>
         </div>
         <Link to="/tugas/baru" className="tg-btn tg-btn--utama tg-btn--besar">
@@ -706,7 +717,7 @@ export default function TugasDashboard() {
                           className={`tg-btn${t.selesai ? ' tg-btn--selesai' : ''}`}
                           disabled={busyId !== null}
                           onClick={() => void onToggleSelesai(t)}
-                          title={t.selesai ? 'Batalkan tanda selesai' : 'Tandai penilaian tugas sudah selesai'}
+                          title={t.selesai ? 'Batalkan tanda selesai (buka kembali untuk siswa)' : 'Tandai selesai dan tutup penugasan untuk siswa'}
                         >
                           {t.selesai ? 'Batal selesai' : 'Tandai selesai'}
                         </button>

@@ -1,3 +1,28 @@
+## 2026-11-25 — «Tandai selesai» kini menutup penugasan untuk siswa
+
+### Latar
+- Penanda «Tandai selesai» di dashboard guru ternyata hanya label sisi guru: siswa tetap bisa membuka dan mengirim tugas, dan rules tidak memeriksanya.
+
+### Perilaku baru
+- **Selesai = ditutup untuk siswa.** Kartu tugas tetap tampil di katalog dengan label «Penugasan ditutup». Saat dipilih, siswa hanya melihat keterangan «Penugasan telah ditutup» (isi tugas, kelompok, dan form pengumpulan tidak tampil).
+- **Tidak bisa dikirim lewat jalur lain:** rules Firestore (pengumpulan) dan Storage (video) menolak tulis siswa pada tugas selesai.
+- **Arsip** tetap yang menghilangkan tugas dari menu siswa. Selesai tidak mengubah status aktif.
+- **Beranda siswa:** tugas ditutup tidak lagi dihitung sebagai tugas menunggu; ada statistik dan saringan «Ditutup» di katalog.
+- **Guru:** «Tandai selesai» meminta konfirmasi; «Batal selesai» membuka kembali tugas. Teks dashboard dan hint diperjelas.
+
+### Berkas
+- Klien: `lib/tugasSiswa.ts`, `pages/siswa/SiswaTugas.tsx`, `pages/siswa/SiswaBeranda.tsx`, `pages/siswa/KelompokBannerBeranda.tsx`, `pages/TugasDashboard.tsx`, baru `styles/tugas-ditutup.css`.
+- Rules (lengkap, kedua repo): `firestore.rules`, `storage.rules` (masing-masing satu syarat baru).
+- Tidak ada index baru.
+
+### Deploy
+1. Dari SDM01Penilaian: `firebase deploy --only firestore:rules,storage` (DAHULU).
+2. Lalu hosting LMS.
+
+### Catatan
+- Siswa yang sudah dinilai tetap melihat «Nilai X» di katalog, tetapi detail tugasnya ikut ditutup; nilai dilihat di menu nilai.
+- `npm run build` lulus; rules belum diuji di emulator — jalankan uji di ANTIREGRESI §Tugas.Selesai.Ditutup butir 8.
+
 ## 2026-11-25 — Menilai per siswa (bukti + rubrik satu layar) & nilai ketua otomatis diikuti anggota
 
 ### Menilai per siswa (semua guru)
