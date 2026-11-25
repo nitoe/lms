@@ -1,3 +1,25 @@
+## 2026-11-25 — Menilai per siswa (bukti + rubrik satu layar) & nilai ketua otomatis diikuti anggota
+
+### Menilai per siswa (semua guru)
+- Sub-tab baru **Menilai per siswa** di Input nilai (kini sub-tab awal): **bukti pengumpulan di kiri, rubrik & input nilai di kanan** dalam satu layar — tidak perlu lagi bolak-balik antara tab Pengumpulan dan Daftar nilai.
+- Bukti ditampilkan per butir berlabel (foto bisa diperbesar, video diputar langsung) lengkap dengan catatan siswa. **Menyorot kategori ↔ bukti:** fokus pada satu kategori menonjolkan bukti yang tertaut ke kategori itu (yang lain meredup); klik label kategori pada bukti melompat ke kategorinya. Panel bukti tetap menempel saat daftar rubrik panjang di-scroll.
+- Input cepat untuk rubrik banyak: skor 0–100, **tombol skor cepat dari rentang predikat** (A/B/C/D/E = nilai tengah rentang), **Enter pindah ke kategori berikutnya**, nilai akhir & predikat otomatis, komentar.
+- Navigasi siswa: ◀ ▶, daftar pilihan dengan penanda status, saringan «Belum dinilai», **Simpan & berikutnya**.
+- Tombol **Buka ▸** pada kolom «Bukti siswa» di Daftar nilai (kolom kini tampil untuk semua guru) langsung membuka siswa itu di layar baru. Daftar nilai tetap ada untuk gambaran seluruh kelas.
+- Akun AI: tombol **✦ Usulan AI** di layar ini menampilkan skor, keyakinan, dan alasan AI **tepat di bawah tiap kategori** (dengan tombol «Pakai» per kategori atau «Terapkan semua»), tidak lagi hanya lewat dialog.
+
+### Tugas kelompok: nilai ketua otomatis muncul di anggota
+- Mengisi/mengubah nilai **ketua** otomatis menyalin skor, nilai akhir, predikat, dan komentar ke **draf** anggota yang mengikuti. Penerapan usulan AI ke ketua ikut tersebar.
+- **Nilai manual tetap bisa:** mengedit baris anggota membuatnya «Disesuaikan» (berhenti mengikuti ketua); tombol **Ikuti ketua** mengembalikannya. **Samakan anggota** (di baris ketua) memaksa semua anggota sama dengan ketua.
+- Tidak menimpa diam-diam: anggota yang mengirim mandiri, anggota yang sudah punya nilai tersimpan berbeda dari ketua, dan nilai tersimpan tidak pernah ditimpa otomatis. Semua penyebaran hanya mengubah draf.
+- **Simpan kelompok (n)** menyimpan ketua + seluruh pengikut sekaligus. Baris anggota diberi penanda «Ikut nilai ketua / Disesuaikan / Kirim mandiri».
+
+### File
+- Baru: `src/components/PenilaianTerpadu.tsx`, `src/styles/penilaian-terpadu.css`.
+- Ubah: `src/pages/TugasDetail.tsx`, `src/styles/tugas.css`, `CHANGELOG.md`, `ANTIREGRESI.md`.
+- Tidak ada perubahan Cloud Functions, `firestore.rules`, maupun `storage.rules` → cukup deploy hosting.
+- Antiregresi: §Tugas.Terpadu.
+
 ## 2026-11-24 — Penilaian bukti foto/video dengan AI (khusus akun AI)
 
 - **Fitur baru (hanya `arif.azwar79@gmail.com`, UID + email dicek di klien dan server):** di tab Input nilai → Daftar nilai siswa muncul kolom **Bukti siswa** (jumlah foto/video yang dikumpulkan) dengan tombol **✦ Nilai bukti**, serta tombol **✦ Nilai bukti dengan AI** untuk semua siswa yang sudah mengumpulkan tetapi belum dinilai.

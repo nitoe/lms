@@ -1,3 +1,16 @@
+## §Tugas.Terpadu — Menilai per siswa & penyebaran nilai kelompok (2026-11-25)
+
+1. **Satu sumber kebenaran.** `PenilaianTerpadu` tidak menyimpan data nilai: draf (`draft`), status (`statusBarisNilai`), dan penyimpanan (`simpanSatuNilai`) tetap milik `TugasDetail` dan dipakai bersama Daftar nilai. Jangan membuat state nilai kedua di komponen itu.
+2. **CSS komponen diimpor oleh komponennya** (`penilaian-terpadu.css`). Jangan memindahkannya ke berkas snippet lepas (§Tugas.UiGuru no. 9).
+3. **Pengumpulan & kelompok dimuat untuk SEMUA guru** saat sub-tab Daftar nilai/Menilai dibuka (bukan lagi hanya akun AI). Kueri kelompok wajib `tugasId` + `kelas` per rombel dan rombel yang ditolak rules dilewati.
+4. **Aturan «ikut ketua» (`ikutKetua`)** — anggota hanya ditimpa otomatis bila: bukan ketua, tidak `lepasKelompok`, tidak punya pengumpulan sendiri, dan (belum ada nilai tersimpan ATAU nilai tersimpannya identik dengan ketua). **Nilai tersimpan yang berbeda tidak boleh ditimpa otomatis.** Penyebaran hanya mengubah draf; `Samakan anggota`/`Ikuti ketua` adalah satu-satunya jalan memaksa.
+5. **Setiap jalur yang menulis draf harus lewat `patchDraft` / `onSkorKategori` / `terapkanUsulan`** (memanggil `tandaiLepas` + `sebarDariKetua`). Menulis `setDraft` langsung untuk satu baris akan melewati penyebaran. Pengecualian sah: `samakanAnggota`, `ikutiKetuaLagi`, dan penyebaran itu sendiri. Mode massal AI memakai `tanpaLepas = true`.
+6. **`lepasKelompok` direset saat «Muat ulang»** bersama draf. Jangan menyimpannya ke Firestore (hanya status sesi).
+7. **Simpan kelompok** (`simpanKelompok`) hanya menyimpan baris berstatus `ubah` yang ketua/pengikut (`barisKelompokBelumSimpan`), berurutan, ketua dulu, berhenti pada kegagalan pertama.
+8. **Skor cepat** dihitung dari `rentangPredikat` tugas (tengah tiap rentang, maks. 100) — jangan memakai angka tetap.
+9. **Sub-tab awal Input nilai = «Menilai per siswa».** Saat rubrik kosong layar ini menampilkan ajakan «Atur rubrik»; saat tugas masih draf menampilkan pesan yang sama dengan Daftar nilai (`bolehInputNilaiTugas`).
+10. Uji: (a) tugas kelompok — isi nilai ketua → anggota terisi; ubah satu anggota → «Disesuaikan» dan tidak ikut perubahan ketua berikutnya; «Ikuti ketua» mengembalikan; (b) «Simpan kelompok» menyimpan semua; (c) anggota yang kirim mandiri tidak ikut ketua; (d) tugas individual: foto/video tampil, fokus kategori menyorot bukti tertaut; (e) HP 360px: bukti di atas, rubrik di bawah, bilah simpan tidak menutupi input.
+
 ## §Tugas.NilaiAi — Penilaian bukti foto/video dengan AI (2026-11-24)
 
 1. **AI = usulan, bukan nilai.** `nilaiTugasLmsAi` TIDAK menulis ke Firestore. Penerapan ke draf hanya lewat tombol «Terapkan ke draf nilai» (atau mode massal yang juga hanya mengisi draf); penyimpanan tetap `simpanSatuNilai` oleh guru. Jangan menambah penyimpanan otomatis.

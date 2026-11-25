@@ -13,6 +13,7 @@ import {
 import BerbagiKelasDialog from '../components/BerbagiKelasDialog'
 import PengumpulanPanel from '../components/PengumpulanPanel'
 import UsulanNilaiAiDialog from '../components/UsulanNilaiAiDialog'
+import PenilaianTerpadu from '../components/PenilaianTerpadu'
 import { usulkanNilaiTugasAi, type UsulanNilaiAi } from '../lib/nilaiTugasAi'
 import { daftarPengumpulanTugas, type PengumpulanDok } from '../lib/pengumpulan'
 import { daftarKelompokTugas, type TugasKelompokDok } from '../lib/tugasKelompok'
@@ -92,7 +93,7 @@ function tabAwalUntuk(t: TugasLms): TabId {
   if (st === 'aktif_guru') return 'nilai'
   return 'pengaturan'
 }
-type SubNilai = 'pengaturan-nilai' | 'daftar-nilai'
+type SubNilai = 'pengaturan-nilai' | 'daftar-nilai' | 'menilai'
 
 type DraftBaris = {
   perKategori: Record<string, string>
@@ -209,7 +210,7 @@ export default function TugasDetail() {
       { replace: true },
     )
   }
-  const [subNilai, setSubNilai] = useState<SubNilai>('pengaturan-nilai')
+  const [subNilai, setSubNilai] = useState<SubNilai>('menilai')
   const [loading, setLoading] = useState(!isBaru)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -258,6 +259,10 @@ export default function TugasDetail() {
   const [kelompokList, setKelompokList] = useState<TugasKelompokDok[]>([])
   /** `pemilikId` = siswa yang mengumpulkan (ketua / pengirim mandiri); `siswaId` = baris yang membuka dialog. */
   const [dialogAi, setDialogAi] = useState<{ pemilikId: string; siswaId: string } | null>(null)
+  /** Anggota kelompok yang nilainya disesuaikan manual → tidak lagi ikut nilai ketua. */
+  const [lepasKelompok, setLepasKelompok] = useState<Record<string, boolean>>({})
+  /** Siswa yang sedang dibuka di «Menilai per siswa» (bertahan saat pindah sub-tab). */
+  const [menilaiId, setMenilaiId] = useState<string | null>(null)
   /** Saringan & pencarian pada Daftar nilai siswa. */
   const [filterNilai, setFilterNilai] = useState<'semua' | 'kosong' | 'ubah'>('semua')
   const [cariNilai, setCariNilai] = useState('')
@@ -672,9 +677,7 @@ export default function TugasDetail() {
    * Status baris: `ok` = sama dengan yang tersimpan; `ubah` = ada isian/perubahan yang belum
    * disimpan; `kosong` = belum pernah dinilai dan belum diisi.
    */
-  function statusBarisNilai(r: BarisNilaiTugas): 'kosong' | 'ubah' | 'ok' {
-    const d = draft[r.siswaId]
-    if (!draftBerisiData(d)) return r.sudahAda ? 'ubah' : 'kosong'
+  function draftDariServer(r: BarisNilaiTugas): DraftBaris {
     const per: Record<string, string> = {}
     for (const k of kategoriAktif) {
       const v = r.perKategori[k.id]
@@ -682,14 +685,122 @@ export default function TugasDetail() {
     }
     let pred = r.predikat
     if (!pred && r.nilaiAkhir !== null) pred = predikatOtomatis(r.nilaiAkhir, pengaturan.rentangPredikat)
-    const srv: DraftBaris = {
+    return {
       perKategori: per,
       nilaiAkhir: r.nilaiAkhir === null ? '' : String(r.nilaiAkhir),
       predikat: pred,
       komentar: r.komentar || '',
     }
-    if (draftSamaDenganServer(d as DraftBaris, srv)) return r.sudahAda ? 'ok' : 'ubah'
+  }
+
+  function statusBarisNilai(r: BarisNilaiTugas): 'kosong' | 'ubah' | 'ok' {
+    const d = draft[r.siswaId]
+    if (!draftBerisiData(d)) return r.sudahAda ? 'ubah' : 'kosong'
+    if (draftSamaDenganServer(d as DraftBaris, draftDariServer(r))) return r.sudahAda ? 'ok' : 'ubah'
     return 'ubah'
+  }
+
+  // ---- Tugas kelompok: nilai ketua otomatis diikuti anggota (ANTIREGRESI §Tugas.Terpadu) ----
+  const kelompokDariSiswa = (id: string) => kelompokList.find((k) => k.anggotaIds.includes(id))
+
+  /**
+   * Anggota «mengikuti» ketua bila: bukan ketua, tidak disesuaikan manual, tidak mengirim sendiri,
+   * dan (belum punya nilai tersimpan ATAU nilai tersimpannya identik dengan ketua).
+   * Nilai tersimpan yang berbeda tidak pernah ditimpa otomatis (gunakan «Samakan anggota»).
+   */
+  function ikutKetua(id: string): boolean {
+    const k = kelompokDariSiswa(id)
+    if (!k || k.ketuaId === id || lepasKelompok[id] || pengumpulanMap?.[id]) return false
+    const r = barisNilai?.find((x) => x.siswaId === id)
+    if (!r) return false
+    if (!r.sudahAda) return true
+    const rk = barisNilai?.find((x) => x.siswaId === k.ketuaId)
+    if (!rk || !rk.sudahAda) return false
+    return (
+      r.nilaiAkhir === rk.nilaiAkhir && kategoriAktif.every((c) => (r.perKategori[c.id] ?? null) === (rk.perKategori[c.id] ?? null))
+    )
+  }
+
+  /** Salin draf ketua ke anggota yang mengikuti. Murni: mengembalikan salinan `next`. */
+  function sebarDariKetua(next: Record<string, DraftBaris>, ketuaId: string): Record<string, DraftBaris> {
+    const k = kelompokList.find((x) => x.ketuaId === ketuaId)
+    const src = next[ketuaId]
+    if (!k || !src) return next
+    let out = next
+    for (const id of k.anggotaIds) {
+      if (id === ketuaId || !ikutKetua(id)) continue
+      if (out === next) out = { ...next }
+      out[id] = { perKategori: { ...src.perKategori }, nilaiAkhir: src.nilaiAkhir, predikat: src.predikat, komentar: src.komentar }
+    }
+    return out
+  }
+
+  /** Anggota diedit langsung → berhenti mengikuti ketua. */
+  function tandaiLepas(id: string) {
+    const k = kelompokDariSiswa(id)
+    if (!k || k.ketuaId === id) return
+    setLepasKelompok((p) => (p[id] ? p : { ...p, [id]: true }))
+  }
+
+  /** Paksa seluruh anggota (yang tidak kirim mandiri) sama dengan ketua — hanya draf. */
+  function samakanAnggota(ketuaId: string, sumber?: DraftBaris) {
+    const k = kelompokList.find((x) => x.ketuaId === ketuaId)
+    if (!k) return
+    const ada = new Set((barisNilai ?? []).map((r) => r.siswaId))
+    const target = k.anggotaIds.filter((id) => id !== ketuaId && ada.has(id) && !pengumpulanMap?.[id])
+    setLepasKelompok((p) => {
+      const n = { ...p }
+      for (const id of target) delete n[id]
+      return n
+    })
+    setDraft((prev) => {
+      const src = sumber ?? prev[ketuaId]
+      if (!src) return prev
+      const out = { ...prev }
+      for (const id of target) {
+        out[id] = { perKategori: { ...src.perKategori }, nilaiAkhir: src.nilaiAkhir, predikat: src.predikat, komentar: src.komentar }
+      }
+      return out
+    })
+  }
+
+  function ikutiKetuaLagi(id: string) {
+    const k = kelompokDariSiswa(id)
+    if (!k) return
+    setLepasKelompok((p) => {
+      const n = { ...p }
+      delete n[id]
+      return n
+    })
+    setDraft((prev) => {
+      const src = prev[k.ketuaId]
+      if (!src) return prev
+      return { ...prev, [id]: { perKategori: { ...src.perKategori }, nilaiAkhir: src.nilaiAkhir, predikat: src.predikat, komentar: src.komentar } }
+    })
+  }
+
+  /** Baris kelompok (ketua + pengikut) yang belum tersimpan, ketua lebih dulu. */
+  function barisKelompokBelumSimpan(ketuaId: string): string[] {
+    const k = kelompokList.find((x) => x.ketuaId === ketuaId)
+    if (!k) return []
+    const ids = k.anggotaIds.filter((id) => {
+      const r = barisNilai?.find((x) => x.siswaId === id)
+      if (!r || statusBarisNilai(r) !== 'ubah') return false
+      return id === ketuaId || ikutKetua(id)
+    })
+    return ids.sort((a, b) => (a === ketuaId ? -1 : b === ketuaId ? 1 : 0))
+  }
+
+  async function simpanKelompok(ketuaId: string): Promise<boolean> {
+    const ids = barisKelompokBelumSimpan(ketuaId)
+    if (!ids.length) return true
+    for (const id of ids) {
+      const r = barisNilai?.find((x) => x.siswaId === id)
+      if (!r) continue
+      if (!(await simpanSatuNilai(id, r.siswaNama))) return false
+    }
+    setSukses(`Nilai kelompok tersimpan (${ids.length} siswa).`)
+    return true
   }
 
   /**
@@ -753,13 +864,14 @@ export default function TugasDetail() {
   )
 
   useEffect(() => {
-    if (tab === 'nilai' && subNilai === 'daftar-nilai' && !isBaru && tugas) {
+    if (tab === 'nilai' && (subNilai === 'daftar-nilai' || subNilai === 'menilai') && !isBaru && tugas) {
       // Jangan force: pertahankan draf AI/edit bila user pindah tab lalu kembali.
       void muatNilai()
     }
   }, [tab, subNilai, isBaru, tugas, muatNilai])
 
   function patchDraft(siswaId: string, patch: Partial<DraftBaris>) {
+    tandaiLepas(siswaId)
     setDraft((prev) => {
       const cur = prev[siswaId] || {
         perKategori: {},
@@ -767,11 +879,13 @@ export default function TugasDetail() {
         predikat: '',
         komentar: '',
       }
-      return { ...prev, [siswaId]: { ...cur, ...patch } }
+      const next = { ...prev, [siswaId]: { ...cur, ...patch } }
+      return sebarDariKetua(next, siswaId)
     })
   }
 
   function onSkorKategori(siswaId: string, katId: string, val: string) {
+    tandaiLepas(siswaId)
     setDraft((prev) => {
       const cur = prev[siswaId] || {
         perKategori: {},
@@ -795,10 +909,10 @@ export default function TugasDetail() {
           pred = predikatDariNilai(Math.round(rata), rentang)?.predikat || pred
         }
       }
-      return {
-        ...prev,
-        [siswaId]: { ...cur, perKategori: per, nilaiAkhir: akhir, predikat: pred },
-      }
+      return sebarDariKetua(
+        { ...prev, [siswaId]: { ...cur, perKategori: per, nilaiAkhir: akhir, predikat: pred } },
+        siswaId,
+      )
     })
   }
 
@@ -812,9 +926,9 @@ export default function TugasDetail() {
     patchDraft(siswaId, patch)
   }
 
-  /** Muat pengumpulan (+ kelompok bila tugas kelompok) saat Daftar nilai dibuka oleh akun AI. */
+  /** Muat pengumpulan (+ kelompok bila tugas kelompok) saat Daftar nilai / Menilai per siswa dibuka. */
   useEffect(() => {
-    if (!bisaAi || tab !== 'nilai' || subNilai !== 'daftar-nilai' || isBaru || !tugas) return
+    if (tab !== 'nilai' || (subNilai !== 'daftar-nilai' && subNilai !== 'menilai') || isBaru || !tugas) return
     if (pengumpulanMap !== null) return
     let batal = false
     void (async () => {
@@ -843,7 +957,7 @@ export default function TugasDetail() {
     return () => {
       batal = true
     }
-  }, [bisaAi, tab, subNilai, isBaru, tugas, pengumpulanMap])
+  }, [tab, subNilai, isBaru, tugas, pengumpulanMap])
 
   /**
    * Dari mana bukti seorang siswa berasal? Pengumpulan sendiri lebih diutamakan (anggota yang
@@ -868,46 +982,47 @@ export default function TugasDetail() {
     return null
   }
 
-  /** Terapkan usulan AI ke DRAF baris (belum tersimpan; guru memeriksa lalu menyimpan). */
-  function terapkanUsulan(siswaId: string, u: UsulanNilaiAi | undefined) {
-    if (!u) return
-    setDraft((prev) => {
-      const cur = prev[siswaId] || { perKategori: {}, nilaiAkhir: '', predikat: '', komentar: '' }
-      const per = { ...cur.perKategori }
-      for (const k of u.kategori) {
-        if (k.skor !== null && kategoriAktif.some((c) => c.id === k.id)) per[k.id] = String(k.skor)
-      }
-      const angka: Record<string, number | null> = {}
-      for (const c of kategoriAktif) {
-        const t = (per[c.id] ?? '').trim()
-        const n = Number(t.replace(',', '.'))
-        angka[c.id] = t === '' || Number.isNaN(n) ? null : n
-      }
-      const rata = hitungRataRata(angka, kategoriAktif)
-      let akhir = cur.nilaiAkhir
-      let pred = cur.predikat
-      if (rata !== null) {
-        akhir = String(Math.round(rata))
-        pred = predikatDariNilai(Math.round(rata), pengaturan.rentangPredikat)?.predikat || pred
-      }
-      const komentar = cur.komentar.trim() ? cur.komentar : u.komentarSiswa
-      return { ...prev, [siswaId]: { ...cur, perKategori: per, nilaiAkhir: akhir, predikat: pred, komentar } }
-    })
-    setAiTerapkan((p) => ({ ...p, [siswaId]: true }))
+  /** Draf baru dari usulan AI (murni). */
+  function draftDariUsulan(cur: DraftBaris | undefined, u: UsulanNilaiAi): DraftBaris {
+    const base = cur || { perKategori: {}, nilaiAkhir: '', predikat: '', komentar: '' }
+    const per = { ...base.perKategori }
+    for (const k of u.kategori) {
+      if (k.skor !== null && kategoriAktif.some((c) => c.id === k.id)) per[k.id] = String(k.skor)
+    }
+    const angka: Record<string, number | null> = {}
+    for (const c of kategoriAktif) {
+      const t = (per[c.id] ?? '').trim()
+      const n = Number(t.replace(',', '.'))
+      angka[c.id] = t === '' || Number.isNaN(n) ? null : n
+    }
+    const rata = hitungRataRata(angka, kategoriAktif)
+    let akhir = base.nilaiAkhir
+    let pred = base.predikat
+    if (rata !== null) {
+      akhir = String(Math.round(rata))
+      pred = predikatDariNilai(Math.round(rata), pengaturan.rentangPredikat)?.predikat || pred
+    }
+    return { perKategori: per, nilaiAkhir: akhir, predikat: pred, komentar: base.komentar.trim() ? base.komentar : u.komentarSiswa }
   }
 
   /**
-   * Anggota kelompok yang layak ikut diberi usulan ketua: ada di daftar nilai, belum tersimpan nilainya,
-   * dan tidak punya pengumpulan sendiri (yang mengirim mandiri dinilai dari buktinya sendiri).
+   * Terapkan usulan AI ke DRAF baris (belum tersimpan; guru memeriksa lalu menyimpan).
+   * Ke ketua → ikut tersebar ke anggota yang mengikuti. Ke anggota → ia berhenti mengikuti ketua
+   * (kecuali `tanpaLepas`, dipakai mode massal).
    */
-  function anggotaPenerimaUsulan(pemilikId: string, k: TugasKelompokDok): string[] {
-    const ada = new Set((barisNilai ?? []).map((r) => r.siswaId))
-    return k.anggotaIds.filter(
-      (id) =>
-        ada.has(id) &&
-        (id === pemilikId || !pengumpulanMap?.[id]) &&
-        statusNilai[id] !== 'ok',
-    )
+  function terapkanUsulan(siswaId: string, u: UsulanNilaiAi | undefined, tanpaLepas = false) {
+    if (!u) return
+    if (!tanpaLepas) tandaiLepas(siswaId)
+    setDraft((prev) => sebarDariKetua({ ...prev, [siswaId]: draftDariUsulan(prev[siswaId], u) }, siswaId))
+    setAiTerapkan((p) => ({ ...p, [siswaId]: true }))
+  }
+
+  /** Terapkan usulan ke KETUA lalu paksa seluruh anggota sama (draf saja). */
+  function terapkanKelompok(ketuaId: string, u: UsulanNilaiAi) {
+    const baru = draftDariUsulan(draft[ketuaId], u)
+    setDraft((prev) => ({ ...prev, [ketuaId]: baru }))
+    samakanAnggota(ketuaId, baru)
+    setAiTerapkan((p) => ({ ...p, [ketuaId]: true }))
   }
 
   /**
@@ -921,7 +1036,7 @@ export default function TugasDetail() {
     try {
       const u = await usulkanNilaiTugasAi(tugas.id, pemilikId)
       setUsulanAi((p) => ({ ...p, [pemilikId]: u }))
-      if (terapkanKe) for (const id of terapkanKe) terapkanUsulan(id, u)
+      if (terapkanKe) for (const id of terapkanKe) terapkanUsulan(id, u, true)
       else setDialogAi({ pemilikId, siswaId: targetId })
       return true
     } catch (e) {
@@ -1921,6 +2036,16 @@ export default function TugasDetail() {
             <button
               type="button"
               role="tab"
+              aria-selected={subNilai === 'menilai'}
+              className={`td-subtab${subNilai === 'menilai' ? ' td-subtab--on' : ''}`}
+              onClick={() => setSubNilai('menilai')}
+            >
+              <span className="td-subtab-label">Menilai per siswa</span>
+              <span className="td-subtab-hint">Bukti &amp; rubrik berdampingan</span>
+            </button>
+            <button
+              type="button"
+              role="tab"
               aria-selected={subNilai === 'pengaturan-nilai'}
               className={`td-subtab${subNilai === 'pengaturan-nilai' ? ' td-subtab--on' : ''}`}
               onClick={() => setSubNilai('pengaturan-nilai')}
@@ -1939,6 +2064,58 @@ export default function TugasDetail() {
               <span className="td-subtab-hint">Isi skor per siswa</span>
             </button>
           </nav>
+
+          {subNilai === 'menilai' && (
+            <div className="space-y-4">
+              {isBaru ? (
+                <div className="td-kosong-kecil">
+                  <b>Simpan tugas dulu</b>
+                  <p>Buat dan simpan pengaturan tugas sebelum mengisi nilai siswa.</p>
+                </div>
+              ) : !bolehInputNilaiTugas(statusNow) ? (
+                <div className="td-kosong-kecil">
+                  <b>Masih draf</b>
+                  <p>
+                    Ubah status tugas menjadi <strong>Aktif guru</strong> atau <strong>Aktif siswa</strong> di tab
+                    Pengaturan, lalu simpan — baru nilai dapat diisi.
+                  </p>
+                </div>
+              ) : loadingNilai || barisNilai === null ? (
+                <div className="td-skel-card" aria-busy="true" />
+              ) : (
+                <PenilaianTerpadu
+                  tugas={tugas as TugasLms}
+                  kategori={kategoriAktif}
+                  rentang={pengaturan.rentangPredikat}
+                  baris={barisNilai}
+                  draft={draft}
+                  status={statusNilai}
+                  pengumpulanMap={pengumpulanMap}
+                  sumberBukti={sumberBuktiSiswa}
+                  kelompokList={kelompokList}
+                  ikutKetua={ikutKetua}
+                  jumlahBelumSimpanKelompok={(id) => barisKelompokBelumSimpan(id).length}
+                  terpilih={menilaiId}
+                  onPilih={setMenilaiId}
+                  menyimpan={menyimpanSiswaId}
+                  bisaAi={bisaAi}
+                  usulanAi={usulanAi}
+                  aiBusyId={aiBusyId}
+                  onSkor={onSkorKategori}
+                  onNilaiAkhir={onNilaiAkhirChange}
+                  onPatch={patchDraft}
+                  onSimpan={(id, nama) => simpanSatuNilai(id, nama)}
+                  onSimpanKelompok={simpanKelompok}
+                  onUsulkanAi={usulkanAi}
+                  onTerapkanUsulan={(id, u) => terapkanUsulan(id, u)}
+                  onSamakan={(id) => samakanAnggota(id)}
+                  onIkutiKetua={ikutiKetuaLagi}
+                  onKeDaftar={() => setSubNilai('daftar-nilai')}
+                  onKePengaturan={() => setSubNilai('pengaturan-nilai')}
+                />
+              )}
+            </div>
+          )}
 
           {subNilai === 'pengaturan-nilai' && (
             <div className="space-y-4">
@@ -2263,6 +2440,7 @@ export default function TugasDetail() {
                         disabled={loadingNilai}
                         onClick={() => {
                           setPengumpulanMap(null)
+                          setLepasKelompok({})
                           void muatNilai({ force: true })
                         }}
                         title="Muat ulang dari server (menghapus draf yang belum disimpan)"
@@ -2387,7 +2565,7 @@ export default function TugasDetail() {
                                     AI
                                   </th>
                                 )}
-                                {bisaAi && <th className="td-th-bukti">Bukti siswa</th>}
+                                <th className="td-th-bukti">Bukti siswa</th>
                                 <th className="td-th-komen">Komentar</th>
                                 <th className="td-th-aksi" aria-label="Aksi" />
                               </tr>
@@ -2419,6 +2597,36 @@ export default function TugasDetail() {
                                                   : 'Belum disimpan'
                                                 : 'Belum dinilai'}
                                           </small>
+                                          {(() => {
+                                            const kel = kelompokDariSiswa(r.siswaId)
+                                            if (!kel) return null
+                                            if (kel.ketuaId === r.siswaId) {
+                                              return (
+                                                <small className="td-kel-info">
+                                                  Ketua · {kel.anggotaIds.length} anggota
+                                                  <button
+                                                    type="button"
+                                                    className="td-link-kecil"
+                                                    title="Salin nilai ketua ke semua anggota (hanya draf)"
+                                                    onClick={() => samakanAnggota(r.siswaId)}
+                                                  >
+                                                    Samakan anggota
+                                                  </button>
+                                                </small>
+                                              )
+                                            }
+                                            if (pengumpulanMap?.[r.siswaId]) return <small className="td-kel-info">Kirim mandiri</small>
+                                            return ikutKetua(r.siswaId) ? (
+                                              <small className="td-kel-info td-kel-info--ikut">Ikut nilai ketua</small>
+                                            ) : (
+                                              <small className="td-kel-info">
+                                                Disesuaikan
+                                                <button type="button" className="td-link-kecil" onClick={() => ikutiKetuaLagi(r.siswaId)}>
+                                                  Ikuti ketua
+                                                </button>
+                                              </small>
+                                            )
+                                          })()}
                                         </span>
                                       </span>
                                     </td>
@@ -2473,34 +2681,57 @@ export default function TugasDetail() {
                                         </button>
                                       </td>
                                     )}
-                                    {bisaAi && (
-                                      <td className="td-td-bukti">
-                                        {pengumpulanMap === null ? (
-                                          <span className="td-bukti-kosong">Memuat…</span>
-                                        ) : (() => {
-                                            const sb = sumberBuktiSiswa(r.siswaId)
-                                            if (!sb) {
-                                              const kel = kelompokList.find((x) => x.anggotaIds.includes(r.siswaId))
-                                              return (
+                                    <td className="td-td-bukti">
+                                      {pengumpulanMap === null ? (
+                                        <span className="td-bukti-kosong">Memuat…</span>
+                                      ) : (() => {
+                                          const sb = sumberBuktiSiswa(r.siswaId)
+                                          if (!sb) {
+                                            const kel = kelompokDariSiswa(r.siswaId)
+                                            return (
+                                              <div className="td-bukti-sel">
                                                 <span className="td-bukti-kosong">
                                                   {kel ? `Menunggu ketua (${kel.ketuaNama})` : 'Belum mengumpulkan'}
                                                 </span>
-                                              )
-                                            }
-                                            const sibukIni = aiBusyId === sb.pemilikId
-                                            const ada = usulanAi[sb.pemilikId]
-                                            const jmlVideo = Object.keys(sb.dok.videos ?? {}).length
-                                            return (
-                                              <div className="td-bukti-sel">
-                                                <span className="td-bukti-info">
-                                                  {sb.dok.fotoIds.length} foto{jmlVideo > 0 ? ` · ${jmlVideo} video` : ''}
+                                                <button
+                                                  type="button"
+                                                  className="td-btn-ai-teks td-btn-buka"
+                                                  onClick={() => {
+                                                    setMenilaiId(r.siswaId)
+                                                    setSubNilai('menilai')
+                                                  }}
+                                                >
+                                                  Buka ▸
+                                                </button>
+                                              </div>
+                                            )
+                                          }
+                                          const sibukIni = aiBusyId === sb.pemilikId
+                                          const ada = usulanAi[sb.pemilikId]
+                                          const jmlVideo = Object.keys(sb.dok.videos ?? {}).length
+                                          return (
+                                            <div className="td-bukti-sel">
+                                              <span className="td-bukti-info">
+                                                {sb.dok.fotoIds.length} foto{jmlVideo > 0 ? ` · ${jmlVideo} video` : ''}
+                                              </span>
+                                              {sb.via === 'kelompok' && (
+                                                <span className="td-chip td-bukti-via" title="Bukti dikumpulkan ketua kelompok">
+                                                  Lewat ketua: {sb.kelompok?.ketuaNama}
                                                 </span>
-                                                {sb.via === 'kelompok' && (
-                                                  <span className="td-chip td-bukti-via" title="Bukti dikumpulkan ketua kelompok">
-                                                    Lewat ketua: {sb.kelompok?.ketuaNama}
-                                                  </span>
-                                                )}
-                                                <div className="td-bukti-aksi">
+                                              )}
+                                              <div className="td-bukti-aksi">
+                                                <button
+                                                  type="button"
+                                                  className="td-btn-ai-teks td-btn-buka"
+                                                  title="Lihat bukti dan nilai berdampingan"
+                                                  onClick={() => {
+                                                    setMenilaiId(r.siswaId)
+                                                    setSubNilai('menilai')
+                                                  }}
+                                                >
+                                                  Buka ▸
+                                                </button>
+                                                {bisaAi && (
                                                   <button
                                                     type="button"
                                                     className="td-btn-ai-teks"
@@ -2511,26 +2742,26 @@ export default function TugasDetail() {
                                                         : void usulkanAi(sb.pemilikId, r.siswaId, r.siswaNama)
                                                     }
                                                   >
-                                                    {sibukIni ? 'Menganalisis…' : ada ? 'Lihat usulan' : '✦ Nilai bukti'}
+                                                    {sibukIni ? 'Menganalisis…' : ada ? 'Lihat usulan' : '✦ Nilai'}
                                                   </button>
-                                                  {ada && !sibukIni && (
-                                                    <button
-                                                      type="button"
-                                                      className="td-btn-ai-ulang"
-                                                      title="Minta AI menilai ulang"
-                                                      aria-label={`Nilai ulang ${r.siswaNama} dengan AI`}
-                                                      disabled={aiBusyId !== null || aiMassal !== null}
-                                                      onClick={() => void usulkanAi(sb.pemilikId, r.siswaId, r.siswaNama)}
-                                                    >
-                                                      ↻
-                                                    </button>
-                                                  )}
-                                                </div>
+                                                )}
+                                                {bisaAi && ada && !sibukIni && (
+                                                  <button
+                                                    type="button"
+                                                    className="td-btn-ai-ulang"
+                                                    title="Minta AI menilai ulang"
+                                                    aria-label={`Nilai ulang ${r.siswaNama} dengan AI`}
+                                                    disabled={aiBusyId !== null || aiMassal !== null}
+                                                    onClick={() => void usulkanAi(sb.pemilikId, r.siswaId, r.siswaNama)}
+                                                  >
+                                                    ↻
+                                                  </button>
+                                                )}
                                               </div>
-                                            )
-                                          })()}
-                                      </td>
-                                    )}
+                                            </div>
+                                          )
+                                        })()}
+                                    </td>
                                     <td className="td-td-komen">
                                       <input
                                         type="text"
@@ -2542,18 +2773,32 @@ export default function TugasDetail() {
                                       />
                                     </td>
                                     <td className="td-td-aksi">
-                                      <button
-                                        type="button"
-                                        className={`td-btn-baris${st === 'ubah' ? ' td-btn-baris--utama' : ''}`}
-                                        disabled={sibuk || st !== 'ubah'}
-                                        onClick={() => void simpanSatuNilai(r.siswaId, r.siswaNama)}
-                                      >
-                                        {menyimpanSiswaId === r.siswaId
-                                          ? '…'
-                                          : st === 'ok'
-                                            ? '✓ Tersimpan'
-                                            : 'Simpan'}
-                                      </button>
+                                      {(() => {
+                                        const kel = kelompokDariSiswa(r.siswaId)
+                                        const ketuaDenganPengikut =
+                                          !!kel && kel.ketuaId === r.siswaId && barisKelompokBelumSimpan(r.siswaId).length > 1
+                                        const ada = st === 'ubah' || ketuaDenganPengikut
+                                        return (
+                                          <button
+                                            type="button"
+                                            className={`td-btn-baris${ada ? ' td-btn-baris--utama' : ''}`}
+                                            disabled={sibuk || !ada}
+                                            onClick={() =>
+                                              ketuaDenganPengikut
+                                                ? void simpanKelompok(r.siswaId)
+                                                : void simpanSatuNilai(r.siswaId, r.siswaNama)
+                                            }
+                                          >
+                                            {menyimpanSiswaId === r.siswaId
+                                              ? '…'
+                                              : ketuaDenganPengikut
+                                                ? `Simpan kelompok (${barisKelompokBelumSimpan(r.siswaId).length})`
+                                                : st === 'ok'
+                                                  ? '✓ Tersimpan'
+                                                  : 'Simpan'}
+                                          </button>
+                                        )
+                                      })()}
                                     </td>
                                   </tr>
                                 )
@@ -2576,7 +2821,7 @@ export default function TugasDetail() {
         const u = usulanAi[dialogAi.pemilikId]
         const baris = (barisNilai ?? []).find((r) => r.siswaId === dialogAi.siswaId)
         const kel = sb?.kelompok
-        const penerima = kel ? anggotaPenerimaUsulan(dialogAi.pemilikId, kel) : []
+        const penerima = kel ? kel.anggotaIds.filter((id) => !pengumpulanMap?.[id] || id === kel.ketuaId) : []
         return (
           <UsulanNilaiAiDialog
             usulan={u}
@@ -2595,7 +2840,7 @@ export default function TugasDetail() {
             onTerapkanKelompok={
               kel && penerima.length > 1
                 ? () => {
-                    for (const id of penerima) terapkanUsulan(id, u)
+                    terapkanKelompok(kel.ketuaId, u)
                     setDialogAi(null)
                   }
                 : undefined
