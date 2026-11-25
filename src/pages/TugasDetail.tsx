@@ -36,11 +36,20 @@ import {
 } from '../lib/tugasUi'
 import {
   hitungRataRata,
+  mintaPerbaikanTugas,
   muatBarisNilaiTugas,
+  poinDariTeks,
   predikatOtomatis,
   simpanNilaiTugas,
   type BarisNilaiTugas,
 } from '../lib/nilaiTugas'
+import {
+  KESEMPATAN_BATAS_MAKS,
+  normKesempatanMaks,
+  normNilaiDipakai,
+  tugasBerulang,
+} from '../lib/kesempatanTugas'
+import type { NilaiDipakaiTugas } from '../types/tugas'
 import '../styles/tugas.css'
 import {
   bolehAiTugas,
@@ -107,6 +116,8 @@ type DraftBaris = {
   nilaiAkhir: string
   predikat: string
   komentar: string
+  /** Poin perbaikan untuk siswa, satu poin per baris. Opsional: draf lama/salinan ketua tidak membawa. */
+  poin?: string
 }
 
 function tenggatKeInput(tenggat: unknown): string {
@@ -244,6 +255,9 @@ export default function TugasDetail() {
   const [modeKelompok, setModeKelompok] = useState(false)
   /** Tugas baru: default aktif. Tugas lama tanpa field = nonaktif (perilaku lama). */
   const [tutupOtomatis, setTutupOtomatis] = useState(true)
+  /** Kesempatan mengerjakan (ANTIREGRESI §Tugas.Kesempatan): 1 sekali, 2–5 batas, 0 tanpa batas. */
+  const [kesempatanMaks, setKesempatanMaks] = useState(1)
+  const [nilaiDipakai, setNilaiDipakai] = useState<NilaiDipakaiTugas>('terbaik')
   const [kelompokMaxAnggota, setKelompokMaxAnggota] = useState(4)
   const [berbagiOpen, setBerbagiOpen] = useState(false)
   const [jenisPenilaian, setJenisPenilaian] = useState<JenisPenilaianTugas>('slm')
@@ -366,6 +380,8 @@ export default function TugasDetail() {
     setStatusTugas(normalisasiStatusTugas(t.statusTugas, t.aktif))
     setModeKelompok(t.modeKelompok === true)
     setTutupOtomatis(t.tutupSetelahTenggat === true)
+    setKesempatanMaks(normKesempatanMaks(t.kesempatanMaks))
+    setNilaiDipakai(normNilaiDipakai(t.nilaiDipakai))
     setKelompokMaxAnggota(
       typeof t.kelompokMaxAnggota === 'number' && t.kelompokMaxAnggota >= 2
         ? Math.min(12, t.kelompokMaxAnggota)
@@ -564,6 +580,8 @@ export default function TugasDetail() {
           modeKelompok,
           kelompokMaxAnggota: modeKelompok ? kelompokMaxAnggota : undefined,
           tutupSetelahTenggat: tutupOtomatis && !!tenggat,
+          kesempatanMaks: modeKelompok ? 1 : kesempatanMaks,
+          nilaiDipakai,
           namaGuru: profil?.nama,
         })
         setSukses('Tugas berhasil dibuat. Lanjutkan dengan menulis instruksi untuk siswa.')
@@ -588,6 +606,8 @@ export default function TugasDetail() {
           modeKelompok,
           kelompokMaxAnggota: modeKelompok ? kelompokMaxAnggota : undefined,
           tutupSetelahTenggat: tutupOtomatis && !!tenggat,
+          kesempatanMaks: modeKelompok ? 1 : kesempatanMaks,
+          nilaiDipakai,
         })
         setSukses('Perubahan disimpan.')
         const t = await ambilTugas(tugasId)
@@ -665,6 +685,7 @@ export default function TugasDetail() {
     if (!d) return false
     if (String(d.nilaiAkhir || '').trim() !== '') return true
     if (String(d.komentar || '').trim() !== '') return true
+    if (String(d.poin || '').trim() !== '') return true
     if (String(d.predikat || '').trim() !== '') return true
     return Object.values(d.perKategori || {}).some((v) => String(v || '').trim() !== '')
   }
@@ -674,6 +695,7 @@ export default function TugasDetail() {
     if (String(d.nilaiAkhir || '').trim() !== String(server.nilaiAkhir || '').trim()) return false
     if (String(d.predikat || '').trim() !== String(server.predikat || '').trim()) return false
     if (String(d.komentar || '').trim() !== String(server.komentar || '').trim()) return false
+    if (String(d.poin || '').trim() !== String(server.poin || '').trim()) return false
     const ids = new Set([
       ...Object.keys(d.perKategori || {}),
       ...Object.keys(server.perKategori || {}),
@@ -706,6 +728,7 @@ export default function TugasDetail() {
       nilaiAkhir: r.nilaiAkhir === null ? '' : String(r.nilaiAkhir),
       predikat: pred,
       komentar: r.komentar || '',
+      poin: r.poin || '',
     }
   }
 
@@ -1184,6 +1207,33 @@ export default function TugasDetail() {
     setAiMassal(null)
   }
 
+  /** «Minta perbaikan»: buka percobaan berikutnya untuk satu siswa (hanya tugas berulang). */
+  async function mintaPerbaikanSiswa(siswaId: string, siswaNama: string): Promise<boolean> {
+    if (!tugas || !tugasBerulang(tugas)) return false
+    setMenyimpanSiswaId(siswaId)
+    setError('')
+    setSukses('')
+    try {
+      await mintaPerbaikanTugas({
+        tugasId: tugas.id,
+        siswaId,
+        maks: normKesempatanMaks(tugas.kesempatanMaks),
+      })
+      setBarisNilai((prev) =>
+        (prev || []).map((r) =>
+          r.siswaId === siswaId ? { ...r, bukaPerbaikan: true, dibukaMs: Date.now() } : r,
+        ),
+      )
+      setSukses(`Perbaikan dibuka untuk ${siswaNama}. Siswa akan melihat poin perbaikan dan bisa mengirim ulang.`)
+      return true
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Gagal membuka perbaikan.')
+      return false
+    } finally {
+      setMenyimpanSiswaId(null)
+    }
+  }
+
   /**
    * Simpan satu baris tanpa memuat ulang seluruh daftar (agar draf siswa lain tetap utuh).
    * Mengembalikan true bila berhasil.
@@ -1231,7 +1281,7 @@ export default function TugasDetail() {
       setSukses('')
     }
     try {
-      await simpanNilaiTugas({
+      const hasilSimpan = await simpanNilaiTugas({
         tugasId: tugas.id,
         siswaId,
         siswaNama,
@@ -1243,6 +1293,10 @@ export default function TugasDetail() {
         predikat: pred,
         komentar: d.komentar,
         namaGuru: profil?.nama,
+        poin: d.poin !== undefined ? poinDariTeks(d.poin) : undefined,
+        kesempatan: tugasBerulang(tugas)
+          ? { maks: normKesempatanMaks(tugas.kesempatanMaks), nilaiDipakai: normNilaiDipakai(tugas.nilaiDipakai) }
+          : undefined,
       })
       // Soft-update baris lokal — jangan muat ulang seluruh daftar (draf AI siswa lain tetap utuh).
       const perLokal: Record<string, number | null> = {}
@@ -1260,6 +1314,11 @@ export default function TugasDetail() {
                 nilaiAkhir: akhir,
                 predikat: pred,
                 komentar: d.komentar || '',
+                poin: d.poin !== undefined ? poinDariTeks(d.poin).join('\n') : r.poin,
+                percobaanKe: tugasBerulang(tugas) ? hasilSimpan.percobaanKe : r.percobaanKe || 1,
+                nilaiDipakai: hasilSimpan.nilaiDipakai,
+                bukaPerbaikan: hasilSimpan.bukaPerbaikan,
+                riwayat: hasilSimpan.riwayat.length ? hasilSimpan.riwayat : r.riwayat,
               }
             : r,
         ),
@@ -1276,6 +1335,7 @@ export default function TugasDetail() {
             nilaiAkhir: String(akhir),
             predikat: pred,
             komentar: d.komentar || '',
+            ...(d.poin !== undefined ? { poin: poinDariTeks(d.poin).join('\n') } : {}),
           },
         }
       })
@@ -1830,6 +1890,40 @@ export default function TugasDetail() {
                   </small>
                 </span>
               </label>
+              {modeKelompok ? null : (
+                <div className="td-field td-field--full">
+                  <span>Kesempatan mengerjakan</span>
+                  <select
+                    value={kesempatanMaks}
+                    onChange={(e) => setKesempatanMaks(normKesempatanMaks(Number(e.target.value)))}
+                  >
+                    <option value={1}>Satu kali saja</option>
+                    {Array.from({ length: KESEMPATAN_BATAS_MAKS - 1 }, (_, i) => i + 2).map((n) => (
+                      <option key={n} value={n}>
+                        Boleh diperbaiki — sampai {n} kali mengerjakan
+                      </option>
+                    ))}
+                    <option value={0}>Boleh diperbaiki — tanpa batas</option>
+                  </select>
+                  {kesempatanMaks !== 1 && (
+                    <label className="td-field" style={{ marginTop: 8 }}>
+                      <span>Nilai yang dipakai</span>
+                      <select
+                        value={nilaiDipakai}
+                        onChange={(e) => setNilaiDipakai(normNilaiDipakai(e.target.value))}
+                      >
+                        <option value="terbaik">Nilai terbaik dari semua percobaan</option>
+                        <option value="terakhir">Nilai percobaan terakhir</option>
+                      </select>
+                    </label>
+                  )}
+                  <p className="td-hint">
+                    {kesempatanMaks === 1
+                      ? 'Setelah Anda menilai, siswa tidak bisa mengirim ulang (perilaku biasa).'
+                      : 'Siswa melihat aturan ini di penugasannya. Percobaan berikutnya dibuka oleh Anda lewat tombol «Minta perbaikan» di Menilai per siswa, setelah Anda menulis poin perbaikan. Siswa melihat nilai, komentar, dan poin perbaikan tiap percobaan.'}
+                  </p>
+                </div>
+              )}
               <label className="td-field td-field--full">
                 <span>Deskripsi singkat</span>
                 <textarea value={deskripsi} onChange={(e) => setDeskripsi(e.target.value)} rows={2} placeholder="Ringkasan singkat untuk kartu katalog…" />
@@ -2235,6 +2329,7 @@ export default function TugasDetail() {
                   onNilaiAkhir={onNilaiAkhirChange}
                   onPatch={patchDraft}
                   onSimpan={(id, nama) => simpanSatuNilai(id, nama)}
+                  onMintaPerbaikan={(id, nama) => mintaPerbaikanSiswa(id, nama)}
                   onSimpanKelompok={simpanKelompok}
                   onUsulkanAi={usulkanAi}
                   onTerapkanUsulan={(id, u) => terapkanUsulan(id, u)}

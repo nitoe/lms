@@ -4,6 +4,7 @@ import { db } from './firebase'
 import type { TugasLms } from '../types/tugas'
 import type { NilaiTugasDok } from './nilaiTugas'
 import { rapikanBuktiList } from './buktiTugas'
+import { normKesempatanMaks, normNilaiDipakai } from './kesempatanTugas'
 
 /** Status tugas dari sudut pandang siswa (tanpa pengumpulan file dulu). */
 export type StatusTugasSiswa = 'belum' | 'dinilai' | 'lewat' | 'ditutup'
@@ -66,6 +67,9 @@ function docKeTugas(id: string, data: Record<string, unknown>): TugasLms {
       ? (data.lampiranList as TugasLms['lampiranList'])
       : undefined,
     modeKelompok: data.modeKelompok === true,
+    // Salinan mapping siswa HARUS ikut (ANTIREGRESI §Tugas.Kesempatan): tanpa ini siswa tak melihat aturan.
+    kesempatanMaks: normKesempatanMaks(data.kesempatanMaks),
+    nilaiDipakai: normNilaiDipakai(data.nilaiDipakai),
     kelompokMaxAnggota:
       typeof data.kelompokMaxAnggota === 'number' && data.kelompokMaxAnggota >= 2
         ? Math.min(12, Math.floor(data.kelompokMaxAnggota))

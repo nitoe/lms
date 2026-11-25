@@ -12,6 +12,9 @@ export type JenisTugas = 'mapel' | 'proyek'
  * Field boolean `aktif` diselaraskan: true hanya jika status === 'aktif_siswa'
  * (kompatibel rules & query siswa lama).
  */
+/** Kebijakan nilai bila tugas bisa dikerjakan berulang. */
+export type NilaiDipakaiTugas = 'terbaik' | 'terakhir'
+
 export type StatusTugas = 'draf' | 'aktif_guru' | 'aktif_siswa'
 
 export const LABEL_STATUS_TUGAS: Record<StatusTugas, string> = {
@@ -228,6 +231,14 @@ export interface TugasLms {
    */
   tutupSetelahTenggat?: boolean
   /**
+   * Kesempatan mengerjakan (ANTIREGRESI §Tugas.Kesempatan): 1 = sekali (default; dokumen lama tanpa
+   * field ini = 1), 2–5 = berulang dengan batas, 0 = tanpa batas. Pembuka percobaan berikutnya
+   * selalu guru («Minta perbaikan»), bukan siswa.
+   */
+  kesempatanMaks?: number
+  /** Nilai yang dipakai (rapor) bila tugas berulang: nilai terbaik atau percobaan terakhir. Default terbaik. */
+  nilaiDipakai?: NilaiDipakaiTugas
+  /**
    * Diarsipkan: disembunyikan dari daftar default dashboard.
    * Biasanya digabung dengan aktif=false agar siswa tidak melihat.
    */
@@ -273,6 +284,8 @@ export type TugasInput = {
   statusTugas?: StatusTugas
   selesai?: boolean
   tutupSetelahTenggat?: boolean
+  kesempatanMaks?: number
+  nilaiDipakai?: NilaiDipakaiTugas
   arsip?: boolean
   pengaturanPenilaian?: PengaturanPenilaianTugas
   buktiList?: BuktiTugas[]

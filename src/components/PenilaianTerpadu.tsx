@@ -11,6 +11,7 @@ import { urlVideoTugas } from '../lib/videoTugas'
 import type { BarisNilaiTugas } from '../lib/nilaiTugas'
 import type { UsulanNilaiAi } from '../lib/nilaiTugasAi'
 import type { TugasKelompokDok } from '../lib/tugasKelompok'
+import { normKesempatanMaks, sisaKesempatan, tugasBerulang } from '../lib/kesempatanTugas'
 import type { KategoriPenilaian, RentangPredikat, TugasLms } from '../types/tugas'
 import '../styles/penilaian-terpadu.css'
 
@@ -19,6 +20,8 @@ export type DraftNilai = {
   nilaiAkhir: string
   predikat: string
   komentar: string
+  /** Poin perbaikan untuk siswa, satu poin per baris (opsional; lihat DraftBaris di TugasDetail). */
+  poin?: string
 }
 export type StatusBaris = 'kosong' | 'ubah' | 'ok'
 export type SumberBukti = {
@@ -54,6 +57,8 @@ type Props = {
   onNilaiAkhir: (siswaId: string, val: string) => void
   onPatch: (siswaId: string, patch: Partial<DraftNilai>) => void
   onSimpan: (siswaId: string, nama: string) => Promise<boolean>
+  /** «Minta perbaikan» — buka percobaan berikutnya (hanya tugas berulang). */
+  onMintaPerbaikan: (siswaId: string, nama: string) => Promise<boolean>
   onSimpanKelompok: (ketuaId: string) => Promise<boolean>
   onUsulkanAi: (pemilikId: string, targetId: string, nama: string) => Promise<boolean>
   onTerapkanUsulan: (siswaId: string, u: UsulanNilaiAi) => void
@@ -123,12 +128,20 @@ export default function PenilaianTerpadu(p: Props) {
   const belumSimpanKel = adalahKetua && kel ? p.jumlahBelumSimpanKelompok(kel.ketuaId) : 0
   const u = pemilikId ? usulanAi[pemilikId] : undefined
   const sibukSimpan = menyimpan !== null
+  // —— Tugas berulang (ANTIREGRESI §Tugas.Kesempatan) ——
+  const berulang = tugasBerulang(tugas)
+  const maksKes = normKesempatanMaks(tugas.kesempatanMaks)
+  const kirimanBaru = !!row && row.bukaPerbaikan && (pengumpulanMap?.[row.siswaId]?.diubahMs ?? 0) > row.dibukaMs
+  const menungguSiswa = !!row && row.bukaPerbaikan && !kirimanBaru
+  const sisaKes = row ? sisaKesempatan(tugas.kesempatanMaks, row.percobaanKe) : 0
+  const bisaMintaPerbaikan = berulang && !!row && row.sudahAda && st === 'ok' && !row.bukaPerbaikan && sisaKes > 0 && !kel
   const sibukAi = !!pemilikId && aiBusyId === pemilikId
 
   // Muat foto/video bukti siswa terpilih (di-cache per pemilik bukti).
   useEffect(() => {
     if (!sb) return
-    const id = sb.pemilikId
+    // Kunci memuat waktu kirim: pengiriman ulang (percobaan baru) harus memuat foto baru, bukan cache lama.
+    const id = `${sb.pemilikId}:${sb.dok.diubahMs}`
     if (media[id]) return
     let batal = false
     void (async () => {
@@ -152,7 +165,7 @@ export default function PenilaianTerpadu(p: Props) {
       batal = true
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pemilikId])
+  }, [pemilikId, sb?.dok.diubahMs])
 
   // Ganti siswa → fokus rubrik direset, panel bukti kembali ke atas.
   useEffect(() => {
@@ -257,7 +270,7 @@ export default function PenilaianTerpadu(p: Props) {
     )
   }
 
-  const media1 = pemilikId ? media[pemilikId] : undefined
+  const media1 = pemilikId && sb ? media[`${pemilikId}:${sb.dok.diubahMs}`] : undefined
   const adaBukti = !!sb
 
   return (
@@ -552,7 +565,33 @@ export default function PenilaianTerpadu(p: Props) {
               <span>Komentar untuk siswa</span>
               <textarea rows={3} value={d.komentar} onChange={(e) => p.onPatch(row.siswaId, { komentar: e.target.value })} placeholder="Opsional" />
             </label>
+            <label className="td-field pt-komentar">
+              <span>Poin perbaikan untuk siswa (satu poin per baris)</span>
+              <textarea
+                rows={3}
+                value={d.poin ?? ''}
+                onChange={(e) => p.onPatch(row.siswaId, { poin: e.target.value })}
+                placeholder={'Tulis dengan bahasa yang mudah untuk anak SD, beserta contoh.\nContoh: Tambahkan nama bagian pada gambarmu, misalnya tulis «akar» di dekat bagian bawah tanaman.'}
+              />
+            </label>
           </div>
+
+          {berulang && row && (
+            <div className={`td-hint${menungguSiswa ? '' : ' td-hint--warn'}`} role="status">
+              <strong>
+                Percobaan ke-{Math.max(1, row.percobaanKe)}
+                {maksKes === 0 ? '' : ` dari ${maksKes}`}
+              </strong>
+              {row.sudahAda && row.nilaiDipakai !== null ? ` · nilai yang dipakai: ${row.nilaiDipakai}` : ''}
+              {row.riwayat.length > 1
+                ? ` · riwayat: ${row.riwayat.map((r) => `${r.ke}→${r.nilai}`).join(', ')}`
+                : ''}
+              {kirimanBaru ? ' · Siswa sudah mengirim perbaikan — silakan dinilai.' : ''}
+              {menungguSiswa ? ' · Perbaikan dibuka, menunggu siswa mengirim ulang.' : ''}
+              {!menungguSiswa && !kirimanBaru && row.sudahAda && sisaKes <= 0 ? ' · Kesempatan habis.' : ''}
+              {kel ? ' · Tugas kelompok tidak mendukung perbaikan berulang.' : ''}
+            </div>
+          )}
 
           <div className="pt-aksi td-aksi--lekat">
             <span className="td-ubah td-ubah--teks">
@@ -567,6 +606,21 @@ export default function PenilaianTerpadu(p: Props) {
               >
                 {menyimpan !== null ? 'Menyimpan…' : adalahKetua && belumSimpanKel > 1 ? `Simpan kelompok (${belumSimpanKel})` : 'Simpan'}
               </button>
+              {berulang && (
+                <button
+                  type="button"
+                  className="tg-btn"
+                  disabled={sibukSimpan || !bisaMintaPerbaikan}
+                  title={
+                    st !== 'ok'
+                      ? 'Simpan nilai dan poin perbaikan dulu.'
+                      : 'Buka percobaan berikutnya agar siswa bisa memperbaiki dan mengirim ulang.'
+                  }
+                  onClick={() => void p.onMintaPerbaikan(row.siswaId, row.siswaNama)}
+                >
+                  Minta perbaikan
+                </button>
+              )}
               <button type="button" className="tg-btn tg-btn--utama" disabled={sibukSimpan || idx >= nav.length - 1 && st !== 'ubah'} onClick={() => void simpan(true)}>
                 {st === 'ubah' ? 'Simpan & berikutnya ▶' : 'Berikutnya ▶'}
               </button>

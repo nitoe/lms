@@ -19,7 +19,16 @@ import {
   type JenisPenilaianTugas,
   type TugasLms,
 } from '../../types/tugas'
-import type { NilaiTugasDok } from '../../lib/nilaiTugas'
+import { rapikanPoin, rapikanRiwayat, type NilaiTugasDok } from '../../lib/nilaiTugas'
+import {
+  dibukaMs,
+  normKesempatanMaks,
+  normNilaiDipakai,
+  percobaanTerpakai,
+  perbaikanTerbuka,
+  teksAturanKesempatan,
+  tugasBerulang,
+} from '../../lib/kesempatanTugas'
 import '../../styles/tugas-ditutup.css'
 import { alasanTugasDitutup } from '../../lib/tugasTutup'
 import SiswaIcon from './SiswaIcon'
@@ -234,6 +243,15 @@ export default function SiswaTugas() {
     const kategoriDinilai = (detail.pengaturanPenilaian?.kategori ?? []).filter((k) =>
       String(k.nama ?? '').trim(),
     )
+    // —— Tugas berulang (ANTIREGRESI §Tugas.Kesempatan) ——
+    const berulang = tugasBerulang(detail)
+    const bolehPerbaiki = berulang && perbaikanTerbuka(nilai) && alasanTugasDitutup(detail) === null
+    const kirimanBaru = bolehPerbaiki && (kumpulMap[detail.id]?.diubahMs ?? 0) > dibukaMs(nilai)
+    const terpakai = nilai ? percobaanTerpakai(nilai) : 0
+    const percobaanSekarang = bolehPerbaiki ? terpakai + 1 : Math.max(1, terpakai)
+    const maksKes = normKesempatanMaks(detail.kesempatanMaks)
+    const poinPerbaikan = rapikanPoin(nilai?.poinPerbaikan) ?? []
+    const riwayatNilai = rapikanRiwayat(nilai?.riwayat) ?? []
     const hero = (
       <section className="kelas-hero" style={{ background: a.cover }}>
           <div className="kelas-hero-deco" aria-hidden />
@@ -292,15 +310,31 @@ export default function SiswaTugas() {
         <div className="sw-kat-detail-meta">
           <span
             className={
-              st === 'dinilai'
-                ? 'sw-kat-badge sw-kat-badge--ok'
-                : st === 'lewat'
-                  ? 'sw-kat-badge sw-kat-badge--danger'
-                  : 'sw-kat-badge sw-kat-badge--warn'
+              bolehPerbaiki
+                ? 'sw-kat-badge sw-kat-badge--warn'
+                : st === 'dinilai'
+                  ? 'sw-kat-badge sw-kat-badge--ok'
+                  : st === 'lewat'
+                    ? 'sw-kat-badge sw-kat-badge--danger'
+                    : 'sw-kat-badge sw-kat-badge--warn'
             }
           >
-            {st === 'dinilai' ? 'Sudah dinilai' : st === 'lewat' ? 'Lewat tenggat' : 'Belum dinilai'}
+            {bolehPerbaiki
+              ? kirimanBaru
+                ? 'Perbaikan terkirim · menunggu dinilai'
+                : 'Perbaiki lalu kirim lagi'
+              : st === 'dinilai'
+                ? 'Sudah dinilai'
+                : st === 'lewat'
+                  ? 'Lewat tenggat'
+                  : 'Belum dinilai'}
           </span>
+          {berulang ? (
+            <span className="sw-kat-badge sw-kat-badge--info">
+              Percobaan ke-{percobaanSekarang}
+              {maksKes === 0 ? '' : ` dari ${maksKes}`}
+            </span>
+          ) : null}
           {tenggatTeks ? (
             <span className="sw-kat-badge sw-kat-badge--info">Tenggat: {tenggatTeks}</span>
           ) : null}
@@ -319,7 +353,58 @@ export default function SiswaTugas() {
             {nilai.komentar?.trim() && (
               <p className="mt-2 text-sm leading-relaxed text-emerald-900/90">{nilai.komentar}</p>
             )}
+            {berulang && riwayatNilai.length > 1 ? (
+              <p className="mt-2 text-xs text-emerald-900/80">
+                {normNilaiDipakai(detail.nilaiDipakai) === 'terakhir'
+                  ? 'Nilai yang dipakai: percobaan terakhir.'
+                  : 'Nilai yang dipakai: nilai terbaik dari semua percobaanmu.'}
+              </p>
+            ) : null}
           </div>
+        )}
+
+        {berulang && (
+          <section className="sw-kat-panel">
+            <h2>Aturan mengerjakan</h2>
+            <p className="m-0 text-sm leading-relaxed text-slate-700">{teksAturanKesempatan(detail)}</p>
+            <p className="sw-kat-hint">
+              {bolehPerbaiki
+                ? kirimanBaru
+                  ? 'Perbaikanmu sudah terkirim. Tunggu gurumu menilainya ya.'
+                  : 'Gurumu membuka kesempatan memperbaiki. Baca poin perbaikan di bawah, lalu kirim karya barumu.'
+                : 'Kalau karyamu masih bisa lebih baik, gurumu bisa membuka kesempatan memperbaiki setelah menilai.'}
+            </p>
+          </section>
+        )}
+
+        {poinPerbaikan.length > 0 && (
+          <section className="sw-kat-panel">
+            <h2>Yang bisa kamu perbaiki</h2>
+            <p className="sw-kat-hint">
+              {bolehPerbaiki
+                ? 'Baca satu per satu, perbaiki karyamu, lalu kirim lagi.'
+                : 'Catatan dari gurumu untuk karyamu.'}
+            </p>
+            <ol className="m-0 space-y-2 pl-5 text-sm leading-relaxed text-slate-700">
+              {poinPerbaikan.map((x, i) => (
+                <li key={i} className="whitespace-pre-wrap">{x}</li>
+              ))}
+            </ol>
+          </section>
+        )}
+
+        {berulang && riwayatNilai.length > 1 && (
+          <section className="sw-kat-panel">
+            <h2>Perjalanan nilaimu</h2>
+            <ul className="m-0 space-y-1 pl-5 text-sm leading-relaxed text-slate-700">
+              {riwayatNilai.map((r) => (
+                <li key={r.ke}>
+                  Percobaan {r.ke}: <strong>{r.nilai}</strong>
+                  {r.predikat ? ` (${r.predikat})` : ''}
+                </li>
+              ))}
+            </ul>
+          </section>
         )}
 
         {detail.deskripsi?.trim() && (
@@ -422,7 +507,7 @@ export default function SiswaTugas() {
           siswaNama={sesi?.nama ?? ''}
           kelas={String(kelas).toUpperCase()}
           ada={kumpulMap[detail.id] ?? null}
-          terkunci={st === 'dinilai'}
+          terkunci={st === 'dinilai' && !bolehPerbaiki}
           onTersimpan={(d) => setKumpulMap((prev) => ({ ...prev, [detail.id]: d }))}
           modeKelompok={detail.modeKelompok === true}
           isKetuaKelompok={detail.modeKelompok ? isKetua(kelompokDetail, siswaId) : true}
@@ -606,6 +691,9 @@ export default function SiswaTugas() {
                                 ? 'Lewat tenggat'
                                 : 'Belum dinilai'}
                         </span>
+                        {tugasBerulang(t) && perbaikanTerbuka(nilai) && alasanTugasDitutup(t) === null && (
+                          <span className="sw-kat-badge sw-kat-badge--warn">Boleh diperbaiki</span>
+                        )}
                         {kumpulMap[t.id] && (
                           <span className="sw-kat-badge sw-kat-badge--info">Terkumpul</span>
                         )}

@@ -1,3 +1,25 @@
+## 2026-11-26 — Tugas bisa dikerjakan berulang + poin perbaikan terlihat siswa (Tahap A)
+
+### Latar
+- Tugas hanya bisa dikerjakan sekali: begitu guru menyimpan nilai, `firestore.rules` mengunci pengumpulan, dan kirim ulang menimpa dokumen lama (tanpa riwayat). Padahal sebagian tugas memang dirancang untuk diperbaiki berkali-kali agar siswa mencapai hasil maksimal, dan kesediaan memperbaiki adalah tolok ukur kesungguhan.
+
+### Perilaku baru
+- **Pengaturan tugas → «Kesempatan mengerjakan»**: satu kali saja (default; perilaku lama), sampai 2–5 kali mengerjakan, atau tanpa batas. Juga «Nilai yang dipakai»: nilai terbaik (default) atau percobaan terakhir. Tugas kelompok selalu satu kali (belum didukung).
+- **Siswa melihat aturannya** di penugasan: «Aturan mengerjakan», lencana «Percobaan ke-N dari M», dan di katalog lencana «Boleh diperbaiki».
+- **Poin perbaikan** (guru, di Menilai per siswa): satu poin per baris, terlihat siswa di kartu «Yang bisa kamu perbaiki». Kolom isian memberi contoh bahasa ramah anak SD beserta contohnya.
+- **«Minta perbaikan»** (guru): membuka percobaan berikutnya. Syarat: nilai sudah tersimpan, ada minimal satu poin perbaikan, dan kesempatan belum habis. Selama terbuka siswa bisa mengirim ulang; setelah guru menilai kiriman baru, perbaikan tertutup lagi dan guru bisa membukanya lagi.
+- **Riwayat**: nilai, predikat, komentar, dan poin tiap percobaan tersimpan (maks 20); siswa melihat «Perjalanan nilaimu», guru melihat «Percobaan ke-N dari M · riwayat 1→70, 2→85» dan petunjuk «Siswa sudah mengirim perbaikan — silakan dinilai».
+- **Nilai rapor**: `lms_nilai_tugas.nilai` = nilai yang dipakai (terbaik/terakhir), sehingga sinkron ke Penilaian tidak berubah dan Cloud Function tidak perlu di-deploy ulang.
+- **Perbaikan terkait:** cache foto «Menilai per siswa» kini ikut waktu kirim, jadi foto perbaikan tidak tertukar dengan foto lama.
+
+### Belum (rencana Tahap B)
+- Foto percobaan sebelumnya belum disimpan (hanya nilai, komentar, dan poin). Draf poin perbaikan oleh AI (harus disetujui guru dan berbahasa anak SD dengan contoh), penanda «sudah diperbaiki» per poin, dan indikator kesungguhan. Tugas kelompok.
+
+### Deploy
+- **`firestore.rules` berubah (identik di repo LMS dan SDM01Penilaian):** `firebase deploy --only firestore:rules`, lalu hosting LMS. Tidak ada perubahan Cloud Function.
+- File LMS: `firestore.rules`, `src/types/tugas.ts`, `src/lib/kesempatanTugas.ts` (baru), `src/lib/tugas.ts`, `src/lib/tugasSiswa.ts`, `src/lib/nilaiTugas.ts`, `src/pages/TugasDetail.tsx`, `src/components/PenilaianTerpadu.tsx`, `src/pages/siswa/SiswaTugas.tsx`. File Penilaian: `firestore.rules`.
+- Antiregresi: §Tugas.Kesempatan.
+
 ## 2026-11-25 — Bukti video: batas hanya dari ukuran, tidak lagi 1 menit
 
 ### Latar

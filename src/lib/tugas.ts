@@ -31,6 +31,7 @@ import {
   tahapValid,
 } from '../types/tugas'
 import { normalisasiKelasList } from './kelasLms'
+import { normKesempatanMaks, normNilaiDipakai } from './kesempatanTugas'
 import { rapikanBuktiList, sanitasiBuktiList } from './buktiTugas'
 
 /**
@@ -264,6 +265,8 @@ function docKeTugas(id: string, data: Record<string, unknown>): TugasLms {
     statusTugas: normalisasiStatusTugas(data.statusTugas, data.aktif),
     selesai: data.selesai === true,
     tutupSetelahTenggat: data.tutupSetelahTenggat === true,
+    kesempatanMaks: normKesempatanMaks(data.kesempatanMaks),
+    nilaiDipakai: normNilaiDipakai(data.nilaiDipakai),
     arsip: data.arsip === true,
     dibuatOleh: String(data.dibuatOleh || ''),
     dibuatOlehNama: typeof data.dibuatOlehNama === 'string' ? data.dibuatOlehNama : undefined,
@@ -462,6 +465,9 @@ export async function buatTugas(input: TugasInput): Promise<string> {
   }
   // Tutup otomatis hanya bermakna bila ada tenggat; selalu ditulis agar eksplisit.
   payload.tutupSetelahTenggat = input.tutupSetelahTenggat === true && !!payload.tenggat
+  // Kesempatan mengerjakan: tugas kelompok selalu sekali (ANTIREGRESI §Tugas.Kesempatan).
+  payload.kesempatanMaks = input.modeKelompok === true ? 1 : normKesempatanMaks(input.kesempatanMaks)
+  payload.nilaiDipakai = normNilaiDipakai(input.nilaiDipakai)
   if (input.modeKelompok === true) {
     payload.modeKelompok = true
     const n = input.kelompokMaxAnggota
@@ -535,6 +541,10 @@ export async function updateTugas(
   if (data.tutupSetelahTenggat !== undefined) {
     payload.tutupSetelahTenggat = data.tutupSetelahTenggat === true
   }
+  if (data.kesempatanMaks !== undefined) {
+    payload.kesempatanMaks = data.modeKelompok === true ? 1 : normKesempatanMaks(data.kesempatanMaks)
+  }
+  if (data.nilaiDipakai !== undefined) payload.nilaiDipakai = normNilaiDipakai(data.nilaiDipakai)
   if (data.arsip !== undefined) payload.arsip = data.arsip === true
   if (data.pengaturanPenilaian !== undefined) {
     payload.pengaturanPenilaian = sanitasiPengaturanPenilaian(data.pengaturanPenilaian)
