@@ -1,3 +1,24 @@
+## 2026-11-25 — Anggota yang mewakili ketua: bukti dan nilai kelompok tidak lagi terputus
+
+### Latar
+- Pada tugas kelompok, bila HP ketua bermasalah, satu anggota bisa mengirim bukti atas izin ketua. Sebelumnya sistem menganggap anggota itu «kirim mandiri» (dinilai sendiri, tidak ikut ketua), sedangkan ketua dan anggota lain tampil «Menunggu ketua kelompok mengumpulkan» tanpa bukti. Akibatnya ketua tidak bisa diberi usulan AI (function menolak dengan «Siswa ini belum mengumpulkan tugas»), tombol «Samakan semua anggota dengan ketua» tidak punya nilai ketua untuk disalin, dan pengirim sendiri tidak ikut tersamakan atau tersimpan bersama kelompok.
+
+### Perilaku baru
+- Bila **ketua tidak punya pengumpulan dan tepat satu anggota mengirim bukti**, anggota itu dikenali sebagai **wakil ketua**. Buktinya menjadi bukti kelompok: ketua dan anggota lain dinilai dari bukti itu (Usulan AI, Usulan AI massal, dan tampilan bukti bekerja seperti kelompok biasa), dan si pengirim sendiri **ikut nilai ketua**.
+- «Samakan semua anggota dengan ketua» dan «Simpan nilai kelompok» kini ikut mencakup wakil ketua.
+- Tampilan guru: label «Dikirim {nama} mewakili ketua» pada bukti, «Mewakili ketua · ikut nilai ketua» di daftar, dan keterangan di panel kelompok.
+- **Tidak berubah:** bila ketua punya pengumpulan sendiri, anggota yang mengirim mandiri tetap dinilai dari buktinya sendiri. Bila yang mengirim lebih dari satu anggota sementara ketua kosong (ambigu), tidak ada wakil otomatis dan semuanya tetap dinilai mandiri.
+
+### Berkas
+- Klien (repo lms): `src/lib/tugasKelompok.ts` (fungsi murni `wakilBuktiKelompok`), `src/pages/TugasDetail.tsx`, `src/components/PenilaianTerpadu.tsx`, `CHANGELOG.md`, `ANTIREGRESI.md`.
+- Tidak ada perubahan rules atau function.
+
+### Deploy
+- Hosting LMS saja.
+
+### Catatan
+- `tsc -b`, `vite build`, `oxlint` lulus; uji unit `wakilBuktiKelompok` lulus (7 kasus). Pesan galat persis yang dilihat guru belum diketahui; bila masih muncul setelah ini, catat teksnya. Sisi siswa belum diubah: ketua tetap melihat «belum mengumpulkan», dan anggota lain belum melihat «terkumpul lewat ketua» karena pengumpulan atas nama wakil.
+
 ## 2026-11-25 — «Predikat AI» di tab Pengumpulan (khusus akun AI)
 
 - **Fitur baru (hanya `arif.azwar79@gmail.com`, UID + email dicek di klien dan server):** di tab **Pengumpulan**, tiap siswa yang sudah mengumpulkan punya baris **✦ Predikat AI**. AI melihat foto/video buktinya lalu mengusulkan **satu predikat keseluruhan** (A/B/C/D/E sesuai rentang tugas) beserta tingkat keyakinan, alasan, dan catatan kualitas bukti — **tanpa menilai per kategori rubrik**.

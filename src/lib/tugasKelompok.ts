@@ -571,3 +571,18 @@ export function punyaIzinMandiri(
 ): boolean {
   return !!kelompok && !!status && status.pengajuan === 'diterima' && kelompok.anggotaIds.includes(siswaId)
 }
+
+/**
+ * Anggota yang MEWAKILI ketua (ANTIREGRESI §Tugas.Kelompok.Wakil): ketua tidak punya pengumpulan sendiri
+ * (mis. HP ketua bermasalah) dan TEPAT SATU anggota mengirim bukti. Bukti anggota itu menjadi bukti
+ * kelompok. Bila ketua punya pengumpulan, atau pengirimnya lebih dari satu (ambigu), hasilnya null dan
+ * setiap pengirim mandiri dinilai dari buktinya masing-masing. `pengumpulan`: siswaId → ada/tidaknya dokumen.
+ */
+export function wakilBuktiKelompok(
+  kelompok: Pick<TugasKelompokDok, 'ketuaId' | 'anggotaIds'> | null | undefined,
+  pengumpulan: Record<string, unknown> | null | undefined,
+): string | null {
+  if (!kelompok || !pengumpulan || pengumpulan[kelompok.ketuaId]) return null
+  const kandidat = kelompok.anggotaIds.filter((id) => id !== kelompok.ketuaId && pengumpulan[id])
+  return kandidat.length === 1 ? kandidat[0] : null
+}

@@ -26,6 +26,8 @@ export type SumberBukti = {
   dok: PengumpulanDok
   via: 'sendiri' | 'kelompok'
   kelompok?: TugasKelompokDok
+  /** Pemilik bukti adalah anggota yang mewakili ketua (ANTIREGRESI §Tugas.Kelompok.Wakil). */
+  mewakili?: boolean
 }
 
 type Props = {
@@ -114,7 +116,10 @@ export default function PenilaianTerpadu(p: Props) {
   const kel = row ? kelompokList.find((k) => k.anggotaIds.includes(row.siswaId)) : undefined
   const adalahKetua = !!kel && !!row && kel.ketuaId === row.siswaId
   const mengikuti = !!row && p.ikutKetua(row.siswaId)
-  const kirimMandiri = !!row && !!pengumpulanMap?.[row.siswaId]
+  const mewakili = !!sb?.mewakili
+  const namaPemilik = pemilikId ? (baris.find((r) => r.siswaId === pemilikId)?.siswaNama ?? 'anggota') : ''
+  // Mengirim sendiri DAN dinilai terpisah; anggota yang mewakili ketua justru ikut nilai ketua.
+  const kirimMandiri = !!row && !!pengumpulanMap?.[row.siswaId] && !(mewakili && !!kel)
   const belumSimpanKel = adalahKetua && kel ? p.jumlahBelumSimpanKelompok(kel.ketuaId) : 0
   const u = pemilikId ? usulanAi[pemilikId] : undefined
   const sibukSimpan = menyimpan !== null
@@ -296,7 +301,10 @@ export default function PenilaianTerpadu(p: Props) {
         <section className="pt-bukti" aria-label="Bukti pengumpulan" ref={panelBuktiRef}>
           <header className="pt-bukti-kepala">
             <h3>Bukti pengumpulan</h3>
-            {sb?.via === 'kelompok' && <span className="td-chip pt-chip-kel">Lewat ketua: {sb.kelompok?.ketuaNama}</span>}
+            {sb?.via === 'kelompok' && !mewakili && (
+              <span className="td-chip pt-chip-kel">Lewat ketua: {sb.kelompok?.ketuaNama}</span>
+            )}
+            {mewakili && <span className="td-chip pt-chip-kel">Dikirim {namaPemilik} mewakili ketua</span>}
             {sb && (
               <span className="td-hint">
                 {sb.dok.fotoIds.length} foto
@@ -398,11 +406,18 @@ export default function PenilaianTerpadu(p: Props) {
                 <p>
                   <b>Ketua kelompok</b> · {kel.anggotaIds.length} anggota. Nilai di sini otomatis diikuti anggota yang belum
                   disesuaikan.
+                  {mewakili && (
+                    <>
+                      {' '}
+                      Bukti dikirim <b>{namaPemilik}</b> mewakili ketua, jadi ia ikut nilai ketua.
+                    </>
+                  )}
                 </p>
               ) : kirimMandiri ? (
                 <p>Anggota ini mengirim sendiri; dinilai dari buktinya sendiri.</p>
               ) : mengikuti ? (
                 <p>
+                  {mewakili && row.siswaId === pemilikId ? 'Mengirim bukti mewakili ketua. ' : ''}
                   Mengikuti nilai ketua (<b>{kel.ketuaNama}</b>). Mengubah nilai di sini hanya berlaku untuk {row.siswaNama}.
                 </p>
               ) : (

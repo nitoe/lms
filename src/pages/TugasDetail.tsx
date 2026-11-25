@@ -17,7 +17,7 @@ import UsulanNilaiAiDialog from '../components/UsulanNilaiAiDialog'
 import PenilaianTerpadu from '../components/PenilaianTerpadu'
 import { usulkanNilaiTugasAi, type UsulanNilaiAi } from '../lib/nilaiTugasAi'
 import { daftarPengumpulanTugas, type PengumpulanDok } from '../lib/pengumpulan'
-import { daftarKelompokTugas, type TugasKelompokDok } from '../lib/tugasKelompok'
+import { daftarKelompokTugas, wakilBuktiKelompok, type TugasKelompokDok } from '../lib/tugasKelompok'
 import BuktiTugasEditor from '../components/BuktiTugasEditor'
 import { rapikanBuktiList } from '../lib/buktiTugas'
 import { htmlInstruksiSiswa } from '../lib/instruksiTugas'
@@ -712,13 +712,27 @@ export default function TugasDetail() {
   const kelompokDariSiswa = (id: string) => kelompokList.find((k) => k.anggotaIds.includes(id))
 
   /**
-   * Anggota «mengikuti» ketua bila: bukan ketua, tidak disesuaikan manual, tidak mengirim sendiri,
+   * Anggota yang MEWAKILI ketua (ANTIREGRESI §Tugas.Kelompok.Wakil): ketua belum/tidak bisa mengumpulkan
+   * (mis. HP ketua bermasalah) dan TEPAT SATU anggota mengirim bukti dengan izin ketua. Bukti anggota itu
+   * menjadi bukti kelompok: ketua dan anggota lain dinilai darinya, dan ia sendiri ikut nilai ketua.
+   * Bila ketua punya pengumpulan sendiri, atau pengirimnya lebih dari satu (ambigu), tidak ada wakil
+   * dan semua pengirim mandiri dinilai dari buktinya masing-masing.
+   */
+  function wakilBukti(k: TugasKelompokDok | undefined): string | null {
+    return wakilBuktiKelompok(k, pengumpulanMap)
+  }
+
+  /**
+   * Anggota «mengikuti» ketua bila: bukan ketua, tidak disesuaikan manual, tidak mengirim sendiri
+   * (kecuali mewakili ketua),
    * dan (belum punya nilai tersimpan ATAU nilai tersimpannya identik dengan ketua).
    * Nilai tersimpan yang berbeda tidak pernah ditimpa otomatis (gunakan «Samakan anggota»).
    */
   function ikutKetua(id: string): boolean {
     const k = kelompokDariSiswa(id)
-    if (!k || k.ketuaId === id || lepasKelompok[id] || pengumpulanMap?.[id]) return false
+    if (!k || k.ketuaId === id || lepasKelompok[id]) return false
+    // Pengirim mandiri dinilai sendiri, KECUALI ia mewakili ketua (ketua tak punya bukti) → ikut nilai ketua.
+    if (pengumpulanMap?.[id] && wakilBukti(k) !== id) return false
     const r = barisNilai?.find((x) => x.siswaId === id)
     if (!r) return false
     if (!r.sudahAda) return true
@@ -755,7 +769,10 @@ export default function TugasDetail() {
     const k = kelompokList.find((x) => x.ketuaId === ketuaId)
     if (!k) return
     const ada = new Set((barisNilai ?? []).map((r) => r.siswaId))
-    const target = k.anggotaIds.filter((id) => id !== ketuaId && ada.has(id) && !pengumpulanMap?.[id])
+    const wakil = wakilBukti(k)
+    const target = k.anggotaIds.filter(
+      (id) => id !== ketuaId && ada.has(id) && (!pengumpulanMap?.[id] || id === wakil),
+    )
     setLepasKelompok((p) => {
       const n = { ...p }
       for (const id of target) delete n[id]
@@ -981,15 +998,28 @@ export default function TugasDetail() {
     dok: PengumpulanDok
     via: 'sendiri' | 'kelompok'
     kelompok?: TugasKelompokDok
+    /** Pemilik bukti adalah anggota yang mewakili ketua (§Tugas.Kelompok.Wakil). */
+    mewakili?: boolean
   } | null {
     if (!pengumpulanMap) return null
+    const kel = kelompokList.find((x) => x.anggotaIds.includes(siswaId))
     const sendiri = pengumpulanMap[siswaId]
     if (sendiri) {
-      return { pemilikId: siswaId, dok: sendiri, via: 'sendiri', kelompok: kelompokList.find((k) => k.ketuaId === siswaId) }
+      return {
+        pemilikId: siswaId,
+        dok: sendiri,
+        via: 'sendiri',
+        kelompok: kelompokList.find((k) => k.ketuaId === siswaId),
+        mewakili: !!kel && wakilBukti(kel) === siswaId,
+      }
     }
-    const k = kelompokList.find((x) => x.anggotaIds.includes(siswaId))
+    const k = kel
     if (k && pengumpulanMap[k.ketuaId]) {
       return { pemilikId: k.ketuaId, dok: pengumpulanMap[k.ketuaId], via: 'kelompok', kelompok: k }
+    }
+    const wakil = wakilBukti(k)
+    if (k && wakil) {
+      return { pemilikId: wakil, dok: pengumpulanMap[wakil], via: 'kelompok', kelompok: k, mewakili: true }
     }
     return null
   }
@@ -1094,7 +1124,10 @@ export default function TugasDetail() {
       if (statusBarisNilai(r) !== 'kosong') continue
       const sb = sumberBuktiSiswa(r.siswaId)
       if (!sb) continue
-      const nama = sb.via === 'kelompok' ? `Kelompok ${sb.kelompok?.ketuaNama ?? ''}`.trim() : r.siswaNama
+      const nama =
+        sb.via === 'kelompok' || sb.mewakili
+          ? `Kelompok ${(sb.kelompok ?? kelompokDariSiswa(r.siswaId))?.ketuaNama ?? ''}`.trim()
+          : r.siswaNama
       const g = peta.get(sb.pemilikId) ?? { nama, baris: [] }
       g.baris.push(r.siswaId)
       peta.set(sb.pemilikId, g)
@@ -2685,7 +2718,15 @@ export default function TugasDetail() {
                                                 </small>
                                               )
                                             }
-                                            if (pengumpulanMap?.[r.siswaId]) return <small className="td-kel-info">Kirim mandiri</small>
+                                            if (pengumpulanMap?.[r.siswaId]) {
+                                              return wakilBukti(kel) === r.siswaId ? (
+                                                <small className="td-kel-info td-kel-info--ikut">
+                                                  Mewakili ketua{ikutKetua(r.siswaId) ? ' · ikut nilai ketua' : ''}
+                                                </small>
+                                              ) : (
+                                                <small className="td-kel-info">Kirim mandiri</small>
+                                              )
+                                            }
                                             return ikutKetua(r.siswaId) ? (
                                               <small className="td-kel-info td-kel-info--ikut">Ikut nilai ketua</small>
                                             ) : (
@@ -2785,8 +2826,13 @@ export default function TugasDetail() {
                                                 {sb.dok.fotoIds.length} foto{jmlVideo > 0 ? ` · ${jmlVideo} video` : ''}
                                               </span>
                                               {sb.via === 'kelompok' && (
-                                                <span className="td-chip td-bukti-via" title="Bukti dikumpulkan ketua kelompok">
-                                                  Lewat ketua: {sb.kelompok?.ketuaNama}
+                                                <span
+                                                  className="td-chip td-bukti-via"
+                                                  title={sb.mewakili ? 'Bukti dikirim anggota yang mewakili ketua' : 'Bukti dikumpulkan ketua kelompok'}
+                                                >
+                                                  {sb.mewakili
+                                                    ? `Dikirim ${barisNilai?.find((x) => x.siswaId === sb.pemilikId)?.siswaNama ?? 'anggota'} mewakili ketua`
+                                                    : `Lewat ketua: ${sb.kelompok?.ketuaNama ?? ''}`}
                                                 </span>
                                               )}
                                               <div className="td-bukti-aksi">
