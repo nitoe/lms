@@ -1,6 +1,6 @@
 import { initializeApp, type FirebaseApp } from 'firebase/app'
 import { getAuth, type Auth } from 'firebase/auth'
-import { getFirestore, type Firestore } from 'firebase/firestore'
+import { getFirestore, initializeFirestore, type Firestore } from 'firebase/firestore'
 import { getFunctions, type Functions } from 'firebase/functions'
 import { getStorage, type FirebaseStorage } from 'firebase/storage'
 
@@ -29,7 +29,14 @@ let functions: Functions
 if (isFirebaseConfigured) {
   app = initializeApp(config)
   auth = getAuth(app)
-  db = getFirestore(app)
+  // Deteksi otomatis jaringan yang memblokir koneksi streaming Firestore (WiFi sekolah, proxy, VPN,
+  // filter DNS): beralih ke long-polling alih-alih menggantung. ANTIREGRESI §Kirim.Diagnostik.
+  // initializeFirestore hanya boleh sekali per aplikasi; HMR di dev memanggilnya ulang → pakai instance yang ada.
+  try {
+    db = initializeFirestore(app, { experimentalAutoDetectLongPolling: true })
+  } catch {
+    db = getFirestore(app)
+  }
   storage = getStorage(app)
   functions = getFunctions(app, REGION_FUNGSI)
 } else {

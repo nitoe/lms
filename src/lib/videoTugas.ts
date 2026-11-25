@@ -21,6 +21,8 @@ const SISI_PENDEK_MAKS = 480
 const BITRATE_VIDEO = 700_000
 const BITRATE_AUDIO = 64_000
 const FPS = 24
+/** Unggahan video dianggap macet bila tak ada kemajuan selama ini. */
+const BATAS_MACET_UNGGAH_MS = 90_000
 
 export type TipeVideo = 'video/webm' | 'video/mp4'
 
@@ -87,11 +89,55 @@ function tungguEvent(el: HTMLMediaElement, ok: string, ms: number): Promise<void
   })
 }
 
-export type HasilPeriksa = { durasi: number; lebar: number; tinggi: number }
+const TIPE_DARI_EKSTENSI: Record<string, string> = {
+  mp4: 'video/mp4',
+  m4v: 'video/mp4',
+  webm: 'video/webm',
+  mov: 'video/quicktime',
+  '3gp': 'video/3gpp',
+  '3gpp': 'video/3gpp',
+  mkv: 'video/x-matroska',
+}
+
+/**
+ * Tipe video: dari `file.type`, atau dari ekstensi bila kosong. Pemilih file Android sering memberi
+ * tipe kosong untuk video yang valid (ANTIREGRESI §Kirim.Diagnostik). Kosong = bukan video.
+ */
+export function tipeVideoDari(file: File): string {
+  if (file.type && file.type.startsWith('video/')) return file.type
+  if (file.type && !file.type.startsWith('video/') && file.type !== 'application/octet-stream') return ''
+  const ext = /\.([a-z0-9]+)$/i.exec(file.name || '')?.[1]?.toLowerCase() ?? ''
+  return TIPE_DARI_EKSTENSI[ext] ?? ''
+}
+
+/**
+ * mp4 kecil berkodek HEVC (H.265, kamera «efisiensi tinggi») bisa diputar di HP tetapi sering hitam di
+ * PC guru. Dicari penanda `hvc1`/`hev1` pada byte (hanya untuk berkas ≤ UKURAN_LANGSUNG).
+ */
+async function mp4Hevc(file: File): Promise<boolean> {
+  if (tipeVideoDari(file) !== 'video/mp4' || file.size > UKURAN_LANGSUNG) return false
+  try {
+    const b = new Uint8Array(await file.arrayBuffer())
+    for (let i = 0; i + 4 <= b.length; i++) {
+      if (
+        b[i] === 0x68 &&
+        ((b[i + 1] === 0x76 && b[i + 2] === 0x63 && b[i + 3] === 0x31) ||
+          (b[i + 1] === 0x65 && b[i + 2] === 0x76 && b[i + 3] === 0x31))
+      ) {
+        return true
+      }
+    }
+  } catch {
+    /* tak terbaca → anggap bukan HEVC */
+  }
+  return false
+}
+
+export type HasilPeriksa = { durasi: number; lebar: number; tinggi: number; hevc: boolean }
 
 /** Baca durasi & ukuran gambar video. Melempar Error berbahasa siswa bila tak layak (mis. > 1 menit). */
 export async function periksaVideo(file: File): Promise<HasilPeriksa> {
-  if (!file.type.startsWith('video/')) throw new Error('File yang kamu pilih bukan video.')
+  if (!tipeVideoDari(file)) throw new Error('File yang kamu pilih bukan video.')
   if (file.size > BATAS_FILE_ASAL) throw new Error('Video terlalu besar. Rekam video yang lebih pendek (maksimal 1 menit).')
   const url = URL.createObjectURL(file)
   const video = document.createElement('video')
@@ -115,7 +161,7 @@ export async function periksaVideo(file: File): Promise<HasilPeriksa> {
         `Videomu ${formatDurasi(durasi)}, terlalu panjang. Maksimal 1 menit. Potong atau rekam ulang ya.`,
       )
     }
-    return { durasi, lebar: video.videoWidth, tinggi: video.videoHeight }
+    return { durasi, lebar: video.videoWidth, tinggi: video.videoHeight, hevc: await mp4Hevc(file) }
   } finally {
     video.removeAttribute('src')
     video.load()
@@ -125,7 +171,8 @@ export async function periksaVideo(file: File): Promise<HasilPeriksa> {
 
 /** Video mp4/webm kecil dipakai apa adanya; selain itu `null` (perlu konversi). */
 export function videoLangsung(file: File, durasi: number): VideoSiap | null {
-  const tipe = file.type === 'video/mp4' ? 'video/mp4' : file.type === 'video/webm' ? 'video/webm' : null
+  const tipeAsal = tipeVideoDari(file)
+  const tipe = tipeAsal === 'video/mp4' ? 'video/mp4' : tipeAsal === 'video/webm' ? 'video/webm' : null
   if (!tipe || file.size > UKURAN_LANGSUNG) return null
   return { blob: file, tipe, durasi, ukuran: file.size }
 }
@@ -306,11 +353,31 @@ export async function unggahVideoTugas(
   const path = pathVideoTugas(tugasId, siswaId, slot, v.tipe)
   const task = uploadBytesResumable(ref(storage, path), v.blob, { contentType: v.tipe })
   await new Promise<void>((resolve, reject) => {
+    // Deteksi unggahan macet: sinyal hilang membuat SDK mencoba ulang sampai ±10 menit tanpa kabar,
+    // sehingga siswa melihat persen diam. Tanpa kemajuan 90 detik → batalkan dengan kode `storage/stalled`.
+    let macet = 0
+    const mulaiPantau = () => {
+      window.clearTimeout(macet)
+      macet = window.setTimeout(() => {
+        task.cancel()
+        reject(Object.assign(new Error('Unggahan video macet.'), { code: 'storage/stalled' }))
+      }, BATAS_MACET_UNGGAH_MS)
+    }
+    mulaiPantau()
     task.on(
       'state_changed',
-      (s) => onProgress(s.totalBytes ? s.bytesTransferred / s.totalBytes : 0),
-      reject,
-      () => resolve(),
+      (s) => {
+        mulaiPantau()
+        onProgress(s.totalBytes ? s.bytesTransferred / s.totalBytes : 0)
+      },
+      (e) => {
+        window.clearTimeout(macet)
+        reject(e)
+      },
+      () => {
+        window.clearTimeout(macet)
+        resolve()
+      },
     )
   })
   return { path, tipe: v.tipe, ukuran: v.ukuran, durasi: Math.round(v.durasi) }

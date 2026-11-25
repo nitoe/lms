@@ -295,7 +295,9 @@ export default function PengumpulanSiswa({
     setVideoSlot(slot, { fase: 'periksa', persen: 0 })
     try {
       const info = await periksaVideo(f)
-      const langsung = videoLangsung(f, info.durasi)
+      // mp4 HEVC dipakai apa adanya hanya bila HP tak bisa mengonversi; selain itu dikonversi ke webm
+      // agar bisa diputar di PC guru (ANTIREGRESI §Kirim.Diagnostik).
+      const langsung = info.hevc && dukungKonversiVideo() ? null : videoLangsung(f, info.durasi)
       if (langsung) {
         setVideoSlot(slot, { fase: 'siap', persen: 1, siap: langsung, url: URL.createObjectURL(langsung.blob) })
       } else if (!dukungKonversiVideo()) {

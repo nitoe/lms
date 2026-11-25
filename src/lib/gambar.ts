@@ -1,5 +1,6 @@
 import { addDoc, collection, doc, getDoc, serverTimestamp } from 'firebase/firestore'
 import { auth, db } from './firebase'
+import { ringkasPerangkat } from './diagnostik'
 
 /**
  * Gambar soal disimpan terkompres (data URL WebP/JPEG) di koleksi `lms_gambar`,
@@ -144,11 +145,11 @@ async function bacaGambar(file: Blob): Promise<GambarTerbaca> {
   } catch (e) {
     galat.push(e)
     throw new Error(
-      `Foto tidak bisa dibuka dari galeri (mungkin belum terunduh penuh atau izin akses dicabut). Unduh fotonya dulu atau ambil ulang dengan kamera, lalu coba lagi. (rincian: ${namaGalat(e)}, ${ukuranTeks(file.size)})`,
+      `Foto tidak bisa dibuka dari galeri (mungkin belum terunduh penuh atau izin akses dicabut). Unduh fotonya dulu atau ambil ulang dengan kamera, lalu coba lagi. (rincian: ${namaGalat(e)}, ${ukuranTeks(file.size)}; ${ringkasPerangkat()})`,
     )
   }
   const format = kenaliFormat(new Uint8Array(byte.slice(0, 16)))
-  const rincian = `rincian: ${format}, ${ukuranTeks(byte.byteLength)}, ${namaGalat(galat[0])}`
+  const rincian = `rincian: ${format}, ${ukuranTeks(byte.byteLength)}, ${namaGalat(galat[0])}; ${ringkasPerangkat()}`
   if (format === 'heic') {
     throw new Error(
       `Foto berformat HEIC/HEIF belum bisa dibaca di HP ini. Ubah pengaturan kamera ke JPEG (pilih «Paling kompatibel»), atau pilih foto lain / foto hasil tangkapan layar, lalu coba lagi. (${rincian})`,

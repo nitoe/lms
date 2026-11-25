@@ -1,3 +1,28 @@
+## 2026-11-25 — Pengiriman tugas lebih tahan sinyal lemah + kode diagnostik di layar
+
+### Latar
+- Satu HP Android siswa (memakai Chrome) gagal mengirim gambar, dan konsolnya tidak bisa dilihat guru. Penelusuran kode menemukan celah umum pada pengiriman foto dan video: penulisan Firestore bisa menggantung tanpa batas bila server tak terjangkau, unggahan video yang macet tidak terdeteksi, dan galat video tampil sebagai teks Inggris mentah tanpa petunjuk langkah.
+
+### Perbaikan
+- **Batas waktu pengiriman.** Tiap foto 90 detik dan penyimpanan data 45 detik; lewat itu siswa mendapat pesan «Foto ke-N belum terkirim…» alih-alih tombol macet selamanya. Bila HP tidak punya koneksi sama sekali, pengiriman ditolak di awal dengan pesan «Tidak ada koneksi internet».
+- **Firestore beralih otomatis ke long-polling** di jaringan yang memblokir koneksi streaming (WiFi sekolah, proxy, VPN, filter DNS).
+- **Video dibungkus langkah pengiriman** (`video-N`) dan **unggahan yang tak maju 90 detik dibatalkan** dengan pesan «Video belum terkirim karena koneksi putus atau terlalu lambat… bagian yang sudah terkirim tidak hilang». Penolakan Storage (`storage/unauthorized`) kini menampilkan pesan «mungkin ditutup/sudah dinilai», bukan teks Inggris.
+- **Data tersimpan tidak lagi tampil sebagai gagal:** bila sinyal putus tepat setelah data tersimpan (saat dibaca ulang), siswa tetap melihat «terkumpul».
+- **Video dengan tipe kosong** (sering dari pemilih file Android) kini dikenali dari ekstensi (`.mp4`, `.webm`, `.mov`, `.3gp`, `.m4v`, `.mkv`).
+- **Video mp4 berkodek HEVC** (kamera «efisiensi tinggi») yang kecil kini dikonversi ke webm bila HP mendukung, agar bisa diputar di PC guru; bila HP tak bisa mengonversi tetap dikirim apa adanya.
+- **Kode diagnostik** pada semua pesan galat pengiriman dan pembacaan foto, contoh: «(kode: foto-3/unavailable; Chrome 79; Android 9; online; 3g)». Siswa cukup memotret layarnya untuk guru. Tidak memuat nama, kelas, atau ID.
+
+### Berkas
+- Baru: `src/lib/diagnostik.ts`. Ubah: `src/lib/firebase.ts`, `src/lib/pengumpulan.ts`, `src/lib/videoTugas.ts`, `src/lib/gambar.ts`, `src/pages/siswa/PengumpulanSiswa.tsx`, `CHANGELOG.md`, `ANTIREGRESI.md`.
+- Tidak ada perubahan rules, function, atau data.
+
+### Deploy
+- Hosting LMS saja.
+
+### Catatan
+- `tsc -b`, `vite build`, dan `oxlint` lulus; uji unit pesan galat, tipe video, dan ringkasan perangkat lulus. Belum diuji di HP sungguhan; lihat ANTIREGRESI §Kirim.Diagnostik butir 7.
+- Belum dikerjakan: video dari iPhone (`.mov`, Safari tanpa MediaRecorder webm) tetap belum bisa dikirim; foto yang hilang saat halaman dimuat ulang setelah kamera (draf belum disimpan lokal).
+
 ## 2026-11-25 — Batas foto tugas naik menjadi 10 + dekode foto lebih tahan banting di HP Android
 
 ### Perilaku baru

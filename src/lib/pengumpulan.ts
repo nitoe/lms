@@ -12,6 +12,7 @@ import {
 } from 'firebase/firestore'
 import { db } from './firebase'
 import { kompresGambar, BATAS_KARAKTER_GAMBAR } from './gambar'
+import { akhiranDiagnostik, kodeGalat, langkahGalat } from './diagnostik'
 import type { TugasLms } from '../types/tugas'
 import { adaBukti, adaBuktiVideo } from './buktiTugas'
 import {
@@ -44,6 +45,13 @@ export const DAFTAR_SLOT = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10] as const
 export const BATAS_CATATAN = 500
 /** Jumlah foto yang dikirim bersamaan. Dua cukup mempercepat tanpa membebani sinyal lemah. */
 const KONKURENSI_FOTO = 2
+/**
+ * Batas waktu per langkah tulis Firestore. Firestore TIDAK menolak penulisan saat server tak terjangkau;
+ * ia menunggu tanpa batas, sehingga tombol macet di «Mengirim foto…». ANTIREGRESI §Kirim.Diagnostik.
+ * Satu foto ±180 KB: 90 dtk cukup bahkan untuk 2G; meta kecil: 45 dtk.
+ */
+const BATAS_WAKTU_FOTO_MS = 90_000
+const BATAS_WAKTU_META_MS = 45_000
 const SLOT = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10'] as const
 
 export type PengumpulanDok = {
@@ -230,6 +238,9 @@ export type KirimInput = {
  */
 export async function kirimPengumpulan(input: KirimInput): Promise<PengumpulanDok> {
   const { tugas, siswaId, siswaNama, kelas, ada } = input
+  if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+    throw galatKirim('kirim/offline', 'Tidak ada koneksi internet.')
+  }
   let entri: { slot: number; src: string }[]
   const videoBaru = input.videoBaru ?? {}
   const videoLama = ada?.videos ?? {}
@@ -265,12 +276,14 @@ export async function kirimPengumpulan(input: KirimInput): Promise<PengumpulanDo
   const slotVideoBaru = Object.keys(videoBaru).map(Number)
   const bagian: Record<number, number> = {}
   for (const n of slotVideoBaru) {
-    videoAkhir[n] = await unggahVideoTugas(tugas.id, siswaId, n, videoBaru[n], (b) => {
-      bagian[n] = b
-      input.onProgressVideo?.(
-        slotVideoBaru.reduce((acc, k) => acc + (bagian[k] ?? 0), 0) / slotVideoBaru.length,
-      )
-    })
+    videoAkhir[n] = await langkah(`video-${n}`, () =>
+      unggahVideoTugas(tugas.id, siswaId, n, videoBaru[n], (b) => {
+        bagian[n] = b
+        input.onProgressVideo?.(
+          slotVideoBaru.reduce((acc, k) => acc + (bagian[k] ?? 0), 0) / slotVideoBaru.length,
+        )
+      }),
+    )
   }
 
   // Foto dikirim paralel terbatas (KONKURENSI_FOTO) agar 10 foto tidak berurutan satu per satu di
@@ -304,7 +317,7 @@ export async function kirimPengumpulan(input: KirimInput): Promise<PengumpulanDo
         // berubah → ditolak. Ulangi sebagai update murni (hanya data + updatedAt). ANTIREGRESI §Tugas.FotoYatim.
         await updateDoc(ref, { data: src, updatedAt: serverTimestamp() })
       }
-    })
+    }, BATAS_WAKTU_FOTO_MS)
   }
   {
     let berikut = 0
@@ -371,15 +384,35 @@ export async function kirimPengumpulan(input: KirimInput): Promise<PengumpulanDo
       updatedAt: serverTimestamp(),
     })
   }
-  })
+  }, BATAS_WAKTU_META_MS)
 
   // Berkas video lama yang tak dipakai lagi (dihapus/diganti, atau ekstensi berubah) — best-effort.
   const pathDipakai = new Set(Object.values(videoAkhir).map((v) => v.path))
   for (const lama of Object.values(videoLama)) {
     if (!pathDipakai.has(lama.path)) await hapusVideoTugas(lama.path)
   }
-  const s = await langkah('baca-meta', () => getDoc(ref))
-  return keDok(id, s.data() ?? {})
+  // Meta SUDAH tersimpan di titik ini. Gagal membaca ulang (sinyal putus tepat di akhir) TIDAK boleh
+  // tampil sebagai «gagal mengumpulkan»: pakai data lokal. ANTIREGRESI §Kirim.Diagnostik.
+  try {
+    const s = await langkah('baca-meta', () => getDoc(ref), BATAS_WAKTU_META_MS)
+    return keDok(id, s.data() ?? {})
+  } catch (e) {
+    console.warn('Baca ulang meta gagal; memakai data lokal', e)
+    const kini = { seconds: Math.floor(Date.now() / 1000) }
+    return keDok(id, {
+      tugasId: tugas.id,
+      siswaId,
+      siswaNama,
+      kelas,
+      mapel,
+      catatan,
+      fotoIds,
+      jumlahFoto: fotoIds.length,
+      videos: videosDok,
+      createdAt: ada ? { seconds: Math.floor(ada.dibuatMs / 1000) } : kini,
+      updatedAt: kini,
+    })
+  }
 }
 
 function izinDitolak(e: unknown): boolean {
@@ -388,10 +421,31 @@ function izinDitolak(e: unknown): boolean {
   return code === 'permission-denied' || code === 'firestore/permission-denied'
 }
 
+function galatKirim(code: string, pesan: string): Error {
+  return Object.assign(new Error(pesan), { code })
+}
+
+/** Batasi waktu tunggu; penulisan yang tertunda tetap berjalan di SDK (idempoten: id dokumen tetap). */
+function dalamBatas<T>(p: Promise<T>, ms: number): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const t = setTimeout(() => reject(galatKirim('kirim/timeout', 'Waktu pengiriman habis.')), ms)
+    p.then(
+      (v) => {
+        clearTimeout(t)
+        resolve(v)
+      },
+      (e) => {
+        clearTimeout(t)
+        reject(e)
+      },
+    )
+  })
+}
+
 /** Jalankan satu langkah pengiriman; galat diberi tanda langkah agar penyebab permission-denied bisa dilacak. */
-async function langkah<T>(nama: string, fn: () => Promise<T>): Promise<T> {
+async function langkah<T>(nama: string, fn: () => Promise<T>, batasMs?: number): Promise<T> {
   try {
-    return await fn()
+    return await (batasMs ? dalamBatas(fn(), batasMs) : fn())
   } catch (e) {
     if (typeof e === 'object' && e !== null && !('langkahKirim' in e)) {
       Object.assign(e, { langkahKirim: nama })
@@ -402,18 +456,44 @@ async function langkah<T>(nama: string, fn: () => Promise<T>): Promise<T> {
 }
 
 export function pesanGagalKumpul(e: unknown): string {
-  const code =
-    typeof e === 'object' && e !== null && 'code' in e ? String((e as { code: unknown }).code) : ''
-  if (code === 'permission-denied' || code === 'firestore/permission-denied') {
-    const l = typeof e === 'object' && e !== null && 'langkahKirim' in e ? String((e as { langkahKirim: unknown }).langkahKirim) : ''
-    return `Tugas belum bisa dikumpulkan. Mungkin tugas sudah dinilai atau ditutup. Beri tahu gurumu ya.${l ? ` (kode: ${l})` : ''}`
+  const code = kodeGalat(e)
+  const l = langkahGalat(e)
+  const diag = akhiranDiagnostik(e)
+  const mFoto = /^foto-(\d+)$/.exec(l)
+  const mVideo = /^video-(\d+)$/.exec(l)
+
+  if (code === 'permission-denied' || code === 'storage/unauthorized') {
+    return `Tugas belum bisa dikumpulkan. Mungkin tugas sudah dinilai atau ditutup. Beri tahu gurumu ya.${diag}`
   }
-  const langkahGagal =
-    typeof e === 'object' && e !== null && 'langkahKirim' in e ? String((e as { langkahKirim: unknown }).langkahKirim) : ''
-  const mFoto = /^foto-(\d+)$/.exec(langkahGagal)
+  if (code === 'kirim/offline') {
+    return `Tidak ada koneksi internet. Sambungkan WiFi atau data seluler, lalu tekan kirim lagi.${diag}`
+  }
+  if (code === 'resource-exhausted' || code === 'storage/quota-exceeded') {
+    return `Server sedang penuh. Tunggu beberapa menit lalu coba lagi. Bila tetap gagal, beri tahu gurumu.${diag}`
+  }
+  // Gangguan jaringan: waktu habis, server tak terjangkau, unggahan macet/dibatalkan, atau percobaan ulang habis.
+  const gangguanJaringan = [
+    'kirim/timeout',
+    'unavailable',
+    'deadline-exceeded',
+    'cancelled',
+    'storage/stalled',
+    'storage/canceled',
+    'storage/retry-limit-exceeded',
+  ].includes(code)
+  if (mVideo) {
+    return gangguanJaringan
+      ? `Video belum terkirim karena koneksi putus atau terlalu lambat. Pindah ke tempat dengan sinyal lebih baik lalu tekan kirim lagi; bagian yang sudah terkirim tidak hilang.${diag}`
+      : `Video belum bisa dikirim. Coba lagi; bila tetap gagal, beri tahu gurumu.${diag}`
+  }
   if (mFoto) {
-    return `Foto ke-${mFoto[1]} belum terkirim. Periksa internet lalu tekan kirim lagi; foto yang sudah terkirim tidak hilang.`
+    return `Foto ke-${mFoto[1]} belum terkirim. Periksa internet lalu tekan kirim lagi; foto yang sudah terkirim tidak hilang.${diag}`
   }
+  if (gangguanJaringan) {
+    return `Pengiriman terhenti karena koneksi. Periksa internet lalu tekan kirim lagi.${diag}`
+  }
+  // Galat Firebase lain (punya kode): jangan tampilkan teks Inggris mentah.
+  if (code) return `Gagal mengumpulkan. Periksa internet lalu coba lagi.${diag}`
   if (e instanceof Error && e.message) return e.message
   return 'Gagal mengumpulkan. Periksa internet lalu coba lagi.'
 }
