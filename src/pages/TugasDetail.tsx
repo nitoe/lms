@@ -12,6 +12,10 @@ import {
 } from '../lib/tugas'
 import BerbagiKelasDialog from '../components/BerbagiKelasDialog'
 import PengumpulanPanel from '../components/PengumpulanPanel'
+import UsulanNilaiAiDialog from '../components/UsulanNilaiAiDialog'
+import { usulkanNilaiTugasAi, type UsulanNilaiAi } from '../lib/nilaiTugasAi'
+import { daftarPengumpulanTugas, type PengumpulanDok } from '../lib/pengumpulan'
+import { daftarKelompokTugas, type TugasKelompokDok } from '../lib/tugasKelompok'
 import BuktiTugasEditor from '../components/BuktiTugasEditor'
 import { rapikanBuktiList } from '../lib/buktiTugas'
 import { htmlInstruksiSiswa } from '../lib/instruksiTugas'
@@ -243,6 +247,17 @@ export default function TugasDetail() {
   const [draft, setDraft] = useState<Record<string, DraftBaris>>({})
   const [menyimpanSiswaId, setMenyimpanSiswaId] = useState<string | null>(null)
   const [genAiBusy, setGenAiBusy] = useState(false)
+  /** Penilaian bukti foto/video dengan AI (hanya akun AI) — ANTIREGRESI §Tugas.NilaiAi. */
+  const [pengumpulanMap, setPengumpulanMap] = useState<Record<string, PengumpulanDok> | null>(null)
+  const [usulanAi, setUsulanAi] = useState<Record<string, UsulanNilaiAi>>({})
+  const [aiTerapkan, setAiTerapkan] = useState<Record<string, boolean>>({})
+  const [aiBusyId, setAiBusyId] = useState<string | null>(null)
+  const [aiMassal, setAiMassal] = useState<{ selesai: number; total: number } | null>(null)
+  const aiBatalRef = useRef(false)
+  /** Kelompok tugas (hanya tugas modeKelompok) — bukti ketua dipakai untuk seluruh anggota. */
+  const [kelompokList, setKelompokList] = useState<TugasKelompokDok[]>([])
+  /** `pemilikId` = siswa yang mengumpulkan (ketua / pengirim mandiri); `siswaId` = baris yang membuka dialog. */
+  const [dialogAi, setDialogAi] = useState<{ pemilikId: string; siswaId: string } | null>(null)
   /** Saringan & pencarian pada Daftar nilai siswa. */
   const [filterNilai, setFilterNilai] = useState<'semua' | 'kosong' | 'ubah'>('semua')
   const [cariNilai, setCariNilai] = useState('')
@@ -795,6 +810,171 @@ export default function TugasDetail() {
       if (p) patch.predikat = p.predikat
     }
     patchDraft(siswaId, patch)
+  }
+
+  /** Muat pengumpulan (+ kelompok bila tugas kelompok) saat Daftar nilai dibuka oleh akun AI. */
+  useEffect(() => {
+    if (!bisaAi || tab !== 'nilai' || subNilai !== 'daftar-nilai' || isBaru || !tugas) return
+    if (pengumpulanMap !== null) return
+    let batal = false
+    void (async () => {
+      let l: PengumpulanDok[] = []
+      try {
+        l = await daftarPengumpulanTugas(tugas)
+      } catch {
+        /* peta kosong → «Belum mengumpulkan» */
+      }
+      const kel: TugasKelompokDok[] = []
+      if (tugas.modeKelompok === true) {
+        const kelasSemua = [...new Set([tugas.kelas, ...(tugas.kelasList ?? [])].filter(Boolean))]
+        for (const kls of kelasSemua) {
+          try {
+            kel.push(...(await daftarKelompokTugas(tugas.id, kls)))
+          } catch (e) {
+            // Rombel paralel yang tidak diampu ditolak rules — lewati (sama seperti KelompokGuruRingkas).
+            console.warn('NilaiAi: kelompok', kls, e)
+          }
+        }
+      }
+      if (batal) return
+      setKelompokList(kel)
+      setPengumpulanMap(Object.fromEntries(l.map((d) => [d.siswaId, d])))
+    })()
+    return () => {
+      batal = true
+    }
+  }, [bisaAi, tab, subNilai, isBaru, tugas, pengumpulanMap])
+
+  /**
+   * Dari mana bukti seorang siswa berasal? Pengumpulan sendiri lebih diutamakan (anggota yang
+   * diizinkan kirim mandiri); bila tidak ada dan ia anggota kelompok yang ketuanya sudah
+   * mengumpulkan → bukti ketua. `kelompok` terisi bila pemilik bukti adalah ketua sebuah kelompok.
+   */
+  function sumberBuktiSiswa(siswaId: string): {
+    pemilikId: string
+    dok: PengumpulanDok
+    via: 'sendiri' | 'kelompok'
+    kelompok?: TugasKelompokDok
+  } | null {
+    if (!pengumpulanMap) return null
+    const sendiri = pengumpulanMap[siswaId]
+    if (sendiri) {
+      return { pemilikId: siswaId, dok: sendiri, via: 'sendiri', kelompok: kelompokList.find((k) => k.ketuaId === siswaId) }
+    }
+    const k = kelompokList.find((x) => x.anggotaIds.includes(siswaId))
+    if (k && pengumpulanMap[k.ketuaId]) {
+      return { pemilikId: k.ketuaId, dok: pengumpulanMap[k.ketuaId], via: 'kelompok', kelompok: k }
+    }
+    return null
+  }
+
+  /** Terapkan usulan AI ke DRAF baris (belum tersimpan; guru memeriksa lalu menyimpan). */
+  function terapkanUsulan(siswaId: string, u: UsulanNilaiAi | undefined) {
+    if (!u) return
+    setDraft((prev) => {
+      const cur = prev[siswaId] || { perKategori: {}, nilaiAkhir: '', predikat: '', komentar: '' }
+      const per = { ...cur.perKategori }
+      for (const k of u.kategori) {
+        if (k.skor !== null && kategoriAktif.some((c) => c.id === k.id)) per[k.id] = String(k.skor)
+      }
+      const angka: Record<string, number | null> = {}
+      for (const c of kategoriAktif) {
+        const t = (per[c.id] ?? '').trim()
+        const n = Number(t.replace(',', '.'))
+        angka[c.id] = t === '' || Number.isNaN(n) ? null : n
+      }
+      const rata = hitungRataRata(angka, kategoriAktif)
+      let akhir = cur.nilaiAkhir
+      let pred = cur.predikat
+      if (rata !== null) {
+        akhir = String(Math.round(rata))
+        pred = predikatDariNilai(Math.round(rata), pengaturan.rentangPredikat)?.predikat || pred
+      }
+      const komentar = cur.komentar.trim() ? cur.komentar : u.komentarSiswa
+      return { ...prev, [siswaId]: { ...cur, perKategori: per, nilaiAkhir: akhir, predikat: pred, komentar } }
+    })
+    setAiTerapkan((p) => ({ ...p, [siswaId]: true }))
+  }
+
+  /**
+   * Anggota kelompok yang layak ikut diberi usulan ketua: ada di daftar nilai, belum tersimpan nilainya,
+   * dan tidak punya pengumpulan sendiri (yang mengirim mandiri dinilai dari buktinya sendiri).
+   */
+  function anggotaPenerimaUsulan(pemilikId: string, k: TugasKelompokDok): string[] {
+    const ada = new Set((barisNilai ?? []).map((r) => r.siswaId))
+    return k.anggotaIds.filter(
+      (id) =>
+        ada.has(id) &&
+        (id === pemilikId || !pengumpulanMap?.[id]) &&
+        statusNilai[id] !== 'ok',
+    )
+  }
+
+  /**
+   * Minta AI menilai bukti satu pengumpulan. `pemilikId` = pemilik pengumpulan (ketua bila lewat kelompok).
+   * `terapkanKe` terisi (mode massal) = langsung ke draf baris-baris itu tanpa dialog.
+   */
+  async function usulkanAi(pemilikId: string, targetId: string, namaTampil: string, terapkanKe?: string[]): Promise<boolean> {
+    if (!bisaAi || !tugas) return false
+    setAiBusyId(pemilikId)
+    setError('')
+    try {
+      const u = await usulkanNilaiTugasAi(tugas.id, pemilikId)
+      setUsulanAi((p) => ({ ...p, [pemilikId]: u }))
+      if (terapkanKe) for (const id of terapkanKe) terapkanUsulan(id, u)
+      else setDialogAi({ pemilikId, siswaId: targetId })
+      return true
+    } catch (e) {
+      setError(`${namaTampil}: ${e instanceof Error ? e.message : 'Gagal menilai dengan AI.'}`)
+      return false
+    } finally {
+      setAiBusyId(null)
+    }
+  }
+
+  /**
+   * Nilai semua yang sudah punya bukti tetapi belum dinilai. Satu panggilan AI per PEMILIK bukti:
+   * satu kelompok = satu panggilan, hasilnya masuk ke draf seluruh anggota yang layak.
+   */
+  async function usulkanAiMassal() {
+    if (!bisaAi || !barisNilai || !pengumpulanMap) return
+    const peta = new Map<string, { nama: string; baris: string[] }>()
+    for (const r of barisNilai) {
+      if (statusBarisNilai(r) !== 'kosong') continue
+      const sb = sumberBuktiSiswa(r.siswaId)
+      if (!sb) continue
+      const nama = sb.via === 'kelompok' ? `Kelompok ${sb.kelompok?.ketuaNama ?? ''}`.trim() : r.siswaNama
+      const g = peta.get(sb.pemilikId) ?? { nama, baris: [] }
+      g.baris.push(r.siswaId)
+      peta.set(sb.pemilikId, g)
+    }
+    const target = [...peta.entries()]
+    if (!target.length) {
+      setError('Tidak ada siswa yang sudah punya bukti dan belum dinilai.')
+      return
+    }
+    const jumlahSiswa = target.reduce((n, [, g]) => n + g.baris.length, 0)
+    if (
+      !confirm(
+        `AI akan menganalisis ${target.length} pengumpulan (untuk ${jumlahSiswa} siswa) satu per satu — bisa beberapa menit.\n` +
+          'Tugas kelompok dihitung sekali per kelompok. Hasilnya masuk ke DRAF nilai dan belum tersimpan.\nLanjutkan?',
+      )
+    )
+      return
+    aiBatalRef.current = false
+    let gagal = 0
+    for (let i = 0; i < target.length; i++) {
+      if (aiBatalRef.current) break
+      const [pemilikId, g] = target[i]
+      setAiMassal({ selesai: i, total: target.length })
+      const ok = await usulkanAi(pemilikId, g.baris[0], g.nama, g.baris)
+      if (!ok) gagal++
+      if (gagal >= 3) {
+        setError('Dihentikan: 3 pengumpulan gagal diproses. Periksa pesan galat lalu coba lagi.')
+        break
+      }
+    }
+    setAiMassal(null)
   }
 
   /**
@@ -2081,7 +2261,10 @@ export default function TugasDetail() {
                         type="button"
                         className="tg-btn"
                         disabled={loadingNilai}
-                        onClick={() => void muatNilai({ force: true })}
+                        onClick={() => {
+                          setPengumpulanMap(null)
+                          void muatNilai({ force: true })
+                        }}
                         title="Muat ulang dari server (menghapus draf yang belum disimpan)"
                       >
                         {loadingNilai ? 'Memuat…' : 'Muat ulang'}
@@ -2095,6 +2278,22 @@ export default function TugasDetail() {
                       >
                         {busy ? 'Sinkron…' : 'Sinkron ke Penilaian'}
                       </button>
+                      {bisaAi &&
+                        (aiMassal ? (
+                          <button type="button" className="tg-btn" onClick={() => (aiBatalRef.current = true)}>
+                            Menilai {aiMassal.selesai + 1}/{aiMassal.total}… Batalkan
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            className="tg-btn td-btn-ai-massal"
+                            disabled={loadingNilai || aiBusyId !== null || pengumpulanMap === null}
+                            onClick={() => void usulkanAiMassal()}
+                            title="AI menganalisis bukti foto/video siswa yang sudah mengumpulkan lalu mengisi DRAF nilai"
+                          >
+                            ✦ Nilai bukti dengan AI
+                          </button>
+                        ))}
                     </div>
                   </div>
 
@@ -2188,6 +2387,7 @@ export default function TugasDetail() {
                                     AI
                                   </th>
                                 )}
+                                {bisaAi && <th className="td-th-bukti">Bukti siswa</th>}
                                 <th className="td-th-komen">Komentar</th>
                                 <th className="td-th-aksi" aria-label="Aksi" />
                               </tr>
@@ -2214,7 +2414,9 @@ export default function TugasDetail() {
                                             {st === 'ok'
                                               ? 'Tersimpan'
                                               : st === 'ubah'
-                                                ? 'Belum disimpan'
+                                                ? aiTerapkan[r.siswaId]
+                                                  ? 'Usulan AI — periksa lalu simpan'
+                                                  : 'Belum disimpan'
                                                 : 'Belum dinilai'}
                                           </small>
                                         </span>
@@ -2271,6 +2473,64 @@ export default function TugasDetail() {
                                         </button>
                                       </td>
                                     )}
+                                    {bisaAi && (
+                                      <td className="td-td-bukti">
+                                        {pengumpulanMap === null ? (
+                                          <span className="td-bukti-kosong">Memuat…</span>
+                                        ) : (() => {
+                                            const sb = sumberBuktiSiswa(r.siswaId)
+                                            if (!sb) {
+                                              const kel = kelompokList.find((x) => x.anggotaIds.includes(r.siswaId))
+                                              return (
+                                                <span className="td-bukti-kosong">
+                                                  {kel ? `Menunggu ketua (${kel.ketuaNama})` : 'Belum mengumpulkan'}
+                                                </span>
+                                              )
+                                            }
+                                            const sibukIni = aiBusyId === sb.pemilikId
+                                            const ada = usulanAi[sb.pemilikId]
+                                            const jmlVideo = Object.keys(sb.dok.videos ?? {}).length
+                                            return (
+                                              <div className="td-bukti-sel">
+                                                <span className="td-bukti-info">
+                                                  {sb.dok.fotoIds.length} foto{jmlVideo > 0 ? ` · ${jmlVideo} video` : ''}
+                                                </span>
+                                                {sb.via === 'kelompok' && (
+                                                  <span className="td-chip td-bukti-via" title="Bukti dikumpulkan ketua kelompok">
+                                                    Lewat ketua: {sb.kelompok?.ketuaNama}
+                                                  </span>
+                                                )}
+                                                <div className="td-bukti-aksi">
+                                                  <button
+                                                    type="button"
+                                                    className="td-btn-ai-teks"
+                                                    disabled={aiBusyId !== null || aiMassal !== null}
+                                                    onClick={() =>
+                                                      ada
+                                                        ? setDialogAi({ pemilikId: sb.pemilikId, siswaId: r.siswaId })
+                                                        : void usulkanAi(sb.pemilikId, r.siswaId, r.siswaNama)
+                                                    }
+                                                  >
+                                                    {sibukIni ? 'Menganalisis…' : ada ? 'Lihat usulan' : '✦ Nilai bukti'}
+                                                  </button>
+                                                  {ada && !sibukIni && (
+                                                    <button
+                                                      type="button"
+                                                      className="td-btn-ai-ulang"
+                                                      title="Minta AI menilai ulang"
+                                                      aria-label={`Nilai ulang ${r.siswaNama} dengan AI`}
+                                                      disabled={aiBusyId !== null || aiMassal !== null}
+                                                      onClick={() => void usulkanAi(sb.pemilikId, r.siswaId, r.siswaNama)}
+                                                    >
+                                                      ↻
+                                                    </button>
+                                                  )}
+                                                </div>
+                                              </div>
+                                            )
+                                          })()}
+                                      </td>
+                                    )}
                                     <td className="td-td-komen">
                                       <input
                                         type="text"
@@ -2310,6 +2570,40 @@ export default function TugasDetail() {
           )}
         </div>
       )}
+
+      {bisaAi && dialogAi && usulanAi[dialogAi.pemilikId] && (() => {
+        const sb = sumberBuktiSiswa(dialogAi.siswaId)
+        const u = usulanAi[dialogAi.pemilikId]
+        const baris = (barisNilai ?? []).find((r) => r.siswaId === dialogAi.siswaId)
+        const kel = sb?.kelompok
+        const penerima = kel ? anggotaPenerimaUsulan(dialogAi.pemilikId, kel) : []
+        return (
+          <UsulanNilaiAiDialog
+            usulan={u}
+            pengumpulan={pengumpulanMap?.[dialogAi.pemilikId]}
+            namaTarget={baris?.siswaNama ?? u.siswaNama}
+            kelompok={
+              kel
+                ? { ketuaNama: kel.ketuaNama, jumlahAnggota: kel.anggotaIds.length, jumlahPenerima: penerima.length }
+                : undefined
+            }
+            sudahDiterapkan={!!aiTerapkan[dialogAi.siswaId]}
+            onTerapkan={() => {
+              terapkanUsulan(dialogAi.siswaId, u)
+              setDialogAi(null)
+            }}
+            onTerapkanKelompok={
+              kel && penerima.length > 1
+                ? () => {
+                    for (const id of penerima) terapkanUsulan(id, u)
+                    setDialogAi(null)
+                  }
+                : undefined
+            }
+            onTutup={() => setDialogAi(null)}
+          />
+        )
+      })()}
     </div>
   )
 }

@@ -1046,3 +1046,86 @@ a.tg-kumpul:focus-visible { outline: 2px solid var(--tg-a, var(--color-muh-600))
   .td-nilai-saring .td-cari { width: 100%; }
   .td-tabel--nilai .td-th-nama, .td-tabel--nilai .td-td-nama { min-width: 9.5rem; }
 }
+
+/* ===========================================================================
+   Penilaian bukti foto/video dengan AI (hanya akun AI) — ANTIREGRESI §Tugas.NilaiAi
+   =========================================================================== */
+.td-btn-ai-massal { border-color: #c9b8f5; color: #5b32b4; background: #faf7ff; }
+.td-btn-ai-massal:hover:not(:disabled) { background: #f3ecff; }
+
+.td-tabel--nilai .td-th-bukti { min-width: 8.5rem; }
+.td-tabel--nilai .td-td-bukti { padding: 0.65rem 0.6rem; min-width: 8.5rem; border-left: 1px solid #eef1f7; }
+.td-bukti-sel { display: flex; flex-direction: column; gap: 0.35rem; align-items: flex-start; }
+.td-bukti-info { font-size: 0.72rem; font-weight: 650; color: #475569; }
+.td-bukti-kosong { font-size: 0.72rem; color: #94a3b8; }
+.td-bukti-aksi { display: flex; gap: 0.3rem; align-items: center; }
+.td-btn-ai-teks, .td-btn-ai-ulang {
+  font-family: inherit; font-size: 0.74rem; font-weight: 700; cursor: pointer; white-space: nowrap;
+  border: 1px solid #d9ccf7; background: #faf7ff; color: #5b32b4; border-radius: 0.55rem; min-height: 2rem; padding: 0.3rem 0.65rem;
+}
+.td-btn-ai-ulang { padding: 0.3rem 0.5rem; }
+.td-btn-ai-teks:hover:not(:disabled), .td-btn-ai-ulang:hover:not(:disabled) { background: #f1e9ff; }
+.td-btn-ai-teks:disabled, .td-btn-ai-ulang:disabled { opacity: 0.55; cursor: default; }
+.td-btn-ai-teks:focus-visible, .td-btn-ai-ulang:focus-visible { outline: 2px solid #7c4ddb; outline-offset: 2px; }
+
+/* Dialog tinjauan usulan */
+.td-modal-latar {
+  position: fixed; inset: 0; z-index: 60; display: flex; align-items: center; justify-content: center;
+  padding: 1rem; background: rgba(15, 18, 40, 0.5);
+}
+.td-modal {
+  width: min(52rem, 100%); max-height: calc(100dvh - 2rem); display: flex; flex-direction: column;
+  background: #fff; border-radius: 1.1rem; box-shadow: 0 24px 60px rgba(15, 18, 40, 0.35); overflow: hidden;
+}
+.td-modal-kepala { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; padding: 1rem 1.2rem 0.8rem; border-bottom: 1px solid #eef1f7; }
+.td-modal-kepala h2 { margin: 0 0 0.2rem; font-size: 1.02rem; font-weight: 800; color: #1a1d33; }
+.td-modal-badan { padding: 1rem 1.2rem; overflow-y: auto; display: flex; flex-direction: column; gap: 1.1rem; }
+.td-modal-kaki {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.6rem 1rem;
+  padding: 0.8rem 1.2rem; border-top: 1px solid #eef1f7; background: #fafbfd;
+}
+.td-ai-subjudul { margin: 0 0 0.5rem; font-size: 0.78rem; font-weight: 800; letter-spacing: 0.02em; text-transform: uppercase; color: #64748b; }
+.td-ai-ringkasan { margin: 0; padding: 0.7rem 0.9rem; border-radius: 0.8rem; background: #f6f2ff; color: #3b2a73; font-size: 0.86rem; line-height: 1.55; }
+
+.td-ai-bukti { display: grid; grid-template-columns: repeat(auto-fill, minmax(9.5rem, 1fr)); gap: 0.6rem; }
+.td-ai-bukti-item { margin: 0; border: 1.5px solid var(--color-border); border-radius: 0.8rem; overflow: hidden; background: #fff; }
+.td-ai-bukti-item--on { border-color: #7c4ddb; box-shadow: 0 0 0 2px #e4d8fb; }
+.td-ai-bukti-media { aspect-ratio: 4 / 3; background: #f1f4f9; display: flex; align-items: center; justify-content: center; }
+.td-ai-bukti-media img, .td-ai-bukti-media video { width: 100%; height: 100%; object-fit: cover; display: block; }
+.td-ai-bukti-kosong { font-size: 0.72rem; color: #94a3b8; }
+.td-ai-bukti-item figcaption { padding: 0.4rem 0.55rem 0.5rem; font-size: 0.72rem; line-height: 1.35; color: #334155; }
+
+.td-ai-kat { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.55rem; }
+.td-ai-kat-item { display: flex; gap: 0.85rem; padding: 0.75rem 0.85rem; border: 1px solid var(--color-border); border-radius: 0.85rem; background: #fff; }
+.td-ai-kat-item--cek { border-color: #fde68a; background: #fffdf5; }
+.td-ai-kat-item--kosong { background: #f8fafc; }
+.td-ai-kat-skor {
+  flex: none; width: 3rem; height: 3rem; display: flex; align-items: center; justify-content: center; border-radius: 0.8rem;
+  background: #eef0f8; color: #313083; font-size: 1.15rem; font-weight: 800; font-variant-numeric: tabular-nums;
+}
+.td-ai-kat-item--kosong .td-ai-kat-skor { color: #94a3b8; background: #f1f4f9; }
+.td-ai-kat-isi { min-width: 0; display: flex; flex-direction: column; gap: 0.3rem; }
+.td-ai-kat-isi p { margin: 0; font-size: 0.82rem; line-height: 1.5; color: #334155; }
+.td-ai-kat-judul { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem 0.6rem; }
+.td-ai-kat-judul b { font-size: 0.88rem; color: #1a1d33; }
+.td-ai-yakin--tinggi { background: #ecfdf5; color: #065f46; }
+.td-ai-yakin--sedang { background: #eff6ff; color: #1d4ed8; }
+.td-ai-yakin--rendah { background: #fffbeb; color: #92400e; }
+.td-ai-rujuk { display: flex; flex-wrap: wrap; align-items: center; gap: 0.3rem; font-size: 0.72rem; color: #64748b; }
+.td-ai-rujuk-btn {
+  font: inherit; font-weight: 700; font-size: 0.72rem; cursor: pointer; padding: 0.15rem 0.5rem; border-radius: 999px;
+  border: 1px solid #d9ccf7; background: #faf7ff; color: #5b32b4;
+}
+.td-ai-rujuk-btn[aria-pressed='true'] { background: #7c4ddb; border-color: #7c4ddb; color: #fff; }
+.td-ai-komentar { margin: 0; padding: 0.7rem 0.9rem; border-radius: 0.8rem; background: #f8fafc; border: 1px dashed #d5dbe8; font-size: 0.84rem; line-height: 1.55; color: #334155; }
+.td-ai-catatan { margin: 0; padding-left: 1.1rem; font-size: 0.8rem; line-height: 1.55; color: #92400e; }
+@media (max-width: 560px) {
+  .td-modal-latar { padding: 0; align-items: flex-end; }
+  .td-modal { max-height: 94dvh; border-radius: 1.1rem 1.1rem 0 0; }
+  .td-ai-kat-item { flex-direction: column; gap: 0.5rem; }
+  .td-ai-kat-skor { width: 100%; height: 2.4rem; }
+}
+
+/* Tugas kelompok pada penilaian bukti AI */
+.td-bukti-via { background: #eef2ff; color: #3730a3; border: 1px solid #c7d2fe; font-size: 0.66rem; max-width: 9.5rem; white-space: normal; line-height: 1.3; }
+.td-ai-kelompok { margin: 0; padding: 0.6rem 0.85rem; border-radius: 0.8rem; background: #eef2ff; border: 1px solid #c7d2fe; color: #312e81; font-size: 0.82rem; line-height: 1.5; }

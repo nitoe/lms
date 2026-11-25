@@ -1,3 +1,15 @@
+## 2026-11-24 — Penilaian bukti foto/video dengan AI (khusus akun AI)
+
+- **Fitur baru (hanya `arif.azwar79@gmail.com`, UID + email dicek di klien dan server):** di tab Input nilai → Daftar nilai siswa muncul kolom **Bukti siswa** (jumlah foto/video yang dikumpulkan) dengan tombol **✦ Nilai bukti**, serta tombol **✦ Nilai bukti dengan AI** untuk semua siswa yang sudah mengumpulkan tetapi belum dinilai.
+- **AI hanya memberi USULAN.** Hasil berupa skor per kategori rubrik, alasan, tingkat keyakinan, bukti yang dirujuk, ringkasan untuk guru, dan draf komentar untuk siswa. Guru meninjau di dialog (foto/video asli siswa ditampilkan berdampingan), menekan **Terapkan ke draf nilai**, memeriksa/mengubah, lalu menyimpan lewat alur biasa. Tidak ada nilai yang tersimpan otomatis.
+- **Terhubung ke rubrik:** tiap kategori dinilai dari bukti yang ditautkan guru (`buktiList[].kategoriIds`); kategori «observasi» dan kategori yang buktinya belum dikumpulkan **tidak dinilai AI** (skor kosong, nilai manual). Tugas lama tanpa tautan memakai semua bukti untuk semua kategori.
+- **Video** dianalisis langsung (mp4/webm ≤ 9 MB per video, total media ≤ 15 MB); yang lebih besar dilewati dan dicatat «periksa manual».
+- Status baris «Usulan AI — periksa lalu simpan» sampai guru menyimpan.
+- **Tugas kelompok:** bukti ketua dipakai untuk seluruh anggota. Baris anggota menampilkan «Lewat ketua: …» (atau «Menunggu ketua» bila ketua belum mengumpulkan); anggota yang diizinkan kirim mandiri dinilai dari buktinya sendiri. Dialog menawarkan **Terapkan ke N anggota** (hanya ke draf, melewati anggota yang nilainya sudah tersimpan) atau hanya ke satu siswa. Mode massal memanggil AI **sekali per kelompok**. Skor mewakili hasil kelompok; komentar ditujukan ke «kalian»; penyesuaian per anggota dilakukan guru.
+- **Wajib deploy Cloud Function** (repo SDM01Penilaian): `firebase deploy --only functions:nilaiTugasLmsAi`, lalu hosting LMS. Tidak ada perubahan `firestore.rules`/`storage.rules` (fungsi memakai Admin SDK, hanya membaca).
+- File LMS: `src/lib/nilaiTugasAi.ts` (baru), `src/components/UsulanNilaiAiDialog.tsx` (baru), `src/pages/TugasDetail.tsx`, `src/styles/tugas.css`. File Penilaian: `functions/nilaiTugasLmsAi.js` (baru), `functions/index.js`, `functions/uji/nilaiTugasLmsAi.uji.mjs` (baru).
+- Antiregresi: §Tugas.NilaiAi.
+
 ## 2026-11-25 — Fix galat konsol «hapusStatusAnggota: Missing or insufficient permissions»
 
 ### Masalah
