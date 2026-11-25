@@ -1,4 +1,4 @@
-import { BATAS_DURASI_VIDEO_DETIK, formatDurasi, formatUkuran, type VideoMeta, type VideoSiap } from '../../lib/videoTugas'
+import { BATAS_UKURAN_VIDEO, UKURAN_LANGSUNG, formatDurasi, formatUkuran, type VideoMeta, type VideoSiap } from '../../lib/videoTugas'
 
 /** Keadaan satu kartu bukti video di sisi siswa (ANTIREGRESI §Tugas.Video). */
 export type VideoUI = {
@@ -73,6 +73,10 @@ export default function VideoBukti({
             Video dipilih ({formatDurasi(ui?.durasi ?? 0)}, {formatUkuran(ui?.file?.size ?? 0)}). Perkecil dulu supaya
             cepat terkirim.
           </p>
+          <p className="sw-kat-hint">
+            Memperkecil butuh waktu ±{formatDurasi(ui?.durasi ?? 0)} (sepanjang videonya). Colokkan pengisi daya bila
+            videonya panjang, dan jangan pindah ke aplikasi lain selama prosesnya.
+          </p>
           <button type="button" className="sw-btn-primary" onClick={() => onKonversi(slot)}>
             Perkecil video
           </button>
@@ -114,7 +118,8 @@ export default function VideoBukti({
             {adaVideo ? 'Ganti video' : 'Rekam / pilih video'}
           </label>
           <p className="sw-kat-hint">
-            Video maksimal {BATAS_DURASI_VIDEO_DETIK / 60} menit. Video yang lebih panjang tidak bisa dikirim.
+            Tidak ada batas lama video, yang dibatasi hanya ukurannya (maksimal {formatUkuran(BATAS_UKURAN_VIDEO)}). Video
+            lebih dari {formatUkuran(UKURAN_LANGSUNG)} diperkecil otomatis di HP-mu.
           </p>
         </>
       )}

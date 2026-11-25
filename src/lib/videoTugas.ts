@@ -4,19 +4,21 @@ import { storage } from './firebase'
 /**
  * Video bukti tugas (ANTIREGRESI §Tugas.Video).
  *
- * Alur siswa: pilih video → `periksaVideo` (durasi; > 1 menit DITOLAK tanpa konversi) →
- * bila besar, `kompresVideo` (dikecilkan di HP: ±480p, ±0,7 Mbps → ±6 MB/menit) → unggah ke
- * Storage `lms/pengumpulan/{tugasId}/{siswaId}_{slot}.{webm|mp4}` saat «Kumpulkan».
- * Pemeriksaan durasi hanya di klien (rules tidak bisa); ukuran ≤ 15 MB dan tipe dijaga storage.rules.
+ * Batas video HANYA dari UKURAN (ANTIREGRESI §Tugas.Video.Ukuran); tidak ada batas durasi.
+ * Alur siswa: pilih video → `periksaVideo` → video mp4/webm ≤ UKURAN_LANGSUNG dipakai apa adanya;
+ * selain itu `kompresVideo` (dikecilkan di HP: ±480p, ±0,7 Mbps → ±6 MB/menit, berjalan real-time)
+ * → unggah ke Storage `lms/pengumpulan/{tugasId}/{siswaId}_{slot}.{webm|mp4}` saat «Kumpulkan».
+ * Ukuran akhir ≤ BATAS_UKURAN_VIDEO dan tipe dijaga storage.rules (harus selaras).
  */
 
-export const BATAS_DURASI_VIDEO_DETIK = 60
-/** Toleransi pembulatan metadata (mis. 60,2 dtk tetap lolos). */
-const TOLERANSI_DETIK = 0.6
-export const BATAS_UKURAN_VIDEO = 15 * 1024 * 1024
-/** Video mp4/webm sekecil ini dipakai apa adanya (tanpa konversi). */
-const UKURAN_LANGSUNG = 6 * 1024 * 1024
-const BATAS_FILE_ASAL = 600 * 1024 * 1024
+/** Ukuran akhir yang diunggah. HARUS sama dengan batas di storage.rules (`videoPengumpulanSah`). */
+export const BATAS_UKURAN_VIDEO = 100 * 1024 * 1024
+/** Video mp4/webm sekecil ini dipakai apa adanya (tanpa konversi); di atasnya diperkecil. */
+export const UKURAN_LANGSUNG = 30 * 1024 * 1024
+/** Berkas asal yang masih mau dibuka (dibaca sebagai aliran, tidak dimuat ke memori). */
+const BATAS_FILE_ASAL = 2 * 1024 * 1024 * 1024
+/** Perkiraan byte/detik hasil konversi (video + audio + ±12% overhead kontainer). */
+const BYTE_PER_DETIK_KONVERSI = ((700_000 + 64_000) / 8) * 1.12
 const SISI_PENDEK_MAKS = 480
 const BITRATE_VIDEO = 700_000
 const BITRATE_AUDIO = 64_000
@@ -47,6 +49,18 @@ export function formatDurasi(detik: number): string {
   const m = Math.floor(d / 60)
   const s = d % 60
   return m > 0 ? `${m} mnt ${s} dtk` : `${s} dtk`
+}
+
+/** Perkiraan ukuran hasil konversi untuk video berdurasi `detik`. */
+export function perkiraanUkuranKonversi(detik: number): number {
+  return Math.round(detik * BYTE_PER_DETIK_KONVERSI)
+}
+
+function pesanTerlaluBesar(detik: number): string {
+  return (
+    `Videomu (${formatDurasi(detik)}) masih ±${formatUkuran(perkiraanUkuranKonversi(detik))} setelah diperkecil, ` +
+    `lebih dari batas ${formatUkuran(BATAS_UKURAN_VIDEO)}. Rekam bagian yang lebih singkat atau pilih video lain ya.`
+  )
 }
 
 export function formatUkuran(byte: number): string {
@@ -116,15 +130,21 @@ export function tipeVideoDari(file: File): string {
  */
 async function mp4Hevc(file: File): Promise<boolean> {
   if (tipeVideoDari(file) !== 'video/mp4' || file.size > UKURAN_LANGSUNG) return false
+  // Penanda kodek ada di kotak `moov` (di awal atau akhir berkas): cukup baca 2 MB pertama + 2 MB terakhir.
+  const IRIS = 2 * 1024 * 1024
   try {
-    const b = new Uint8Array(await file.arrayBuffer())
-    for (let i = 0; i + 4 <= b.length; i++) {
-      if (
-        b[i] === 0x68 &&
-        ((b[i + 1] === 0x76 && b[i + 2] === 0x63 && b[i + 3] === 0x31) ||
-          (b[i + 1] === 0x65 && b[i + 2] === 0x76 && b[i + 3] === 0x31))
-      ) {
-        return true
+    const potongan =
+      file.size <= 2 * IRIS ? [file] : [file.slice(0, IRIS), file.slice(file.size - IRIS)]
+    for (const bagian of potongan) {
+      const b = new Uint8Array(await bagian.arrayBuffer())
+      for (let i = 0; i + 4 <= b.length; i++) {
+        if (
+          b[i] === 0x68 &&
+          ((b[i + 1] === 0x76 && b[i + 2] === 0x63 && b[i + 3] === 0x31) ||
+            (b[i + 1] === 0x65 && b[i + 2] === 0x76 && b[i + 3] === 0x31))
+        ) {
+          return true
+        }
       }
     }
   } catch {
@@ -135,10 +155,10 @@ async function mp4Hevc(file: File): Promise<boolean> {
 
 export type HasilPeriksa = { durasi: number; lebar: number; tinggi: number; hevc: boolean }
 
-/** Baca durasi & ukuran gambar video. Melempar Error berbahasa siswa bila tak layak (mis. > 1 menit). */
+/** Baca durasi & ukuran gambar video. Melempar Error berbahasa siswa bila tak layak (mis. hasil konversi pasti > batas ukuran). */
 export async function periksaVideo(file: File): Promise<HasilPeriksa> {
   if (!tipeVideoDari(file)) throw new Error('File yang kamu pilih bukan video.')
-  if (file.size > BATAS_FILE_ASAL) throw new Error('Video terlalu besar. Rekam video yang lebih pendek (maksimal 1 menit).')
+  if (file.size > BATAS_FILE_ASAL) throw new Error('Videomu terlalu besar (lebih dari 2 GB). Rekam ulang dengan kualitas lebih rendah atau lebih singkat.')
   const url = URL.createObjectURL(file)
   const video = document.createElement('video')
   video.preload = 'metadata'
@@ -156,12 +176,14 @@ export async function periksaVideo(file: File): Promise<HasilPeriksa> {
     if (!Number.isFinite(durasi) || durasi <= 0 || !video.videoWidth || !video.videoHeight) {
       throw new Error(PESAN_TAK_BISA_DIBUKA)
     }
-    if (durasi > BATAS_DURASI_VIDEO_DETIK + TOLERANSI_DETIK) {
-      throw new Error(
-        `Videomu ${formatDurasi(durasi)}, terlalu panjang. Maksimal 1 menit. Potong atau rekam ulang ya.`,
-      )
+    const hevc = await mp4Hevc(file)
+    // Hanya video yang HARUS dikonversi yang diperiksa perkiraan ukurannya (hemat waktu siswa:
+    // tolak di awal, bukan setelah menunggu konversi sepanjang durasi video).
+    const perluKonversi = file.size > UKURAN_LANGSUNG || hevc
+    if (perluKonversi && perkiraanUkuranKonversi(durasi) > BATAS_UKURAN_VIDEO) {
+      throw new Error(pesanTerlaluBesar(durasi))
     }
-    return { durasi, lebar: video.videoWidth, tinggi: video.videoHeight, hevc: await mp4Hevc(file) }
+    return { durasi, lebar: video.videoWidth, tinggi: video.videoHeight, hevc }
   } finally {
     video.removeAttribute('src')
     video.load()
@@ -234,9 +256,7 @@ export async function kompresVideo(
     await tungguEvent(video, 'loadedmetadata', 15000)
     const durasi = video.duration
     if (!Number.isFinite(durasi) || durasi <= 0) throw new Error(PESAN_TAK_BISA_DIBUKA)
-    if (durasi > BATAS_DURASI_VIDEO_DETIK + TOLERANSI_DETIK) {
-      throw new Error('Video lebih dari 1 menit. Potong atau rekam ulang ya.')
-    }
+    if (perkiraanUkuranKonversi(durasi) > BATAS_UKURAN_VIDEO) throw new Error(pesanTerlaluBesar(durasi))
 
     const skala = Math.min(1, SISI_PENDEK_MAKS / Math.min(video.videoWidth, video.videoHeight))
     const lebar = genap(video.videoWidth * skala)
@@ -328,7 +348,7 @@ export async function kompresVideo(
     })
 
     if (hasil.size > BATAS_UKURAN_VIDEO) {
-      throw new Error('Video masih terlalu besar setelah diperkecil. Rekam video yang lebih pendek.')
+      throw new Error(`Video masih ${formatUkuran(hasil.size)} setelah diperkecil, lebih dari batas ${formatUkuran(BATAS_UKURAN_VIDEO)}. Rekam bagian yang lebih singkat ya.`)
     }
     if (hasil.size < 1000) throw new Error('Video gagal diperkecil. Coba lagi atau kumpulkan dengan foto.')
     return { blob: hasil, tipe: 'video/webm', durasi, ukuran: hasil.size }

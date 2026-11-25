@@ -165,12 +165,14 @@ export default function BuktiTugasEditor({ bukti, kategori, onChange }: Props) {
                     value="video"
                     disabled={b.jenis !== 'video' && bukti.filter((x) => x.jenis === 'video').length >= BATAS_BUKTI_VIDEO}
                   >
-                    Video (maks. 1 menit)
+                    Video (batas ukuran, bukan durasi)
                   </option>
                 </select>
                 {b.jenis === 'video' && (
                   <small className="td-field-hint">
-                    Siswa merekam/memilih video maksimal 1 menit; video dikecilkan otomatis di HP siswa. Maksimal{' '}
+                    Tidak ada batas durasi; ukuran video maksimal 100 MB (video di atas 30 MB dikecilkan otomatis di HP
+                    siswa, lamanya sepanjang durasi video). Penilaian AI hanya membaca video ≤ 9 MB; sisanya dinilai
+                    manual. Maksimal{' '}
                     {BATAS_BUKTI_VIDEO} bukti video per tugas. Video dihapus otomatis setelah beberapa bulan.
                   </small>
                 )}

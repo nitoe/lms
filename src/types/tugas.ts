@@ -143,7 +143,7 @@ export interface BuktiTugas {
   /** Petunjuk singkat: apa yang harus terlihat di foto. */
   petunjuk?: string
   /**
-   * `foto` (default) atau `video` (≤ 1 menit, dikecilkan di HP siswa, disimpan di Storage).
+   * `foto` (default) atau `video` (dibatasi ukuran ≤ 100 MB, tanpa batas durasi; > 30 MB dikecilkan di HP siswa, disimpan di Storage).
    * Bukti video memakai slot yang sama dengan bukti foto (total bukti tetap ≤ 6) tetapi TIDAK
    * membuat dokumen `lms_pengumpulan_foto` (ANTIREGRESI §Tugas.Video).
    */
