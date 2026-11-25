@@ -23,6 +23,7 @@ import {
 import VideoBukti, { type VideoUI } from './VideoBukti'
 import type { TugasLms } from '../../types/tugas'
 import SiswaIcon from './SiswaIcon'
+import { hapusDraf, muatDraf, simpanDraf } from '../../lib/drafPengumpulan'
 
 type Props = {
   tugas: TugasLms
@@ -116,6 +117,60 @@ export default function PengumpulanSiswa({
   const kunciVideo = Object.values(ada?.videos ?? {})
     .map((v) => v.path)
     .join('|')
+
+  // Draf lokal (ANTIREGRESI §Tugas.Draf): foto & catatan pengumpulan PERTAMA bertahan bila Android
+  // mematikan tab saat kamera terbuka. Penyimpanan baru boleh jalan SETELAH pemulihan selesai
+  // (`drafSiap`), kalau tidak state kosong awal menimpa draf yang belum sempat dibaca.
+  const kunciDraf = `${tugas.id}_${siswaId}`
+  const belumAda = ada === null
+  const [drafSiap, setDrafSiap] = useState(false)
+  const [drafDipulihkan, setDrafDipulihkan] = useState(0)
+
+  useEffect(() => {
+    setDrafSiap(false)
+    if (!belumAda) {
+      setDrafSiap(true)
+      return
+    }
+    let batal = false
+    void muatDraf(kunciDraf)
+      .then((d) => {
+        if (batal || !d) return
+        // Hanya memulihkan ke bagian yang masih kosong (siswa mungkin sudah mulai memilih foto).
+        setItems((p) => (p.length > 0 ? p : d.items.map((src, i) => ({ key: `draf-${i}`, src }))))
+        setFotoSlot((p) => (Object.keys(p).length > 0 ? p : d.fotoSlot))
+        setAntrianFoto((p) => (p.length > 0 ? p : d.antrian))
+        setCatatan((p) => (p.trim() ? p : d.catatan))
+        const jumlah = d.items.length + Object.keys(d.fotoSlot).length + d.antrian.length
+        if (jumlah > 0) setDrafDipulihkan(jumlah)
+      })
+      .catch((e) => console.warn('Muat draf gagal', e))
+      .finally(() => {
+        if (!batal) setDrafSiap(true)
+      })
+    return () => {
+      batal = true
+    }
+  }, [kunciDraf, belumAda])
+
+  useEffect(() => {
+    if (!drafSiap || !belumAda) return
+    const adaIsi =
+      items.length > 0 || Object.keys(fotoSlot).length > 0 || antrianFoto.length > 0 || catatan.trim() !== ''
+    const t = window.setTimeout(() => {
+      if (adaIsi) {
+        void simpanDraf(kunciDraf, {
+          items: items.map((x) => x.src),
+          fotoSlot,
+          antrian: antrianFoto,
+          catatan,
+        })
+      } else {
+        void hapusDraf(kunciDraf)
+      }
+    }, 500)
+    return () => window.clearTimeout(t)
+  }, [drafSiap, belumAda, items, fotoSlot, antrianFoto, catatan, kunciDraf])
 
   // Bersihkan object URL pratinjau saat komponen ditutup.
   useEffect(
@@ -370,6 +425,8 @@ export default function PengumpulanSiswa({
         catatan,
         ada,
       })
+      void hapusDraf(kunciDraf)
+      setDrafDipulihkan(0)
       onTersimpan(dok)
       setSukses(true)
       setUbah(false)
@@ -791,6 +848,12 @@ export default function PengumpulanSiswa({
 
       {tampilForm ? (
         <>
+          {drafDipulihkan > 0 && !ada && (
+            <p className="sw-kat-hint" role="status">
+              {drafDipulihkan} foto dari pekerjaanmu sebelumnya dipulihkan dari HP ini. Periksa dulu, lalu kumpulkan.
+              {modeBukti ? ' Video (bila ada) perlu dipilih lagi.' : ''}
+            </p>
+          )}
           <label className="sw-kumpul-label" htmlFor={`catatan-${tugas.id}`}>
             Catatan untuk guru (boleh kosong)
           </label>

@@ -1,3 +1,20 @@
+## 2026-11-25 — Draf foto pengumpulan tersimpan di HP (bertahan saat tab dimuat ulang)
+
+### Perilaku baru
+- Foto yang sudah dipilih/dipotret siswa, sisa antrian foto, dan catatan untuk guru kini **disimpan otomatis di HP** (IndexedDB) selama pengumpulan pertama belum terkirim. Bila Android mematikan tab saat kamera terbuka atau halaman dimuat ulang, foto muncul kembali dengan keterangan «N foto dari pekerjaanmu sebelumnya dipulihkan dari HP ini».
+- Draf dihapus otomatis setelah berhasil dikumpulkan, dan kedaluwarsa setelah 7 hari. Draf dipisah per tugas dan per siswa, sehingga siswa lain di HP yang sama tidak melihatnya.
+- **Batasan:** hanya untuk pengumpulan pertama (belum ada dokumen di server); mengubah pengumpulan yang sudah terkirim belum memakai draf. Video tidak ikut disimpan (besar) dan perlu dipilih ulang. Tanpa IndexedDB (mis. mode privat) fitur ini diam-diam tidak aktif.
+
+### Berkas
+- Baru: `src/lib/drafPengumpulan.ts`. Ubah: `src/pages/siswa/PengumpulanSiswa.tsx`, `CHANGELOG.md`, `ANTIREGRESI.md`.
+- Tidak ada perubahan rules, function, atau data.
+
+### Deploy
+- Hosting LMS saja.
+
+### Catatan
+- `tsc -b`, `vite build`, `oxlint` lulus; uji unit modul draf (simpan/muat/hapus, kedaluwarsa, data tidak sah, pemisahan kunci) lulus. Belum diuji di HP sungguhan; lihat ANTIREGRESI §Tugas.Draf butir 6.
+
 ## 2026-11-25 — Panel Kelompok (guru) dirapikan: kartu per kelompok, status yang jelas
 
 - **Sebelumnya** setiap anggota memakai 2–4 chip berwarna sejenis dalam satu baris yang menyambung, sehingga tidak ada yang menonjol dan sulit dipindai. **Sekarang** tiap kelompok berupa **kartu** (grid 2–3 kolom di layar lebar, 1 kolom di HP) dengan garis atas **kuning = belum mengumpulkan / hijau = sudah mengumpulkan**.

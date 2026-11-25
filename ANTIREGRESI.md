@@ -1,3 +1,13 @@
+## §Tugas.Draf — draf foto pengumpulan di IndexedDB (2026-11-25)
+
+1. **Tujuan:** foto yang sudah dipilih tidak hilang bila Android mematikan tab saat kamera terbuka (HP RAM kecil) atau halaman dimuat ulang. Implementasi: `lib/drafPengumpulan.ts` (IndexedDB `lms-draf-pengumpulan`, store `draf`, kunci `{tugasId}_{siswaId}`) dan dua `useEffect` di `PengumpulanSiswa.tsx`.
+2. **Urutan wajib: pulihkan DULU, simpan sesudahnya.** Penyimpanan hanya boleh jalan setelah `drafSiap` bernilai true. Tanpa gerbang ini state kosong saat mount memicu `hapusDraf` sebelum draf sempat dibaca, dan draf hilang justru saat dibutuhkan. Pemulihan memakai pembaruan fungsional (`p.length > 0 ? p : …`) supaya tidak menimpa foto yang sudah dipilih siswa.
+3. **Hanya pengumpulan pertama (`ada === null`).** Bila dokumen sudah ada, efek pemuatan foto dari server (`kunciAda`) menimpa `items`/`fotoSlot`; menggabungkan draf dengan itu belum ditangani. Jangan menyimpan/memulihkan draf saat `ada` terisi tanpa merancang penggabungannya.
+4. **Dibersihkan saat sukses:** `kirim()` memanggil `hapusDraf` sebelum `onTersimpan`. Bila ditambah jalur kirim baru, ia juga wajib menghapus draf. Draf kedaluwarsa 7 hari (`UMUR_MAKS_MS`) dan dihapus saat dibaca; data dari IndexedDB disaring (`data:image/`, ≤ `BATAS_KARAKTER_GAMBAR`, maks 10 foto, slot 1..10) karena bisa rusak atau diubah.
+5. **Privasi:** isi draf adalah foto pekerjaan siswa di perangkatnya sendiri. Kunci memuat `siswaId`, jadi siswa lain di HP yang sama tidak memuatnya. Tidak ada yang dikirim ke server. Draf TIDAK dihapus saat logout (agar sesi yang berakhir tidak membuang pekerjaan); batas 7 hari menjadi penyapunya.
+6. **Uji:** (a) pilih 3 foto + catatan, muat ulang halaman → 3 foto dan catatan kembali dengan keterangan pemulihan; (b) kumpulkan → muat ulang → tidak ada draf; (c) hapus semua foto → muat ulang → tidak ada draf; (d) mode bukti berlabel: foto per slot kembali ke kartu yang benar, video perlu dipilih ulang; (e) siswa B login di HP yang sama → tidak melihat draf siswa A; (f) mode privat/IndexedDB nonaktif → halaman tetap berfungsi tanpa galat.
+7. Draf bukan pengganti kirim: foto di draf BELUM dikumpulkan. Keterangan pemulihan sengaja mengatakan «Periksa dulu, lalu kumpulkan».
+
 ## §Tugas.Kelompok.PanelGuru — Panel kelompok guru berbasis kartu (2026-11-25)
 
 1. **Prefiks kelas `kg-`** untuk panel guru; kelas `sw-kelompok-*` tetap milik sisi siswa (`KelompokSiswaPanel`, `KelompokBannerBeranda`) — jangan dihapus/diganti saat merapikan panel guru. Semua CSS ada di `kelompok-status.css` yang diimpor komponen (§Tugas.UiGuru no. 9: tidak boleh snippet lepas).
