@@ -10,11 +10,13 @@ import { Link } from 'react-router-dom'
 import {
   kelompokKelasSaya,
   statusAnggotaSaya,
+  statusKonfirmasi,
   statusUntukKetua,
   type StatusAnggotaDok,
   type TugasKelompokDok,
 } from '../../lib/tugasKelompok'
 import type { TugasSiswaRingkas } from '../../lib/tugasSiswa'
+import { useSekarang } from '../../lib/useSekarang'
 import '../../styles/kelompok-status.css'
 
 type Props = {
@@ -28,6 +30,7 @@ export default function KelompokBannerBeranda({ kelas, siswaId, tugas }: Props) 
   const [kelompok, setKelompok] = useState<TugasKelompokDok[]>([])
   const [statusSaya, setStatusSaya] = useState<StatusAnggotaDok[]>([])
   const [statusKetua, setStatusKetua] = useState<StatusAnggotaDok[]>([])
+  const sekarang = useSekarang(60_000)
 
   useEffect(() => {
     if (!kelas || !siswaId) return
@@ -73,7 +76,9 @@ export default function KelompokBannerBeranda({ kelas, siswaId, tugas }: Props) 
           })
         }
       } else {
-        const sudah = statusSaya.some((s) => s.kelompokId === k.id && s.konfirmasiMs > 0)
+        // Manual ATAU otomatis (tanpa respons ≥ 1 jam) = tidak perlu diingatkan lagi.
+        const sudah =
+          statusKonfirmasi(k, statusSaya.find((s) => s.kelompokId === k.id), sekarang).jenis !== 'belum'
         if (!sudah) {
           const anggota = k.anggotaList.map((a) => a.nama).join(', ')
           out.push({
@@ -85,7 +90,7 @@ export default function KelompokBannerBeranda({ kelas, siswaId, tugas }: Props) 
       }
     }
     return out
-  }, [tugas, kelompok, statusSaya, statusKetua, siswaId])
+  }, [tugas, kelompok, statusSaya, statusKetua, siswaId, sekarang])
 
   if (baris.length === 0) return null
 

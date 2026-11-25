@@ -1,3 +1,12 @@
+## §Tugas.Kelompok.AutoKonfirmasi — Auto-konfirmasi anggota 1 jam (2026-11-25)
+
+1. **Dihitung di klien, tidak disimpan.** `statusKonfirmasi(kelompok, status, now)` (di `lib/tugasKelompok.ts`) adalah SATU-SATUNYA tempat aturan ini. Semua tampilan (guru, panel siswa, banner beranda) wajib memakainya — jangan lagi membandingkan `konfirmasiMs > 0` secara langsung (itu hanya konfirmasi MANUAL dan akan menampilkan «belum konfirmasi» yang keliru).
+2. **Aturan:** manual (`konfirmasiMs > 0`) menang; selain itu `otomatis` bila `now − max(diubahMs, dibuatMs) ≥ WAKTU_AUTO_KONFIRMASI_MS` (1 jam); jika waktu mulai tidak diketahui (0) → `belum` (konservatif). Mengubah anggota oleh ketua memperbarui `diubahMs` sehingga hitungan diulang untuk semua anggota yang belum konfirmasi manual.
+3. **Tidak ada penulisan Firestore/Cloud Function terjadwal** karena konfirmasi hanya informatif (§Tugas.Kelompok). Bila suatu saat konfirmasi dipakai sebagai syarat (mis. ekspor, penolakan), status `otomatis` TIDAK ada di dokumen `lms_tugas_kelompok_anggota` — gunakan `statusKonfirmasi`, jangan membaca dokumen mentah.
+4. **Tampilan beda:** manual = `sw-kelompok-chip--ok`; otomatis = `sw-kelompok-chip--auto` (hijau bergaris putus). Jangan disamakan agar guru bisa membedakan siswa yang benar-benar merespons.
+5. **Penanda waktu hidup:** komponen memakai `useSekarang()` supaya hitung mundur dan peralihan ke «otomatis» terjadi tanpa memuat ulang halaman. Jam perangkat yang salah hanya memengaruhi tampilan (informatif).
+6. Uji: (a) bentuk kelompok → anggota «belum konfirmasi · otomatis ±59 mnt»; (b) setelah 1 jam → «terkonfirmasi otomatis», banner beranda anggota hilang; (c) anggota menekan «Saya sudah tahu» → «sudah konfirmasi»; (d) ketua mengubah anggota → hitungan 1 jam mulai lagi.
+
 ## §Kirim.Diagnostik — batas waktu, deteksi macet, dan kode diagnostik pada pengiriman tugas (2026-11-25)
 
 1. **Firestore tidak menolak penulisan saat server tak terjangkau; ia menunggu tanpa batas.** Karena itu setiap langkah tulis di `kirimPengumpulan` dibungkus `langkah(nama, fn, batasMs)` (foto 90 dtk `BATAS_WAKTU_FOTO_MS`, meta 45 dtk `BATAS_WAKTU_META_MS`) yang melempar galat berkode `kirim/timeout`. Jangan menghapus batas ini: tanpanya tombol macet selamanya di «Mengirim foto…». Penulisan yang tertunda tetap berjalan di SDK dan aman diulang (id dokumen tetap; pola foto yatim §Tugas.FotoYatim menangani `setDoc` pada dokumen yang ternyata sudah ada).

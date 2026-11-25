@@ -1,3 +1,13 @@
+## 2026-11-25 — Auto-konfirmasi anggota tugas kelompok (1 jam tanpa respons)
+
+- Anggota kelompok yang **tidak merespons dalam 1 jam** sejak kelompok dibentuk atau terakhir diubah ketua otomatis dianggap **terkonfirmasi** — untuk siswa yang tidak memegang HP/akun sendiri, sehingga daftar tidak lagi dipenuhi «belum konfirmasi».
+- **Guru (Pengumpulan → Kelompok):** chip baru **«terkonfirmasi otomatis»** (hijau bergaris putus, beda dari «sudah konfirmasi» manual). Selama masih menunggu, chip «belum konfirmasi» menampilkan hitung mundur «otomatis ±N mnt». Catatan di bawah daftar diperbarui.
+- **Siswa:** chip yang sama di panel kelompok; kotak pemberitahuan menjelaskan aturan 1 jam dan tetap menyediakan tombol «Saya sudah tahu» untuk konfirmasi sendiri. **Banner beranda** tidak lagi mengingatkan anggota yang sudah terkonfirmasi otomatis.
+- Konfirmasi manual selalu menang atas otomatis. Konfirmasi tetap **hanya informasi** (tidak pernah menghalangi pengumpulan ketua).
+- **Cara kerja:** dihitung di aplikasi dari `diubahMs` kelompok (`statusKonfirmasi`) — tanpa penulisan Firestore, tanpa Cloud Function terjadwal, tanpa perubahan rules → **cukup deploy hosting**. Bila ketua menambah/mengeluarkan anggota, hitungan 1 jam diulang untuk anggota yang belum konfirmasi.
+- File: `src/lib/tugasKelompok.ts`, `src/lib/useSekarang.ts` (baru), `src/components/KelompokGuruRingkas.tsx`, `src/pages/siswa/KelompokSiswaPanel.tsx`, `src/pages/siswa/KelompokBannerBeranda.tsx`, `src/styles/kelompok-status.css`, `CHANGELOG.md`, `ANTIREGRESI.md`.
+- Antiregresi: §Tugas.Kelompok.AutoKonfirmasi.
+
 ## 2026-11-25 — Pengiriman tugas lebih tahan sinyal lemah + kode diagnostik di layar
 
 ### Latar

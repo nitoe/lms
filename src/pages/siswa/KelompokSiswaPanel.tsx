@@ -15,11 +15,13 @@ import {
   punyaIzinMandiri,
   putuskanPengajuan,
   simpanStatusSaya,
+  statusKonfirmasi,
   type StatusAnggotaDok,
   type TugasKelompokDok,
   isKetua,
 } from '../../lib/tugasKelompok'
 import type { TugasLms } from '../../types/tugas'
+import { useSekarang } from '../../lib/useSekarang'
 import SiswaIcon from './SiswaIcon'
 import '../../styles/kelompok-status.css'
 
@@ -48,6 +50,7 @@ export default function KelompokSiswaPanel({
   terkunci,
   onIzinChange,
 }: Props) {
+  const sekarang = useSekarang()
   const maxAnggota = Math.max(2, Math.min(12, tugas.kelompokMaxAnggota ?? 4))
   const [roster, setRoster] = useState<SiswaDasar[]>([])
   const [loadingRoster, setLoadingRoster] = useState(false)
@@ -264,8 +267,12 @@ export default function KelompokSiswaPanel({
   function chipAnggota(id: string) {
     if (!kelompok || id === kelompok.ketuaId) return null
     const st = statusList.find((x) => x.siswaId === id)
-    if (st && st.konfirmasiMs > 0) {
+    const kf = statusKonfirmasi(kelompok, st, sekarang)
+    if (kf.jenis === 'manual') {
       return <span className="sw-kelompok-chip sw-kelompok-chip--ok">sudah konfirmasi</span>
+    }
+    if (kf.jenis === 'otomatis') {
+      return <span className="sw-kelompok-chip sw-kelompok-chip--auto">terkonfirmasi otomatis</span>
     }
     return <span className="sw-kelompok-chip">belum konfirmasi</span>
   }
@@ -312,13 +319,18 @@ export default function KelompokSiswaPanel({
           </p>
 
           {/* Pemberitahuan + konfirmasi (anggota non-ketua) */}
-          {!ketua && !(statusSaya && statusSaya.konfirmasiMs > 0) && (
+          {!ketua && statusKonfirmasi(kelompok, statusSaya, sekarang).jenis !== 'manual' && (
             <div className="sw-kelompok-kotak sw-kelompok-kotak--pemberitahuan">
               <h4>Anda masuk kelompok {kelompok.ketuaNama}</h4>
               <p>
                 Untuk tugas ini Anda tercatat sebagai anggota. Tekan tombol di bawah agar ketua tahu
                 Anda sudah melihatnya. Ini hanya pemberitahuan; kelompok tetap berjalan walau belum
                 dikonfirmasi.
+              </p>
+              <p className="sw-hint">
+                {statusKonfirmasi(kelompok, statusSaya, sekarang).jenis === 'otomatis'
+                  ? 'Status Anda sudah tercatat terkonfirmasi otomatis karena tidak ada respons selama 1 jam. Anda tetap boleh menekan tombol untuk mengonfirmasi sendiri.'
+                  : 'Jika tidak ada respons dalam 1 jam, Anda otomatis dianggap sudah konfirmasi.'}
               </p>
               <button
                 type="button"

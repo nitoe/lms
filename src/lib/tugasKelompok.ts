@@ -333,6 +333,40 @@ export type StatusAnggotaDok = {
   diubahMs: number
 }
 
+/**
+ * Auto-konfirmasi (informatif): anggota yang tidak merespons dianggap sudah dikonfirmasi setelah
+ * selang ini — untuk siswa yang tidak memegang HP/akun sendiri. Dihitung DI KLIEN dari waktu
+ * kelompok terakhir diubah (`diubahMs`: dibentuk / ketua mengubah anggota); tidak ada penulisan
+ * ke Firestore dan tidak ada fungsi terjadwal. ANTIREGRESI §Tugas.Kelompok.AutoKonfirmasi.
+ */
+export const WAKTU_AUTO_KONFIRMASI_MS = 60 * 60 * 1000
+
+export type StatusKonfirmasi = {
+  /** manual = anggota menekan tombol; otomatis = tanpa respons ≥ 1 jam; belum = masih menunggu. */
+  jenis: 'manual' | 'otomatis' | 'belum'
+  /** Untuk `belum`: sisa waktu menuju otomatis (ms); 0 bila waktu mulai tidak diketahui. */
+  sisaMs: number
+}
+
+/** Status konfirmasi seorang anggota (non-ketua) pada saat `now`. */
+export function statusKonfirmasi(
+  kelompok: Pick<TugasKelompokDok, 'diubahMs' | 'dibuatMs'>,
+  st: Pick<StatusAnggotaDok, 'konfirmasiMs'> | null | undefined,
+  now: number = Date.now(),
+): StatusKonfirmasi {
+  if (st && st.konfirmasiMs > 0) return { jenis: 'manual', sisaMs: 0 }
+  const mulai = Math.max(kelompok.diubahMs || 0, kelompok.dibuatMs || 0)
+  if (mulai <= 0) return { jenis: 'belum', sisaMs: 0 }
+  const sisa = mulai + WAKTU_AUTO_KONFIRMASI_MS - now
+  return sisa <= 0 ? { jenis: 'otomatis', sisaMs: 0 } : { jenis: 'belum', sisaMs: sisa }
+}
+
+/** «±23 mnt» / «±1 mnt» untuk hitung mundur singkat. */
+export function teksSisaKonfirmasi(sisaMs: number): string {
+  const mnt = Math.max(1, Math.ceil(sisaMs / 60_000))
+  return `±${mnt} mnt`
+}
+
 export const BATAS_TEKS_STATUS = 200
 
 export function idStatusAnggota(kelompokId: string, siswaId: string): string {

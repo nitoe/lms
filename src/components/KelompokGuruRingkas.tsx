@@ -6,9 +6,13 @@
  */
 import { useEffect, useMemo, useState } from 'react'
 import type { PengumpulanDok } from '../lib/pengumpulan'
+import { useSekarang } from '../lib/useSekarang'
 import {
   daftarKelompokTugas,
   daftarStatusAnggota,
+  statusKonfirmasi,
+  teksSisaKonfirmasi,
+  WAKTU_AUTO_KONFIRMASI_MS,
   type StatusAnggotaDok,
   type TugasKelompokDok,
 } from '../lib/tugasKelompok'
@@ -21,6 +25,7 @@ export default function KelompokGuruRingkas({ tugas, pengumpulan }: Props) {
   const [kelompok, setKelompok] = useState<TugasKelompokDok[] | null>(null)
   const [status, setStatus] = useState<StatusAnggotaDok[]>([])
   const [galat, setGalat] = useState('')
+  const sekarang = useSekarang()
 
   useEffect(() => {
     let batal = false
@@ -78,11 +83,27 @@ export default function KelompokGuruRingkas({ tugas, pengumpulan }: Props) {
                     return (
                       <li key={a.id}>
                         {a.nama}
-                        {st && st.konfirmasiMs > 0 ? (
-                          <span className="sw-kelompok-chip sw-kelompok-chip--ok">sudah konfirmasi</span>
-                        ) : (
-                          <span className="sw-kelompok-chip">belum konfirmasi</span>
-                        )}
+                        {(() => {
+                          const kf = statusKonfirmasi(k, st, sekarang)
+                          if (kf.jenis === 'manual') {
+                            return <span className="sw-kelompok-chip sw-kelompok-chip--ok">sudah konfirmasi</span>
+                          }
+                          if (kf.jenis === 'otomatis') {
+                            return (
+                              <span
+                                className="sw-kelompok-chip sw-kelompok-chip--auto"
+                                title="Tidak ada respons selama 1 jam sejak kelompok dibentuk/diubah"
+                              >
+                                terkonfirmasi otomatis
+                              </span>
+                            )
+                          }
+                          return (
+                            <span className="sw-kelompok-chip">
+                              belum konfirmasi{kf.sisaMs > 0 ? ` · otomatis ${teksSisaKonfirmasi(kf.sisaMs)}` : ''}
+                            </span>
+                          )
+                        })()}
                         {sendiri ? (
                           <span className="sw-kelompok-chip sw-kelompok-chip--info">mengirim sendiri</span>
                         ) : ketuaKumpul ? (
@@ -106,7 +127,9 @@ export default function KelompokGuruRingkas({ tugas, pengumpulan }: Props) {
         })}
       </ul>
       <p className="sw-hint">
-        Konfirmasi anggota hanya informasi. Nilai tetap diinput per siswa di tab «Input nilai».
+        Konfirmasi anggota hanya informasi. Anggota yang tidak merespons dalam{' '}
+        {Math.round(WAKTU_AUTO_KONFIRMASI_MS / 60000)} menit sejak kelompok dibentuk/diubah otomatis dianggap
+        terkonfirmasi (untuk siswa tanpa HP). Nilai tetap diinput per siswa di tab «Input nilai».
       </p>
     </section>
   )

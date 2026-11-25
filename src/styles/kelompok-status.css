@@ -16,6 +16,8 @@
 .sw-kelompok-chip--warn { background: #fef3c7; color: #92400e; }
 .sw-kelompok-chip--info { background: #e0f2fe; color: #075985; }
 .sw-kelompok-chip--danger { background: #fee2e2; color: #991b1b; }
+/* Terkonfirmasi otomatis (tanpa respons ≥ 1 jam): hijau lembut bergaris putus agar beda dari konfirmasi manual */
+.sw-kelompok-chip--auto { background: #ecfdf5; color: #047857; border: 1px dashed #6ee7b7; }
 
 .sw-kelompok-kotak {
   margin-top: 0.75rem;
