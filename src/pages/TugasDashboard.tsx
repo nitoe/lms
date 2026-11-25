@@ -6,6 +6,7 @@ import KonfirmasiHapusDialog from '../components/KonfirmasiHapusDialog'
 import { daftarRuangKelas } from '../lib/kelasLms'
 import { aksenMapel, inisialMapel } from '../lib/uiAksen'
 import { daftarTugasGuru, hapusTugas, updateTugas } from '../lib/tugas'
+import { hitungTerkumpulTugasCache, terkumpulDiCache } from '../lib/terkumpulTugas'
 import {
   BATAS_HARI_SEGERA,
   infoTenggat,
@@ -150,6 +151,12 @@ export default function TugasDashboard() {
   /** Umpan balik singkat setelah aksi berhasil (hilang sendiri). */
   const [info, setInfo] = useState('')
   const infoTimer = useRef<number | undefined>(undefined)
+  /**
+   * Jumlah SISWA yang sudah mengumpulkan per tugas (angka «Terkumpul»). undefined = sedang dihitung,
+   * null = gagal dihitung. Field `jumlahPengumpulan` di dokumen tugas tidak pernah dinaikkan → tak dipakai.
+   * ANTIREGRESI §Tugas.Terkumpul.
+   */
+  const [terkumpul, setTerkumpul] = useState<Record<string, number | null>>({})
 
   const ruang = useMemo(() => daftarRuangKelas(profil), [profil])
 
@@ -176,6 +183,41 @@ export default function TugasDashboard() {
   }, [muat])
 
   useEffect(() => () => window.clearTimeout(infoTimer.current), [])
+
+  // Hitung siswa yang sudah mengumpulkan untuk tugas yang tampil ke siswa (3 paralel, cache 90 dtk).
+  useEffect(() => {
+    if (!list) return
+    const target = list.filter((t) => !t.arsip && normalisasiStatusTugas(t.statusTugas, t.aktif) === 'aktif_siswa')
+    const awal: Record<string, number | null> = {}
+    for (const t of target) {
+      const c = terkumpulDiCache(t.id)
+      if (c !== undefined) awal[t.id] = c
+    }
+    if (Object.keys(awal).length) setTerkumpul((p) => ({ ...p, ...awal }))
+    let batal = false
+    let i = 0
+    const pekerja = async () => {
+      while (!batal) {
+        const t = target[i++]
+        if (!t) return
+        try {
+          const n = await hitungTerkumpulTugasCache(t)
+          if (!batal) setTerkumpul((p) => ({ ...p, [t.id]: n }))
+        } catch (e) {
+          console.warn('Dashboard: hitung terkumpul gagal', t.id, e)
+          if (!batal) setTerkumpul((p) => ({ ...p, [t.id]: null }))
+        }
+      }
+    }
+    void Promise.all([pekerja(), pekerja(), pekerja()])
+    return () => {
+      batal = true
+    }
+  }, [list])
+
+  /** Angka «Terkumpul» sebuah tugas: number | undefined (menghitung) | null (gagal). */
+  const jumlahTerkumpul = (t: TugasLms): number | null | undefined =>
+    !t.arsip && normalisasiStatusTugas(t.statusTugas, t.aktif) === 'aktif_siswa' ? terkumpul[t.id] : (t.jumlahPengumpulan ?? 0)
 
   function tampilInfo(pesan: string) {
     setInfo(pesan)
@@ -221,9 +263,16 @@ export default function TugasDashboard() {
 
   const ringkas = useMemo(() => {
     let kumpul = 0
-    for (const t of list ?? []) if (!t.arsip) kumpul += t.jumlahPengumpulan ?? 0
-    return { kumpul }
-  }, [list])
+    let menghitung = false
+    for (const t of list ?? []) {
+      if (t.arsip) continue
+      const j = jumlahTerkumpul(t)
+      if (j === undefined) menghitung = true
+      else kumpul += j ?? 0
+    }
+    return { kumpul, menghitung }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [list, terkumpul])
 
   const filtered = useMemo(() => {
     if (!list) return []
@@ -259,7 +308,7 @@ export default function TugasDashboard() {
     const sorted = [...rows]
     if (urut === 'judul') sorted.sort((a, b) => a.judul.localeCompare(b.judul, 'id'))
     else if (urut === 'kumpul') {
-      sorted.sort((a, b) => (b.jumlahPengumpulan ?? 0) - (a.jumlahPengumpulan ?? 0))
+      sorted.sort((a, b) => (jumlahTerkumpul(b) ?? 0) - (jumlahTerkumpul(a) ?? 0))
     } else {
       // Tenggat: yang akan datang (terdekat dulu) → tanpa tenggat → yang sudah lewat (terbaru dulu)
       const now = sekarang.getTime()
@@ -276,7 +325,8 @@ export default function TugasDashboard() {
       })
     }
     return sorted
-  }, [list, filterJenis, filterStatus, filterKelas, q, urut, sekarang, adaTenggatSegera])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [list, filterJenis, filterStatus, filterKelas, q, urut, sekarang, adaTenggatSegera, terkumpul])
 
   const adaFilter =
     filterJenis !== 'semua' || filterStatus !== 'semua' || filterKelas !== 'semua' || q.trim() !== ''
@@ -434,9 +484,12 @@ export default function TugasDashboard() {
             aktif={filterStatus === 'segera'}
             onKlik={() => setFilterStatus(filterStatus === 'segera' ? 'semua' : 'segera')}
           />
-          <div className="tg-ringkas-item tg-ringkas-item--teal" title="Jumlah semua pengumpulan siswa">
-            <b>{ringkas.kumpul}</b>
-            <span>Pengumpulan</span>
+          <div
+            className="tg-ringkas-item tg-ringkas-item--teal"
+            title="Jumlah siswa yang sudah mengumpulkan (anggota kelompok ikut dihitung)"
+          >
+            <b>{ringkas.menghitung ? '…' : ringkas.kumpul}</b>
+            <span>Siswa mengumpulkan</span>
           </div>
           <Ubin
             kelas="tg-ringkas-item--ungu"
@@ -583,7 +636,8 @@ export default function TugasDashboard() {
             const nada = t.aktif ? info.nada : info.nada === 'tanpa' ? 'tanpa' : 'netral'
             const jp = penilaianTugas(t)
             const tp = t.tpList ?? []
-            const kumpul = t.jumlahPengumpulan ?? 0
+            const jmlKumpul = jumlahTerkumpul(t)
+            const kumpul = typeof jmlKumpul === 'number' ? jmlKumpul : 0
             const sibuk = busyId === t.id
             const gaya = { '--tg-a': aksen.bar } as CSSProperties
             return (
@@ -669,9 +723,9 @@ export default function TugasDashboard() {
                       <Link
                         to={`/tugas/${t.id}?tab=kumpul`}
                         className={`tg-kumpul${kumpul === 0 ? ' tg-kumpul--nol' : ''}`}
-                        title="Lihat pengumpulan siswa"
+                        title="Siswa yang sudah mengumpulkan (anggota kelompok ikut dihitung) — klik untuk melihat"
                       >
-                        <b>{kumpul}</b>
+                        <b>{jmlKumpul === undefined ? '…' : jmlKumpul === null ? '—' : jmlKumpul}</b>
                         <span>Terkumpul</span>
                       </Link>
                     </div>

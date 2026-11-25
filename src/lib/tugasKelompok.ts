@@ -586,3 +586,54 @@ export function wakilBuktiKelompok(
   const kandidat = kelompok.anggotaIds.filter((id) => id !== kelompok.ketuaId && pengumpulan[id])
   return kandidat.length === 1 ? kandidat[0] : null
 }
+
+export type StatusKumpulKelompok = {
+  /**
+   * ketua = ketua mengumpulkan; wakil = ketua kosong & tepat satu anggota mewakili;
+   * anggota = ketua kosong & beberapa anggota mengirim sendiri (ambigu); belum = tak ada pengiriman.
+   */
+  jenis: 'ketua' | 'wakil' | 'anggota' | 'belum'
+  /** Pemilik bukti kelompok (ketua/wakil); null bila ambigu atau belum. */
+  pemilikId: string | null
+  /** Anggota (termasuk ketua) yang punya pengumpulan sendiri. */
+  pengirimIds: string[]
+}
+
+/**
+ * Apakah KELOMPOK sudah mengumpulkan? Bukan hanya «ketua punya dokumen»: pengiriman oleh anggota yang
+ * mewakili ketua juga menghitung kelompok sebagai sudah mengumpulkan (ANTIREGRESI §Tugas.Terkumpul).
+ * `pengumpulan`: siswaId → ada/tidaknya dokumen.
+ */
+export function statusKumpulKelompok(
+  kelompok: Pick<TugasKelompokDok, 'ketuaId' | 'anggotaIds'>,
+  pengumpulan: Record<string, unknown> | null | undefined,
+): StatusKumpulKelompok {
+  const peta = pengumpulan ?? {}
+  const pengirimIds = [...new Set([kelompok.ketuaId, ...kelompok.anggotaIds])].filter((id) => !!peta[id])
+  if (peta[kelompok.ketuaId]) return { jenis: 'ketua', pemilikId: kelompok.ketuaId, pengirimIds }
+  const wakil = wakilBuktiKelompok(kelompok, peta)
+  if (wakil) return { jenis: 'wakil', pemilikId: wakil, pengirimIds }
+  return { jenis: pengirimIds.length > 0 ? 'anggota' : 'belum', pemilikId: null, pengirimIds }
+}
+
+/**
+ * Siswa yang TERCAKUP pengumpulan: tiap pengirim, ditambah SELURUH anggota kelompok yang buktinya
+ * diwakili ketua/wakil. Dipakai untuk angka «Terkumpul» (dashboard, tab, ringkasan) agar menghitung
+ * siswa sesuai kelompoknya, bukan hanya akun yang menekan kirim. Pengirim ambigu hanya menghitung dirinya.
+ */
+export function siswaTercakupPengumpulan(
+  pengirimIds: Iterable<string>,
+  kelompokList: Pick<TugasKelompokDok, 'ketuaId' | 'anggotaIds'>[],
+): Set<string> {
+  const ids = [...pengirimIds]
+  const peta: Record<string, true> = Object.fromEntries(ids.map((id) => [id, true as const]))
+  const tercakup = new Set(ids)
+  for (const k of kelompokList) {
+    const st = statusKumpulKelompok(k, peta)
+    if (st.jenis === 'ketua' || st.jenis === 'wakil') {
+      tercakup.add(k.ketuaId)
+      for (const id of k.anggotaIds) tercakup.add(id)
+    }
+  }
+  return tercakup
+}

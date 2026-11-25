@@ -17,7 +17,13 @@ import UsulanNilaiAiDialog from '../components/UsulanNilaiAiDialog'
 import PenilaianTerpadu from '../components/PenilaianTerpadu'
 import { usulkanNilaiTugasAi, type UsulanNilaiAi } from '../lib/nilaiTugasAi'
 import { daftarPengumpulanTugas, type PengumpulanDok } from '../lib/pengumpulan'
-import { daftarKelompokTugas, wakilBuktiKelompok, type TugasKelompokDok } from '../lib/tugasKelompok'
+import {
+  daftarKelompokTugas,
+  siswaTercakupPengumpulan,
+  wakilBuktiKelompok,
+  type TugasKelompokDok,
+} from '../lib/tugasKelompok'
+import { hitungTerkumpulTugasCache } from '../lib/terkumpulTugas'
 import BuktiTugasEditor from '../components/BuktiTugasEditor'
 import { rapikanBuktiList } from '../lib/buktiTugas'
 import { htmlInstruksiSiswa } from '../lib/instruksiTugas'
@@ -264,6 +270,8 @@ export default function TugasDetail() {
   const [kelompokList, setKelompokList] = useState<TugasKelompokDok[]>([])
   /** `pemilikId` = siswa yang mengumpulkan (ketua / pengirim mandiri); `siswaId` = baris yang membuka dialog. */
   const [dialogAi, setDialogAi] = useState<{ pemilikId: string; siswaId: string } | null>(null)
+  /** Jumlah SISWA yang sudah mengumpulkan (lencana tab Pengumpulan). ANTIREGRESI §Tugas.Terkumpul. */
+  const [jumlahTerkumpul, setJumlahTerkumpul] = useState<number | null>(null)
   /** Anggota kelompok yang nilainya disesuaikan manual → tidak lagi ikut nilai ketua. */
   const [lepasKelompok, setLepasKelompok] = useState<Record<string, boolean>>({})
   /** Siswa yang sedang dibuka di «Menilai per siswa» (bertahan saat pindah sub-tab). */
@@ -953,6 +961,21 @@ export default function TugasDetail() {
     }
     patchDraft(siswaId, patch)
   }
+
+  /** Hitung siswa yang sudah mengumpulkan untuk lencana tab (field `jumlahPengumpulan` tidak pernah dinaikkan). */
+  useEffect(() => {
+    if (isBaru || !tugas) return
+    let batal = false
+    void hitungTerkumpulTugasCache(tugas)
+      .then((n) => {
+        if (!batal) setJumlahTerkumpul(n)
+      })
+      .catch((e) => console.warn('Hitung terkumpul gagal', e))
+    return () => {
+      batal = true
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isBaru, tugas?.id])
 
   /** Muat pengumpulan (+ kelompok bila tugas kelompok) saat Daftar nilai / Menilai per siswa dibuka. */
   useEffect(() => {
@@ -1667,7 +1690,11 @@ export default function TugasDetail() {
               id: 'kumpul' as const,
               label: 'Pengumpulan',
               hint: 'Foto dari siswa',
-              badge: isBaru ? 0 : (tugas?.jumlahPengumpulan ?? 0),
+              badge: isBaru
+                ? 0
+                : pengumpulanMap
+                  ? siswaTercakupPengumpulan(Object.keys(pengumpulanMap), kelompokList).size
+                  : (jumlahTerkumpul ?? 0),
             },
             { id: 'nilai' as const, label: 'Input nilai', hint: 'Rubrik & daftar', badge: 0 },
           ] as const

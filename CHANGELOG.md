@@ -1,3 +1,20 @@
+## 2026-11-25 — «Terkumpul» dihitung per siswa (sesuai kelompok) + kelompok yang diwakili anggota terhitung sudah mengumpulkan
+
+### Masalah
+- **Dashboard «Terkumpul» selalu 0:** angkanya dibaca dari field `jumlahPengumpulan` di dokumen tugas, padahal tidak ada kode yang pernah menaikkannya (hanya diisi 0 saat tugas dibuat). Lencana tab Pengumpulan juga memakai field itu.
+- **Kelompok Pelangi diwakili Shakila tetap «Belum mengumpulkan»:** panel Kelompok hanya memeriksa pengumpulan KETUA, belum memakai aturan «anggota yang mewakili ketua» (`wakilBuktiKelompok`).
+
+### Perilaku baru
+- **Angka «Terkumpul» = jumlah SISWA yang tercakup pengumpulan**, bukan jumlah pengirim. Pada tugas kelompok, bila ketua **atau anggota yang mewakilinya** mengumpulkan, **seluruh anggota kelompok** dihitung. Contoh: kelompok 4 orang diwakili Shakila → 4, bukan 1.
+- **Dashboard:** kotak «Terkumpul» di tiap kartu, ubin ringkasan («Siswa mengumpulkan»), dan urutan «Pengumpulan terbanyak» memakai angka ini. Dihitung otomatis untuk tugas **Aktif siswa** (3 tugas paralel, cache 90 detik; «…» saat menghitung, «—» bila gagal). Tugas individual memakai agregat `count` Firestore (±1 baca per 1000 dokumen); tugas kelompok membaca pengumpulan + kelompok.
+- **Tab Pengumpulan:** lencana tab dan chip «N siswa sudah mengumpulkan» memakai angka yang sama (bila berbeda dari jumlah pengiriman ditulis «(M pengiriman)»).
+- **Panel Kelompok (guru):** kartu kelompok yang diwakili anggota kini **«Sudah mengumpulkan»**, dengan keterangan «Dikirim {nama} mewakili ketua»; baris pengirim bertanda «mewakili ketua», anggota lain «lewat {nama}». Bila ketua kosong dan **beberapa** anggota mengirim sendiri (ambigu) kartunya «Sebagian mengumpulkan» (masing-masing dinilai sendiri). Ringkasan menambah «N/M siswa tercakup».
+- Tidak ada perubahan data, rules, maupun Cloud Functions → **cukup deploy hosting**. Sisi siswa belum diubah (ketua yang tidak mengumpulkan tetap melihat «belum mengumpulkan»).
+
+### File
+- Baru: `src/lib/terkumpulTugas.ts`. Ubah: `src/lib/tugasKelompok.ts`, `src/components/KelompokGuruRingkas.tsx`, `src/components/PengumpulanPanel.tsx`, `src/pages/TugasDashboard.tsx`, `src/pages/TugasDetail.tsx`, `src/styles/kelompok-status.css`, `CHANGELOG.md`, `ANTIREGRESI.md`.
+- Antiregresi: §Tugas.Terkumpul.
+
 ## 2026-11-25 — Anggota yang mewakili ketua: bukti dan nilai kelompok tidak lagi terputus
 
 ### Latar

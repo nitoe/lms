@@ -13,6 +13,7 @@ import { LABEL_TAHAP } from '../types/tugas'
 import { formatDurasi, formatUkuran, urlVideoTugas } from '../lib/videoTugas'
 import { tenggatMs } from '../lib/tugasSiswa'
 import { usulkanPredikatTugasAi, type UsulanPredikatAi } from '../lib/nilaiTugasAi'
+import { siswaTercakupPengumpulan, type TugasKelompokDok } from '../lib/tugasKelompok'
 import type { TugasLms } from '../types/tugas'
 
 /** Ringkasan nilai di draf Input nilai untuk satu siswa (dari TugasDetail). */
@@ -68,6 +69,8 @@ export default function PengumpulanPanel({
   const [aiBusyId, setAiBusyId] = useState<string | null>(null)
   const [aiMassal, setAiMassal] = useState<{ selesai: number; total: number } | null>(null)
   const aiBatalRef = useRef(false)
+  /** Kelompok tugas ini (dilaporkan KelompokGuruRingkas) → angka «siswa» menghitung anggota kelompok. */
+  const [kelompokDimuat, setKelompokDimuat] = useState<TugasKelompokDok[]>([])
   const [aiGalat, setAiGalat] = useState('')
 
   const muat = useCallback(async () => {
@@ -215,6 +218,10 @@ export default function PengumpulanPanel({
     return bukti.filter((b) => b.wajib && !terisi.has(b.slot)).map((b) => b.label)
   }
 
+  const siswaTercakup =
+    list && tugas.modeKelompok === true
+      ? siswaTercakupPengumpulan(list.map((d) => d.siswaId), kelompokDimuat).size
+      : (list?.length ?? 0)
   const jumlahTerlambat = list ? list.filter((d) => batas > 0 && d.diubahMs > batas).length : 0
   const jumlahKurang = list ? list.filter((d) => buktiKurang(d).length > 0).length : 0
 
@@ -258,7 +265,7 @@ export default function PengumpulanPanel({
       )}
 
       {tugas.modeKelompok === true && list !== null && (
-        <KelompokGuruRingkas tugas={tugas} pengumpulan={list} />
+        <KelompokGuruRingkas tugas={tugas} pengumpulan={list} onKelompokDimuat={setKelompokDimuat} />
       )}
 
       {galat && (
@@ -274,8 +281,12 @@ export default function PengumpulanPanel({
       {list && list.length > 0 && (
         <>
           <div className="td-kumpul-ringkas">
-            <span className="td-kumpul-chip td-kumpul-chip--ok">
-              <b>{list.length}</b> siswa sudah mengumpulkan
+            <span
+              className="td-kumpul-chip td-kumpul-chip--ok"
+              title="Pada tugas kelompok, seluruh anggota yang buktinya dikirim ketua/wakilnya ikut dihitung"
+            >
+              <b>{siswaTercakup}</b> siswa sudah mengumpulkan
+              {siswaTercakup !== list.length ? ` (${list.length} pengiriman)` : ''}
             </span>
             {jumlahTerlambat > 0 && (
               <span className="td-kumpul-chip td-kumpul-chip--warn">

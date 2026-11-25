@@ -161,3 +161,8 @@
   .kg-baris { grid-template-columns: minmax(0, 1fr); }
   .kg-tanda { justify-content: flex-start; }
 }
+
+/* Kelompok diwakili anggota (ketua tak mengumpulkan) — ANTIREGRESI §Tugas.Terkumpul */
+.kg-wakil { margin: 0; padding: 0.4rem 0.85rem; background: #f0f9ff; color: #075985; font-size: 0.74rem; line-height: 1.45; border-bottom: 1px solid #e0f2fe; }
+.kg-wakil--cek { background: #fffbeb; color: #92400e; border-bottom-color: #fef3c7; }
+.kg-sumber--wakil { color: #0369a1; font-weight: 750; }

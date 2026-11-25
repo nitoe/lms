@@ -10,7 +10,9 @@ import { useSekarang } from '../lib/useSekarang'
 import {
   daftarKelompokTugas,
   daftarStatusAnggota,
+  siswaTercakupPengumpulan,
   statusKonfirmasi,
+  statusKumpulKelompok,
   teksSisaKonfirmasi,
   WAKTU_AUTO_KONFIRMASI_MS,
   type StatusAnggotaDok,
@@ -19,9 +21,14 @@ import {
 import type { TugasLms } from '../types/tugas'
 import '../styles/kelompok-status.css'
 
-type Props = { tugas: TugasLms; pengumpulan: PengumpulanDok[] }
+type Props = {
+  tugas: TugasLms
+  pengumpulan: PengumpulanDok[]
+  /** Dipanggil setiap daftar kelompok selesai dimuat (untuk ringkasan di panel induk). */
+  onKelompokDimuat?: (kelompok: TugasKelompokDok[]) => void
+}
 
-export default function KelompokGuruRingkas({ tugas, pengumpulan }: Props) {
+export default function KelompokGuruRingkas({ tugas, pengumpulan, onKelompokDimuat }: Props) {
   const [kelompok, setKelompok] = useState<TugasKelompokDok[] | null>(null)
   const [status, setStatus] = useState<StatusAnggotaDok[]>([])
   const [galat, setGalat] = useState('')
@@ -48,32 +55,46 @@ export default function KelompokGuruRingkas({ tugas, pengumpulan }: Props) {
       if (batal) return
       setKelompok(k)
       setStatus(st)
+      onKelompokDimuat?.(k)
       setGalat(gagal ? 'Data kelompok belum bisa dimuat (periksa aturan Firestore).' : '')
     })()
     return () => {
       batal = true
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tugas.id, tugas.kelas, tugas.kelasList])
 
-  const kumpulPerSiswa = useMemo(() => new Map(pengumpulan.map((p) => [p.siswaId, p])), [pengumpulan])
+  /** siswaId → ada dokumen pengumpulan (dasar semua aturan «sudah mengumpulkan»). */
+  const kumpulPerSiswa = useMemo(() => Object.fromEntries(pengumpulan.map((p) => [p.siswaId, true as const])), [pengumpulan])
 
   // Ringkasan + saringan (dihitung sebelum return awal agar urutan hook tetap)
   const ringkas = useMemo(() => {
     const daftar = kelompok ?? []
     const punyaPengajuan = (kid: string) => status.some((x) => x.kelompokId === kid && x.pengajuan === 'menunggu')
+    // Kelompok «sudah» = ketua ATAU anggota yang mewakili ketua mengumpulkan (bukan hanya ketua).
+    const sudahKel = (k: TugasKelompokDok) => {
+      const j = statusKumpulKelompok(k, kumpulPerSiswa).jenis
+      return j === 'ketua' || j === 'wakil'
+    }
+    const semuaSiswa = new Set(daftar.flatMap((k) => [k.ketuaId, ...k.anggotaIds]))
+    const tercakup = siswaTercakupPengumpulan(Object.keys(kumpulPerSiswa), daftar)
     return {
       total: daftar.length,
-      sudah: daftar.filter((k) => kumpulPerSiswa.has(k.ketuaId)).length,
-      belum: daftar.filter((k) => !kumpulPerSiswa.has(k.ketuaId)).length,
+      sudah: daftar.filter(sudahKel).length,
+      belum: daftar.filter((k) => !sudahKel(k)).length,
+      sebagian: daftar.filter((k) => statusKumpulKelompok(k, kumpulPerSiswa).jenis === 'anggota').length,
       pengajuan: daftar.filter((k) => punyaPengajuan(k.id)).length,
+      siswaTotal: semuaSiswa.size,
+      siswaTercakup: [...semuaSiswa].filter((id) => tercakup.has(id)).length,
       punyaPengajuan,
+      sudahKel,
     }
   }, [kelompok, status, kumpulPerSiswa])
 
   if (kelompok === null) return <p className="td-kumpul-kosong">Memuat kelompok…</p>
 
   const tampil = kelompok.filter((k) => {
-    if (saring === 'belum') return !kumpulPerSiswa.has(k.ketuaId)
+    if (saring === 'belum') return !ringkas.sudahKel(k)
     if (saring === 'pengajuan') return ringkas.punyaPengajuan(k.id)
     return true
   })
@@ -92,6 +113,9 @@ export default function KelompokGuruRingkas({ tugas, pengumpulan }: Props) {
             </span>
             <span className="kg-pil kg-pil--warn">
               <b>{ringkas.belum}</b> belum
+            </span>
+            <span className="kg-pil kg-pil--ok" title="Seluruh anggota kelompok yang buktinya dikirim ketua atau wakilnya ikut dihitung">
+              <b>{ringkas.siswaTercakup}</b>/<b>{ringkas.siswaTotal}</b> siswa tercakup
             </span>
             {ringkas.pengajuan > 0 && (
               <span className="kg-pil kg-pil--info">
@@ -131,7 +155,9 @@ export default function KelompokGuruRingkas({ tugas, pengumpulan }: Props) {
 
       <div className="kg-grid">
         {tampil.map((k) => {
-          const ketuaKumpul = kumpulPerSiswa.has(k.ketuaId)
+          const sk = statusKumpulKelompok(k, kumpulPerSiswa)
+          const ketuaKumpul = sk.jenis === 'ketua' || sk.jenis === 'wakil'
+          const namaPemilik = sk.pemilikId ? (k.anggotaList.find((x) => x.id === sk.pemilikId)?.nama ?? '') : ''
           const anggota = k.anggotaList.filter((a) => a.id !== k.ketuaId)
           return (
             <article key={k.id} className={`kg-kartu ${ketuaKumpul ? 'kg-kartu--sudah' : 'kg-kartu--belum'}`}>
@@ -141,9 +167,19 @@ export default function KelompokGuruRingkas({ tugas, pengumpulan }: Props) {
                   <b>{k.ketuaNama}</b>
                 </div>
                 <span className={`kg-status ${ketuaKumpul ? 'kg-status--sudah' : 'kg-status--belum'}`}>
-                  {ketuaKumpul ? 'Sudah mengumpulkan' : 'Belum mengumpulkan'}
+                  {ketuaKumpul ? 'Sudah mengumpulkan' : sk.jenis === 'anggota' ? 'Sebagian mengumpulkan' : 'Belum mengumpulkan'}
                 </span>
               </header>
+              {sk.jenis === 'wakil' && (
+                <p className="kg-wakil">
+                  Dikirim <b>{namaPemilik}</b> mewakili ketua.
+                </p>
+              )}
+              {sk.jenis === 'anggota' && (
+                <p className="kg-wakil kg-wakil--cek">
+                  Ketua belum mengumpulkan; {sk.pengirimIds.length} anggota mengirim sendiri (masing-masing dinilai sendiri).
+                </p>
+              )}
 
               {anggota.length === 0 ? (
                 <p className="kg-kosong kg-kosong--kecil">Belum ada anggota lain.</p>
@@ -151,7 +187,7 @@ export default function KelompokGuruRingkas({ tugas, pengumpulan }: Props) {
                 <ul className="kg-anggota">
                   {anggota.map((a) => {
                     const st = status.find((x) => x.kelompokId === k.id && x.siswaId === a.id)
-                    const sendiri = kumpulPerSiswa.has(a.id)
+                    const sendiri = !!kumpulPerSiswa[a.id]
                     const kf = statusKonfirmasi(k, st, sekarang)
                     return (
                       <li key={a.id} className="kg-baris">
@@ -176,9 +212,15 @@ export default function KelompokGuruRingkas({ tugas, pengumpulan }: Props) {
                             </span>
                           )}
                           {sendiri ? (
-                            <span className="kg-sumber kg-sumber--sendiri">mengirim sendiri</span>
+                            sk.jenis === 'wakil' && a.id === sk.pemilikId ? (
+                              <span className="kg-sumber kg-sumber--wakil">mewakili ketua</span>
+                            ) : (
+                              <span className="kg-sumber kg-sumber--sendiri">mengirim sendiri</span>
+                            )
                           ) : ketuaKumpul ? (
-                            <span className="kg-sumber">lewat ketua</span>
+                            <span className="kg-sumber">
+                              {sk.jenis === 'wakil' ? `lewat ${namaPemilik.split(' ')[0]}` : 'lewat ketua'}
+                            </span>
                           ) : null}
                         </span>
                         {st?.pengajuan === 'menunggu' && (
