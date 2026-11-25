@@ -107,3 +107,57 @@
   .sw-kelompok .sw-kelompok-aksi > button,
   .sw-kelompok-kotak > .sw-btn-primary { flex: 1 1 100%; }
 }
+
+/* ===========================================================================
+   Panel kelompok untuk GURU (tab Pengumpulan) — kartu per kelompok, 2026-11-25.
+   Prinsip: hanya yang perlu perhatian yang berwarna (belum mengumpulkan, pengajuan menunggu);
+   konfirmasi otomatis (keadaan normal) sengaja redup. Prefiks `kg-`; kelas `sw-kelompok-*`
+   tetap dipakai sisi siswa — jangan dihapus. ANTIREGRESI §Tugas.Kelompok.PanelGuru.
+   =========================================================================== */
+.kg { display: flex; flex-direction: column; gap: 0.8rem; padding: 1rem 1.1rem 1.1rem; background: #fff; border: 1px solid #e2e8f0; border-radius: 1rem; }
+.kg-kepala { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 0.9rem; }
+.kg-kepala h4 { margin: 0; font-size: 1rem; font-weight: 800; color: #1a1d33; }
+.kg-ringkas { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+.kg-pil { display: inline-flex; align-items: center; gap: 0.3rem; padding: 0.2rem 0.65rem; border-radius: 999px; font-size: 0.74rem; font-weight: 650; background: #f1f5f9; color: #475569; }
+.kg-pil b { font-weight: 800; font-variant-numeric: tabular-nums; }
+.kg-pil--ok { background: #dcfce7; color: #166534; }
+.kg-pil--warn { background: #fef3c7; color: #92400e; }
+.kg-pil--info { background: #e0f2fe; color: #075985; }
+.kg-saring { display: flex; flex-wrap: wrap; gap: 0.35rem; }
+.kg-kosong { margin: 0; padding: 1rem; border-radius: 0.8rem; background: #f8fafc; border: 1px dashed #d5dbe8; color: #64748b; font-size: 0.86rem; text-align: center; }
+.kg-kosong--kecil { padding: 0.55rem; font-size: 0.78rem; }
+
+.kg-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(19rem, 1fr)); gap: 0.75rem; align-items: start; }
+.kg-kartu { display: flex; flex-direction: column; border: 1px solid #e2e8f0; border-radius: 0.9rem; background: #fff; overflow: hidden; }
+.kg-kartu--belum { border-top: 3px solid #f59e0b; }
+.kg-kartu--sudah { border-top: 3px solid #22c55e; }
+.kg-kartu-kepala { display: flex; align-items: flex-start; justify-content: space-between; gap: 0.6rem; padding: 0.7rem 0.85rem 0.6rem; border-bottom: 1px solid #eef1f7; }
+.kg-ketua { display: flex; flex-direction: column; gap: 0.1rem; min-width: 0; }
+.kg-ketua b { font-size: 0.92rem; font-weight: 800; color: #1a1d33; line-height: 1.25; overflow-wrap: anywhere; }
+.kg-label { font-size: 0.66rem; font-weight: 750; letter-spacing: 0.03em; text-transform: uppercase; color: #94a3b8; }
+.kg-status { flex: none; padding: 0.2rem 0.6rem; border-radius: 999px; font-size: 0.7rem; font-weight: 750; white-space: nowrap; }
+.kg-status--belum { background: #fef3c7; color: #92400e; }
+.kg-status--sudah { background: #dcfce7; color: #166534; }
+
+.kg-anggota { list-style: none; margin: 0; padding: 0.25rem 0; }
+.kg-baris { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 0.2rem 0.6rem; padding: 0.45rem 0.85rem; }
+.kg-baris + .kg-baris { border-top: 1px solid #f1f4f9; }
+.kg-nama { font-size: 0.84rem; font-weight: 600; color: #1f2937; overflow-wrap: anywhere; }
+.kg-tanda { display: inline-flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: 0.15rem 0.6rem; font-size: 0.7rem; }
+.kg-konf { font-weight: 650; white-space: nowrap; }
+.kg-konf--manual { color: #15803d; font-weight: 750; }
+.kg-konf--auto { color: #94a3b8; }
+.kg-konf--belum { color: #b45309; }
+.kg-sumber { font-weight: 650; color: #64748b; white-space: nowrap; }
+.kg-sumber--sendiri { color: #0369a1; }
+.kg-pengajuan { grid-column: 1 / -1; padding: 0.3rem 0.55rem; border-radius: 0.5rem; font-size: 0.72rem; font-weight: 650; line-height: 1.4; }
+.kg-pengajuan--menunggu { background: #fef3c7; color: #92400e; }
+.kg-pengajuan--diterima { background: #dcfce7; color: #166534; }
+.kg-pengajuan--ditolak { background: #fee2e2; color: #991b1b; }
+.kg-catatan { margin: 0; font-size: 0.76rem; line-height: 1.5; color: #64748b; }
+@media (max-width: 480px) {
+  .kg { padding: 0.8rem; }
+  .kg-grid { grid-template-columns: minmax(0, 1fr); }
+  .kg-baris { grid-template-columns: minmax(0, 1fr); }
+  .kg-tanda { justify-content: flex-start; }
+}

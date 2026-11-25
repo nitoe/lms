@@ -1,3 +1,12 @@
+## §Tugas.Kelompok.PanelGuru — Panel kelompok guru berbasis kartu (2026-11-25)
+
+1. **Prefiks kelas `kg-`** untuk panel guru; kelas `sw-kelompok-*` tetap milik sisi siswa (`KelompokSiswaPanel`, `KelompokBannerBeranda`) — jangan dihapus/diganti saat merapikan panel guru. Semua CSS ada di `kelompok-status.css` yang diimpor komponen (§Tugas.UiGuru no. 9: tidak boleh snippet lepas).
+2. **Jangan kembali ke «chip berwarna untuk semua status».** Prinsip tampilan: hanya yang butuh tindakan guru yang berwarna (belum mengumpulkan, pengajuan menunggu); konfirmasi otomatis sengaja redup. Chip konfirmasi/sumber baru ditambahkan sebagai teks kecil, bukan pil berwarna.
+3. **Status konfirmasi tetap dari `statusKonfirmasi()`** (§Tugas.Kelompok.AutoKonfirmasi) — panel ini tidak boleh membaca `konfirmasiMs` langsung.
+4. **Hook harus dipanggil sebelum `return` awal** (`useMemo` ringkasan ditempatkan sebelum `if (kelompok === null) return …`); jangan memindahkannya ke bawah.
+5. Saringan memakai kelas `tg-seg` yang sudah ada (§Tugas.UiGuru no. 12); jangan membuat kelas segmen baru. Ringkasan dihitung dari `pengumpulan` (kiriman ketua) dan `status` (pengajuan `menunggu`).
+6. Uji: (a) 7 kelompok → 7 kartu, ringkasan «N sudah / M belum»; (b) saringan «Belum mengumpulkan» & «Ada pengajuan» mengubah jumlah kartu dan «Semua» mengembalikan; (c) pengajuan menunggu/diizinkan/ditolak tampil sebagai kotak di bawah nama anggota; (d) HP 360px: satu kolom, tanda konfirmasi turun ke bawah nama.
+
 ## §Tugas.Kelompok.AutoKonfirmasi — Auto-konfirmasi anggota 1 jam (2026-11-25)
 
 1. **Dihitung di klien, tidak disimpan.** `statusKonfirmasi(kelompok, status, now)` (di `lib/tugasKelompok.ts`) adalah SATU-SATUNYA tempat aturan ini. Semua tampilan (guru, panel siswa, banner beranda) wajib memakainya — jangan lagi membandingkan `konfirmasiMs > 0` secara langsung (itu hanya konfirmasi MANUAL dan akan menampilkan «belum konfirmasi» yang keliru).

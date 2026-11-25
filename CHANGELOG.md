@@ -1,3 +1,12 @@
+## 2026-11-25 — Panel Kelompok (guru) dirapikan: kartu per kelompok, status yang jelas
+
+- **Sebelumnya** setiap anggota memakai 2–4 chip berwarna sejenis dalam satu baris yang menyambung, sehingga tidak ada yang menonjol dan sulit dipindai. **Sekarang** tiap kelompok berupa **kartu** (grid 2–3 kolom di layar lebar, 1 kolom di HP) dengan garis atas **kuning = belum mengumpulkan / hijau = sudah mengumpulkan**.
+- **Ringkasan di atas panel:** jumlah kelompok · sudah mengumpulkan · belum · ada pengajuan kirim sendiri, plus saringan **Semua / Belum mengumpulkan / Ada pengajuan**.
+- **Hanya yang perlu perhatian yang berwarna.** Konfirmasi otomatis (keadaan normal) kini teks abu-abu kecil «✓ otomatis»; konfirmasi manual hijau tebal «✓ konfirmasi»; yang menunggu amber «◷ menunggu ±N mnt». Sumber kiriman («lewat ketua» / «mengirim sendiri») berupa teks kecil, bukan chip. **Pengajuan kirim sendiri** tampil sebagai kotak tersendiri di bawah nama anggota (menunggu = kuning, diizinkan = hijau, ditolak = merah).
+- Tidak ada perubahan data, rules, maupun Cloud Functions → **cukup deploy hosting**. Tampilan sisi siswa tidak berubah.
+- File: `src/components/KelompokGuruRingkas.tsx`, `src/styles/kelompok-status.css`, `CHANGELOG.md`, `ANTIREGRESI.md`.
+- Antiregresi: §Tugas.Kelompok.PanelGuru.
+
 ## 2026-11-25 — Auto-konfirmasi anggota tugas kelompok (1 jam tanpa respons)
 
 - Anggota kelompok yang **tidak merespons dalam 1 jam** sejak kelompok dibentuk atau terakhir diubah ketua otomatis dianggap **terkonfirmasi** — untuk siswa yang tidak memegang HP/akun sendiri, sehingga daftar tidak lagi dipenuhi «belum konfirmasi».

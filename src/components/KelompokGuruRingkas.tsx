@@ -26,6 +26,7 @@ export default function KelompokGuruRingkas({ tugas, pengumpulan }: Props) {
   const [status, setStatus] = useState<StatusAnggotaDok[]>([])
   const [galat, setGalat] = useState('')
   const sekarang = useSekarang()
+  const [saring, setSaring] = useState<'semua' | 'belum' | 'pengajuan'>('semua')
 
   useEffect(() => {
     let batal = false
@@ -56,80 +57,152 @@ export default function KelompokGuruRingkas({ tugas, pengumpulan }: Props) {
 
   const kumpulPerSiswa = useMemo(() => new Map(pengumpulan.map((p) => [p.siswaId, p])), [pengumpulan])
 
+  // Ringkasan + saringan (dihitung sebelum return awal agar urutan hook tetap)
+  const ringkas = useMemo(() => {
+    const daftar = kelompok ?? []
+    const punyaPengajuan = (kid: string) => status.some((x) => x.kelompokId === kid && x.pengajuan === 'menunggu')
+    return {
+      total: daftar.length,
+      sudah: daftar.filter((k) => kumpulPerSiswa.has(k.ketuaId)).length,
+      belum: daftar.filter((k) => !kumpulPerSiswa.has(k.ketuaId)).length,
+      pengajuan: daftar.filter((k) => punyaPengajuan(k.id)).length,
+      punyaPengajuan,
+    }
+  }, [kelompok, status, kumpulPerSiswa])
+
   if (kelompok === null) return <p className="td-kumpul-kosong">Memuat kelompok…</p>
 
+  const tampil = kelompok.filter((k) => {
+    if (saring === 'belum') return !kumpulPerSiswa.has(k.ketuaId)
+    if (saring === 'pengajuan') return ringkas.punyaPengajuan(k.id)
+    return true
+  })
+
   return (
-    <section className="sw-kelompok-kotak" aria-label="Kelompok">
-      <h4>Kelompok ({kelompok.length})</h4>
+    <section className="kg" aria-label="Kelompok">
+      <header className="kg-kepala">
+        <h4>Kelompok</h4>
+        {kelompok.length > 0 && (
+          <div className="kg-ringkas" aria-label="Ringkasan kelompok">
+            <span className="kg-pil">
+              <b>{ringkas.total}</b> kelompok
+            </span>
+            <span className="kg-pil kg-pil--ok">
+              <b>{ringkas.sudah}</b> sudah mengumpulkan
+            </span>
+            <span className="kg-pil kg-pil--warn">
+              <b>{ringkas.belum}</b> belum
+            </span>
+            {ringkas.pengajuan > 0 && (
+              <span className="kg-pil kg-pil--info">
+                <b>{ringkas.pengajuan}</b> ada pengajuan kirim sendiri
+              </span>
+            )}
+          </div>
+        )}
+      </header>
+
+      {kelompok.length > 1 && (
+        <div className="kg-saring" role="group" aria-label="Saring kelompok">
+          {(
+            [
+              { v: 'semua' as const, teks: 'Semua', n: ringkas.total },
+              { v: 'belum' as const, teks: 'Belum mengumpulkan', n: ringkas.belum },
+              { v: 'pengajuan' as const, teks: 'Ada pengajuan', n: ringkas.pengajuan },
+            ] as const
+          ).map((o) => (
+            <button
+              key={o.v}
+              type="button"
+              className={`tg-seg${saring === o.v ? ' tg-seg--on' : ''}`}
+              aria-pressed={saring === o.v}
+              onClick={() => setSaring(o.v)}
+            >
+              {o.teks}
+              <i>{o.n}</i>
+            </button>
+          ))}
+        </div>
+      )}
+
       {galat && <p className="tg-galat">{galat}</p>}
-      {kelompok.length === 0 && !galat && <p>Belum ada kelompok yang dibentuk siswa.</p>}
-      <ul className="sw-kelompok-pengajuan-list">
-        {kelompok.map((k) => {
+      {kelompok.length === 0 && !galat && <p className="kg-kosong">Belum ada kelompok yang dibentuk siswa.</p>}
+      {kelompok.length > 0 && tampil.length === 0 && <p className="kg-kosong">Tidak ada kelompok pada saringan ini.</p>}
+
+      <div className="kg-grid">
+        {tampil.map((k) => {
           const ketuaKumpul = kumpulPerSiswa.has(k.ketuaId)
+          const anggota = k.anggotaList.filter((a) => a.id !== k.ketuaId)
           return (
-            <li key={k.id}>
-              <div className="sw-kelompok-pengajuan-nama">
-                Ketua: {k.ketuaNama} · {k.kelas}
-                <span className={`sw-kelompok-chip ${ketuaKumpul ? 'sw-kelompok-chip--ok' : 'sw-kelompok-chip--warn'}`}>
-                  {ketuaKumpul ? 'sudah mengumpulkan' : 'belum mengumpulkan'}
+            <article key={k.id} className={`kg-kartu ${ketuaKumpul ? 'kg-kartu--sudah' : 'kg-kartu--belum'}`}>
+              <header className="kg-kartu-kepala">
+                <div className="kg-ketua">
+                  <span className="kg-label">Ketua · {k.kelas}</span>
+                  <b>{k.ketuaNama}</b>
+                </div>
+                <span className={`kg-status ${ketuaKumpul ? 'kg-status--sudah' : 'kg-status--belum'}`}>
+                  {ketuaKumpul ? 'Sudah mengumpulkan' : 'Belum mengumpulkan'}
                 </span>
-              </div>
-              <ul className="sw-kelompok-anggota">
-                {k.anggotaList
-                  .filter((a) => a.id !== k.ketuaId)
-                  .map((a) => {
+              </header>
+
+              {anggota.length === 0 ? (
+                <p className="kg-kosong kg-kosong--kecil">Belum ada anggota lain.</p>
+              ) : (
+                <ul className="kg-anggota">
+                  {anggota.map((a) => {
                     const st = status.find((x) => x.kelompokId === k.id && x.siswaId === a.id)
                     const sendiri = kumpulPerSiswa.has(a.id)
+                    const kf = statusKonfirmasi(k, st, sekarang)
                     return (
-                      <li key={a.id}>
-                        {a.nama}
-                        {(() => {
-                          const kf = statusKonfirmasi(k, st, sekarang)
-                          if (kf.jenis === 'manual') {
-                            return <span className="sw-kelompok-chip sw-kelompok-chip--ok">sudah konfirmasi</span>
-                          }
-                          if (kf.jenis === 'otomatis') {
-                            return (
-                              <span
-                                className="sw-kelompok-chip sw-kelompok-chip--auto"
-                                title="Tidak ada respons selama 1 jam sejak kelompok dibentuk/diubah"
-                              >
-                                terkonfirmasi otomatis
-                              </span>
-                            )
-                          }
-                          return (
-                            <span className="sw-kelompok-chip">
-                              belum konfirmasi{kf.sisaMs > 0 ? ` · otomatis ${teksSisaKonfirmasi(kf.sisaMs)}` : ''}
+                      <li key={a.id} className="kg-baris">
+                        <span className="kg-nama">{a.nama}</span>
+                        <span className="kg-tanda">
+                          {kf.jenis === 'manual' && (
+                            <span className="kg-konf kg-konf--manual" title="Anggota sudah menekan konfirmasi">
+                              ✓ konfirmasi
                             </span>
-                          )
-                        })()}
-                        {sendiri ? (
-                          <span className="sw-kelompok-chip sw-kelompok-chip--info">mengirim sendiri</span>
-                        ) : ketuaKumpul ? (
-                          <span className="sw-kelompok-chip sw-kelompok-chip--info">lewat ketua</span>
-                        ) : null}
+                          )}
+                          {kf.jenis === 'otomatis' && (
+                            <span
+                              className="kg-konf kg-konf--auto"
+                              title="Tidak ada respons selama 1 jam sejak kelompok dibentuk/diubah — dianggap terkonfirmasi"
+                            >
+                              ✓ otomatis
+                            </span>
+                          )}
+                          {kf.jenis === 'belum' && (
+                            <span className="kg-konf kg-konf--belum" title="Menunggu konfirmasi anggota">
+                              ◷ menunggu{kf.sisaMs > 0 ? ` ${teksSisaKonfirmasi(kf.sisaMs)}` : ''}
+                            </span>
+                          )}
+                          {sendiri ? (
+                            <span className="kg-sumber kg-sumber--sendiri">mengirim sendiri</span>
+                          ) : ketuaKumpul ? (
+                            <span className="kg-sumber">lewat ketua</span>
+                          ) : null}
+                        </span>
                         {st?.pengajuan === 'menunggu' && (
-                          <span className="sw-kelompok-chip sw-kelompok-chip--warn">mengajukan kirim sendiri</span>
+                          <span className="kg-pengajuan kg-pengajuan--menunggu">Mengajukan kirim sendiri — menunggu keputusan ketua</span>
                         )}
                         {st?.pengajuan === 'diterima' && (
-                          <span className="sw-kelompok-chip sw-kelompok-chip--ok">diizinkan kirim sendiri</span>
+                          <span className="kg-pengajuan kg-pengajuan--diterima">Diizinkan kirim sendiri</span>
                         )}
                         {st?.pengajuan === 'ditolak' && (
-                          <span className="sw-kelompok-chip sw-kelompok-chip--danger">pengajuan ditolak</span>
+                          <span className="kg-pengajuan kg-pengajuan--ditolak">Pengajuan kirim sendiri ditolak ketua</span>
                         )}
                       </li>
                     )
                   })}
-              </ul>
-            </li>
+                </ul>
+              )}
+            </article>
           )
         })}
-      </ul>
-      <p className="sw-hint">
-        Konfirmasi anggota hanya informasi. Anggota yang tidak merespons dalam{' '}
-        {Math.round(WAKTU_AUTO_KONFIRMASI_MS / 60000)} menit sejak kelompok dibentuk/diubah otomatis dianggap
-        terkonfirmasi (untuk siswa tanpa HP). Nilai tetap diinput per siswa di tab «Input nilai».
+      </div>
+
+      <p className="kg-catatan">
+        Konfirmasi hanya informasi. Anggota tanpa respons dalam {Math.round(WAKTU_AUTO_KONFIRMASI_MS / 60000)} menit
+        otomatis dianggap terkonfirmasi (siswa tanpa HP). Nilai tetap diinput per siswa di tab «Input nilai».
       </p>
     </section>
   )
