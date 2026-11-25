@@ -42,6 +42,8 @@ export const BATAS_FOTO_PENGUMPULAN = 6
 export const BATAS_SLOT_FOTO = 6
 export const DAFTAR_SLOT = [1, 2, 3, 4, 5, 6] as const
 export const BATAS_CATATAN = 500
+/** Jumlah foto yang dikirim bersamaan. Dua cukup mempercepat tanpa membebani sinyal lemah. */
+const KONKURENSI_FOTO = 2
 const SLOT = ['1', '2', '3', '4', '5', '6'] as const
 
 export type PengumpulanDok = {
@@ -214,6 +216,8 @@ export type KirimInput = {
   videoPertahankan?: number[]
   /** Kemajuan unggah video 0..1 (rata-rata semua video baru). */
   onProgressVideo?: (bagian: number) => void
+  /** Kemajuan pengiriman foto: (jumlah foto selesai, total foto). */
+  onProgressFoto?: (selesai: number, total: number) => void
   catatan: string
   /** Dokumen meta yang sudah ada (kirim ulang) atau null (pertama kali). */
   ada: PengumpulanDok | null
@@ -268,9 +272,12 @@ export async function kirimPengumpulan(input: KirimInput): Promise<PengumpulanDo
     })
   }
 
-  const fotoIds: string[] = []
-  for (const { slot, src } of entri) {
-    const id = idFoto(tugas.id, siswaId, slot - 1)
+  // Foto dikirim paralel terbatas (KONKURENSI_FOTO) agar 6 foto tidak berurutan satu per satu di
+  // sinyal lemah. Urutan `fotoIds` TETAP mengikuti `entri`. Bila satu foto gagal, tidak ada foto
+  // baru yang dimulai; yang sedang berjalan diselesaikan dulu lalu galat PERTAMA dilempar (berisi
+  // kode langkah `foto-N`). Meta TETAP terakhir (guru tidak melihat meta yang menunjuk foto belum ada).
+  const fotoIds: string[] = entri.map(({ slot }) => idFoto(tugas.id, siswaId, slot - 1))
+  const kirimSatuFoto = async (slot: number, src: string, id: string) => {
     const ref = doc(db, 'lms_pengumpulan_foto', id)
     const sudah = !!ada && ada.fotoIds.includes(id)
     await langkah(`foto-${slot}`, async () => {
@@ -297,7 +304,28 @@ export async function kirimPengumpulan(input: KirimInput): Promise<PengumpulanDo
         await updateDoc(ref, { data: src, updatedAt: serverTimestamp() })
       }
     })
-    fotoIds.push(id)
+  }
+  {
+    let berikut = 0
+    let selesai = 0
+    let galatPertama: unknown = null
+    input.onProgressFoto?.(0, entri.length)
+    const pekerja = async () => {
+      while (galatPertama === null && berikut < entri.length) {
+        const i = berikut++
+        try {
+          await kirimSatuFoto(entri[i].slot, entri[i].src, fotoIds[i])
+          selesai++
+          input.onProgressFoto?.(selesai, entri.length)
+        } catch (e) {
+          if (galatPertama === null) galatPertama = e
+        }
+      }
+    }
+    await Promise.all(
+      Array.from({ length: Math.min(KONKURENSI_FOTO, entri.length) }, () => pekerja()),
+    )
+    if (galatPertama !== null) throw galatPertama
   }
 
   // Hapus slot lama yang tidak dipakai lagi (mis. 3 foto → 2 foto).
@@ -378,6 +406,12 @@ export function pesanGagalKumpul(e: unknown): string {
   if (code === 'permission-denied' || code === 'firestore/permission-denied') {
     const l = typeof e === 'object' && e !== null && 'langkahKirim' in e ? String((e as { langkahKirim: unknown }).langkahKirim) : ''
     return `Tugas belum bisa dikumpulkan. Mungkin tugas sudah dinilai atau ditutup. Beri tahu gurumu ya.${l ? ` (kode: ${l})` : ''}`
+  }
+  const langkahGagal =
+    typeof e === 'object' && e !== null && 'langkahKirim' in e ? String((e as { langkahKirim: unknown }).langkahKirim) : ''
+  const mFoto = /^foto-(\d)$/.exec(langkahGagal)
+  if (mFoto) {
+    return `Foto ke-${mFoto[1]} belum terkirim. Periksa internet lalu tekan kirim lagi; foto yang sudah terkirim tidak hilang.`
   }
   if (e instanceof Error && e.message) return e.message
   return 'Gagal mengumpulkan. Periksa internet lalu coba lagi.'

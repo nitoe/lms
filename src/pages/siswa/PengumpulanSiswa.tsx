@@ -59,7 +59,7 @@ function waktuTeks(ms: number): string {
 }
 
 /**
- * Kumpulkan tugas dengan foto (maks. 3). Foto dikecilkan otomatis di perangkat.
+ * Kumpulkan tugas dengan foto (maks. 6). Foto dikecilkan otomatis di perangkat.
  * Dua mode: tugas dengan «bukti berlabel» (`tugas.buktiList`, satu kartu per bukti, slot tetap)
  * atau mode lama tanpa label (ANTIREGRESI §132 & §Tugas.Bukti).
  */
@@ -88,6 +88,10 @@ export default function PengumpulanSiswa({
   const [videoLamaDihapus, setVideoLamaDihapus] = useState<Record<number, boolean>>({})
   const [urlLama, setUrlLama] = useState<Record<number, string>>({})
   const [persenUnggah, setPersenUnggah] = useState<number | null>(null)
+  /** Kemajuan pengiriman foto: [selesai, total]. */
+  const [kemajuanFoto, setKemajuanFoto] = useState<[number, number] | null>(null)
+  /** Kemajuan pemrosesan (kompres) foto yang baru dipilih: [selesai, total]. */
+  const [prosesFoto, setProsesFoto] = useState<[number, number] | null>(null)
   const videoUIRef = useRef(videoUI)
   videoUIRef.current = videoUI
   const [catatan, setCatatan] = useState(ada?.catatan ?? '')
@@ -177,7 +181,9 @@ export default function PengumpulanSiswa({
     setOlah(true)
     try {
       const baru: Item[] = []
-      for (const f of Array.from(files).slice(0, sisa)) {
+      const terpilih = Array.from(files).slice(0, sisa)
+      for (const f of terpilih) {
+        setProsesFoto([baru.length + 1, terpilih.length])
         const src = await siapkanFoto(f)
         baru.push({ key: `baru-${Date.now()}-${baru.length}`, src })
       }
@@ -187,6 +193,7 @@ export default function PengumpulanSiswa({
       setGalat(e instanceof Error ? e.message : 'Foto tidak bisa diproses.')
     } finally {
       setOlah(false)
+      setProsesFoto(null)
       if (inputRef.current) inputRef.current.value = ''
     }
   }
@@ -321,6 +328,7 @@ export default function PengumpulanSiswa({
     }
     setBusy(true)
     setPersenUnggah(null)
+    setKemajuanFoto(null)
     try {
       const dok = await kirimPengumpulan({
         tugas,
@@ -331,6 +339,7 @@ export default function PengumpulanSiswa({
         videoBaru,
         videoPertahankan,
         onProgressVideo: setPersenUnggah,
+        onProgressFoto: (s, t) => setKemajuanFoto([s, t]),
         catatan,
         ada,
       })
@@ -343,6 +352,7 @@ export default function PengumpulanSiswa({
     } finally {
       setBusy(false)
       setPersenUnggah(null)
+      setKemajuanFoto(null)
     }
   }
 
@@ -731,7 +741,7 @@ export default function PengumpulanSiswa({
                     olah || busy || items.length >= BATAS_FOTO_PENGUMPULAN ? ' sw-kumpul-tambah--off' : ''
                   }`}
                 >
-                  {olah ? 'Memproses…' : items.length > 0 ? 'Tambah dari galeri' : 'Pilih dari galeri'}
+                  {olah ? (prosesFoto ? `Memproses foto ${prosesFoto[0]} dari ${prosesFoto[1]}…` : 'Memproses…') : items.length > 0 ? 'Tambah dari galeri' : 'Pilih dari galeri'}
                 </label>
                 <label
                   htmlFor={`kumpul-kamera-${tugas.id}`}
@@ -782,7 +792,9 @@ export default function PengumpulanSiswa({
               {busy
                 ? persenUnggah !== null
                   ? `Mengunggah video… ${Math.round(persenUnggah * 100)}%`
-                  : 'Mengirim…'
+                  : kemajuanFoto && kemajuanFoto[1] > 0
+                    ? `Mengirim foto ${Math.min(kemajuanFoto[0] + 1, kemajuanFoto[1])} dari ${kemajuanFoto[1]}…`
+                    : 'Mengirim…'
                 : ada
                   ? 'Kirim ulang'
                   : 'Kumpulkan'}

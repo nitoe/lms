@@ -1,3 +1,23 @@
+## 2026-11-25 — Pengiriman foto lebih lancar saat foto banyak
+
+### Latar
+- Sebagian siswa mengalami kendala saat mengirim tugas dengan foto cukup banyak. Pemeriksaan kode: batas 6 foto konsisten antara tampilan dan rules, tetapi foto dikirim satu per satu tanpa indikator kemajuan sehingga di sinyal lemah tampak macet, dan galat tidak menyebut foto mana yang gagal.
+
+### Perbaikan
+- Foto dikirim dua sekaligus (sebelumnya berurutan) dengan urutan slot tetap terjaga.
+- Tombol kirim menampilkan «Mengirim foto X dari Y…»; pemilihan dari galeri menampilkan «Memproses foto X dari Y…».
+- Pesan galat menyebut foto yang gagal («Foto ke-N belum terkirim…») dan menegaskan foto yang sudah terkirim tidak hilang. Kode langkah untuk penolakan rules tetap ditampilkan.
+- Komentar usang «maks. 3 foto» diperbaiki menjadi 6.
+
+### Berkas
+- `src/lib/pengumpulan.ts`, `src/pages/siswa/PengumpulanSiswa.tsx`, `CHANGELOG.md`, `ANTIREGRESI.md`. Tidak ada perubahan rules, data, atau batas foto (tetap 6).
+
+### Deploy
+- Hosting LMS saja.
+
+### Catatan
+- `npm run build` dan `oxlint` lulus; belum diuji di perangkat sebenarnya — jalankan uji di ANTIREGRESI §Tugas.Foto.Kemajuan butir 6 dengan HP siswa dan sinyal lemah.
+
 ## 2026-11-25 — Tutup otomatis saat tenggat
 
 ### Perilaku baru

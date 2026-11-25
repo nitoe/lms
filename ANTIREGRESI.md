@@ -1,3 +1,12 @@
+## §Tugas.Foto.Kemajuan — Pengiriman foto paralel terbatas + indikator kemajuan (2026-11-25)
+
+1. **Batas tidak berubah:** maksimal 6 foto/siswa/tugas (UI `BATAS_FOTO_PENGUMPULAN`, rules `fotoIds.size() <= 6` + slot '1'..'6'), video maks. 2, tiap foto ≤ 300.000 karakter. Menaikkan batas = ubah rules di KEDUA repo + `BATAS_FOTO_PENGUMPULAN`/`BATAS_SLOT_FOTO`/`SLOT`/`DAFTAR_SLOT` + `BATAS_BUKTI_TUGAS` sekaligus; jangan mengubah sebagian.
+2. **Foto dikirim paralel dengan konkurensi 2** (`KONKURENSI_FOTO`). Jangan dinaikkan tanpa uji di sinyal lemah (tiap foto ±220 KB; lebih banyak permintaan bersamaan justru memperbanyak kegagalan di HP murah). Jangan mengembalikan ke `Promise.all` tanpa batas.
+3. **Urutan `fotoIds` mengikuti `entri` (slot),** dihitung SEBELUM pengiriman — bukan urutan selesai. Meta (`lms_pengumpulan`) tetap ditulis TERAKHIR setelah semua foto berhasil (guru tidak boleh melihat meta yang menunjuk foto yang belum ada). Bila satu foto gagal: tidak ada foto baru dimulai, yang sedang berjalan diselesaikan, galat PERTAMA dilempar dan meta TIDAK ditulis.
+4. **Setiap foto tetap dibungkus `langkah('foto-N')`** agar galat membawa kode langkah. `pesanGagalKumpul` memakainya: galat non-izin pada langkah foto menampilkan «Foto ke-N belum terkirim…». Jangan menghapus pembungkus `langkah` atau pola foto yatim (§Tugas.FotoYatim): keduanya berjalan di tiap pekerja.
+5. **UI:** tombol kirim menampilkan «Mengirim foto X dari Y…» (`onProgressFoto`); tombol pilih galeri menampilkan «Memproses foto X dari Y…» saat kompres. Video tetap memakai persen sendiri (`onProgressVideo`) dan didahulukan.
+6. **Uji:** (a) kirim 6 foto → tombol berubah 1 dari 6 … 6 dari 6, semua foto terbaca guru urut sesuai slot; (b) putus internet di tengah → pesan «Foto ke-N belum terkirim», lalu kirim ulang berhasil tanpa permission-denied; (c) kirim ulang dengan jumlah foto lebih sedikit menghapus slot lama; (d) tugas berbukti berlabel tetap jalan; (e) tugas selesai/lewat tenggat tetap ditolak dengan pesan ditutup (kode langkah tetap ada).
+
 ## §Tugas.Tenggat.Otomatis — Tutup otomatis saat tenggat (2026-11-25)
 
 1. **Opt-in per tugas:** field `tutupSetelahTenggat` (boolean). Default form untuk tugas BARU = aktif (bila ada tenggat); dokumen lama tanpa field = `false`. Jangan menjadikannya berlaku global: tugas lama yang tenggatnya sudah lewat tetapi masih dikerjakan siswa akan mendadak tertutup (perilaku lama: tenggat hanya label «Lewat tenggat»).
