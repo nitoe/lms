@@ -1,3 +1,32 @@
+## 2026-11-25 — Bukti video: batas hanya dari ukuran, tidak lagi 1 menit
+
+### Latar
+- Batas video 1 menit menyulitkan tugas yang memang butuh rekaman lebih lama, terutama video performa (mis. seni musik). Batas durasi dihapus; yang dibatasi kini hanya **ukuran**.
+
+### Yang berubah
+- **Tidak ada batas durasi.** Video yang dipilih tidak lagi ditolak karena panjangnya.
+- **Ukuran akhir yang diunggah maksimal 100 MB** per video (sebelumnya 15 MB). Maks. 2 video per pengumpulan tetap.
+- **Video mp4/webm ≤ 30 MB dikirim apa adanya** (sebelumnya ≤ 6 MB). Di atas 30 MB, HP siswa memperkecilnya otomatis (±480p, ±6 MB/menit). Konversi berjalan real-time, jadi lamanya sekitar durasi video; layar siswa kini diberi tahu perkiraan waktunya.
+- **Penolakan dini berbasis ukuran:** bila perkiraan hasil konversi sudah melebihi 100 MB (sekitar 16 menit), video ditolak di awal dengan pesan ukuran, bukan setelah siswa menunggu konversi panjang.
+- **Berkas asal sampai 2 GB** masih dibuka (sebelumnya 600 MB); berkas dibaca sebagai aliran, tidak dimuat penuh ke memori.
+- **Deteksi HEVC** kini membaca 2 MB pertama + 2 MB terakhir berkas (sebelumnya seluruh berkas), supaya aman untuk berkas sampai 30 MB di HP RAM kecil.
+- Teks hint siswa dan label editor bukti guru diganti dari «maks. 1 menit» ke batas ukuran.
+
+### Yang perlu diketahui
+- **Penilaian AI hanya membaca video ≤ 9 MB** (batas function). Video lebih besar tetap bisa dikirim dan diputar guru, tetapi AI mencatat «periksa manual». Tidak ada perubahan function.
+- Video panjang di HP lama: konversi bisa makan waktu lama dan terhenti bila siswa meninggalkan halaman. Anjuran ke siswa: rekam dengan kualitas 720p/480p di kamera, atau pastikan HP terisi daya dan layar tetap menyala.
+- Penyimpanan bertambah (maks. 2 × 100 MB per siswa per tugas). Lifecycle hapus otomatis 120 hari tetap berlaku.
+
+### Deploy (urutan penting)
+1. Dari SDM01Penilaian: `firebase deploy --only storage` (rules 100 MB lebih dulu; bila hosting lebih dulu, unggahan video > 15 MB ditolak).
+2. Baru deploy hosting LMS.
+
+### File
+- Repo `lms`: `storage.rules` (lengkap, identik dengan Penilaian), `src/lib/videoTugas.ts`, `src/pages/siswa/VideoBukti.tsx`, `src/components/BuktiTugasEditor.tsx`, `src/types/tugas.ts`, `CHANGELOG.md`, `ANTIREGRESI.md`.
+- Repo `SDM01Penilaian`: `storage.rules` (lengkap), `CHANGELOG.md`, `ANTIREGRESI.md`.
+- Antiregresi: §Tugas.Video.Ukuran.
+- `tsc -b`, `vite build`, dan `oxlint` lulus. **Belum diuji di HP sungguhan** (lihat uji di ANTIREGRESI).
+
 ## 2026-11-25 — «Terkumpul» dihitung per siswa (sesuai kelompok) + kelompok yang diwakili anggota terhitung sudah mengumpulkan
 
 ### Masalah
