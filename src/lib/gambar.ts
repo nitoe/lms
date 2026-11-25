@@ -17,25 +17,183 @@ export interface HasilKompres {
   tinggi: number
 }
 
-async function bacaBitmap(file: Blob): Promise<ImageBitmap> {
-  return await createImageBitmap(file)
+/**
+ * Pembacaan gambar BERLAPIS (ANTIREGRESI §Gambar.Dekode).
+ * Satu HP Android siswa melaporkan «The source image cannot be decoded» (galat `createImageBitmap`,
+ * konsol tak bisa dilihat). Penyebab yang lazim: foto HEIC/HEIF (kamera Samsung/Xiaomi «efisiensi tinggi»),
+ * file dari galeri/cloud yang belum terunduh penuh (content-URI tak terbaca), atau peramban lama tanpa
+ * `createImageBitmap`. Karena itu: (1) createImageBitmap, (2) <img> dari object URL, (3) salin byte ke memori
+ * lalu ulangi 1–2 dengan Blob baru. Bila semua gagal, siswa mendapat pesan yang menyebut penyebab + rincian
+ * singkat yang bisa difoto layarnya untuk guru.
+ */
+interface GambarTerbaca {
+  sumber: CanvasImageSource
+  lebar: number
+  tinggi: number
+  tutup: () => void
 }
 
-function gambarKeDataUrl(bmp: ImageBitmap, skala: number, mutu: number): { url: string; w: number; h: number } {
-  const w = Math.max(1, Math.round(bmp.width * skala))
-  const h = Math.max(1, Math.round(bmp.height * skala))
-  const canvas = document.createElement('canvas')
-  canvas.width = w
-  canvas.height = h
-  const ctx = canvas.getContext('2d')
-  if (!ctx) throw new Error('Peramban tidak mendukung pengolahan gambar.')
-  // Latar putih supaya PNG transparan tidak jadi hitam saat dikonversi.
-  ctx.fillStyle = '#ffffff'
-  ctx.fillRect(0, 0, w, h)
-  ctx.drawImage(bmp, 0, 0, w, h)
-  let url = canvas.toDataURL('image/webp', mutu)
-  if (!url.startsWith('data:image/webp')) url = canvas.toDataURL('image/jpeg', mutu)
-  return { url, w, h }
+type FormatGambar = 'jpeg' | 'png' | 'webp' | 'gif' | 'bmp' | 'heic' | 'avif' | 'lain'
+
+const MIME_FORMAT: Record<string, string> = {
+  jpeg: 'image/jpeg',
+  png: 'image/png',
+  webp: 'image/webp',
+  gif: 'image/gif',
+  bmp: 'image/bmp',
+}
+
+/** Kenali format dari byte awal (tipe MIME dari galeri Android sering kosong atau keliru). */
+function kenaliFormat(b: Uint8Array): FormatGambar {
+  const teks = (a: number, z: number) => String.fromCharCode(...Array.from(b.slice(a, z)))
+  if (b.length >= 3 && b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff) return 'jpeg'
+  if (b.length >= 8 && b[0] === 0x89 && teks(1, 4) === 'PNG') return 'png'
+  if (b.length >= 12 && teks(0, 4) === 'RIFF' && teks(8, 12) === 'WEBP') return 'webp'
+  if (b.length >= 4 && teks(0, 3) === 'GIF') return 'gif'
+  if (b.length >= 2 && teks(0, 2) === 'BM') return 'bmp'
+  if (b.length >= 12 && teks(4, 8) === 'ftyp') {
+    const merek = teks(8, 12).toLowerCase()
+    if (['heic', 'heix', 'hevc', 'hevx', 'heim', 'heis', 'mif1', 'msf1'].includes(merek)) return 'heic'
+    if (merek === 'avif' || merek === 'avis') return 'avif'
+  }
+  return 'lain'
+}
+
+function namaGalat(e: unknown): string {
+  if (e instanceof Error) return e.name && e.name !== 'Error' ? e.name : 'Error'
+  return typeof e === 'string' ? 'Error' : 'Tak dikenal'
+}
+
+function ukuranTeks(n: number): string {
+  return n >= 1024 * 1024 ? `${(n / 1024 / 1024).toFixed(1)} MB` : `${Math.max(1, Math.round(n / 1024))} KB`
+}
+
+function muatViaImg(url: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const img = new Image()
+    const batas = window.setTimeout(() => reject(new Error('Waktu membaca gambar habis.')), 25_000)
+    img.onload = () => {
+      window.clearTimeout(batas)
+      if (img.naturalWidth > 0 && img.naturalHeight > 0) resolve(img)
+      else reject(new Error('Gambar kosong.'))
+    }
+    img.onerror = () => {
+      window.clearTimeout(batas)
+      reject(new Error('Peramban tidak bisa membuka gambar.'))
+    }
+    img.src = url
+  })
+}
+
+async function bacaViaBitmap(blob: Blob): Promise<GambarTerbaca> {
+  if (typeof createImageBitmap !== 'function') throw new Error('createImageBitmap tidak tersedia.')
+  const bmp = await createImageBitmap(blob)
+  if (bmp.width < 1 || bmp.height < 1) {
+    bmp.close()
+    throw new Error('Gambar kosong.')
+  }
+  return { sumber: bmp, lebar: bmp.width, tinggi: bmp.height, tutup: () => bmp.close() }
+}
+
+async function bacaViaImg(blob: Blob): Promise<GambarTerbaca> {
+  const url = URL.createObjectURL(blob)
+  try {
+    const img = await muatViaImg(url)
+    return {
+      sumber: img,
+      lebar: img.naturalWidth,
+      tinggi: img.naturalHeight,
+      tutup: () => URL.revokeObjectURL(url),
+    }
+  } catch (e) {
+    URL.revokeObjectURL(url)
+    throw e
+  }
+}
+
+async function bacaByte(blob: Blob): Promise<ArrayBuffer> {
+  if (typeof blob.arrayBuffer === 'function') return await blob.arrayBuffer()
+  return await new Promise<ArrayBuffer>((resolve, reject) => {
+    const r = new FileReader()
+    r.onload = () => resolve(r.result as ArrayBuffer)
+    r.onerror = () => reject(r.error ?? new Error('FileReader gagal.'))
+    r.readAsArrayBuffer(blob)
+  })
+}
+
+async function bacaGambar(file: Blob): Promise<GambarTerbaca> {
+  const galat: unknown[] = []
+  const coba = async (blob: Blob): Promise<GambarTerbaca | null> => {
+    for (const metode of [bacaViaBitmap, bacaViaImg]) {
+      try {
+        return await metode(blob)
+      } catch (e) {
+        galat.push(e)
+      }
+    }
+    return null
+  }
+
+  const langsung = await coba(file)
+  if (langsung) return langsung
+
+  // Lapis 3: salin byte ke memori (melepas dari content-URI galeri Android) dan kenali formatnya.
+  let byte: ArrayBuffer
+  try {
+    byte = await bacaByte(file)
+  } catch (e) {
+    galat.push(e)
+    throw new Error(
+      `Foto tidak bisa dibuka dari galeri (mungkin belum terunduh penuh atau izin akses dicabut). Unduh fotonya dulu atau ambil ulang dengan kamera, lalu coba lagi. (rincian: ${namaGalat(e)}, ${ukuranTeks(file.size)})`,
+    )
+  }
+  const format = kenaliFormat(new Uint8Array(byte.slice(0, 16)))
+  const rincian = `rincian: ${format}, ${ukuranTeks(byte.byteLength)}, ${namaGalat(galat[0])}`
+  if (format === 'heic') {
+    throw new Error(
+      `Foto berformat HEIC/HEIF belum bisa dibaca di HP ini. Ubah pengaturan kamera ke JPEG (pilih «Paling kompatibel»), atau pilih foto lain / foto hasil tangkapan layar, lalu coba lagi. (${rincian})`,
+    )
+  }
+  if (format === 'avif') {
+    throw new Error(
+      `Foto berformat AVIF belum bisa dibaca di HP ini. Gunakan foto JPG atau PNG. (${rincian})`,
+    )
+  }
+  if (format !== 'lain') {
+    const salinan = await coba(new Blob([byte], { type: MIME_FORMAT[format] }))
+    if (salinan) return salinan
+  }
+  throw new Error(
+    `Foto tidak bisa dibaca (file rusak, terlalu besar untuk HP ini, atau bukan gambar). Coba ambil ulang foto atau pilih foto lain. (${rincian})`,
+  )
+}
+
+function gambarKeDataUrl(
+  g: GambarTerbaca,
+  skala: number,
+  mutu: number,
+): { url: string; w: number; h: number } | null {
+  const w = Math.max(1, Math.round(g.lebar * skala))
+  const h = Math.max(1, Math.round(g.tinggi * skala))
+  try {
+    const canvas = document.createElement('canvas')
+    canvas.width = w
+    canvas.height = h
+    const ctx = canvas.getContext('2d')
+    if (!ctx) throw new Error('Peramban tidak mendukung pengolahan gambar.')
+    // Latar putih supaya PNG transparan tidak jadi hitam saat dikonversi.
+    ctx.fillStyle = '#ffffff'
+    ctx.fillRect(0, 0, w, h)
+    ctx.drawImage(g.sumber, 0, 0, w, h)
+    let url = canvas.toDataURL('image/webp', mutu)
+    if (!url.startsWith('data:image/webp')) url = canvas.toDataURL('image/jpeg', mutu)
+    // HP RAM kecil: canvas gagal diam-diam dan toDataURL mengembalikan «data:,» (panjang kecil, lolos
+    // pemeriksaan ukuran). Tolak supaya dicoba lagi pada skala lebih kecil. ANTIREGRESI §Gambar.Dekode.
+    if (!url.startsWith('data:image/') || url.length < 200) return null
+    return { url, w, h }
+  } catch {
+    return null
+  }
 }
 
 function pastikanFileGambar(blob: Blob, namaHint = 'gambar-tempel.png'): File {
@@ -51,13 +209,13 @@ export async function kompresGambar(file: Blob): Promise<HasilKompres> {
   const tipe = file.type || ''
   if (tipe && !tipe.startsWith('image/')) throw new Error('File harus berupa gambar (JPG, PNG, WebP).')
   if (file.size > BATAS_FILE_ASAL) throw new Error('Gambar terlalu besar (maks 15 MB).')
-  const bmp = await bacaBitmap(file)
+  const g = await bacaGambar(file)
   try {
-    let skala = Math.min(1, SISI_MAKS / Math.max(bmp.width, bmp.height))
+    let skala = Math.min(1, SISI_MAKS / Math.max(g.lebar, g.tinggi))
     for (let putaran = 0; putaran < 6; putaran++) {
       for (const mutu of [0.85, 0.72, 0.6, 0.48]) {
-        const r = gambarKeDataUrl(bmp, skala, mutu)
-        if (r.url.length <= SASARAN_KARAKTER) {
+        const r = gambarKeDataUrl(g, skala, mutu)
+        if (r && r.url.length <= SASARAN_KARAKTER) {
           return { dataUrl: r.url, lebar: r.w, tinggi: r.h }
         }
       }
@@ -65,7 +223,7 @@ export async function kompresGambar(file: Blob): Promise<HasilKompres> {
     }
     throw new Error('Gambar tidak bisa dikecilkan cukup. Coba gambar yang lebih sederhana.')
   } finally {
-    bmp.close()
+    g.tutup()
   }
 }
 

@@ -35,16 +35,16 @@ import {
 
 /**
  * Mode tanpa bukti berlabel: maksimal foto bebas.
- * Diselaraskan dengan rules `fotoIds.size() <= 6` dan slot '1'..'6' (ANTIREGRESI §132 / §Tugas.MultiFile).
+ * Diselaraskan dengan rules `fotoIds.size() <= 10` dan slot '1'..'10' (ANTIREGRESI §132 / §Tugas.Foto.Batas10).
  */
-export const BATAS_FOTO_PENGUMPULAN = 6
-/** Slot foto maksimum (bukti berlabel) — selaras rules `fotoIds.size() <= 6` & slot '1'..'6'. */
-export const BATAS_SLOT_FOTO = 6
-export const DAFTAR_SLOT = [1, 2, 3, 4, 5, 6] as const
+export const BATAS_FOTO_PENGUMPULAN = 10
+/** Ruang slot foto — selaras rules `fotoIds.size() <= 10` & slot '1'..'10'. Bukti berlabel tetap ≤ 6 (BATAS_BUKTI_TUGAS). */
+export const BATAS_SLOT_FOTO = 10
+export const DAFTAR_SLOT = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10] as const
 export const BATAS_CATATAN = 500
 /** Jumlah foto yang dikirim bersamaan. Dua cukup mempercepat tanpa membebani sinyal lemah. */
 const KONKURENSI_FOTO = 2
-const SLOT = ['1', '2', '3', '4', '5', '6'] as const
+const SLOT = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10'] as const
 
 export type PengumpulanDok = {
   id: string
@@ -56,7 +56,7 @@ export type PengumpulanDok = {
   catatan: string
   fotoIds: string[]
   jumlahFoto: number
-  /** Video bukti per slot (1..6) → berkas di Storage (ANTIREGRESI §Tugas.Video). */
+  /** Video bukti per slot (1..6; video hanya untuk bukti berlabel) → berkas di Storage (ANTIREGRESI §Tugas.Video). */
   videos: Record<number, VideoMeta>
   dibuatMs: number
   diubahMs: number
@@ -71,12 +71,12 @@ export function idFoto(tugasId: string, siswaId: string, slot: number): string {
 }
 
 /**
- * Nomor slot foto (1..6) dari ID dokumen foto (akhiran `_1`..`_6`); 0 bila tak dikenali.
+ * Nomor slot foto (1..10) dari ID dokumen foto (akhiran `_1`..`_10`); 0 bila tak dikenali.
  * Bukti berlabel memakai slot TETAP (ANTIREGRESI §Tugas.Bukti), jadi slot dibaca dari ID,
  * bukan dari urutan di `fotoIds`.
  */
 export function slotDariFotoId(id: string): number {
-  const m = /_([1-6])$/.exec(id)
+  const m = /_(10|[1-9])$/.exec(id)
   return m ? Number(m[1]) : 0
 }
 
@@ -102,7 +102,8 @@ function videosDariDok(raw: unknown): Record<number, VideoMeta> {
   for (const [k, v] of Object.entries(raw as Record<string, unknown>)) {
     const slot = Number(k)
     const x = v as Record<string, unknown> | null
-    if (!Number.isInteger(slot) || slot < 1 || slot > BATAS_SLOT_FOTO || !x) continue
+    // Video hanya untuk bukti berlabel (slot 1..6) — selaras rules `lmsVideosSah` & storage.rules.
+    if (!Number.isInteger(slot) || slot < 1 || slot > 6 || !x) continue
     if (!pathVideoAman(x.path)) continue
     hasil[slot] = {
       path: x.path,
@@ -159,7 +160,7 @@ export async function muatFoto(fotoIds: string[]): Promise<string[]> {
   return hasil
 }
 
-/** Muat foto per slot (1..3 → data URL). Slot yang gagal/tak valid dilewati. */
+/** Muat foto per slot (1..10 → data URL). Slot yang gagal/tak valid dilewati. */
 export async function muatFotoBerslot(fotoIds: string[]): Promise<Record<number, string>> {
   const hasil: Record<number, string> = {}
   for (const id of fotoIds.slice(0, BATAS_SLOT_FOTO)) {
@@ -203,10 +204,10 @@ export type KirimInput = {
   siswaId: string
   siswaNama: string
   kelas: string
-  /** Foto final (data URL) sesuai urutan tampil; 1–3. Dipakai tugas TANPA bukti berlabel. */
+  /** Foto final (data URL) sesuai urutan tampil; 1–10. Dipakai tugas TANPA bukti berlabel. */
   foto?: string[]
   /**
-   * Foto per slot (1..6 → data URL). Dipakai tugas dengan bukti berlabel: slot tetap,
+   * Foto per slot (1..10 → data URL). Dipakai tugas dengan bukti berlabel: slot tetap,
    * bukti opsional boleh kosong (ANTIREGRESI §Tugas.Bukti).
    */
   fotoSlot?: Record<number, string>
@@ -272,7 +273,7 @@ export async function kirimPengumpulan(input: KirimInput): Promise<PengumpulanDo
     })
   }
 
-  // Foto dikirim paralel terbatas (KONKURENSI_FOTO) agar 6 foto tidak berurutan satu per satu di
+  // Foto dikirim paralel terbatas (KONKURENSI_FOTO) agar 10 foto tidak berurutan satu per satu di
   // sinyal lemah. Urutan `fotoIds` TETAP mengikuti `entri`. Bila satu foto gagal, tidak ada foto
   // baru yang dimulai; yang sedang berjalan diselesaikan dulu lalu galat PERTAMA dilempar (berisi
   // kode langkah `foto-N`). Meta TETAP terakhir (guru tidak melihat meta yang menunjuk foto belum ada).
@@ -409,7 +410,7 @@ export function pesanGagalKumpul(e: unknown): string {
   }
   const langkahGagal =
     typeof e === 'object' && e !== null && 'langkahKirim' in e ? String((e as { langkahKirim: unknown }).langkahKirim) : ''
-  const mFoto = /^foto-(\d)$/.exec(langkahGagal)
+  const mFoto = /^foto-(\d+)$/.exec(langkahGagal)
   if (mFoto) {
     return `Foto ke-${mFoto[1]} belum terkirim. Periksa internet lalu tekan kirim lagi; foto yang sudah terkirim tidak hilang.`
   }
@@ -468,7 +469,7 @@ export async function hapusPengumpulanSiswa(
       console.warn('hapus foto pengumpulan', id, e)
     }
   }
-  // Slot 1..6 cadangan bila fotoIds kosong/tidak lengkap
+  // Slot 1..10 cadangan bila fotoIds kosong/tidak lengkap
   for (const n of DAFTAR_SLOT) {
     const id = idFoto(tugas.id, dok.siswaId, n - 1)
     if (dok.fotoIds?.includes(id)) continue

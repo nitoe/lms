@@ -59,7 +59,7 @@ function waktuTeks(ms: number): string {
 }
 
 /**
- * Kumpulkan tugas dengan foto (maks. 6). Foto dikecilkan otomatis di perangkat.
+ * Kumpulkan tugas dengan foto (maks. 10). Foto dikecilkan otomatis di perangkat.
  * Dua mode: tugas dengan «bukti berlabel» (`tugas.buktiList`, satu kartu per bukti, slot tetap)
  * atau mode lama tanpa label (ANTIREGRESI §132 & §Tugas.Bukti).
  */
@@ -182,13 +182,31 @@ export default function PengumpulanSiswa({
     try {
       const baru: Item[] = []
       const terpilih = Array.from(files).slice(0, sisa)
+      // Satu foto yang tak terbaca TIDAK boleh menggagalkan foto lain yang sudah beres diproses
+      // (ANTIREGRESI §Gambar.Dekode): kumpulkan yang berhasil, laporkan yang gagal.
+      const gagal: string[] = []
+      let pesanGagal = ''
       for (const f of terpilih) {
-        setProsesFoto([baru.length + 1, terpilih.length])
-        const src = await siapkanFoto(f)
-        baru.push({ key: `baru-${Date.now()}-${baru.length}`, src })
+        setProsesFoto([baru.length + gagal.length + 1, terpilih.length])
+        try {
+          const src = await siapkanFoto(f)
+          baru.push({ key: `baru-${Date.now()}-${baru.length}`, src })
+        } catch (e) {
+          console.warn('Foto tidak bisa diproses', f.name, f.type, f.size, e)
+          gagal.push(f.name || `foto ke-${baru.length + gagal.length + 1}`)
+          if (!pesanGagal) pesanGagal = e instanceof Error ? e.message : 'Foto tidak bisa diproses.'
+        }
       }
-      setItems((prev) => [...prev, ...baru])
-      if (files.length > sisa) setGalat(`Hanya ${sisa} foto yang ditambahkan (maksimal ${BATAS_FOTO_PENGUMPULAN}).`)
+      if (baru.length > 0) setItems((prev) => [...prev, ...baru])
+      if (gagal.length > 0) {
+        setGalat(
+          gagal.length === terpilih.length && terpilih.length === 1
+            ? pesanGagal
+            : `${gagal.length} dari ${terpilih.length} foto tidak bisa diproses (${gagal.join(', ')}). ${pesanGagal}`,
+        )
+      } else if (files.length > sisa) {
+        setGalat(`Hanya ${sisa} foto yang ditambahkan (maksimal ${BATAS_FOTO_PENGUMPULAN}).`)
+      }
     } catch (e) {
       setGalat(e instanceof Error ? e.message : 'Foto tidak bisa diproses.')
     } finally {
@@ -214,10 +232,17 @@ export default function PengumpulanSiswa({
       setFotoSlot((prev) => ({ ...prev, [slot]: srcPertama }))
       if (daftar.length > 1) {
         const sisa: string[] = []
+        let pesanGagal = ''
         for (const f of daftar.slice(1)) {
-          sisa.push(await siapkanFoto(f))
+          try {
+            sisa.push(await siapkanFoto(f))
+          } catch (e) {
+            console.warn('Foto antrian tidak bisa diproses', f.name, f.type, f.size, e)
+            if (!pesanGagal) pesanGagal = e instanceof Error ? e.message : 'Foto tidak bisa diproses.'
+          }
         }
-        setAntrianFoto((prev) => [...prev, ...sisa])
+        if (sisa.length > 0) setAntrianFoto((prev) => [...prev, ...sisa])
+        if (pesanGagal) setGalat(`Sebagian foto tambahan tidak bisa diproses. ${pesanGagal}`)
       }
     } catch (e) {
       setGalat(e instanceof Error ? e.message : 'Foto tidak bisa diproses.')

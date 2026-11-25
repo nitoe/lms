@@ -1,3 +1,30 @@
+## 2026-11-25 — Batas foto tugas naik menjadi 10 + dekode foto lebih tahan banting di HP Android
+
+### Perilaku baru
+- Siswa kini bisa mengirim **sampai 10 foto** per tugas (sebelumnya 6) pada tugas tanpa bukti berlabel. Tombol pilih/ambil foto, penghitung «x dari 10», dan pesan batas mengikuti angka baru.
+- Tugas dengan **bukti berlabel tetap maksimal 6 bukti** (ditetapkan guru; slot video dan generator tugas AI tetap 6). Ruang slot foto di rules dan kode sudah 1..10, jadi bila nanti bukti berlabel ingin dinaikkan, tidak perlu mengubah rules lagi.
+- Guru melihat semua foto (hingga 10) di panel pengumpulan, penilaian terpadu, dan usulan nilai AI; Cloud Function penilaian AI ikut membaca 10 foto.
+
+### Perbaikan: «The source image cannot be decoded» di satu HP Android siswa
+- Galat berasal dari `createImageBitmap` saat membaca foto dari galeri. Penyebab lazim: foto **HEIC/HEIF** (mode kamera «efisiensi tinggi»), file galeri/cloud yang belum terunduh penuh, atau peramban lama tanpa `createImageBitmap`. Konsol HP siswa tidak bisa dilihat, jadi penyebab pasti pada HP itu belum terkonfirmasi.
+- Pembacaan gambar kini **berlapis**: `createImageBitmap` → `<img>` dari object URL → salin byte ke memori lalu ulangi dengan Blob baru (tipe dikenali dari byte, bukan dari MIME galeri yang sering kosong/keliru).
+- Bila tetap gagal, siswa mendapat pesan yang menyebut penyebab (HEIC/HEIF → «ubah pengaturan kamera ke JPEG / Paling kompatibel»; file tak terbuka → «unduh dulu atau ambil ulang»), disertai **rincian singkat** (format terdeteksi, ukuran, jenis galat) yang bisa difoto layarnya untuk guru.
+- Satu foto yang gagal **tidak lagi menggagalkan foto lain** yang dipilih bersamaan: yang berhasil tetap masuk, yang gagal disebut namanya.
+- Canvas yang gagal diam-diam di HP RAM kecil (menghasilkan «data:,») kini ditolak dan dicoba pada skala lebih kecil, bukan lolos sebagai foto kosong.
+- Perbaikan ini memakai `kompresGambar` yang sama dengan unggah gambar soal/materi, sehingga ikut berlaku di sana.
+
+### Berkas
+- Klien (repo lms): `src/lib/gambar.ts`, `src/lib/pengumpulan.ts`, `src/types/tugas.ts`, `src/pages/siswa/PengumpulanSiswa.tsx`, `CHANGELOG.md`, `ANTIREGRESI.md`.
+- Rules (lengkap, kedua repo): `firestore.rules` — `fotoIds.size() <= 10` (create & update) dan slot `'1'..'10'`. `storage.rules` tidak berubah.
+- Cloud Function (repo Penilaian, lengkap): `functions/nilaiTugasLmsAi.js` (+ uji `functions/uji/nilaiTugasLmsAi.uji.mjs`).
+
+### Deploy
+1. Dari SDM01Penilaian: `firebase deploy --only firestore:rules,functions:nilaiTugasLmsAi` (DAHULU), lalu hosting LMS. Jangan deploy hosting sebelum rules, karena klien baru bisa mengirim foto ke-7 dan akan ditolak rules lama.
+2. Pengumpulan yang sudah ada (≤ 6 foto) tidak berubah.
+
+### Catatan
+- `tsc -b`, `vite build`, `oxlint` lulus; uji `nilaiTugasLmsAi.uji.mjs` lulus. Belum diuji di HP sebenarnya — jalankan uji ANTIREGRESI §Tugas.Foto.Batas10 dan §Gambar.Dekode.
+
 ## 2026-11-25 — Pengiriman foto lebih lancar saat foto banyak
 
 ### Latar

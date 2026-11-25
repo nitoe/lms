@@ -136,7 +136,7 @@ export const BATAS_BUKTI_VIDEO = 2
 export interface BuktiTugas {
   /** ID stabil (tidak berubah walau label/urutan diedit). */
   id: string
-  /** Slot foto 1..6 yang dipakai bukti ini (unik per tugas). */
+  /** Slot foto/video 1..6 yang dipakai bukti ini (unik per tugas). */
   slot: number
   /** Nama bukti yang tampil ke siswa, mis. «Foto catatan hasil sebelum aktivitas». */
   label: string
@@ -156,7 +156,11 @@ export interface BuktiTugas {
   kategoriIds?: string[]
 }
 
-/** Jumlah bukti/foto maksimum per tugas — dibatasi aturan Firestore (slot foto '1'..'6'). */
+/**
+ * Jumlah bukti BERLABEL maksimum per tugas (ditetapkan guru; slot foto/video 1..6). SENGAJA tetap 6 walau
+ * ruang slot foto siswa kini 10 (ANTIREGRESI §Tugas.Foto.Batas10): video & storage.rules mengenal slot 1..6,
+ * dan generator tugas AI membatasi 6 bukti. Foto bebas (tanpa label) boleh sampai 10.
+ */
 export const BATAS_BUKTI_TUGAS = 6
 
 /**
