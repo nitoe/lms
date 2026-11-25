@@ -21,6 +21,7 @@ import {
 } from '../../types/tugas'
 import type { NilaiTugasDok } from '../../lib/nilaiTugas'
 import '../../styles/tugas-ditutup.css'
+import { alasanTugasDitutup } from '../../lib/tugasTutup'
 import SiswaIcon from './SiswaIcon'
 import PengumpulanSiswa from './PengumpulanSiswa'
 import KelompokSiswaPanel from './KelompokSiswaPanel'
@@ -266,15 +267,18 @@ export default function SiswaTugas() {
     // Guru menandai tugas selesai → ditutup untuk siswa: hanya keterangan, tidak ada isi tugas,
     // kelompok, maupun form pengumpulan. Tugas tetap muncul di katalog sampai diarsipkan guru.
     // Rules (lmsSiswaBolehKumpul + Storage) menolak tulis juga — ANTIREGRESI §Tugas.Selesai.Ditutup.
-    if (detail.selesai === true) {
+    const alasanTutup = alasanTugasDitutup(detail)
+    if (alasanTutup !== null) {
       return (
         <div className="space-y-4">
           {hero}
           <section className="sw-kat-panel sw-tugas-ditutup" role="status">
             <h2>Penugasan telah ditutup</h2>
             <p className="m-0 text-sm leading-relaxed text-slate-700">
-              Guru sudah menutup tugas ini, jadi kamu tidak dapat lagi membuka atau mengirimkan
-              tugas ini. Jika ada yang ingin ditanyakan, hubungi gurumu.
+              {alasanTutup === 'tenggat'
+                ? 'Batas waktu pengumpulan tugas ini sudah berakhir, jadi kamu tidak dapat lagi membuka atau mengirimkan tugas ini.'
+                : 'Guru sudah menutup tugas ini, jadi kamu tidak dapat lagi membuka atau mengirimkan tugas ini.'}{' '}
+              Jika ada yang ingin ditanyakan, hubungi gurumu.
             </p>
           </section>
         </div>

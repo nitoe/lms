@@ -1,3 +1,27 @@
+## 2026-11-25 — Tutup otomatis saat tenggat
+
+### Perilaku baru
+- Opsi baru di pengaturan tugas: **«Tutup otomatis saat tenggat»** (aktif secara bawaan untuk tugas baru yang punya tenggat; tugas lama tidak berubah).
+- Setelah tenggat, tugas ditutup untuk siswa seperti «Tandai selesai»: kartu tetap tampil dengan label «Penugasan ditutup», detailnya hanya berisi keterangan «Batas waktu pengumpulan … sudah berakhir», dan tidak bisa dikirim.
+- Penegakan di rules Firestore (pengumpulan/foto) dan Storage (video) memakai jam server, dengan toleransi **5 menit** agar unggahan yang sudah berjalan tidak gagal.
+- Penutupan diturunkan saat dibaca (tanpa penjadwal dan tanpa menulis `selesai`). Memperpanjang tenggat atau mematikan opsi langsung membuka tugas lagi.
+- Dashboard guru menandai kartu «Ditutup otomatis untuk siswa».
+
+### Perbaikan terkait
+- Membuat tugas baru kini menyimpan pengaturan tugas kelompok sejak awal (sebelumnya baru tersimpan setelah pengaturan disimpan ulang).
+
+### Berkas
+- Klien: baru `lib/tugasTutup.ts`; ubah `types/tugas.ts`, `lib/tugas.ts`, `lib/tugasSiswa.ts`, `pages/TugasDetail.tsx`, `pages/TugasDashboard.tsx`, `pages/siswa/SiswaTugas.tsx`.
+- Rules (lengkap, kedua repo): `firestore.rules`, `storage.rules`. Tidak ada index baru.
+
+### Deploy
+1. Dari SDM01Penilaian: `firebase deploy --only firestore:rules,storage` (DAHULU), lalu hosting LMS.
+2. Tugas yang sudah ada tidak tertutup otomatis; aktifkan opsinya per tugas bila diinginkan.
+
+### Catatan
+- `npm run build` lulus; rules belum diuji di emulator — jalankan uji di ANTIREGRESI §Tugas.Tenggat.Otomatis butir 8.
+- Jam perangkat siswa memengaruhi kapan tampilan menutup, tetapi penolakan sebenarnya memakai jam server.
+
 ## 2026-11-25 — «Tandai selesai» kini menutup penugasan untuk siswa
 
 ### Latar

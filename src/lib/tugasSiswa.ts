@@ -1,3 +1,4 @@
+import { alasanTugasDitutup } from './tugasTutup'
 import { collection, getDocs, query, where } from 'firebase/firestore'
 import { db } from './firebase'
 import type { TugasLms } from '../types/tugas'
@@ -146,17 +147,18 @@ export function tenggatLewat(tenggat: unknown, sekarang = Date.now()): boolean {
 /**
  * Status tampilan siswa:
  * - dinilai: ada dokumen nilai
- * - ditutup: guru menandai tugas selesai (`selesai === true`) — siswa tidak bisa membuka/mengirim
+ * - ditutup: guru menandai selesai, atau tenggat lewat pada tugas bertanda tutup otomatis —
+ *   siswa tidak bisa membuka/mengirim
  *   (ANTIREGRESI §Tugas.Selesai.Ditutup)
  * - lewat: belum dinilai dan tenggat sudah lewat
  * - belum: selain itu
  */
 export function statusTugasSiswa(
-  tugas: Pick<TugasLms, 'tenggat' | 'selesai'>,
+  tugas: Pick<TugasLms, 'tenggat' | 'selesai' | 'tutupSetelahTenggat'>,
   nilai?: Pick<NilaiTugasDok, 'nilai'> | null,
 ): StatusTugasSiswa {
   if (nilai && typeof nilai.nilai === 'number') return 'dinilai'
-  if (tugas.selesai === true) return 'ditutup'
+  if (alasanTugasDitutup(tugas) !== null) return 'ditutup'
   if (tenggatLewat(tugas.tenggat)) return 'lewat'
   return 'belum'
 }

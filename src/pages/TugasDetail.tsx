@@ -1,3 +1,4 @@
+import { TOLERANSI_UNGGAH_MENIT } from '../lib/tugasTutup'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
@@ -130,6 +131,7 @@ type FormPengaturanSig = {
   status: string
   kelompok: boolean
   kelompokMax: number
+  tutup: boolean
   jp: string
   tp: string[]
 }
@@ -145,6 +147,7 @@ function sigPengaturan(f: FormPengaturanSig): string {
     f.status,
     f.kelompok,
     f.kelompok ? f.kelompokMax : 0,
+    f.tutup,
     f.jp,
     [...f.tp].sort(),
   ])
@@ -233,6 +236,8 @@ export default function TugasDetail() {
   const [tenggatStr, setTenggatStr] = useState('')
   const [statusTugas, setStatusTugas] = useState<StatusTugas>('draf')
   const [modeKelompok, setModeKelompok] = useState(false)
+  /** Tugas baru: default aktif. Tugas lama tanpa field = nonaktif (perilaku lama). */
+  const [tutupOtomatis, setTutupOtomatis] = useState(true)
   const [kelompokMaxAnggota, setKelompokMaxAnggota] = useState(4)
   const [berbagiOpen, setBerbagiOpen] = useState(false)
   const [jenisPenilaian, setJenisPenilaian] = useState<JenisPenilaianTugas>('slm')
@@ -352,6 +357,7 @@ export default function TugasDetail() {
     setTenggatStr(tenggatKeInput(t.tenggat))
     setStatusTugas(normalisasiStatusTugas(t.statusTugas, t.aktif))
     setModeKelompok(t.modeKelompok === true)
+    setTutupOtomatis(t.tutupSetelahTenggat === true)
     setKelompokMaxAnggota(
       typeof t.kelompokMaxAnggota === 'number' && t.kelompokMaxAnggota >= 2
         ? Math.min(12, t.kelompokMaxAnggota)
@@ -549,6 +555,7 @@ export default function TugasDetail() {
           pengaturanPenilaian: pengaturan,
           modeKelompok,
           kelompokMaxAnggota: modeKelompok ? kelompokMaxAnggota : undefined,
+          tutupSetelahTenggat: tutupOtomatis && !!tenggat,
           namaGuru: profil?.nama,
         })
         setSukses('Tugas berhasil dibuat. Lanjutkan dengan menulis instruksi untuk siswa.')
@@ -572,6 +579,7 @@ export default function TugasDetail() {
           lampiranList,
           modeKelompok,
           kelompokMaxAnggota: modeKelompok ? kelompokMaxAnggota : undefined,
+          tutupSetelahTenggat: tutupOtomatis && !!tenggat,
         })
         setSukses('Perubahan disimpan.')
         const t = await ambilTugas(tugasId)
@@ -1477,6 +1485,7 @@ export default function TugasDetail() {
     status: statusTugas,
     kelompok: modeKelompok,
     kelompokMax: kelompokMaxAnggota,
+    tutup: tutupOtomatis,
     jp: jenisPenilaian,
     tp: tpDipilih.map((x) => x.id),
   })
@@ -1494,6 +1503,7 @@ export default function TugasDetail() {
           tenggat: tenggatKeInput(tugas.tenggat),
           status: normalisasiStatusTugas(tugas.statusTugas, tugas.aktif),
           kelompok: tugas.modeKelompok === true,
+          tutup: tugas.tutupSetelahTenggat === true,
           kelompokMax:
             typeof tugas.kelompokMaxAnggota === 'number' && tugas.kelompokMaxAnggota >= 2
               ? Math.min(12, tugas.kelompokMaxAnggota)
@@ -1715,6 +1725,22 @@ export default function TugasDetail() {
               <label className="td-field">
                 <span>Tenggat</span>
                 <input type="datetime-local" value={tenggatStr} onChange={(e) => setTenggatStr(e.target.value)} />
+              </label>
+              <label className="td-cek td-cek--blok td-field--full">
+                <input
+                  type="checkbox"
+                  checked={tutupOtomatis}
+                  disabled={!tenggatStr}
+                  onChange={(e) => setTutupOtomatis(e.target.checked)}
+                />
+                <span className="td-cek-teks">
+                  <strong>Tutup otomatis saat tenggat</strong>
+                  <small>
+                    {tenggatStr
+                      ? `Setelah tenggat, penugasan ditutup untuk siswa (tidak bisa dibuka atau dikirim; unggahan yang sedang berjalan masih diberi toleransi ${TOLERANSI_UNGGAH_MENIT} menit). Tugas tetap tampil di daftar siswa sampai diarsipkan. Untuk membukanya lagi, perpanjang tenggat atau matikan opsi ini.`
+                      : 'Isi tenggat lebih dulu untuk memakai opsi ini.'}
+                  </small>
+                </span>
               </label>
               <label className="td-field td-field--full">
                 <span>Deskripsi singkat</span>

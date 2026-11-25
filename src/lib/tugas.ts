@@ -263,6 +263,7 @@ function docKeTugas(id: string, data: Record<string, unknown>): TugasLms {
     aktif: aktifSiswaDariStatus(normalisasiStatusTugas(data.statusTugas, data.aktif)),
     statusTugas: normalisasiStatusTugas(data.statusTugas, data.aktif),
     selesai: data.selesai === true,
+    tutupSetelahTenggat: data.tutupSetelahTenggat === true,
     arsip: data.arsip === true,
     dibuatOleh: String(data.dibuatOleh || ''),
     dibuatOlehNama: typeof data.dibuatOlehNama === 'string' ? data.dibuatOlehNama : undefined,
@@ -459,6 +460,14 @@ export async function buatTugas(input: TugasInput): Promise<string> {
   if (input.tenggat instanceof Date && !Number.isNaN(input.tenggat.getTime())) {
     payload.tenggat = Timestamp.fromDate(input.tenggat)
   }
+  // Tutup otomatis hanya bermakna bila ada tenggat; selalu ditulis agar eksplisit.
+  payload.tutupSetelahTenggat = input.tutupSetelahTenggat === true && !!payload.tenggat
+  if (input.modeKelompok === true) {
+    payload.modeKelompok = true
+    const n = input.kelompokMaxAnggota
+    payload.kelompokMaxAnggota =
+      typeof n === 'number' && n >= 2 ? Math.min(12, Math.floor(n)) : 4
+  }
   if (input.pengaturanPenilaian) {
     payload.pengaturanPenilaian = sanitasiPengaturanPenilaian(input.pengaturanPenilaian)
   }
@@ -471,7 +480,7 @@ export async function buatTugas(input: TugasInput): Promise<string> {
 
 export async function updateTugas(
   id: string,
-  data: Partial<TugasInput> & { aktif?: boolean; statusTugas?: StatusTugas; selesai?: boolean; arsip?: boolean },
+  data: Partial<TugasInput> & { aktif?: boolean; statusTugas?: StatusTugas; selesai?: boolean; arsip?: boolean; tutupSetelahTenggat?: boolean },
 ): Promise<void> {
   const payload: Record<string, unknown> = { updatedAt: serverTimestamp() }
 
@@ -523,6 +532,9 @@ export async function updateTugas(
     payload.aktif = aktifSiswaDariStatus(st)
   }
   if (data.selesai !== undefined) payload.selesai = data.selesai === true
+  if (data.tutupSetelahTenggat !== undefined) {
+    payload.tutupSetelahTenggat = data.tutupSetelahTenggat === true
+  }
   if (data.arsip !== undefined) payload.arsip = data.arsip === true
   if (data.pengaturanPenilaian !== undefined) {
     payload.pengaturanPenilaian = sanitasiPengaturanPenilaian(data.pengaturanPenilaian)

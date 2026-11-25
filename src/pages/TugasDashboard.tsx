@@ -1,3 +1,4 @@
+import { alasanTugasDitutup } from '../lib/tugasTutup'
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
@@ -588,7 +589,7 @@ export default function TugasDashboard() {
             return (
               <li key={t.id}>
                 <article
-                  className={`tg-kartu${(() => { const st = normalisasiStatusTugas(t.statusTugas, t.aktif); if (t.arsip) return ' tg-kartu--arsip'; if (st === 'draf') return ' tg-kartu--draf'; if (st === 'aktif_guru') return ' tg-kartu--aktif-guru'; return '' })()}${t.selesai && !t.arsip ? ' tg-kartu--selesai' : ''}${sibuk ? ' tg-kartu--sibuk' : ''}`}
+                  className={`tg-kartu${(() => { const st = normalisasiStatusTugas(t.statusTugas, t.aktif); if (t.arsip) return ' tg-kartu--arsip'; if (st === 'draf') return ' tg-kartu--draf'; if (st === 'aktif_guru') return ' tg-kartu--aktif-guru'; return '' })()}${(t.selesai || alasanTugasDitutup(t, sekarang.getTime()) === 'tenggat') && !t.arsip ? ' tg-kartu--selesai' : ''}${sibuk ? ' tg-kartu--sibuk' : ''}`}
                   style={gaya}
                   aria-busy={sibuk}
                 >
@@ -661,6 +662,9 @@ export default function TugasDashboard() {
                         </span>
                         <b>{info.label}</b>
                         {info.tanggal && <small>{info.tanggal}</small>}
+                        {!t.selesai && alasanTugasDitutup(t, sekarang.getTime()) === 'tenggat' && (
+                          <small>Ditutup otomatis untuk siswa</small>
+                        )}
                       </div>
                       <Link
                         to={`/tugas/${t.id}?tab=kumpul`}

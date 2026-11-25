@@ -218,6 +218,11 @@ export interface TugasLms {
    */
   selesai?: boolean
   /**
+   * true = penugasan otomatis ditutup untuk siswa saat tenggat terlewati (diturunkan saat dibaca,
+   * tidak menulis `selesai`). Dokumen lama tanpa field ini = false (perilaku lama tidak berubah).
+   */
+  tutupSetelahTenggat?: boolean
+  /**
    * Diarsipkan: disembunyikan dari daftar default dashboard.
    * Biasanya digabung dengan aktif=false agar siswa tidak melihat.
    */
@@ -262,6 +267,7 @@ export type TugasInput = {
   aktif?: boolean
   statusTugas?: StatusTugas
   selesai?: boolean
+  tutupSetelahTenggat?: boolean
   arsip?: boolean
   pengaturanPenilaian?: PengaturanPenilaianTugas
   buktiList?: BuktiTugas[]
