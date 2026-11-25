@@ -1135,3 +1135,21 @@ a.tg-kumpul:focus-visible { outline: 2px solid var(--tg-a, var(--color-muh-600))
 .td-kel-info--ikut { color: #0f766e; }
 .td-btn-buka { background: #fff; color: #334155; border-color: var(--color-border); }
 .td-btn-buka:hover:not(:disabled) { background: #f1f4f9; }
+
+/* ===========================================================================
+   «Predikat AI» di tab Pengumpulan (hanya akun AI) — ANTIREGRESI §Tugas.PredikatAi
+   =========================================================================== */
+.td-kumpul-head-aksi { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; }
+.td-pai { padding: 0.5rem 0.85rem 0.6rem; border-top: 1px dashed #e4defa; background: #fcfaff; }
+.td-pai-baris { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem 0.65rem; }
+.td-pai-predikat {
+  display: inline-flex; align-items: center; justify-content: center; min-width: 2.2rem; height: 2.2rem; padding: 0 0.4rem;
+  border-radius: 0.65rem; font-size: 1.05rem; font-weight: 800; color: #fff; background: #5b32b4;
+}
+.td-pai-predikat--rendah { background: #b45309; }
+.td-pai-nilai { margin-left: auto; font-size: 0.72rem; font-weight: 700; color: #64748b; }
+.td-pai-nilai--ok { color: #15803d; }
+.td-pai-nilai--ubah { color: #b45309; }
+.td-pai-alasan { margin: 0.4rem 0 0; font-size: 0.78rem; line-height: 1.5; color: #3b2a73; }
+.td-pai-alasan--cek { color: #92400e; }
+@media (max-width: 520px) { .td-pai-nilai { margin-left: 0; width: 100%; } }

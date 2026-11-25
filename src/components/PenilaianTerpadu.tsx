@@ -6,7 +6,7 @@
  * (satu sumber kebenaran dengan Daftar nilai). Di sini hanya tampilan + navigasi siswa.
  */
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { muatFotoBerslot, type PengumpulanDok } from '../lib/pengumpulan'
+import { muatFotoBerslot, slotDariFotoId, type PengumpulanDok } from '../lib/pengumpulan'
 import { urlVideoTugas } from '../lib/videoTugas'
 import type { BarisNilaiTugas } from '../lib/nilaiTugas'
 import type { UsulanNilaiAi } from '../lib/nilaiTugasAi'
@@ -179,8 +179,7 @@ export default function PenilaianTerpadu(p: Props) {
     }
     const hasil: ItemBukti[] = []
     sb.dok.fotoIds.forEach((id) => {
-      const m = /_([1-9])$/.exec(id)
-      const slot = m ? Number(m[1]) : 0
+      const slot = slotDariFotoId(id) // slot 1..10 (jangan pakai regex satu angka)
       if (slot) hasil.push({ kunci: `f${slot}`, nomor: hasil.length + 1, label: `Foto ${hasil.length + 1}`, petunjuk: '', jenis: 'foto', slot, kategoriIds: [] })
     })
     Object.keys(sb.dok.videos ?? {}).forEach((k) => {

@@ -872,11 +872,14 @@ export default function TugasDetail() {
   )
 
   useEffect(() => {
-    if (tab === 'nilai' && (subNilai === 'daftar-nilai' || subNilai === 'menilai') && !isBaru && tugas) {
+    // Tab Pengumpulan (akun AI) juga butuh daftar nilai: «Predikat AI» menulis ke draf nilai.
+    const butuhNilai =
+      (tab === 'nilai' && (subNilai === 'daftar-nilai' || subNilai === 'menilai')) || (bisaAi && tab === 'kumpul')
+    if (butuhNilai && !isBaru && tugas) {
       // Jangan force: pertahankan draf AI/edit bila user pindah tab lalu kembali.
       void muatNilai()
     }
-  }, [tab, subNilai, isBaru, tugas, muatNilai])
+  }, [tab, subNilai, isBaru, tugas, muatNilai, bisaAi])
 
   function patchDraft(siswaId: string, patch: Partial<DraftBaris>) {
     tandaiLepas(siswaId)
@@ -936,7 +939,8 @@ export default function TugasDetail() {
 
   /** Muat pengumpulan (+ kelompok bila tugas kelompok) saat Daftar nilai / Menilai per siswa dibuka. */
   useEffect(() => {
-    if (tab !== 'nilai' || (subNilai !== 'daftar-nilai' && subNilai !== 'menilai') || isBaru || !tugas) return
+    const butuh = (tab === 'nilai' && (subNilai === 'daftar-nilai' || subNilai === 'menilai')) || (bisaAi && tab === 'kumpul')
+    if (!butuh || isBaru || !tugas) return
     if (pengumpulanMap !== null) return
     let batal = false
     void (async () => {
@@ -965,7 +969,7 @@ export default function TugasDetail() {
     return () => {
       batal = true
     }
-  }, [tab, subNilai, isBaru, tugas, pengumpulanMap])
+  }, [tab, subNilai, isBaru, tugas, pengumpulanMap, bisaAi])
 
   /**
    * Dari mana bukti seorang siswa berasal? Pengumpulan sendiri lebih diutamakan (anggota yang
@@ -1023,6 +1027,30 @@ export default function TugasDetail() {
     if (!tanpaLepas) tandaiLepas(siswaId)
     setDraft((prev) => sebarDariKetua({ ...prev, [siswaId]: draftDariUsulan(prev[siswaId], u) }, siswaId))
     setAiTerapkan((p) => ({ ...p, [siswaId]: true }))
+  }
+
+  /**
+   * «Predikat AI» (tab Pengumpulan): isi predikat + skor per kategori yang diturunkan dari predikat
+   * (generator yang sama dengan tombol generate di Daftar nilai) ke DRAF — TIDAK menyimpan.
+   * Ke ketua → ikut tersebar ke anggota yang mengikuti. Mengembalikan pesan galat, atau null bila berhasil.
+   */
+  function terapkanPredikatAi(siswaId: string, predikat: string, komentar?: string): string | null {
+    if (!bisaAi || !tugas) return 'Fitur ini tidak tersedia.'
+    if (barisNilai === null) return 'Daftar nilai belum selesai dimuat. Tunggu sebentar lalu coba lagi.'
+    const baris = barisNilai.find((r) => r.siswaId === siswaId)
+    if (!baris) return `${siswaId} tidak ada di roster kelas pada Daftar nilai.`
+    const hasil = generateSkorPerKategoriDariPredikat(predikat, kategoriAktif, pengaturan.rentangPredikat)
+    const per: Record<string, string> = {}
+    for (const [id, n] of Object.entries(hasil.perKategori)) per[id] = String(n)
+    const cur = draft[siswaId]
+    patchDraft(siswaId, {
+      perKategori: per,
+      nilaiAkhir: String(hasil.nilaiAkhir),
+      predikat,
+      komentar: cur?.komentar?.trim() ? cur.komentar : (komentar ?? ''),
+    })
+    setAiTerapkan((p) => ({ ...p, [siswaId]: true }))
+    return null
   }
 
   /** Terapkan usulan ke KETUA lalu paksa seluruh anggota sama (draf saja). */
@@ -2053,7 +2081,23 @@ export default function TugasDetail() {
             <p className="td-kumpul-kosong">Simpan tugas dulu, lalu pengumpulan siswa akan tampil di sini.</p>
           </div>
         ) : (
-          <PengumpulanPanel tugas={tugas} />
+          <PengumpulanPanel
+            tugas={tugas}
+            bisaAi={bisaAi}
+            nilaiSiap={barisNilai !== null}
+            nilaiRingkas={Object.fromEntries(
+              (barisNilai ?? []).map((r) => [
+                r.siswaId,
+                { predikat: draft[r.siswaId]?.predikat ?? '', status: statusNilai[r.siswaId] ?? 'kosong' },
+              ]),
+            )}
+            onTerapkanPredikat={terapkanPredikatAi}
+            onBukaNilai={(id) => {
+              setMenilaiId(id)
+              setSubNilai('menilai')
+              setTab('nilai')
+            }}
+          />
         ))}
 
       {tab === 'nilai' && (

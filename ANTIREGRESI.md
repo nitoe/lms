@@ -1,3 +1,16 @@
+## §Tugas.PredikatAi — Predikat AI di tab Pengumpulan (2026-11-25)
+
+1. **AI = usulan predikat, bukan nilai.** `predikatTugasLmsAi` tidak menulis ke Firestore. Hasil hanya masuk DRAF lewat `terapkanPredikatAi` (TugasDetail) → `patchDraft`. Jangan menambah penyimpanan otomatis.
+2. **Skor per kategori TIDAK dari AI di mode ini.** Diturunkan oleh `generateSkorPerKategoriDariPredikat` (acak dalam rentang predikat, perilaku lama). Jangan meminta AI skor per kategori di jalur ini; itu tugas `nilaiTugasLmsAi` (§Tugas.NilaiAi).
+3. **Otorisasi dua lapis & pembungkus bersama:** kedua fungsi AI memakai `jalankanAi()` (otentikasi, `bolehPemanggilAi`, validasi ID, `ambilBahan`, log). Jangan menduplikasi logika itu ke fungsi baru; klien memakai `bolehAiTugas()` dan UI hanya dirender bila `bisaAi`.
+4. **Predikat divalidasi server** terhadap `rentangPredikat` tugas (default A–E), dinormalisasi besar/kecil huruf; di luar daftar → galat «predikat yang valid», bukan diterima diam-diam. Tugas TANPA rubrik tetap bisa diberi predikat; tanpa bukti sama sekali → galat jelas tanpa memanggil AI.
+5. **`null` berarti berhasil.** `onTerapkanPredikat` mengembalikan `null` bila sukses dan teks bila galat. JANGAN menulis `onTerapkanPredikat?.(…) ?? 'galat'` — `??` memperlakukan `null` sebagai kosong sehingga setiap keberhasilan dilaporkan sebagai galat (bug yang tertangkap uji).
+6. **Tab Pengumpulan butuh Daftar nilai dimuat** (`muatNilai` + `pengumpulanMap/kelompokList` dimuat juga saat `bisaAi && tab === 'kumpul'`) agar draf bisa ditulis dan penyebaran ke anggota kelompok bekerja. Tombol AI dinonaktifkan sampai `nilaiSiap`.
+7. **Mode massal:** hanya baris berstatus `kosong` (dari `statusNilai` induk); nilai tersimpan tidak disentuh; berurutan; berhenti setelah 3 kegagalan; `confirm` sebelum mulai.
+8. **Slot foto 1–10:** semua pembacaan slot harus memakai `slotDariFotoId` (klien) / `slotDariIdFoto` (server) yang mengenal `10`. Jangan menulis regex satu angka (`/_([1-9])$/`) — itu membuat foto slot 10 hilang (sempat terjadi di «Menilai per siswa»).
+9. **Privasi:** foto/video anak dikirim ke Google Gemini hanya atas aksi guru akun AI (sama dengan §Tugas.NilaiAi no. 9).
+10. Uji: (a) `node functions/uji/nilaiTugasLmsAi.uji.mjs` lulus; (b) deploy `predikatTugasLmsAi`; (c) satu siswa: usulan muncul → «Terapkan ke nilai» → Input nilai menampilkan predikat + skor di draf (belum tersimpan); (d) tugas kelompok: terapkan ke ketua → anggota ikut; (e) siswa bernilai tersimpan dilewati mode massal.
+
 ## §Tugas.Bukti.Batas10 — bukti berlabel dan video maksimal 10 (2026-11-25)
 
 1. **Menggantikan keputusan «bukti berlabel sengaja tetap 6»** pada §Tugas.Foto.Batas10 butir 3. Semua slot kini 1..10: `BATAS_BUKTI_TUGAS` (`types/tugas.ts`), `BATAS_SLOT_FOTO`, `videosDariDok` (`slot > BATAS_SLOT_FOTO`), rules `lmsVideosSah` (kunci '1'..'10'), `storage.rules` `namaVideoSiswa`, dan function `nilaiTugasLmsAi.js` (`buktiTugas.slice(0, 10)`, slot video ≤ 10). **Semuanya wajib berubah bersamaan** (rules di KEDUA repo); salah satu tertinggal membuat bukti/video slot 7–10 ditolak atau diabaikan diam-diam.

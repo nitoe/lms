@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   daftarPengumpulanTugas,
   DAFTAR_SLOT,
@@ -12,9 +12,24 @@ import KelompokGuruRingkas from './KelompokGuruRingkas'
 import { LABEL_TAHAP } from '../types/tugas'
 import { formatDurasi, formatUkuran, urlVideoTugas } from '../lib/videoTugas'
 import { tenggatMs } from '../lib/tugasSiswa'
+import { usulkanPredikatTugasAi, type UsulanPredikatAi } from '../lib/nilaiTugasAi'
 import type { TugasLms } from '../types/tugas'
 
-type Props = { tugas: TugasLms }
+/** Ringkasan nilai di draf Input nilai untuk satu siswa (dari TugasDetail). */
+export type NilaiRingkasPanel = { predikat: string; status: 'kosong' | 'ubah' | 'ok' }
+
+type Props = {
+  tugas: TugasLms
+  /** Fitur AI (hanya akun AI). Tanpa prop ini panel berperilaku seperti biasa. */
+  bisaAi?: boolean
+  /** Daftar nilai sudah dimuat di TugasDetail (draf dapat ditulis)? */
+  nilaiSiap?: boolean
+  nilaiRingkas?: Record<string, NilaiRingkasPanel>
+  /** Terapkan predikat (+ skor turunan) ke DRAF nilai siswa. Mengembalikan pesan galat bila gagal. */
+  onTerapkanPredikat?: (siswaId: string, predikat: string, komentar?: string) => string | null
+  /** Buka siswa itu di Input nilai → Menilai per siswa. */
+  onBukaNilai?: (siswaId: string) => void
+}
 
 function waktuTeks(ms: number): string {
   if (!ms) return '—'
@@ -32,7 +47,14 @@ function waktuTeks(ms: number): string {
  * Tugas dengan bukti berlabel: tiap foto diberi nama bukti, bukti yang belum dikirim ditandai,
  * dan status «Bukti kurang» muncul di baris (ANTIREGRESI §Tugas.Bukti).
  */
-export default function PengumpulanPanel({ tugas }: Props) {
+export default function PengumpulanPanel({
+  tugas,
+  bisaAi = false,
+  nilaiSiap = false,
+  nilaiRingkas,
+  onTerapkanPredikat,
+  onBukaNilai,
+}: Props) {
   const [list, setList] = useState<PengumpulanDok[] | null>(null)
   const [galat, setGalat] = useState('')
   const [buka, setBuka] = useState<string | null>(null)
@@ -40,6 +62,13 @@ export default function PengumpulanPanel({ tugas }: Props) {
   /** URL putar video per pengumpulan (dimuat saat baris dibuka; berisi token akses, jangan disimpan). */
   const [videoUrl, setVideoUrl] = useState<Record<string, Record<number, string>>>({})
   const [busyResetId, setBusyResetId] = useState<string | null>(null)
+  /** Usulan predikat AI per pemilik pengumpulan (`siswaId`), bertahan selama panel terbuka. */
+  const [predikatAi, setPredikatAi] = useState<Record<string, UsulanPredikatAi>>({})
+  const [diterapkan, setDiterapkan] = useState<Record<string, string>>({})
+  const [aiBusyId, setAiBusyId] = useState<string | null>(null)
+  const [aiMassal, setAiMassal] = useState<{ selesai: number; total: number } | null>(null)
+  const aiBatalRef = useRef(false)
+  const [aiGalat, setAiGalat] = useState('')
 
   const muat = useCallback(async () => {
     setGalat('')
@@ -115,6 +144,66 @@ export default function PengumpulanPanel({ tugas }: Props) {
     if (Object.keys(urls).length > 0) setVideoUrl((p) => ({ ...p, [d.id]: urls }))
   }
 
+  /** Minta AI memberi predikat untuk satu pengumpulan; `langsung` = terapkan ke draf tanpa menunggu klik. */
+  async function mintaPredikat(d: PengumpulanDok, langsung = false): Promise<boolean> {
+    setAiBusyId(d.siswaId)
+    setAiGalat('')
+    try {
+      const u = await usulkanPredikatTugasAi(tugas.id, d.siswaId)
+      setPredikatAi((p) => ({ ...p, [d.siswaId]: u }))
+      if (langsung) terapkan(d.siswaId, u.predikat, u.komentarSiswa)
+      return true
+    } catch (e) {
+      setAiGalat(`${d.siswaNama || d.siswaId}: ${e instanceof Error ? e.message : 'Gagal menilai dengan AI.'}`)
+      return false
+    } finally {
+      setAiBusyId(null)
+    }
+  }
+
+  function terapkan(siswaId: string, predikat: string, komentar?: string) {
+    if (!onTerapkanPredikat) {
+      setAiGalat('Daftar nilai belum siap.')
+      return
+    }
+    // `null` = berhasil; teks = pesan galat. Jangan dipersingkat dengan `??` (null ikut dianggap kosong).
+    const galatTerapkan = onTerapkanPredikat(siswaId, predikat, komentar)
+    if (galatTerapkan) {
+      setAiGalat(galatTerapkan)
+      return
+    }
+    setDiterapkan((p) => ({ ...p, [siswaId]: predikat }))
+  }
+
+  /** Predikat AI untuk semua pengumpulan yang nilainya masih kosong; satu per satu, hasil ke draf. */
+  async function mintaPredikatMassal() {
+    if (!list) return
+    const target = list.filter((d) => nilaiRingkas?.[d.siswaId]?.status === 'kosong')
+    if (!target.length) {
+      setAiGalat('Tidak ada pengumpulan yang belum dinilai.')
+      return
+    }
+    if (
+      !window.confirm(
+        `AI akan memberi predikat untuk ${target.length} pengumpulan satu per satu (bisa beberapa menit).\n` +
+          'Hasilnya masuk ke DRAF nilai dan belum tersimpan — Anda tetap memeriksa dan menyimpan di Input nilai.\nLanjutkan?',
+      )
+    )
+      return
+    aiBatalRef.current = false
+    let gagal = 0
+    for (let i = 0; i < target.length; i++) {
+      if (aiBatalRef.current) break
+      setAiMassal({ selesai: i, total: target.length })
+      if (!(await mintaPredikat(target[i], true))) gagal++
+      if (gagal >= 3) {
+        setAiGalat('Dihentikan: 3 pengumpulan gagal diproses. Periksa pesan galat lalu coba lagi.')
+        break
+      }
+    }
+    setAiMassal(null)
+  }
+
   const bukti = tugas.buktiList ?? []
   const modeBukti = adaBukti(tugas)
   const kategori = tugas.pengaturanPenilaian?.kategori
@@ -138,10 +227,35 @@ export default function PengumpulanPanel({ tugas }: Props) {
             Foto yang dikirim siswa lewat akun mereka. Penilaian tetap di tab «Input nilai».
           </p>
         </div>
-        <button type="button" className="tg-btn" onClick={() => void muat()}>
-          Muat ulang
-        </button>
+        <div className="td-kumpul-head-aksi">
+          {bisaAi &&
+            list !== null &&
+            list.length > 0 &&
+            (aiMassal ? (
+              <button type="button" className="tg-btn" onClick={() => (aiBatalRef.current = true)}>
+                Menilai {aiMassal.selesai + 1}/{aiMassal.total}… Batalkan
+              </button>
+            ) : (
+              <button
+                type="button"
+                className="tg-btn td-btn-ai-massal"
+                disabled={!nilaiSiap || aiBusyId !== null}
+                onClick={() => void mintaPredikatMassal()}
+                title={nilaiSiap ? 'AI memberi predikat untuk semua pengumpulan yang belum dinilai' : 'Memuat daftar nilai…'}
+              >
+                ✦ Predikat AI untuk semua
+              </button>
+            ))}
+          <button type="button" className="tg-btn" onClick={() => void muat()}>
+            Muat ulang
+          </button>
+        </div>
       </div>
+      {aiGalat && (
+        <div className="tg-galat" role="alert">
+          {aiGalat}
+        </div>
+      )}
 
       {tugas.modeKelompok === true && list !== null && (
         <KelompokGuruRingkas tugas={tugas} pengumpulan={list} />
@@ -201,6 +315,20 @@ export default function PengumpulanPanel({ tugas }: Props) {
                       {buka === d.id ? '▲' : '▼'}
                     </span>
                   </button>
+                  {bisaAi && (
+                    <PredikatAiBaris
+                      d={d}
+                      usulan={predikatAi[d.siswaId]}
+                      nilai={nilaiRingkas?.[d.siswaId]}
+                      diterapkan={diterapkan[d.siswaId]}
+                      siap={nilaiSiap}
+                      sibuk={aiBusyId === d.siswaId}
+                      terkunci={aiBusyId !== null || aiMassal !== null}
+                      onMinta={() => void mintaPredikat(d)}
+                      onTerapkan={(pred) => terapkan(d.siswaId, pred, predikatAi[d.siswaId]?.komentarSiswa)}
+                      onBuka={onBukaNilai ? () => onBukaNilai(d.siswaId) : undefined}
+                    />
+                  )}
                   {buka === d.id && (
                     <div className="td-kumpul-detail">
                       {d.catatan && (
@@ -299,6 +427,79 @@ export default function PengumpulanPanel({ tugas }: Props) {
             })}
           </ul>
         </>
+      )}
+    </div>
+  )
+}
+
+const TEKS_STATUS_NILAI = { kosong: 'Belum dinilai', ubah: 'Belum disimpan', ok: 'Tersimpan' } as const
+
+/** Baris AI di bawah tiap pengumpulan: usulan predikat + alasan + terapkan ke draf nilai. */
+function PredikatAiBaris(props: {
+  d: PengumpulanDok
+  usulan?: UsulanPredikatAi
+  nilai?: NilaiRingkasPanel
+  diterapkan?: string
+  siap: boolean
+  sibuk: boolean
+  terkunci: boolean
+  onMinta: () => void
+  onTerapkan: (predikat: string) => void
+  onBuka?: () => void
+}) {
+  const { usulan: u, nilai, diterapkan } = props
+  const sudahDiterapkan = !!u && diterapkan === u.predikat
+  return (
+    <div className="td-pai">
+      <div className="td-pai-baris">
+        {!u ? (
+          <button type="button" className="td-btn-ai-teks" disabled={props.terkunci || !props.siap} onClick={props.onMinta}>
+            {props.sibuk ? 'Menganalisis…' : '✦ Predikat AI'}
+          </button>
+        ) : (
+          <>
+            <span className={`td-pai-predikat td-pai-predikat--${u.keyakinan}`} title="Usulan predikat AI">
+              {u.predikat}
+            </span>
+            <span className={`td-chip td-ai-yakin td-ai-yakin--${u.keyakinan}`}>Yakin {u.keyakinan}</span>
+            <button
+              type="button"
+              className="td-btn-ai-teks"
+              disabled={props.terkunci || !props.siap}
+              onClick={() => props.onTerapkan(u.predikat)}
+              title="Isi predikat + skor per kategori ke draf nilai (belum tersimpan)"
+            >
+              {sudahDiterapkan ? 'Terapkan ulang' : 'Terapkan ke nilai'}
+            </button>
+            <button
+              type="button"
+              className="td-btn-ai-ulang"
+              title="Minta AI menilai ulang"
+              aria-label={`Nilai ulang ${props.d.siswaNama} dengan AI`}
+              disabled={props.terkunci}
+              onClick={props.onMinta}
+            >
+              {props.sibuk ? '…' : '↻'}
+            </button>
+          </>
+        )}
+        {nilai && (
+          <span className={`td-pai-nilai td-pai-nilai--${nilai.status}`}>
+            Nilai: {nilai.predikat || '—'} · {TEKS_STATUS_NILAI[nilai.status]}
+          </span>
+        )}
+        {props.onBuka && (
+          <button type="button" className="td-link-kecil" onClick={props.onBuka}>
+            Buka di Input nilai ▸
+          </button>
+        )}
+      </div>
+      {u && (
+        <p className={`td-pai-alasan${u.perluDicek ? ' td-pai-alasan--cek' : ''}`}>
+          {u.perluDicek ? 'Periksa bukti sendiri. ' : ''}
+          {u.alasan}
+          {u.catatanKualitas.length > 0 ? ` (${u.catatanKualitas.join('; ')})` : ''}
+        </p>
       )}
     </div>
   )

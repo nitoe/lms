@@ -78,3 +78,46 @@ export async function usulkanNilaiTugasAi(tugasId: string, siswaId: string): Pro
     throw new Error(pesan(e))
   }
 }
+
+// ---------------------------------------------------------------------------
+// Mode PREDIKAT (tab Pengumpulan): satu predikat keseluruhan dari bukti. Skor per kategori
+// diturunkan oleh `generateSkorPerKategoriDariPredikat`; hasilnya hanya masuk DRAF.
+// ANTIREGRESI §Tugas.PredikatAi.
+// ---------------------------------------------------------------------------
+
+export type UsulanPredikatAi = {
+  siswaId: string
+  siswaNama: string
+  /** Salah satu `daftarPredikat` (sudah divalidasi server). */
+  predikat: string
+  keyakinan: KeyakinanAi
+  /** Keyakinan rendah → guru sebaiknya memeriksa bukti sendiri. */
+  perluDicek: boolean
+  alasan: string
+  komentarSiswa: string
+  catatanKualitas: string[]
+  bukti: BuktiUsulanAi[]
+  belumDikumpulkan: string[]
+  daftarPredikat: string[]
+  model: string
+  dibuatMs: number
+}
+
+export async function usulkanPredikatTugasAi(tugasId: string, siswaId: string): Promise<UsulanPredikatAi> {
+  if (!bolehAiTugas(auth.currentUser?.uid)) {
+    throw new Error('Fitur AI tugas tidak tersedia untuk akun Anda.')
+  }
+  const panggil = httpsCallable<{ tugasId: string; siswaId: string }, Omit<UsulanPredikatAi, 'dibuatMs'>>(
+    getFunctions(app, REGION),
+    'predikatTugasLmsAi',
+    { timeout: TIMEOUT_MS },
+  )
+  try {
+    const res = await panggil({ tugasId, siswaId })
+    const d = res.data
+    if (!d || typeof d.predikat !== 'string' || !d.predikat) throw new Error('Jawaban AI tidak lengkap. Coba lagi.')
+    return { ...d, dibuatMs: Date.now() }
+  } catch (e) {
+    throw new Error(pesan(e))
+  }
+}

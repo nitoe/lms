@@ -1,3 +1,15 @@
+## 2026-11-25 — «Predikat AI» di tab Pengumpulan (khusus akun AI)
+
+- **Fitur baru (hanya `arif.azwar79@gmail.com`, UID + email dicek di klien dan server):** di tab **Pengumpulan**, tiap siswa yang sudah mengumpulkan punya baris **✦ Predikat AI**. AI melihat foto/video buktinya lalu mengusulkan **satu predikat keseluruhan** (A/B/C/D/E sesuai rentang tugas) beserta tingkat keyakinan, alasan, dan catatan kualitas bukti — **tanpa menilai per kategori rubrik**.
+- **Terapkan ke nilai:** tombol «Terapkan ke nilai» mengisi **predikat + skor per kategori yang diturunkan dari predikat** (generator yang sama dengan tombol generate di Daftar nilai) serta draf komentar siswa ke **DRAF** Input nilai. **Tidak menyimpan otomatis**; simpan lewat Daftar nilai / Menilai per siswa. Tautan «Buka di Input nilai ▸» melompat ke siswa itu.
+- **✦ Predikat AI untuk semua:** memproses semua pengumpulan yang nilainya masih kosong, satu per satu (bisa dibatalkan, berhenti setelah 3 kegagalan), hasilnya langsung ke draf; nilai yang sudah tersimpan tidak disentuh.
+- **Tugas kelompok:** predikat ketua otomatis diikuti anggota yang mengikuti (aturan §Tugas.Terpadu); satu panggilan AI per kelompok.
+- Tampilan di panel: lencana predikat (jingga bila keyakinan rendah → «Periksa bukti sendiri»), status nilai siswa di draf («Nilai: B · Belum disimpan»).
+- **Perbaikan terkait:** «Menilai per siswa» kini membaca slot foto 1–10 dengan benar (sebelumnya foto slot 10 tidak tampil untuk tugas tanpa bukti berlabel).
+- **Wajib deploy Cloud Function** (repo SDM01Penilaian): `firebase deploy --only functions:predikatTugasLmsAi,functions:nilaiTugasLmsAi`, lalu hosting LMS. Tidak ada perubahan `firestore.rules`/`storage.rules`.
+- File LMS: `src/components/PengumpulanPanel.tsx`, `src/pages/TugasDetail.tsx`, `src/lib/nilaiTugasAi.ts`, `src/components/PenilaianTerpadu.tsx`, `src/styles/tugas.css`. File Penilaian: `functions/nilaiTugasLmsAi.js` (fungsi baru `predikatTugasLmsAi`), `functions/index.js`, `functions/uji/nilaiTugasLmsAi.uji.mjs`.
+- Antiregresi: §Tugas.PredikatAi.
+
 ## 2026-11-25 — Bukti berlabel naik menjadi maksimal 10 (sebelumnya 6)
 
 ### Perilaku baru
