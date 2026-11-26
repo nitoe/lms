@@ -53,11 +53,31 @@ export type UsulanNilaiAi = {
 }
 
 function pesan(err: unknown): string {
-  if (err && typeof err === 'object' && 'message' in err) {
-    const m = String((err as { message: unknown }).message || '')
-    if (m && m !== 'internal') return m
+  if (!err || typeof err !== 'object') return 'Gagal menghubungi layanan AI.'
+  const e = err as { code?: unknown; message?: unknown }
+  const code = String(e.code || '')
+  const m = String(e.message || '')
+  const rendah = `${code} ${m}`.toLowerCase()
+  if (rendah.includes('failed-precondition') || m.includes('belum mengumpulkan')) {
+    const bersih = m.replace(/^FirebaseError:\s*/i, '').replace(/^functions\/[\w-]+\s*/i, '').trim()
+    return (
+      bersih ||
+      'Belum ada bukti yang bisa dinilai. Pastikan siswa sudah mengumpulkan (atau mengirim perbaikan).'
+    )
   }
-  return 'Gagal menghubungi layanan AI.'
+  if (rendah.includes('invalid-argument')) {
+    return 'ID tugas/siswa tidak valid. Muat ulang halaman lalu coba lagi.'
+  }
+  if (rendah.includes('permission-denied') || rendah.includes('unauthenticated')) {
+    return 'Akun ini tidak berhak memakai penilaian AI, atau sesi sudah habis. Masuk ulang.'
+  }
+  if (rendah.includes('resource-exhausted') || rendah.includes('429')) {
+    return 'Layanan AI sedang penuh. Tunggu sebentar lalu coba lagi.'
+  }
+  if (m && m !== 'internal' && !/^FirebaseError$/i.test(m)) {
+    return m.replace(/^FirebaseError:\s*/i, '').trim()
+  }
+  return 'Gagal menilai dengan AI (galat server). Coba lagi atau periksa log Functions.'
 }
 
 export async function usulkanNilaiTugasAi(tugasId: string, siswaId: string): Promise<UsulanNilaiAi> {

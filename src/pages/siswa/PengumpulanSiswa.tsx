@@ -35,6 +35,11 @@ type Props = {
   ada: PengumpulanDok | null
   /** Tugas sudah dinilai → dikunci (rules juga menolak). */
   terkunci: boolean
+  /**
+   * Guru sudah menekan «Minta perbaikan» — siswa boleh kirim ulang.
+   * Form dibuka otomatis; tombol bertuliskan «Kirim perbaikan».
+   */
+  modePerbaikan?: boolean
   onTersimpan: (d: PengumpulanDok) => void
   /** Tugas mode kelompok (ANTIREGRESI §Tugas.Kelompok). */
   modeKelompok?: boolean
@@ -72,6 +77,7 @@ export default function PengumpulanSiswa({
   kelas,
   ada,
   terkunci,
+  modePerbaikan = false,
   onTersimpan,
   modeKelompok = false,
   isKetuaKelompok = true,
@@ -104,7 +110,7 @@ export default function PengumpulanSiswa({
   const [busy, setBusy] = useState(false)
   const [galat, setGalat] = useState('')
   const [sukses, setSukses] = useState(false)
-  const [ubah, setUbah] = useState(false)
+  const [ubah, setUbah] = useState(!!modePerbaikan)
   const inputRef = useRef<HTMLInputElement>(null)
   // Turunan video: slot yang akan punya video saat dikirim (baru siap + lama yang tidak dihapus/diganti).
   const videoBaru: Record<number, NonNullable<VideoUI['siap']>> = {}
@@ -694,6 +700,12 @@ export default function PengumpulanSiswa({
         {modeKelompok ? (isKetuaKelompok ? ' (sebagai ketua)' : ' (izin dari ketua)') : ''}
       </h2>
 
+      {modePerbaikan && (
+        <p className="sw-kumpul-status" role="status">
+          Gurumu meminta perbaikan. Ubah fotomu bila perlu, lalu ketuk <strong>Kirim perbaikan</strong>.
+        </p>
+      )}
+
       {ada && (
         <p className="sw-kumpul-status sw-kumpul-status--ok">
           <SiswaIcon name="check" size={18} /> Sudah dikumpulkan {waktuTeks(ada.diubahMs)}
@@ -1070,7 +1082,9 @@ export default function PengumpulanSiswa({
                     ? `Mengirim foto ${Math.min(kemajuanFoto[0] + 1, kemajuanFoto[1])} dari ${kemajuanFoto[1]}…`
                     : 'Mengirim…'
                 : ada
-                  ? 'Kirim ulang'
+                  ? modePerbaikan
+                    ? 'Kirim perbaikan'
+                    : 'Kirim ulang'
                   : 'Kumpulkan'}
             </button>
             {ada && (
@@ -1083,7 +1097,7 @@ export default function PengumpulanSiswa({
       ) : (
         <div className="sw-kumpul-aksi">
           <button type="button" className="sw-btn-ghost" onClick={() => setUbah(true)}>
-            Ubah / kirim ulang
+            {modePerbaikan ? 'Perbaiki & kirim ulang' : 'Ubah / kirim ulang'}
           </button>
         </div>
       )}

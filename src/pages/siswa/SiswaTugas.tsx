@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { collection, getDocs, query, where } from 'firebase/firestore'
+import { collection, getDocs, onSnapshot, query, where } from 'firebase/firestore'
 import { db } from '../../lib/firebase'
 import { useSiswa } from '../../context/SiswaContext'
 import { aksenMapel, inisialMapel } from '../../lib/uiAksen'
@@ -84,19 +84,6 @@ export default function SiswaTugas() {
       const tugas = await daftarTugasAktifKelas(kelas)
       setList(tugas)
 
-      const qn = query(
-        collection(db, 'lms_nilai_tugas'),
-        where('siswaId', '==', siswaId),
-        where('kelas', '==', String(kelas).toUpperCase()),
-      )
-      const snap = await getDocs(qn)
-      const map: Record<string, NilaiTugasDok> = {}
-      for (const d of snap.docs) {
-        const data = d.data() as NilaiTugasDok
-        if (data.tugasId) map[data.tugasId] = { ...data, id: d.id }
-      }
-      setNilaiMap(map)
-
       // Kelompok sendiri (lencana katalog): gagal baca tidak boleh menggagalkan daftar tugas.
       try {
         const ks = await kelompokKelasSaya(kelas, siswaId)
@@ -118,6 +105,33 @@ export default function SiswaTugas() {
       setList([])
     }
   }, [kelas, siswaId])
+
+
+  // Realtime nilai: «Minta perbaikan» dari guru langsung membuka kirim ulang (tanpa refresh manual).
+  useEffect(() => {
+    if (!kelas || !siswaId) return
+    const qn = query(
+      collection(db, 'lms_nilai_tugas'),
+      where('siswaId', '==', siswaId),
+      where('kelas', '==', String(kelas).toUpperCase()),
+    )
+    const unsub = onSnapshot(
+      qn,
+      (snap) => {
+        const map: Record<string, NilaiTugasDok> = {}
+        for (const d of snap.docs) {
+          const data = d.data() as NilaiTugasDok
+          if (data.tugasId) map[data.tugasId] = { ...data, id: d.id }
+        }
+        setNilaiMap(map)
+      },
+      (err) => {
+        console.warn('Nilai siswa realtime gagal', err)
+      },
+    )
+    return () => unsub()
+  }, [kelas, siswaId])
+
 
   useEffect(() => {
     void muat()
@@ -501,13 +515,14 @@ export default function SiswaTugas() {
         )}
 
         <PengumpulanSiswa
-          key={detail.id}
+          key={`${detail.id}-${bolehPerbaiki ? 'perbaiki' : 'normal'}`}
           tugas={detail}
           siswaId={siswaId}
           siswaNama={sesi?.nama ?? ''}
           kelas={String(kelas).toUpperCase()}
           ada={kumpulMap[detail.id] ?? null}
           terkunci={st === 'dinilai' && !bolehPerbaiki}
+          modePerbaikan={bolehPerbaiki}
           onTersimpan={(d) => setKumpulMap((prev) => ({ ...prev, [detail.id]: d }))}
           modeKelompok={detail.modeKelompok === true}
           isKetuaKelompok={detail.modeKelompok ? isKetua(kelompokDetail, siswaId) : true}
