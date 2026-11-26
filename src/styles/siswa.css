@@ -2330,6 +2330,23 @@ button.sw-kat-card {
 .sw-bukti-petunjuk { margin: 0; font-size: 0.85rem; line-height: 1.55; color: #475569; }
 .sw-bukti-dinilai { margin: 0; font-size: 0.78rem; font-weight: 700; color: var(--color-muh-700); }
 .sw-bukti-foto { max-width: 18rem; }
+/* Multi-foto per kartu bukti: grid thumbnail horizontal */
+.sw-bukti-foto-multi {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 0.4rem 0 0.25rem;
+}
+.sw-bukti-foto-multi .sw-bukti-foto,
+.sw-bukti-foto-multi .sw-kumpul-thumb-wrap {
+  max-width: 7.5rem;
+  flex: 0 0 auto;
+}
+.sw-bukti-foto-multi .sw-kumpul-thumb {
+  width: 7.5rem;
+  height: 7.5rem;
+  object-fit: cover;
+}
 .sw-bukti-kosong {
   display: flex;
   align-items: center;

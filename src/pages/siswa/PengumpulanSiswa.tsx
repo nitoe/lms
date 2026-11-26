@@ -289,9 +289,10 @@ export default function PengumpulanSiswa({
 
   /**
    * Multi-foto per bukti (ANTIREGRESI §Tugas.MultiFotoBukti).
-   * File yang dipilih untuk kartu ini:
-   * - Foto pertama → slot primer bukti (atau diganti).
-   * - Foto berikutnya → slot kosong yang belum diklaim bukti lain (total tetap ≤ 10).
+   * «Tambah foto» SELALU menambah (tidak mengganti foto yang sudah ada).
+   * - Slot kosong global yang belum diklaim bukti lain dipakai untuk foto baru.
+   * - Slot primer hanya diisi bila masih kosong.
+   * - Hapus foto individual lewat tombol × di thumbnail.
    * - Ownership dicatat di slotMilik agar guru/AI tahu foto mana milik bukti mana.
    */
   async function pilihBukti(slot: number, files: FileList | null, input: HTMLInputElement | null) {
@@ -319,19 +320,37 @@ export default function PengumpulanSiswa({
       const bukti = (tugas.buktiList ?? []).find((b) => b.slot === slot)
       const buktiId = bukti?.id ?? `slot-${slot}`
 
-      // Slot yang boleh dipakai: slot primer dulu, lalu slot kosong yang belum dimiliki bukti lain.
-      const dipakaiSaatIni = new Set(
+      // Slot yang sudah terisi foto (apa pun pemiliknya) — jangan ditimpa saat menambah.
+      const slotTerisi = new Set(
         Object.keys(fotoSlot)
           .map(Number)
-          .filter((n) => dataUrlGambarAman(fotoSlot[n]) && slotMilik[n] && slotMilik[n] !== buktiId),
+          .filter((n) => dataUrlGambarAman(fotoSlot[n])),
       )
-      // Slot yang sudah milik bukti ini tetap boleh diganti/ditambah.
-      const slotBebas = DAFTAR_SLOT.filter(
-        (n) => n === slot || (!dipakaiSaatIni.has(n) && (!slotMilik[n] || slotMilik[n] === buktiId)),
+      // Slot diklaim bukti LAIN — tidak boleh dipakai.
+      const diklaimLain = new Set(
+        Object.entries(slotMilik)
+          .filter(([, id]) => id && id !== buktiId)
+          .map(([s]) => Number(s)),
       )
-      // Prioritas: slot primer dulu
-      const target = [slot, ...slotBebas.filter((n) => n !== slot)]
-      const maxBaru = Math.min(jadi.length, target.length, BATAS_FOTO_PENGUMPULAN)
+      // Slot kosong yang boleh dipakai bukti ini.
+      const slotKosong = DAFTAR_SLOT.filter((n) => !slotTerisi.has(n) && !diklaimLain.has(n))
+
+      // Prioritas: slot primer dulu HANYA bila masih kosong; sisanya slot kosong lain.
+      // Ini memastikan «Tambah foto» menambah, bukan mengganti.
+      const target: number[] = []
+      if (!slotTerisi.has(slot) && !diklaimLain.has(slot)) {
+        target.push(slot)
+      }
+      for (const n of slotKosong) {
+        if (n !== slot) target.push(n)
+      }
+
+      if (target.length === 0) {
+        setGalat(`Tidak ada slot kosong (maksimal ${BATAS_FOTO_PENGUMPULAN} foto). Hapus salah satu dulu.`)
+        return
+      }
+
+      const maxBaru = Math.min(jadi.length, target.length)
       const dipakai = jadi.slice(0, maxBaru)
       const sisaAntrian = jadi.slice(maxBaru)
 
@@ -352,7 +371,7 @@ export default function PengumpulanSiswa({
       if (sisaAntrian.length > 0) {
         setAntrianFoto((prev) => [...prev, ...sisaAntrian])
         setGalat(
-          `Hanya ${dipakai.length} foto yang dipasang di bukti ini (batas slot/total 10). Sisanya di antrian.`,
+          `Hanya ${dipakai.length} foto yang dipasang (batas slot/total ${BATAS_FOTO_PENGUMPULAN}). Sisanya di antrian.`,
         )
       } else if (pesanGagal) {
         setGalat(`Sebagian foto tidak bisa diproses. ${pesanGagal}`)
@@ -568,13 +587,26 @@ export default function PengumpulanSiswa({
             {modeBukti ? (
               <div className="sw-bukti-daftar">
                 {buktiList
-                  .filter((b) => fotoSlot[b.slot])
-                  .map((b) => (
-                    <figure key={b.id} className="sw-bukti-baca">
-                      <img src={fotoSlot[b.slot]} alt={b.label} className="sw-kumpul-thumb" />
-                      <figcaption>{b.label}</figcaption>
-                    </figure>
-                  ))}
+                  .filter((b) => b.jenis !== 'video')
+                  .map((b) => {
+                    const milik = Object.entries(slotMilik)
+                      .filter(([, id]) => id === b.id)
+                      .map(([s]) => Number(s))
+                    const slots = [...new Set([b.slot, ...milik])]
+                      .filter((s) => dataUrlGambarAman(fotoSlot[s]))
+                      .sort((a, c) => a - c)
+                    if (slots.length === 0) return null
+                    return (
+                      <figure key={b.id} className="sw-bukti-baca">
+                        <div className="sw-bukti-foto-multi">
+                          {slots.map((s) => (
+                            <img key={s} src={fotoSlot[s]} alt={b.label} className="sw-kumpul-thumb" />
+                          ))}
+                        </div>
+                        <figcaption>{b.label}{slots.length > 1 ? ` (${slots.length} foto)` : ''}</figcaption>
+                      </figure>
+                    )
+                  })}
                 {buktiList
                   .filter((b) => b.jenis === 'video' && ada.videos[b.slot])
                   .map((b) => (
