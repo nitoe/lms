@@ -347,7 +347,7 @@ export default function PengumpulanSiswa({
       // Prioritas: slot primer kartu ini dulu (jika kosong), lalu slot non-primer yang kosong.
       // «Tambah foto» menambah; tidak mengganti; tidak nyebrang ke kartu bukti lain.
       const target: number[] = []
-      if (slotKosong.includes(slot)) target.push(slot)
+      if (slotKosong.some((n) => n === slot)) target.push(slot)
       for (const n of slotKosong) {
         if (n !== slot) target.push(n)
       }
