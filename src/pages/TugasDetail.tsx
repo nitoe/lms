@@ -64,6 +64,7 @@ import { getDaftarMapel } from '../lib/mapelData'
 import { getTpMultiMapelKelas } from '../lib/tpData'
 import { generateIsiTugasAi, generateKategoriTugasAi } from '../lib/tugasAi'
 import { sinkronNilaiTugasKePenilaian } from '../lib/sinkronNilaiTugas'
+import { bagikanTugasKeOrtu, hitungRingkasanBagikan, tarikTugasDariOrtu } from '../lib/riwayatTugasOrtu'
 import {
   draftBerisiData,
   draftDariBaris,
@@ -1625,6 +1626,80 @@ export default function TugasDetail() {
     }
   }
 
+  /**
+   * Bagikan nilai + status ke portal orang tua (ANTIREGRESI §Tugas.Ortu).
+   * Hanya baris yang sudah tersimpan di server; draf yang belum disimpan tidak ikut.
+   */
+  async function bagikanKeOrtu() {
+    if (!tugas?.id) {
+      setError('Simpan tugas dulu sebelum dibagikan ke orang tua.')
+      return
+    }
+    const baris = barisNilai ?? []
+    if (!baris.length) {
+      setError('Roster kelas kosong atau belum termuat. Muat ulang daftar nilai dulu.')
+      return
+    }
+    const r = hitungRingkasanBagikan(baris)
+    if (r.dinilai + r.perbaikan === 0) {
+      setError('Belum ada nilai yang tersimpan. Simpan nilai siswa dulu, lalu bagikan ke orang tua.')
+      return
+    }
+    const adaDraf = Object.keys(draft).some((id) => statusNilai[id] === 'ubah')
+    const pesan =
+      `Bagikan nilai dan status tugas «${tugas.judul}» ke orang tua kelas ${tugas.kelas}?\n\n` +
+      `• ${r.dinilai + r.perbaikan} siswa punya nilai` +
+      (r.perbaikan ? ` (${r.perbaikan} sedang perbaikan)` : '') +
+      `\n• ${r.belum} siswa tampil «Belum ada nilai»\n\n` +
+      'Yang terlihat orang tua hanya nilai dan status (tanpa catatan guru). ' +
+      'Hanya nilai yang sudah tersimpan yang dibagikan.' +
+      (adaDraf ? '\n\nAda baris yang belum disimpan; nilainya belum ikut dibagikan.' : '')
+    if (!window.confirm(pesan)) return
+    setBusy(true)
+    setError('')
+    setSukses('')
+    try {
+      const h = await bagikanTugasKeOrtu({
+        tugas,
+        baris,
+        rentang: pengaturan.rentangPredikat,
+        namaGuru: profil?.nama,
+      })
+      setSukses(
+        `Dibagikan ke orang tua: ${h.dinilai + h.perbaikan} siswa bernilai, ${h.belum} belum ada nilai. ` +
+          'Bagikan ulang bila ada nilai yang berubah.',
+      )
+    } catch (e) {
+      const msg =
+        e && typeof e === 'object' && 'message' in e
+          ? String((e as { message: unknown }).message)
+          : 'Gagal membagikan ke orang tua.'
+      setError(msg.replace(/^Firebase: |\s*\(.*\)\.?$/g, '').trim() || msg)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function tarikDariOrtu() {
+    if (!tugas?.id) return
+    if (!window.confirm(`Tarik tugas «${tugas.judul}» dari portal orang tua? Orang tua tidak lagi melihatnya.`)) return
+    setBusy(true)
+    setError('')
+    setSukses('')
+    try {
+      const n = await tarikTugasDariOrtu({ tugas })
+      setSukses(n ? `Ditarik dari portal orang tua (${n} siswa).` : 'Tidak ada data yang sedang dibagikan untuk tugas ini.')
+    } catch (e) {
+      const msg =
+        e && typeof e === 'object' && 'message' in e
+          ? String((e as { message: unknown }).message)
+          : 'Gagal menarik dari orang tua.'
+      setError(msg.replace(/^Firebase: |\s*\(.*\)\.?$/g, '').trim() || msg)
+    } finally {
+      setBusy(false)
+    }
+  }
+
   /** Ringkasan & hasil saringan Daftar nilai siswa. */
   const statusNilai: Record<string, 'kosong' | 'ubah' | 'ok'> = {}
   let nilaiOk = 0
@@ -2710,6 +2785,24 @@ export default function TugasDetail() {
                         title="Kirim nilai tugas ke koleksi rapor Penilaian (SLM/STS/SAS)"
                       >
                         {busy ? 'Sinkron…' : 'Sinkron ke Penilaian'}
+                      </button>
+                      <button
+                        type="button"
+                        className="tg-btn"
+                        disabled={busy || loadingNilai}
+                        onClick={() => void bagikanKeOrtu()}
+                        title="Tampilkan nilai dan status tugas ini di portal orang tua (tanpa catatan guru)"
+                      >
+                        Bagikan ke orang tua
+                      </button>
+                      <button
+                        type="button"
+                        className="tg-btn"
+                        disabled={busy || loadingNilai}
+                        onClick={() => void tarikDariOrtu()}
+                        title="Sembunyikan tugas ini dari portal orang tua"
+                      >
+                        Tarik dari orang tua
                       </button>
                       {bisaAi &&
                         (aiMassal ? (

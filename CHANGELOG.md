@@ -1,3 +1,26 @@
+## 2026-11-26 — Baru: guru dapat membagikan nilai dan status tugas ke portal orang tua
+
+### Latar
+Riwayat hasil tugas siswa belum bisa dilihat orang tua. Portal orang tua tidak memakai akun Firebase Auth (login kelas → nama anak → NISN), jadi portal tidak boleh membaca koleksi tugas mentah LMS. Dipakai pola yang sama dengan rapor STS dan Try Out TKA: guru menekan tombol, LMS menulis salinan, portal hanya membaca salinan itu.
+
+### Yang berubah
+- Di Tugas → Input nilai → Daftar nilai ada tombol **Bagikan ke orang tua** dan **Tarik dari orang tua**, di samping «Sinkron ke Penilaian».
+- Yang terlihat orang tua **hanya nilai dan status** per tugas. Catatan guru, poin perbaikan, riwayat percobaan, nilai per rubrik, dan bukti siswa tidak ikut.
+- Nilai yang dibagikan = nilai yang **dipakai** (kebijakan terbaik/terakhir), bukan percobaan terakhir.
+- Status: «Sudah dinilai», «Perlu perbaikan» (guru sedang membuka percobaan berikutnya), «Belum ada nilai».
+- Yang dibagikan hanya baris yang **sudah tersimpan**; draf yang belum disimpan tidak ikut. Sebelum membagikan, guru melihat ringkasan (berapa siswa bernilai, berapa belum ada nilai).
+- Bila nilai berubah, guru menekan **Bagikan ke orang tua** lagi (publikasi ulang menimpa salinan lama). «Tarik» menyembunyikan tugas dari portal tanpa menghapus data.
+- Data: koleksi baru `lms_tugas_hasil_ortu/{tugasId_siswaId}`. Tidak ada perubahan pada `lms_nilai_tugas`, `lms_pengumpulan`, maupun alur penilaian dan sinkron.
+
+### Deploy
+1. `firestore.rules` (versi lengkap; salinan identik di SDM01Penilaian): `firebase deploy --only firestore:rules`. **Deploy rules lebih dulu**, sebelum tombol dipakai.
+2. Hosting LMS.
+3. Portal orang tua: lihat CHANGELOG portal-orangtua (halaman `riwayat-tugas.html`).
+
+### File
+- `src/lib/riwayatTugasOrtu.ts` (baru), `src/pages/TugasDetail.tsx`, `firestore.rules`
+- CHANGELOG.md, ANTIREGRESI.md §Tugas.Ortu
+
 ## 2026-11-26 — Perbaikan: nilai kelompok yang buktinya dikirim anggota (mewakili ketua) tidak lagi terpecah
 
 ### Gejala
