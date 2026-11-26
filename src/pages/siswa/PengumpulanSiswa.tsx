@@ -4,6 +4,7 @@ import {
   BATAS_FOTO_PENGUMPULAN,
   buktiWajibKurang,
   DAFTAR_SLOT,
+  dataUrlGambarAman,
   kirimPengumpulan,
   muatFoto,
   muatFotoBerslot,
@@ -81,6 +82,8 @@ export default function PengumpulanSiswa({
   const [items, setItems] = useState<Item[]>([])
   const modeBukti = adaBukti(tugas)
   const [fotoSlot, setFotoSlot] = useState<Record<number, string>>({})
+  /** slot (1..10) → buktiId pemilik (multi-foto per bukti). */
+  const [slotMilik, setSlotMilik] = useState<Record<number, string>>({})
   /** Sisa foto multi-pilih galeri — dipasang manual ke kartu bukti kosong (bukan otomatis nyebrang). */
   const [antrianFoto, setAntrianFoto] = useState<string[]>([])
   const [olahSlot, setOlahSlot] = useState<number | null>(null)
@@ -210,7 +213,20 @@ export default function PengumpulanSiswa({
     setMemuat(true)
     const tugasMuat = modeBukti
       ? muatFotoBerslot(ada.fotoIds).then((m) => {
-          if (!batal) setFotoSlot(m)
+          if (batal) return
+          setFotoSlot(m)
+          // Pulihkan ownership dari buktiSlots (multi-foto) atau fallback slot primer.
+          const milik: Record<number, string> = {}
+          if (ada.buktiSlots) {
+            for (const [buktiId, slots] of Object.entries(ada.buktiSlots)) {
+              for (const s of slots) if (m[s]) milik[s] = buktiId
+            }
+          } else {
+            for (const b of tugas.buktiList ?? []) {
+              if (b.jenis !== 'video' && m[b.slot]) milik[b.slot] = b.id
+            }
+          }
+          setSlotMilik(milik)
         })
       : muatFoto(ada.fotoIds).then((list) => {
           if (!batal) setItems(list.map((src, i) => ({ key: `lama-${i}`, src })))
@@ -272,9 +288,11 @@ export default function PengumpulanSiswa({
   }
 
   /**
-   * Satu kartu bukti = satu slot = satu foto (ANTIREGRESI §Tugas.MultiFile).
-   * Multi-pilih dari galeri: file pertama → slot ini; sisanya masuk antrian untuk
-   * dipasang manual ke kartu kosong (tidak otomatis nyebrang ke bukti lain).
+   * Multi-foto per bukti (ANTIREGRESI §Tugas.MultiFotoBukti).
+   * File yang dipilih untuk kartu ini:
+   * - Foto pertama → slot primer bukti (atau diganti).
+   * - Foto berikutnya → slot kosong yang belum diklaim bukti lain (total tetap ≤ 10).
+   * - Ownership dicatat di slotMilik agar guru/AI tahu foto mana milik bukti mana.
    */
   async function pilihBukti(slot: number, files: FileList | null, input: HTMLInputElement | null) {
     if (!files || files.length === 0) return
@@ -283,21 +301,61 @@ export default function PengumpulanSiswa({
     setOlahSlot(slot)
     try {
       const daftar = Array.from(files)
-      const srcPertama = await siapkanFoto(daftar[0])
-      setFotoSlot((prev) => ({ ...prev, [slot]: srcPertama }))
-      if (daftar.length > 1) {
-        const sisa: string[] = []
-        let pesanGagal = ''
-        for (const f of daftar.slice(1)) {
-          try {
-            sisa.push(await siapkanFoto(f))
-          } catch (e) {
-            console.warn('Foto antrian tidak bisa diproses', f.name, f.type, f.size, e)
-            if (!pesanGagal) pesanGagal = e instanceof Error ? e.message : 'Foto tidak bisa diproses.'
-          }
+      const jadi: string[] = []
+      let pesanGagal = ''
+      for (const f of daftar) {
+        try {
+          jadi.push(await siapkanFoto(f))
+        } catch (e) {
+          console.warn('Foto tidak bisa diproses', f.name, f.type, f.size, e)
+          if (!pesanGagal) pesanGagal = e instanceof Error ? e.message : 'Foto tidak bisa diproses.'
         }
-        if (sisa.length > 0) setAntrianFoto((prev) => [...prev, ...sisa])
-        if (pesanGagal) setGalat(`Sebagian foto tambahan tidak bisa diproses. ${pesanGagal}`)
+      }
+      if (jadi.length === 0) {
+        setGalat(pesanGagal || 'Foto tidak bisa diproses.')
+        return
+      }
+
+      const bukti = (tugas.buktiList ?? []).find((b) => b.slot === slot)
+      const buktiId = bukti?.id ?? `slot-${slot}`
+
+      // Slot yang boleh dipakai: slot primer dulu, lalu slot kosong yang belum dimiliki bukti lain.
+      const dipakaiSaatIni = new Set(
+        Object.keys(fotoSlot)
+          .map(Number)
+          .filter((n) => dataUrlGambarAman(fotoSlot[n]) && slotMilik[n] && slotMilik[n] !== buktiId),
+      )
+      // Slot yang sudah milik bukti ini tetap boleh diganti/ditambah.
+      const slotBebas = DAFTAR_SLOT.filter(
+        (n) => n === slot || (!dipakaiSaatIni.has(n) && (!slotMilik[n] || slotMilik[n] === buktiId)),
+      )
+      // Prioritas: slot primer dulu
+      const target = [slot, ...slotBebas.filter((n) => n !== slot)]
+      const maxBaru = Math.min(jadi.length, target.length, BATAS_FOTO_PENGUMPULAN)
+      const dipakai = jadi.slice(0, maxBaru)
+      const sisaAntrian = jadi.slice(maxBaru)
+
+      setFotoSlot((prev) => {
+        const next = { ...prev }
+        dipakai.forEach((src, i) => {
+          next[target[i]] = src
+        })
+        return next
+      })
+      setSlotMilik((prev) => {
+        const next = { ...prev }
+        dipakai.forEach((_, i) => {
+          next[target[i]] = buktiId
+        })
+        return next
+      })
+      if (sisaAntrian.length > 0) {
+        setAntrianFoto((prev) => [...prev, ...sisaAntrian])
+        setGalat(
+          `Hanya ${dipakai.length} foto yang dipasang di bukti ini (batas slot/total 10). Sisanya di antrian.`,
+        )
+      } else if (pesanGagal) {
+        setGalat(`Sebagian foto tidak bisa diproses. ${pesanGagal}`)
       }
     } catch (e) {
       setGalat(e instanceof Error ? e.message : 'Foto tidak bisa diproses.')
@@ -412,12 +470,35 @@ export default function PengumpulanSiswa({
     setPersenUnggah(null)
     setKemajuanFoto(null)
     try {
+      // Bangun mapping buktiId → slots dari slotMilik (hanya slot yang punya foto).
+      const buktiSlotsKirim: Record<string, number[]> = {}
+      if (modeBukti) {
+        for (const [slotStr, buktiId] of Object.entries(slotMilik)) {
+          const slot = Number(slotStr)
+          if (!dataUrlGambarAman(fotoSlot[slot])) continue
+          if (!buktiSlotsKirim[buktiId]) buktiSlotsKirim[buktiId] = []
+          if (!buktiSlotsKirim[buktiId].includes(slot)) buktiSlotsKirim[buktiId].push(slot)
+        }
+        // Pastikan slot primer juga tercatat meski slotMilik belum terisi (data lama / satu foto).
+        for (const b of tugas.buktiList ?? []) {
+          if (b.jenis === 'video') continue
+          if (dataUrlGambarAman(fotoSlot[b.slot])) {
+            if (!buktiSlotsKirim[b.id]) buktiSlotsKirim[b.id] = []
+            if (!buktiSlotsKirim[b.id].includes(b.slot)) buktiSlotsKirim[b.id].unshift(b.slot)
+          }
+        }
+        for (const id of Object.keys(buktiSlotsKirim)) {
+          buktiSlotsKirim[id].sort((a, b) => a - b)
+        }
+      }
       const dok = await kirimPengumpulan({
         tugas,
         siswaId,
         siswaNama,
         kelas,
-        ...(modeBukti ? { fotoSlot } : { foto: items.map((x) => x.src) }),
+        ...(modeBukti
+          ? { fotoSlot, buktiSlots: Object.keys(buktiSlotsKirim).length ? buktiSlotsKirim : undefined }
+          : { foto: items.map((x) => x.src) }),
         videoBaru,
         videoPertahankan,
         onProgressVideo: setPersenUnggah,
@@ -444,7 +525,24 @@ export default function PengumpulanSiswa({
   const kategori = tugas.pengaturanPenilaian?.kategori
   const slotBukti = new Set(buktiList.map((b) => b.slot))
   const slotLain = [...DAFTAR_SLOT].filter((n) => fotoSlot[n] && !slotBukti.has(n))
-  const kurang = modeBukti ? buktiWajibKurang(tugas, fotoSlot, videoAda) : []
+  // Bangun buktiSlots lokal untuk cek wajib (konsisten dengan yang akan dikirim).
+  const buktiSlotsLokal: Record<string, number[]> = {}
+  if (modeBukti) {
+    for (const [slotStr, buktiId] of Object.entries(slotMilik)) {
+      const slot = Number(slotStr)
+      if (!dataUrlGambarAman(fotoSlot[slot])) continue
+      if (!buktiSlotsLokal[buktiId]) buktiSlotsLokal[buktiId] = []
+      if (!buktiSlotsLokal[buktiId].includes(slot)) buktiSlotsLokal[buktiId].push(slot)
+    }
+    for (const b of tugas.buktiList ?? []) {
+      if (b.jenis === 'video') continue
+      if (dataUrlGambarAman(fotoSlot[b.slot])) {
+        if (!buktiSlotsLokal[b.id]) buktiSlotsLokal[b.id] = []
+        if (!buktiSlotsLokal[b.id].includes(b.slot)) buktiSlotsLokal[b.id].unshift(b.slot)
+      }
+    }
+  }
+  const kurang = modeBukti ? buktiWajibKurang(tugas, fotoSlot, videoAda, buktiSlotsLokal) : []
   const jumlahWajib = buktiList.filter((b) => b.wajib).length
   const jumlahFotoBukti = buktiList.filter((b) => (b.jenis === 'video' ? videoAda[b.slot] : fotoSlot[b.slot])).length
   /** Daftar foto siap kirim (mode bukti) — untuk pratinjau lengkap. */
@@ -561,8 +659,8 @@ export default function PengumpulanSiswa({
           <p className="sw-kat-hint">
             Gurumu meminta {buktiList.length} bukti
             {jumlahWajib < buktiList.length ? ` ({jumlahWajib} wajib)` : ''}.
-            Isi tiap kartu sesuai namanya (satu foto per bukti). Dari galeri bisa centang beberapa:
-            foto pertama ke kartu ini, sisanya antri lalu kamu pasang ke bukti kosong.
+            Isi tiap kartu sesuai namanya. Setiap bukti boleh lebih dari satu foto (total maks. 10).
+            Dari galeri bisa centang beberapa: semua foto masuk ke kartu ini selama masih ada slot.
           </p>
           {kelompokBuktiPerTahap(buktiList).map((g) => (
             <div key={g.tahap ?? 'lain'} className="sw-bukti-kelompok">
@@ -578,7 +676,7 @@ export default function PengumpulanSiswa({
               return (
                 <li
                   key={b.id}
-                  className={`sw-bukti${(video ? videoAda[b.slot] : src) ? ' sw-bukti--ok' : b.wajib ? ' sw-bukti--kurang' : ''}`}
+                  className={`sw-bukti${(video ? videoAda[b.slot] : Object.entries(slotMilik).some(([s, id]) => id === b.id && dataUrlGambarAman(fotoSlot[Number(s)])) || dataUrlGambarAman(fotoSlot[b.slot])) ? ' sw-bukti--ok' : b.wajib ? ' sw-bukti--kurang' : ''}`}
                 >
                   <div className="sw-bukti-head">
                     <span className="sw-bukti-no" aria-hidden>
@@ -610,26 +708,52 @@ export default function PengumpulanSiswa({
                     />
                   ) : (
                     <>
-                  {src ? (
-                    <div className="sw-kumpul-thumb-wrap sw-bukti-foto">
-                      <span className="sw-kumpul-thumb-no sw-kumpul-thumb-no--ok" aria-hidden>
-                        ✓
-                      </span>
-                      <img src={src} alt={`Foto: ${b.label}`} className="sw-kumpul-thumb" />
-                      {tampilForm && (
-                        <button
-                          type="button"
-                          className="sw-kumpul-hapus"
-                          onClick={() => hapusBukti(b.slot)}
-                          aria-label={`Hapus foto ${b.label}`}
-                        >
-                          ×
-                        </button>
-                      )}
-                    </div>
-                  ) : (
-                    <div className="sw-bukti-kosong">Belum ada foto</div>
-                  )}
+                  {(() => {
+                    // Kumpulkan semua slot milik bukti ini (primer + tambahan dari slotMilik).
+                    const milik = Object.entries(slotMilik)
+                      .filter(([, id]) => id === b.id)
+                      .map(([s]) => Number(s))
+                    const slotsFoto = [...new Set([b.slot, ...milik])]
+                      .filter((s) => dataUrlGambarAman(fotoSlot[s]))
+                      .sort((a, c) => a - c)
+                    if (slotsFoto.length === 0) {
+                      return <div className="sw-bukti-kosong">Belum ada foto</div>
+                    }
+                    return (
+                      <div className="sw-bukti-foto-multi">
+                        {slotsFoto.map((s) => (
+                          <div key={s} className="sw-kumpul-thumb-wrap sw-bukti-foto">
+                            <span className="sw-kumpul-thumb-no sw-kumpul-thumb-no--ok" aria-hidden>
+                              ✓
+                            </span>
+                            <img src={fotoSlot[s]} alt={`Foto: ${b.label}`} className="sw-kumpul-thumb" />
+                            {tampilForm && (
+                              <button
+                                type="button"
+                                className="sw-kumpul-hapus"
+                                onClick={() => {
+                                  setFotoSlot((prev) => {
+                                    const n = { ...prev }
+                                    delete n[s]
+                                    return n
+                                  })
+                                  setSlotMilik((prev) => {
+                                    const n = { ...prev }
+                                    delete n[s]
+                                    return n
+                                  })
+                                  setSukses(false)
+                                }}
+                                aria-label={`Hapus foto ${b.label}`}
+                              >
+                                ×
+                              </button>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )
+                  })()}
                   {tampilForm && !src && antrianFoto.length > 0 && (
                     <button
                       type="button"

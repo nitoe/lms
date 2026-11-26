@@ -66,6 +66,12 @@ export type PengumpulanDok = {
   jumlahFoto: number
   /** Video bukti per slot (1..10; video hanya untuk bukti berlabel) → berkas di Storage (ANTIREGRESI §Tugas.Video). */
   videos: Record<number, VideoMeta>
+  /**
+   * Multi-foto per bukti berlabel (ANTIREGRESI §Tugas.MultiFotoBukti).
+   * buktiId → daftar slot foto (1..10) yang dimiliki bukti ini (termasuk slot primer).
+   * Dokumen lama tanpa field ini = 1 foto per bukti.slot (perilaku lama tetap valid).
+   */
+  buktiSlots?: Record<string, number[]>
   dibuatMs: number
   diubahMs: number
 }
@@ -123,6 +129,19 @@ function videosDariDok(raw: unknown): Record<number, VideoMeta> {
   return hasil
 }
 
+function buktiSlotsDariDok(raw: unknown): Record<string, number[]> | undefined {
+  if (!raw || typeof raw !== 'object') return undefined
+  const hasil: Record<string, number[]> = {}
+  for (const [buktiId, slots] of Object.entries(raw as Record<string, unknown>)) {
+    if (!buktiId || !Array.isArray(slots)) continue
+    const bersih = [...new Set(
+      slots.map((s) => Number(s)).filter((n) => Number.isInteger(n) && n >= 1 && n <= BATAS_SLOT_FOTO),
+    )].sort((a, b) => a - b)
+    if (bersih.length) hasil[buktiId] = bersih
+  }
+  return Object.keys(hasil).length ? hasil : undefined
+}
+
 function keDok(id: string, x: Record<string, unknown>): PengumpulanDok {
   return {
     id,
@@ -135,6 +154,7 @@ function keDok(id: string, x: Record<string, unknown>): PengumpulanDok {
     fotoIds: Array.isArray(x.fotoIds) ? (x.fotoIds as unknown[]).map(String) : [],
     jumlahFoto: Number(x.jumlahFoto) || 0,
     videos: videosDariDok(x.videos),
+    buktiSlots: buktiSlotsDariDok(x.buktiSlots),
     dibuatMs: tsMs(x.createdAt),
     diubahMs: tsMs(x.updatedAt),
   }
@@ -187,19 +207,35 @@ export async function muatFotoBerslot(fotoIds: string[]): Promise<Record<number,
 
 /**
  * Label bukti wajib yang belum terisi (kosong = lengkap atau tugas tanpa bukti berlabel).
- * Bukti berjenis video dicek pada `videoSlot`, bukti foto pada `fotoSlot`.
+ * Bukti berjenis video dicek pada `videoSlot`.
+ * Bukti foto: dianggap terisi bila slot primer ATAU salah satu slot di `buktiSlots[buktiId]` punya foto.
+ * Kompatibel dokumen lama (tanpa buktiSlots) = hanya cek `fotoSlot[b.slot]`.
  */
 export function buktiWajibKurang(
   tugas: Pick<TugasLms, 'buktiList'>,
   fotoSlot: Record<number, string>,
   videoSlot: Record<number, unknown> = {},
+  buktiSlots?: Record<string, number[]>,
 ): string[] {
   if (!adaBukti(tugas)) return []
   return (tugas.buktiList ?? [])
-    .filter((b) =>
-      b.wajib && (b.jenis === 'video' ? !videoSlot[b.slot] : !dataUrlGambarAman(fotoSlot[b.slot])),
-    )
+    .filter((b) => {
+      if (!b.wajib) return false
+      if (b.jenis === 'video') return !videoSlot[b.slot]
+      const slots = buktiSlots?.[b.id]?.length ? buktiSlots[b.id]! : [b.slot]
+      return !slots.some((s) => dataUrlGambarAman(fotoSlot[s]))
+    })
     .map((b) => b.label)
+}
+
+/** Daftar slot foto yang dimiliki satu bukti (primer + tambahan). Kompatibel dokumen lama. */
+export function slotsUntukBukti(
+  bukti: { id: string; slot: number },
+  buktiSlots?: Record<string, number[]>,
+): number[] {
+  const dariMap = buktiSlots?.[bukti.id]
+  if (dariMap?.length) return [...new Set(dariMap)].sort((a, b) => a - b)
+  return [bukti.slot]
 }
 
 export async function siapkanFoto(file: File): Promise<string> {
@@ -219,6 +255,11 @@ export type KirimInput = {
    * bukti opsional boleh kosong (ANTIREGRESI §Tugas.Bukti).
    */
   fotoSlot?: Record<number, string>
+  /**
+   * Multi-foto per bukti: buktiId → daftar slot yang dimiliki (termasuk slot primer).
+   * Wajib diisi klien bila memakai multi-foto; server/guru/AI membacanya.
+   */
+  buktiSlots?: Record<string, number[]>
   /** Video baru per slot (sudah lolos periksa & konversi) yang akan diunggah ke Storage. */
   videoBaru?: Record<number, VideoSiap>
   /** Slot video lama yang DIPERTAHANKAN (tidak diganti/dihapus siswa). */
@@ -248,12 +289,13 @@ export async function kirimPengumpulan(input: KirimInput): Promise<PengumpulanDo
   for (const n of input.videoPertahankan ?? []) {
     if (videoLama[n] && !videoBaru[n]) videoAkhir[n] = videoLama[n]
   }
+  const buktiSlotsKirim = input.buktiSlots
   if (adaBukti(tugas)) {
     const slotMap = input.fotoSlot ?? {}
     const adaVideo: Record<number, boolean> = {}
     for (const n of Object.keys(videoAkhir)) adaVideo[Number(n)] = true
     for (const n of Object.keys(videoBaru)) adaVideo[Number(n)] = true
-    const kurang = buktiWajibKurang(tugas, slotMap, adaVideo)
+    const kurang = buktiWajibKurang(tugas, slotMap, adaVideo, buktiSlotsKirim)
     if (kurang.length > 0) {
       throw new Error(`Bukti wajib belum lengkap: ${kurang.join(', ')}.`)
     }
@@ -357,6 +399,10 @@ export async function kirimPengumpulan(input: KirimInput): Promise<PengumpulanDo
   const ref = doc(db, 'lms_pengumpulan', id)
   const videosDok: Record<string, VideoMeta> = {}
   for (const [k, v] of Object.entries(videoAkhir)) videosDok[k] = v
+  // Multi-foto per bukti: tulis mapping bila ada (selaras rules hasOnly/affectedKeys).
+  const buktiSlotsDok =
+    buktiSlotsKirim && Object.keys(buktiSlotsKirim).length > 0 ? buktiSlotsKirim : undefined
+
   await langkah(ada ? 'meta-ubah' : 'meta-baru', async () => {
   if (ada) {
     await updateDoc(ref, {
@@ -367,6 +413,7 @@ export async function kirimPengumpulan(input: KirimInput): Promise<PengumpulanDo
       ...(adaBuktiVideo(tugas) || Object.keys(videoLama).length > 0 || Object.keys(videosDok).length > 0
         ? { videos: videosDok }
         : {}),
+      ...(buktiSlotsDok ? { buktiSlots: buktiSlotsDok } : {}),
       updatedAt: serverTimestamp(),
     })
   } else {
@@ -380,6 +427,7 @@ export async function kirimPengumpulan(input: KirimInput): Promise<PengumpulanDo
       fotoIds,
       jumlahFoto: fotoIds.length,
       ...(Object.keys(videosDok).length > 0 ? { videos: videosDok } : {}),
+      ...(buktiSlotsDok ? { buktiSlots: buktiSlotsDok } : {}),
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     })
@@ -409,6 +457,7 @@ export async function kirimPengumpulan(input: KirimInput): Promise<PengumpulanDo
       fotoIds,
       jumlahFoto: fotoIds.length,
       videos: videosDok,
+      ...(buktiSlotsDok ? { buktiSlots: buktiSlotsDok } : {}),
       createdAt: ada ? { seconds: Math.floor(ada.dibuatMs / 1000) } : kini,
       updatedAt: kini,
     })

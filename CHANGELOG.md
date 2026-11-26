@@ -1,3 +1,25 @@
+## 2026-11-26 — Multi-foto per bukti berlabel (siswa)
+
+### Latar
+Siswa tidak bisa menambahkan lebih dari satu foto per kartu bukti berlabel. Desain lama sengaja 1 kartu = 1 foto; multi-pilih hanya mengisi kartu yang diklik dan sisanya masuk antrian manual. Untuk tugas yang meminta beberapa sudut foto pada satu bukti (mis. «Foto hasil dari depan & samping»), siswa kesulitan.
+
+### Perilaku baru
+- Setiap kartu bukti boleh berisi **beberapa foto** (ditampilkan sebagai grid thumbnail di dalam kartu).
+- Total seluruh foto di tugas tetap **maksimal 10** (slot 1–10 tidak berubah).
+- Foto pertama tetap di slot primer bukti (kompatibel data lama). Foto tambahan memakai slot kosong; ownership dicatat di field baru opsional `buktiSlots` pada dokumen `lms_pengumpulan`.
+- AI penilaian dan tampilan guru membaca semua foto yang terdaftar di `buktiSlots[buktiId]` (fallback ke 1 foto per `bukti.slot` bila field tidak ada).
+- Dokumen pengumpulan lama tanpa `buktiSlots` tetap terbaca normal.
+
+### Deploy
+1. `firestore.rules` (identik di LMS **dan** SDM01Penilaian): `firebase deploy --only firestore:rules`
+2. Hosting LMS.
+3. (Opsional tapi disarankan) Cloud Function `nilaiTugasLmsAi` agar AI ikut membaca multi-foto.
+
+### File
+- `src/lib/pengumpulan.ts`, `src/pages/siswa/PengumpulanSiswa.tsx`
+- `firestore.rules` (kedua repo)
+- CHANGELOG.md, ANTIREGRESI.md §Tugas.MultiFotoBukti
+
 ## 2026-11-26 — Tugas bisa dikerjakan berulang + poin perbaikan terlihat siswa (Tahap A)
 
 ### Latar

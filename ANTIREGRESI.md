@@ -1,3 +1,14 @@
+## §Tugas.MultiFotoBukti — beberapa foto per kartu bukti berlabel (2026-11-26)
+
+1. **Model tetap slot 1–10.** Tidak menambah koleksi baru. Total foto per pengumpulan ≤ 10 (`fotoIds.size() <= 10`, `BATAS_FOTO_PENGUMPULAN` / `BATAS_SLOT_FOTO`).
+2. **Field baru opsional `buktiSlots`** pada `lms_pengumpulan`: `{ [buktiId: string]: number[] }` (daftar slot milik bukti itu, termasuk slot primer). Dokumen lama tanpa field = perilaku 1 foto per `bukti.slot`.
+3. **Rules:** `buktiSlots` masuk `hasOnly` (create) dan `affectedKeys` (update) di `match /lms_pengumpulan`. File rules IDENTIK di repo LMS dan SDM01Penilaian. Deploy rules DAHULU.
+4. **Klien siswa:** multi-pilih di satu kartu → foto pertama ke slot primer, berikutnya ke slot kosong; ownership di state `slotMilik` lalu ditulis ke `buktiSlots` saat kirim. Kartu menampilkan grid thumbnail semua foto milik bukti itu.
+5. **Wajib terisi:** `buktiWajibKurang(..., buktiSlots)` menganggap bukti foto lengkap bila **minimal satu** slot miliknya punya foto.
+6. **AI / guru:** baca semua slot di `buktiSlots[buktiId]`; bila field tidak ada, fallback ke `[bukti.slot]`. Function `nilaiTugasLmsAi` sebaiknya ikut diperbarui agar multi-foto ikut dinilai.
+7. **Jangan** mengembalikan desain «1 kartu = 1 foto saja» tanpa memperbarui UI siswa yang sudah menampilkan multi-thumb.
+8. Uji: (a) tugas 2 bukti, isi 2 foto di bukti pertama + 1 di bukti kedua → total 3, mapping benar, guru melihat 2+1; (b) dokumen lama 1 foto per bukti tetap tampil; (c) total 10 foto → tombol tambah nonaktif; (d) kirim ulang menambah/mengurangi foto di satu kartu; (e) rules menolak field lain selain yang di-hasOnly.
+
 ## §Tugas.Video.Ukuran — batas video hanya dari ukuran (2026-11-25)
 
 1. **Menggantikan §Tugas.Video butir 3** (durasi > 60 dtk ditolak, ukuran ≤ 15 MB) dan «video ≤ 15 MB dan ≤ 60 detik» pada §Tugas.Bukti.Batas10 butir 3 serta payload butir 6. Alasan: video performa (mis. seni musik) tidak muat 1 menit. Jangan mengembalikan pemeriksaan durasi `BATAS_DURASI_VIDEO_DETIK` (konstanta sudah dihapus).
