@@ -10,6 +10,7 @@ import { LABEL_TAHAP } from '../../types/tugas'
 import {
   daftarTugasAktifKelas,
   formatTenggatRelatif,
+  infoBatasAkhirSiswa,
   statusTugasSiswa,
   type StatusTugasSiswa,
   type TugasSiswaRingkas,
@@ -47,7 +48,7 @@ const FILTER_STATUS_LABEL: Record<StatusTugasSiswa | 'semua', string> = {
   semua: 'Semua',
   belum: 'Belum dinilai',
   dinilai: 'Sudah dinilai',
-  lewat: 'Lewat tenggat',
+  lewat: 'Lewat batas akhir',
   ditutup: 'Ditutup',
 }
 
@@ -254,6 +255,7 @@ export default function SiswaTugas() {
     const a = aksenMapel(detail.mapel)
     const jenis = (detail.jenisPenilaian ?? 'slm') as JenisPenilaianTugas
     const tenggatTeks = formatTenggatRelatif(detail.tenggat)
+    const batasDetail = infoBatasAkhirSiswa(detail.tenggat)
     const kategoriDinilai = (detail.pengaturanPenilaian?.kategori ?? []).filter((k) =>
       String(k.nama ?? '').trim(),
     )
@@ -340,7 +342,7 @@ export default function SiswaTugas() {
               : st === 'dinilai'
                 ? 'Sudah dinilai'
                 : st === 'lewat'
-                  ? 'Lewat tenggat'
+                  ? 'Lewat batas akhir'
                   : 'Belum dinilai'}
           </span>
           {berulang ? (
@@ -349,8 +351,21 @@ export default function SiswaTugas() {
               {maksKes === 0 ? '' : ` dari ${maksKes}`}
             </span>
           ) : null}
-          {tenggatTeks ? (
-            <span className="sw-kat-badge sw-kat-badge--info">Tenggat: {tenggatTeks}</span>
+          {batasDetail ? (
+            <span
+              className={
+                batasDetail.lewat
+                  ? 'sw-kat-badge sw-kat-badge--danger'
+                  : batasDetail.mendesak
+                    ? 'sw-kat-badge sw-kat-badge--warn'
+                    : 'sw-kat-badge sw-kat-badge--info'
+              }
+            >
+              {batasDetail.tanggal}
+              {batasDetail.sisa ? ` · ${batasDetail.sisa}` : ''}
+            </span>
+          ) : tenggatTeks ? (
+            <span className="sw-kat-badge sw-kat-badge--info">Batas akhir: {tenggatTeks}</span>
           ) : null}
         </div>
 
@@ -651,7 +666,7 @@ export default function SiswaTugas() {
             <ul className="sw-kat-grid">
               {grup.items.map(({ tugas: t, status: st, nilai }) => {
                 const jenis = (t.jenisPenilaian ?? 'slm') as JenisPenilaianTugas
-                const tenggatTeks = formatTenggatRelatif(t.tenggat)
+                const batas = infoBatasAkhirSiswa(t.tenggat)
                 const am = aksenMapel(t.mapel || grup.mapel)
                 return (
                   <li key={t.id}>
@@ -668,13 +683,21 @@ export default function SiswaTugas() {
                                 <span>Proyek</span>
                               </>
                             )}
-                            {tenggatTeks ? (
-                              <>
-                                <span className="sw-kat-card-meta-dot" aria-hidden />
-                                <span>{tenggatTeks}</span>
-                              </>
-                            ) : null}
                           </div>
+                          {batas && (
+                            <div
+                              className={
+                                batas.lewat
+                                  ? 'sw-kat-batas sw-kat-batas--lewat'
+                                  : batas.mendesak
+                                    ? 'sw-kat-batas sw-kat-batas--segera'
+                                    : 'sw-kat-batas'
+                              }
+                            >
+                              <span className="sw-kat-batas-tgl">{batas.tanggal}</span>
+                              <span className="sw-kat-batas-sisa">{batas.sisa}</span>
+                            </div>
+                          )}
                         </div>
                         <div
                           className="sw-kat-card-icon"
@@ -703,7 +726,7 @@ export default function SiswaTugas() {
                             : st === 'ditutup'
                               ? 'Penugasan ditutup'
                               : st === 'lewat'
-                                ? 'Lewat tenggat'
+                                ? 'Lewat batas akhir'
                                 : 'Belum dinilai'}
                         </span>
                         {tugasBerulang(t) && perbaikanTerbuka(nilai) && alasanTugasDitutup(t) === null && (

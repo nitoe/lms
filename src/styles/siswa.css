@@ -1449,6 +1449,57 @@ button.sw-kat-card {
   color: #6b7280;
   line-height: 1.35;
 }
+
+/* Batas akhir tugas di kartu katalog siswa */
+.sw-kat-batas {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.25rem 0.5rem;
+  margin-top: 0.4rem;
+  padding: 0.35rem 0.55rem;
+  border-radius: 0.55rem;
+  background: #f1f5f9;
+  color: #334155;
+  font-size: 0.78rem;
+  line-height: 1.35;
+  text-align: left;
+}
+.sw-kat-batas-tgl {
+  font-weight: 700;
+  color: #0f172a;
+}
+.sw-kat-batas-sisa {
+  color: #475569;
+}
+.sw-kat-batas-sisa::before {
+  content: '·';
+  margin-right: 0.35rem;
+  color: #94a3b8;
+}
+.sw-kat-batas--segera {
+  background: #fff7ed;
+  color: #9a3412;
+}
+.sw-kat-batas--segera .sw-kat-batas-tgl {
+  color: #9a3412;
+}
+.sw-kat-batas--segera .sw-kat-batas-sisa {
+  color: #c2410c;
+  font-weight: 600;
+}
+.sw-kat-batas--lewat {
+  background: #fef2f2;
+  color: #991b1b;
+}
+.sw-kat-batas--lewat .sw-kat-batas-tgl {
+  color: #991b1b;
+}
+.sw-kat-batas--lewat .sw-kat-batas-sisa {
+  color: #b91c1c;
+  font-weight: 700;
+}
+
 .sw-kat-card-meta-dot {
   width: 0.2rem;
   height: 0.2rem;
