@@ -320,33 +320,42 @@ export default function PengumpulanSiswa({
       const bukti = (tugas.buktiList ?? []).find((b) => b.slot === slot)
       const buktiId = bukti?.id ?? `slot-${slot}`
 
-      // Slot yang sudah terisi foto (apa pun pemiliknya) — jangan ditimpa saat menambah.
+      // Slot yang sudah terisi foto — jangan ditimpa saat menambah.
       const slotTerisi = new Set(
         Object.keys(fotoSlot)
           .map(Number)
           .filter((n) => dataUrlGambarAman(fotoSlot[n])),
       )
-      // Slot diklaim bukti LAIN — tidak boleh dipakai.
+      // Slot diklaim bukti LAIN (via ownership) — tidak boleh dipakai.
       const diklaimLain = new Set(
         Object.entries(slotMilik)
           .filter(([, id]) => id && id !== buktiId)
           .map(([s]) => Number(s)),
       )
-      // Slot kosong yang boleh dipakai bukti ini.
-      const slotKosong = DAFTAR_SLOT.filter((n) => !slotTerisi.has(n) && !diklaimLain.has(n))
+      // Slot PRIMER bukti lain — jangan dipakai untuk foto tambahan (ANTIREGRESI: tidak nyebrang).
+      const primerLain = new Set(
+        (tugas.buktiList ?? [])
+          .filter((b) => b.jenis !== 'video' && b.slot !== slot)
+          .map((b) => b.slot),
+      )
+      // Slot kosong yang boleh dipakai: bukan terisi, bukan milik bukti lain, bukan primer bukti lain.
+      // Slot primer KARTU INI boleh dipakai hanya jika masih kosong.
+      const slotKosong = DAFTAR_SLOT.filter(
+        (n) => !slotTerisi.has(n) && !diklaimLain.has(n) && (n === slot || !primerLain.has(n)),
+      )
 
-      // Prioritas: slot primer dulu HANYA bila masih kosong; sisanya slot kosong lain.
-      // Ini memastikan «Tambah foto» menambah, bukan mengganti.
+      // Prioritas: slot primer kartu ini dulu (jika kosong), lalu slot non-primer yang kosong.
+      // «Tambah foto» menambah; tidak mengganti; tidak nyebrang ke kartu bukti lain.
       const target: number[] = []
-      if (!slotTerisi.has(slot) && !diklaimLain.has(slot)) {
-        target.push(slot)
-      }
+      if (slotKosong.includes(slot)) target.push(slot)
       for (const n of slotKosong) {
         if (n !== slot) target.push(n)
       }
 
       if (target.length === 0) {
-        setGalat(`Tidak ada slot kosong (maksimal ${BATAS_FOTO_PENGUMPULAN} foto). Hapus salah satu dulu.`)
+        setGalat(
+          `Tidak ada slot kosong untuk bukti ini (maksimal ${BATAS_FOTO_PENGUMPULAN} foto, slot bukti lain tidak dipakai). Hapus salah satu dulu.`,
+        )
         return
       }
 
@@ -592,7 +601,10 @@ export default function PengumpulanSiswa({
                     const milik = Object.entries(slotMilik)
                       .filter(([, id]) => id === b.id)
                       .map(([s]) => Number(s))
-                    const slots = [...new Set([b.slot, ...milik])]
+                    const primerOk =
+                      dataUrlGambarAman(fotoSlot[b.slot]) &&
+                      (!slotMilik[b.slot] || slotMilik[b.slot] === b.id)
+                    const slots = [...new Set([...(primerOk ? [b.slot] : []), ...milik])]
                       .filter((s) => dataUrlGambarAman(fotoSlot[s]))
                       .sort((a, c) => a - c)
                     if (slots.length === 0) return null
@@ -714,7 +726,7 @@ export default function PengumpulanSiswa({
               return (
                 <li
                   key={b.id}
-                  className={`sw-bukti${(video ? videoAda[b.slot] : Object.entries(slotMilik).some(([s, id]) => id === b.id && dataUrlGambarAman(fotoSlot[Number(s)])) || dataUrlGambarAman(fotoSlot[b.slot])) ? ' sw-bukti--ok' : b.wajib ? ' sw-bukti--kurang' : ''}`}
+                  className={`sw-bukti${(video ? videoAda[b.slot] : (Object.entries(slotMilik).some(([s, id]) => id === b.id && dataUrlGambarAman(fotoSlot[Number(s)])) || (dataUrlGambarAman(fotoSlot[b.slot]) && (!slotMilik[b.slot] || slotMilik[b.slot] === b.id)))) ? ' sw-bukti--ok' : b.wajib ? ' sw-bukti--kurang' : ''}`}
                 >
                   <div className="sw-bukti-head">
                     <span className="sw-bukti-no" aria-hidden>
@@ -747,11 +759,15 @@ export default function PengumpulanSiswa({
                   ) : (
                     <>
                   {(() => {
-                    // Kumpulkan semua slot milik bukti ini (primer + tambahan dari slotMilik).
+                    // Hanya slot yang ownership-nya milik bukti ini.
+                    // Slot primer hanya ikut jika kosong dari klaim bukti lain (tidak nyebrang).
                     const milik = Object.entries(slotMilik)
                       .filter(([, id]) => id === b.id)
                       .map(([s]) => Number(s))
-                    const slotsFoto = [...new Set([b.slot, ...milik])]
+                    const primerOk =
+                      dataUrlGambarAman(fotoSlot[b.slot]) &&
+                      (!slotMilik[b.slot] || slotMilik[b.slot] === b.id)
+                    const slotsFoto = [...new Set([...(primerOk ? [b.slot] : []), ...milik])]
                       .filter((s) => dataUrlGambarAman(fotoSlot[s]))
                       .sort((a, c) => a - c)
                     if (slotsFoto.length === 0) {
