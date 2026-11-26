@@ -7,7 +7,8 @@
 5. **Wajib terisi:** `buktiWajibKurang(..., buktiSlots)` menganggap bukti foto lengkap bila **minimal satu** slot miliknya punya foto.
 6. **AI / guru:** baca semua slot di `buktiSlots[buktiId]`; bila field tidak ada, fallback ke `[bukti.slot]`. Function `nilaiTugasLmsAi` sebaiknya ikut diperbarui agar multi-foto ikut dinilai.
 7. **Jangan** mengembalikan desain «1 kartu = 1 foto saja» tanpa memperbarui UI siswa yang sudah menampilkan multi-thumb.
-8. Uji: (a) tugas 2 bukti, isi 2 foto di bukti pertama + 1 di bukti kedua → total 3, mapping benar, guru melihat 2+1; (b) dokumen lama 1 foto per bukti tetap tampil; (c) total 10 foto → tombol tambah nonaktif; (d) kirim ulang menambah/mengurangi foto di satu kartu; (e) rules menolak field lain selain yang di-hasOnly.
+8. **Android Files / multi-select:** Banyak HP membuka pemilih lewat app Files yang mengabaikan `multiple`. Jangan mengandalkan multi-pilih sebagai satu-satunya cara. Tombol di kartu bukti harus tetap bertuliskan «Tambah foto» (bukan «Ganti») selama total < 10, agar siswa bisa menambah satu per satu dengan mudah. Petunjuk di UI menyebutkan kemungkinan ini.
+9. Uji: (a) tugas 2 bukti, isi 2 foto di bukti pertama + 1 di bukti kedua → total 3, mapping benar, guru melihat 2+1; (b) dokumen lama 1 foto per bukti tetap tampil; (c) total 10 foto → tombol tambah nonaktif + label «Batas 10 foto»; (d) kirim ulang menambah/mengurangi foto di satu kartu; (e) rules menolak field lain selain yang di-hasOnly; (f) di HP yang hanya bisa pilih satu → ketuk «Tambah foto» berulang kali, semua masuk ke kartu yang sama.
 
 ## §Tugas.Video.Ukuran — batas video hanya dari ukuran (2026-11-25)
 

@@ -543,6 +543,10 @@ export default function PengumpulanSiswa({
     }
   }
   const kurang = modeBukti ? buktiWajibKurang(tugas, fotoSlot, videoAda, buktiSlotsLokal) : []
+  const jumlahFotoSekarang = modeBukti
+    ? Object.keys(fotoSlot).filter((k) => dataUrlGambarAman(fotoSlot[Number(k)])).length
+    : items.length
+  const masihBisaTambah = jumlahFotoSekarang < BATAS_FOTO_PENGUMPULAN
   const jumlahWajib = buktiList.filter((b) => b.wajib).length
   const jumlahFotoBukti = buktiList.filter((b) => (b.jenis === 'video' ? videoAda[b.slot] : fotoSlot[b.slot])).length
   /** Daftar foto siap kirim (mode bukti) — untuk pratinjau lengkap. */
@@ -660,7 +664,8 @@ export default function PengumpulanSiswa({
             Gurumu meminta {buktiList.length} bukti
             {jumlahWajib < buktiList.length ? ` ({jumlahWajib} wajib)` : ''}.
             Isi tiap kartu sesuai namanya. Setiap bukti boleh lebih dari satu foto (total maks. 10).
-            Dari galeri bisa centang beberapa: semua foto masuk ke kartu ini selama masih ada slot.
+            Beberapa HP hanya bisa pilih satu foto sekali jalan — ketuk lagi «Tambah foto» untuk menambah.
+            Di galeri Google Photos biasanya bisa centang beberapa sekaligus.
           </p>
           {kelompokBuktiPerTahap(buktiList).map((g) => (
             <div key={g.tahap ?? 'lain'} className="sw-bukti-kelompok">
@@ -673,6 +678,7 @@ export default function PengumpulanSiswa({
               const idInput = `bukti-${tugas.id}-${b.slot}`
               const sibuk = olahSlot === b.slot
               const off = busy || olahSlot !== null || videoSibuk
+              const offTambah = off || !masihBisaTambah
               return (
                 <li
                   key={b.id}
@@ -772,7 +778,7 @@ export default function PengumpulanSiswa({
                         multiple
                         className="sw-kumpul-input"
                         id={idInput}
-                        disabled={off}
+                        disabled={offTambah}
                         onChange={(e) => void pilihBukti(b.slot, e.target.files, e.target)}
                       />
                       <input
@@ -781,19 +787,25 @@ export default function PengumpulanSiswa({
                         capture="environment"
                         className="sw-kumpul-input"
                         id={`${idInput}-kamera`}
-                        disabled={off}
+                        disabled={offTambah}
                         onChange={(e) => void pilihBukti(b.slot, e.target.files, e.target)}
                       />
                       <div className="sw-kumpul-aksi">
                         <label
                           htmlFor={idInput}
-                          className={`sw-kumpul-tambah${off ? ' sw-kumpul-tambah--off' : ''}`}
+                          className={`sw-kumpul-tambah${offTambah ? ' sw-kumpul-tambah--off' : ''}`}
                         >
-                          {sibuk ? 'Memproses…' : src ? 'Ganti dari galeri' : 'Dari galeri'}
+                          {sibuk
+                            ? 'Memproses…'
+                            : !masihBisaTambah
+                              ? 'Batas 10 foto'
+                              : (Object.entries(slotMilik).some(([s, id]) => id === b.id && dataUrlGambarAman(fotoSlot[Number(s)])) || dataUrlGambarAman(fotoSlot[b.slot]))
+                                ? 'Tambah foto'
+                                : 'Dari galeri'}
                         </label>
                         <label
                           htmlFor={`${idInput}-kamera`}
-                          className={`sw-kumpul-tambah sw-kumpul-tambah--sekunder${off ? ' sw-kumpul-tambah--off' : ''}`}
+                          className={`sw-kumpul-tambah sw-kumpul-tambah--sekunder${offTambah ? ' sw-kumpul-tambah--off' : ''}`}
                         >
                           Kamera
                         </label>

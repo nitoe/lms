@@ -9,6 +9,7 @@ Siswa tidak bisa menambahkan lebih dari satu foto per kartu bukti berlabel. Desa
 - Foto pertama tetap di slot primer bukti (kompatibel data lama). Foto tambahan memakai slot kosong; ownership dicatat di field baru opsional `buktiSlots` pada dokumen `lms_pengumpulan`.
 - AI penilaian dan tampilan guru membaca semua foto yang terdaftar di `buktiSlots[buktiId]` (fallback ke 1 foto per `bukti.slot` bila field tidak ada).
 - Dokumen pengumpulan lama tanpa `buktiSlots` tetap terbaca normal.
+- **Android Files / beberapa HP:** atribut `multiple` sering diabaikan bila pemilih lewat app Files (bukan Google Photos). Tombol di kartu tetap bertuliskan «Tambah foto» setelah foto pertama, sehingga siswa bisa membuka pemilih berulang kali (satu per satu) tanpa merasa «sudah diganti». Petunjuk singkat ditampilkan di atas daftar bukti.
 
 ### Deploy
 1. `firestore.rules` (identik di LMS **dan** SDM01Penilaian): `firebase deploy --only firestore:rules`
