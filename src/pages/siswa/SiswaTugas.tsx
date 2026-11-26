@@ -9,7 +9,6 @@ import { htmlInstruksiSiswa } from '../../lib/instruksiTugas'
 import { LABEL_TAHAP } from '../../types/tugas'
 import {
   daftarTugasAktifKelas,
-  formatTenggatRelatif,
   infoBatasAkhirSiswa,
   statusTugasSiswa,
   type StatusTugasSiswa,
@@ -59,6 +58,55 @@ type FilterStatus = StatusTugasSiswa | 'semua'
  * Pengumpulan foto: lms_pengumpulan (ANTIREGRESI §132). Status «Sudah dinilai» tetap memakai
  * lms_nilai_tugas milik siswa; «Terkumpul» hanya lencana tambahan, bukan status filter.
  */
+
+/** Hitungan mundur hidup ke batas akhir (diperbarui tiap 30 detik). */
+function BatasAkhirBlok({
+  tenggat,
+  mode = 'kartu',
+}: {
+  tenggat: unknown
+  mode?: 'kartu' | 'badge'
+}) {
+  const [sekarang, setSekarang] = useState(() => Date.now())
+  useEffect(() => {
+    const id = window.setInterval(() => setSekarang(Date.now()), 30_000)
+    return () => window.clearInterval(id)
+  }, [])
+  const batas = infoBatasAkhirSiswa(tenggat, sekarang)
+  if (!batas) return null
+  if (mode === 'badge') {
+    return (
+      <span
+        className={
+          batas.lewat
+            ? 'sw-kat-badge sw-kat-badge--danger'
+            : batas.mendesak
+              ? 'sw-kat-badge sw-kat-badge--warn'
+              : 'sw-kat-badge sw-kat-badge--info'
+        }
+      >
+        {batas.tanggal}
+        {batas.sisa ? ` · ${batas.sisa}` : ''}
+      </span>
+    )
+  }
+  return (
+    <div
+      className={
+        batas.lewat
+          ? 'sw-kat-batas sw-kat-batas--lewat'
+          : batas.mendesak
+            ? 'sw-kat-batas sw-kat-batas--segera'
+            : 'sw-kat-batas'
+      }
+      aria-live="polite"
+    >
+      <span className="sw-kat-batas-tgl">{batas.tanggal}</span>
+      <span className="sw-kat-batas-sisa">{batas.sisa}</span>
+    </div>
+  )
+}
+
 export default function SiswaTugas() {
   const { sesi } = useSiswa()
   const kelas = sesi?.kelas ?? ''
@@ -254,8 +302,6 @@ export default function SiswaTugas() {
     const st = statusTugasSiswa(detail, nilai)
     const a = aksenMapel(detail.mapel)
     const jenis = (detail.jenisPenilaian ?? 'slm') as JenisPenilaianTugas
-    const tenggatTeks = formatTenggatRelatif(detail.tenggat)
-    const batasDetail = infoBatasAkhirSiswa(detail.tenggat)
     const kategoriDinilai = (detail.pengaturanPenilaian?.kategori ?? []).filter((k) =>
       String(k.nama ?? '').trim(),
     )
@@ -351,22 +397,7 @@ export default function SiswaTugas() {
               {maksKes === 0 ? '' : ` dari ${maksKes}`}
             </span>
           ) : null}
-          {batasDetail ? (
-            <span
-              className={
-                batasDetail.lewat
-                  ? 'sw-kat-badge sw-kat-badge--danger'
-                  : batasDetail.mendesak
-                    ? 'sw-kat-badge sw-kat-badge--warn'
-                    : 'sw-kat-badge sw-kat-badge--info'
-              }
-            >
-              {batasDetail.tanggal}
-              {batasDetail.sisa ? ` · ${batasDetail.sisa}` : ''}
-            </span>
-          ) : tenggatTeks ? (
-            <span className="sw-kat-badge sw-kat-badge--info">Batas akhir: {tenggatTeks}</span>
-          ) : null}
+          <BatasAkhirBlok tenggat={detail.tenggat} mode="badge" />
         </div>
 
         {nilai && typeof nilai.nilai === 'number' && (
@@ -666,7 +697,6 @@ export default function SiswaTugas() {
             <ul className="sw-kat-grid">
               {grup.items.map(({ tugas: t, status: st, nilai }) => {
                 const jenis = (t.jenisPenilaian ?? 'slm') as JenisPenilaianTugas
-                const batas = infoBatasAkhirSiswa(t.tenggat)
                 const am = aksenMapel(t.mapel || grup.mapel)
                 return (
                   <li key={t.id}>
@@ -684,20 +714,7 @@ export default function SiswaTugas() {
                               </>
                             )}
                           </div>
-                          {batas && (
-                            <div
-                              className={
-                                batas.lewat
-                                  ? 'sw-kat-batas sw-kat-batas--lewat'
-                                  : batas.mendesak
-                                    ? 'sw-kat-batas sw-kat-batas--segera'
-                                    : 'sw-kat-batas'
-                              }
-                            >
-                              <span className="sw-kat-batas-tgl">{batas.tanggal}</span>
-                              <span className="sw-kat-batas-sisa">{batas.sisa}</span>
-                            </div>
-                          )}
+                          <BatasAkhirBlok tenggat={t.tenggat} mode="kartu" />
                         </div>
                         <div
                           className="sw-kat-card-icon"

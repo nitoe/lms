@@ -207,13 +207,41 @@ export function infoBatasAkhirSiswa(tenggat: unknown, sekarang = Date.now()): In
       month: 'short',
       year: tgl.getFullYear() !== sekarangD.getFullYear() ? 'numeric' : undefined,
     })
-    // Selisih hari kalender (bukan 24 jam penuh) agar «hari ini» konsisten dengan tenggatLewat.
+    // Hari kalender untuk status lewat/hari ini; sisa waktu pakai selisih jam/menit agar countdown hidup.
     const awalHari = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime()
     const selisihHari = Math.round((awalHari(tgl) - awalHari(sekarangD)) / (24 * 60 * 60 * 1000))
+    const sisaMs = ms - sekarang
 
-    if (selisihHari < 0) {
-      const lewat = Math.abs(selisihHari)
-      const sisa = lewat === 1 ? 'Sudah lewat 1 hari' : `Sudah lewat ${lewat} hari`
+    const teksSisaAktif = (): string => {
+      if (sisaMs <= 0) return ''
+      const totalMenit = Math.max(1, Math.floor(sisaMs / 60_000))
+      const hari = Math.floor(totalMenit / (60 * 24))
+      const jam = Math.floor((totalMenit % (60 * 24)) / 60)
+      const mnt = totalMenit % 60
+      if (hari >= 2) {
+        return jam > 0 ? `Masih ${hari} hari ${jam} jam` : `Masih ${hari} hari`
+      }
+      if (hari === 1) {
+        return jam > 0 ? `Masih 1 hari ${jam} jam` : 'Masih 1 hari'
+      }
+      if (jam >= 1) {
+        return mnt > 0 ? `Sisa ${jam} jam ${mnt} menit` : `Sisa ${jam} jam`
+      }
+      return `Sisa ${mnt} menit`
+    }
+
+    if (selisihHari < 0 || sisaMs <= 0) {
+      const lewatHari = Math.max(1, Math.abs(selisihHari === 0 && sisaMs <= 0 ? 0 : selisihHari))
+      // Jika lewat kurang dari 1 hari kalender, sebut jam.
+      let sisa: string
+      if (sisaMs > -60 * 60 * 1000 && sisaMs <= 0) {
+        sisa = 'Baru saja lewat'
+      } else if (selisihHari >= -1 && sisaMs > -24 * 60 * 60 * 1000) {
+        const jamLewat = Math.max(1, Math.floor(Math.abs(sisaMs) / 3_600_000))
+        sisa = jamLewat === 1 ? 'Sudah lewat 1 jam' : `Sudah lewat ${jamLewat} jam`
+      } else {
+        sisa = lewatHari <= 1 ? 'Sudah lewat 1 hari' : `Sudah lewat ${lewatHari} hari`
+      }
       return {
         ringkas: `${sisa} (batas ${tglPendek})`,
         tanggal: `Batas akhir: ${tanggal}`,
@@ -222,48 +250,34 @@ export function infoBatasAkhirSiswa(tenggat: unknown, sekarang = Date.now()): In
         mendesak: true,
       }
     }
+
+    const sisa = teksSisaAktif()
+    const mendesak = selisihHari <= 3 || sisaMs <= 3 * 24 * 60 * 60 * 1000
+
     if (selisihHari === 0) {
       return {
-        ringkas: `Batas akhir hari ini (${tglPendek})`,
+        ringkas: `Batas akhir hari ini (${tglPendek}) · ${sisa}`,
         tanggal: `Batas akhir: ${tanggal}`,
-        sisa: 'Hari ini — segera kumpulkan',
+        sisa: sisa || 'Hari ini — segera kumpulkan',
         lewat: false,
         mendesak: true,
       }
     }
     if (selisihHari === 1) {
       return {
-        ringkas: `Batas akhir besok (${tglPendek})`,
+        ringkas: `Batas akhir besok (${tglPendek}) · ${sisa}`,
         tanggal: `Batas akhir: ${tanggal}`,
-        sisa: 'Besok',
+        sisa,
         lewat: false,
         mendesak: true,
-      }
-    }
-    if (selisihHari <= 3) {
-      return {
-        ringkas: `Batas akhir ${tglPendek} · ${selisihHari} hari lagi`,
-        tanggal: `Batas akhir: ${tanggal}`,
-        sisa: `Masih ${selisihHari} hari`,
-        lewat: false,
-        mendesak: true,
-      }
-    }
-    if (selisihHari <= 7) {
-      return {
-        ringkas: `Batas akhir ${tglPendek} · ${selisihHari} hari lagi`,
-        tanggal: `Batas akhir: ${tanggal}`,
-        sisa: `Masih ${selisihHari} hari`,
-        lewat: false,
-        mendesak: false,
       }
     }
     return {
-      ringkas: `Batas akhir ${tglPendek}`,
+      ringkas: `Batas akhir ${tglPendek} · ${sisa}`,
       tanggal: `Batas akhir: ${tanggal}`,
-      sisa: `Masih ${selisihHari} hari`,
+      sisa,
       lewat: false,
-      mendesak: false,
+      mendesak,
     }
   } catch {
     return null
