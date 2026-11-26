@@ -109,7 +109,7 @@ export function daftarPoinPerbaikanDariUsulan(u: Pick<UsulanNilaiAi, 'poinPerbai
     const alasan = (k.alasan || '').trim()
     if (alasan.length < 12) continue
     // Ubah nada guru → saran ke siswa (ringkas).
-    const saran = k.nama
+    let saran = k.nama
       ? `Perbaiki bagian «${k.nama}»: ${alasan}`
       : alasan
     if (saran.length > 200) saran = saran.slice(0, 197) + '…'
