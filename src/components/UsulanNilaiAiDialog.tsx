@@ -13,8 +13,15 @@ type Props = {
   pengumpulan?: PengumpulanDok
   /** Nama siswa pada baris yang membuka dialog (bisa berbeda dari pemilik bukti pada tugas kelompok). */
   namaTarget: string
-  /** Terisi bila bukti dikumpulkan ketua kelompok. */
-  kelompok?: { ketuaNama: string; jumlahAnggota: number; jumlahPenerima: number }
+  /** Terisi bila bukti untuk tugas kelompok (ketua atau wakil yang mengumpulkan). */
+  kelompok?: {
+    ketuaNama: string
+    jumlahAnggota: number
+    jumlahPenerima: number
+    /** Bukti diunggah anggota mewakili ketua (bukan ketua sendiri). */
+    diwakili?: boolean
+    namaPengumpul?: string
+  }
   sudahDiterapkan: boolean
   onTerapkan: () => void
   /** Terapkan ke seluruh anggota kelompok yang layak (draf saja). */
@@ -100,8 +107,17 @@ export default function UsulanNilaiAiDialog({
         <div className="td-modal-badan">
           {kelompok && (
             <p className="td-ai-kelompok">
-              Bukti ini dikumpulkan ketua kelompok (<b>{kelompok.ketuaNama}</b>, {kelompok.jumlahAnggota} anggota).
-              Usulan berlaku untuk hasil kelompok; Anda dapat menyesuaikan nilai tiap anggota setelah diterapkan.
+              {kelompok.diwakili ? (
+                <>
+                  Bukti dikumpulkan <b>{kelompok.namaPengumpul || 'anggota'}</b> mewakili kelompok{' '}
+                  <b>{kelompok.ketuaNama}</b> ({kelompok.jumlahAnggota} anggota).
+                </>
+              ) : (
+                <>
+                  Bukti dikumpulkan ketua kelompok (<b>{kelompok.ketuaNama}</b>, {kelompok.jumlahAnggota} anggota).
+                </>
+              )}{' '}
+              Usulan untuk hasil kelompok — terapkan ke semua anggota yang ikut, lalu sesuaikan per siswa bila perlu.
             </p>
           )}
           {usulan.ringkasan && <p className="td-ai-ringkasan">{usulan.ringkasan}</p>}

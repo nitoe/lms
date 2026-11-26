@@ -1051,12 +1051,15 @@ export default function TugasDetail() {
     const kel = kelompokList.find((x) => x.anggotaIds.includes(siswaId))
     const sendiri = pengumpulanMap[siswaId]
     if (sendiri) {
+      // Ketua atau wakil tunggal yang mengumpulkan = bukti KELOMPOK (bukan nilai individu).
+      const isKetua = !!kel && kel.ketuaId === siswaId
+      const isWakil = !!kel && wakilBukti(kel) === siswaId
       return {
         pemilikId: siswaId,
         dok: sendiri,
-        via: 'sendiri',
-        kelompok: kelompokList.find((k) => k.ketuaId === siswaId),
-        mewakili: !!kel && wakilBukti(kel) === siswaId,
+        via: isKetua || isWakil ? 'kelompok' : 'sendiri',
+        kelompok: isKetua || isWakil ? kel : undefined,
+        mewakili: isWakil,
       }
     }
     const k = kel
@@ -1064,10 +1067,18 @@ export default function TugasDetail() {
       return { pemilikId: k.ketuaId, dok: pengumpulanMap[k.ketuaId], via: 'kelompok', kelompok: k }
     }
     const wakil = wakilBukti(k)
-    if (k && wakil) {
+    if (k && wakil && pengumpulanMap[wakil]) {
       return { pemilikId: wakil, dok: pengumpulanMap[wakil], via: 'kelompok', kelompok: k, mewakili: true }
     }
     return null
+  }
+
+  /** Anggota yang ikut nilai kelompok (ketua + tanpa kiriman mandiri + wakil bukti). */
+  function penerimaNilaiKelompok(k: TugasKelompokDok): string[] {
+    const wakil = wakilBukti(k)
+    return k.anggotaIds.filter(
+      (id) => id === k.ketuaId || !pengumpulanMap?.[id] || id === wakil,
+    )
   }
 
   /** Draf baru dari usulan AI (murni). */
@@ -1129,12 +1140,28 @@ export default function TugasDetail() {
     return null
   }
 
-  /** Terapkan usulan ke KETUA lalu paksa seluruh anggota sama (draf saja). */
+  /** Terapkan usulan ke KETUA lalu paksa seluruh anggota yang ikut nilai kelompok (draf saja). */
   function terapkanKelompok(ketuaId: string, u: UsulanNilaiAi) {
     const baru = draftDariUsulan(draft[ketuaId], u)
-    setDraft((prev) => ({ ...prev, [ketuaId]: baru }))
-    samakanAnggota(ketuaId, baru)
-    setAiTerapkan((p) => ({ ...p, [ketuaId]: true }))
+    const k = kelompokList.find((x) => x.ketuaId === ketuaId)
+    setDraft((prev) => {
+      const next = { ...prev, [ketuaId]: baru }
+      if (!k) return next
+      const wakil = wakilBukti(k)
+      for (const id of k.anggotaIds) {
+        if (id === ketuaId) continue
+        // Sama aturan samakanAnggota: tanpa kiriman mandiri, atau ia wakil bukti.
+        if (pengumpulanMap?.[id] && id !== wakil) continue
+        next[id] = { ...baru }
+      }
+      return next
+    })
+    const ids = k ? penerimaNilaiKelompok(k) : [ketuaId]
+    setAiTerapkan((p) => {
+      const n = { ...p }
+      for (const id of ids) n[id] = true
+      return n
+    })
   }
 
   /**
@@ -1146,10 +1173,27 @@ export default function TugasDetail() {
     setAiBusyId(pemilikId)
     setError('')
     try {
+      // siswaId ke server = pemilik BERKAS bukti (ketua atau wakil) agar foto/video terbaca.
       const u = await usulkanNilaiTugasAi(tugas.id, pemilikId)
-      setUsulanAi((p) => ({ ...p, [pemilikId]: u }))
-      if (terapkanKe) for (const id of terapkanKe) terapkanUsulan(id, u, true)
-      else setDialogAi({ pemilikId, siswaId: targetId })
+      const kelPemilik = kelompokList.find(
+        (k) => k.ketuaId === pemilikId || k.anggotaIds.includes(pemilikId),
+      )
+      // Simpan usulan di kunci pemilik bukti + ketua (agar baris ketua menemukan usulan yang sama).
+      setUsulanAi((p) => {
+        const n = { ...p, [pemilikId]: u }
+        if (kelPemilik) n[kelPemilik.ketuaId] = u
+        return n
+      })
+      if (terapkanKe) {
+        if (kelPemilik && tugas.modeKelompok === true) {
+          // Satu kali sebar ke seluruh anggota yang ikut nilai kelompok (termasuk wakil).
+          terapkanKelompok(kelPemilik.ketuaId, u)
+        } else {
+          for (const id of terapkanKe) terapkanUsulan(id, u, true)
+        }
+      } else {
+        setDialogAi({ pemilikId, siswaId: targetId })
+      }
       return true
     } catch (e) {
       setError(`${namaTampil}: ${e instanceof Error ? e.message : 'Gagal menilai dengan AI.'}`)
@@ -3058,8 +3102,16 @@ export default function TugasDetail() {
         const sb = sumberBuktiSiswa(dialogAi.siswaId)
         const u = usulanAi[dialogAi.pemilikId]
         const baris = (barisNilai ?? []).find((r) => r.siswaId === dialogAi.siswaId)
-        const kel = sb?.kelompok
-        const penerima = kel ? kel.anggotaIds.filter((id) => !pengumpulanMap?.[id] || id === kel.ketuaId) : []
+        // Jangan andalkan sb.kelompok saja: wakil yang punya pengumpulan sendiri dulu tidak menempel kelompok.
+        const kel =
+          sb?.kelompok ??
+          kelompokList.find(
+            (k) => k.ketuaId === dialogAi.pemilikId || k.anggotaIds.includes(dialogAi.pemilikId),
+          )
+        const penerima = kel ? penerimaNilaiKelompok(kel) : []
+        const namaPengumpul =
+          (barisNilai ?? []).find((r) => r.siswaId === dialogAi.pemilikId)?.siswaNama ??
+          u.siswaNama
         return (
           <UsulanNilaiAiDialog
             usulan={u}
@@ -3067,16 +3119,23 @@ export default function TugasDetail() {
             namaTarget={baris?.siswaNama ?? u.siswaNama}
             kelompok={
               kel
-                ? { ketuaNama: kel.ketuaNama, jumlahAnggota: kel.anggotaIds.length, jumlahPenerima: penerima.length }
+                ? {
+                    ketuaNama: kel.ketuaNama,
+                    jumlahAnggota: kel.anggotaIds.length,
+                    jumlahPenerima: Math.max(penerima.length, 1),
+                    // true bila bukti diunggah anggota mewakili ketua
+                    diwakili: dialogAi.pemilikId !== kel.ketuaId,
+                    namaPengumpul,
+                  }
                 : undefined
             }
-            sudahDiterapkan={!!aiTerapkan[dialogAi.siswaId]}
+            sudahDiterapkan={!!aiTerapkan[dialogAi.siswaId] || !!(kel && aiTerapkan[kel.ketuaId])}
             onTerapkan={() => {
               terapkanUsulan(dialogAi.siswaId, u)
               setDialogAi(null)
             }}
             onTerapkanKelompok={
-              kel && penerima.length > 1
+              kel && penerima.length >= 1
                 ? () => {
                     terapkanKelompok(kel.ketuaId, u)
                     setDialogAi(null)
