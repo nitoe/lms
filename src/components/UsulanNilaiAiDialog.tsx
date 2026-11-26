@@ -196,6 +196,8 @@ export default function UsulanNilaiAiDialog({
               <h3 className="td-ai-subjudul">Draf komentar untuk siswa</h3>
               <p className="td-ai-komentar">{usulan.komentarSiswa}</p>
             </section>
+          )}
+
           {(() => {
             const poinList = daftarPoinPerbaikanDariUsulan(usulan)
             if (!poinList.length) return null
@@ -203,18 +205,19 @@ export default function UsulanNilaiAiDialog({
               <section aria-label="Poin perbaikan untuk siswa">
                 <h3 className="td-ai-subjudul">Poin perbaikan untuk siswa</h3>
                 <p className="td-ai-hint" style={{ marginTop: 0 }}>
-                  Daftar ini masuk ke kotak «Poin perbaikan» (satu baris per butir) saat diterapkan. Guru boleh mengedit sebelum menyimpan / minta perbaikan.
+                  Daftar ini masuk ke kotak «Poin perbaikan» (satu baris per butir) saat diterapkan. Guru boleh
+                  mengedit sebelum menyimpan / minta perbaikan.
                 </p>
                 <ol className="td-ai-poin" style={{ margin: '0.5rem 0 0', paddingLeft: '1.25rem' }}>
                   {poinList.map((x, i) => (
-                    <li key={i} style={{ marginBottom: '0.35rem' }}>{x}</li>
+                    <li key={i} style={{ marginBottom: '0.35rem' }}>
+                      {x}
+                    </li>
                   ))}
                 </ol>
               </section>
             )
           })()}
-
-          )}
 
           {(usulan.catatanKualitas.length > 0 || usulan.belumDikumpulkan.length > 0) && (
             <section aria-label="Catatan">
