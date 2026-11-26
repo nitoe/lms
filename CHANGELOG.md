@@ -1,3 +1,25 @@
+## 2026-11-26 — Perbaikan: nilai kelompok yang buktinya dikirim anggota (mewakili ketua) tidak lagi terpecah
+
+### Gejala
+Pada kelompok yang ketuanya tidak mengunggah bukti sedangkan satu anggota mengunggahnya (mewakili ketua), nilai di «Menilai per siswa» dan di «Daftar nilai» sering tidak sejalan: nilai yang diisi lewat baris anggota pengirim hanya masuk ke dirinya sendiri, ketua dan anggota lain tetap kosong atau berbeda, dan «Simpan kelompok» tidak ikut menyimpan pengirim. Tidak terjadi pada kelompok yang ketuanya mengunggah sendiri.
+
+### Penyebab
+Seluruh penyebaran nilai kelompok (draf, «Samakan», «Simpan kelompok», Predikat AI, usulan AI satuan) hanya mengenal **ketua** sebagai sumber. Padahal pada kelompok seperti ini bukti yang tampil di layar penilaian milik anggota pengirim, sehingga guru wajar mengisi nilai lewat barisnya. Setiap suntingan pada baris anggota diperlakukan «penyesuaian manual»: ia otomatis terlepas dari ketua, nilainya tidak menyebar, dan suntingan berikutnya pada ketua tidak lagi sampai kepadanya. Teks layar bahkan menyebutnya «ikut nilai ketua» sambil mengabaikannya.
+
+### Perbaikan
+- Istilah baru **penentu nilai kelompok** = ketua + anggota yang mewakili ketua (bila ada). Mengisi nilai pada salah satunya = mengisi nilai kelompok: tersebar ke penentu lain dan ke anggota yang belum disesuaikan, dan penentu tidak pernah «terlepas».
+- «Simpan kelompok» dan «Samakan anggota» tersedia juga dari baris anggota pengirim (tabel dan Menilai per siswa); «Simpan kelompok» menyimpan ketua, wakil, dan pengikut sekaligus.
+- Predikat AI dan «Terapkan» usulan AI dari baris wakil kini menyebar ke seluruh kelompok.
+- Tidak berubah: kelompok yang ketuanya mengunggah, anggota yang mengirim mandiri, kasus ambigu (lebih dari satu pengirim), anggota yang sengaja disesuaikan tetap terlepas, dan nilai tersimpan yang berbeda tidak ditimpa otomatis.
+- Aturan penyebaran dipindah ke modul murni `src/lib/nilaiKelompok.ts` (ada skenario uji). Tidak ada perubahan data, `firestore.rules`, maupun Cloud Function.
+
+### Deploy
+Hosting LMS saja.
+
+### File
+- `src/lib/nilaiKelompok.ts` (baru), `src/lib/draftNilaiTugas.ts`, `src/pages/TugasDetail.tsx`, `src/components/PenilaianTerpadu.tsx`
+- CHANGELOG.md, ANTIREGRESI.md §Tugas.Kelompok.Penentu
+
 ## 2026-11-26 — Perbaikan: baris «Daftar nilai» tidak lagi macet di «Belum disimpan»
 
 ### Gejala

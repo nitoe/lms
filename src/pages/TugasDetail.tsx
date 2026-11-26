@@ -68,9 +68,19 @@ import {
   draftBerisiData,
   draftDariBaris,
   draftSamaDenganServer,
+  salinDraftNilai,
   statusDraftBaris,
   type DraftBaris,
 } from '../lib/draftNilaiTugas'
+import {
+  adalahPenentu,
+  idBelumSimpanKelompok,
+  ikutPenentu,
+  sumberIkutiLagi,
+  targetSamakan,
+  targetSebar,
+  type KonteksKelompok,
+} from '../lib/nilaiKelompok'
 import type {
   BuktiTugas,
   JenisPenilaianTugas,
@@ -702,69 +712,73 @@ export default function TugasDetail() {
     return wakilBuktiKelompok(k, pengumpulanMap)
   }
 
+  /** Konteks aturan kelompok (lib/nilaiKelompok, murni & teruji). ANTIREGRESI §Tugas.Kelompok.Penentu. */
+  function ctxKelompok(k: TugasKelompokDok): KonteksKelompok {
+    return {
+      kelompok: k,
+      wakilId: wakilBukti(k),
+      pengumpulan: pengumpulanMap,
+      baris: barisNilai,
+      kategoriIds: kategoriAktif.map((c) => c.id),
+      lepas: lepasKelompok,
+    }
+  }
+
   /**
-   * Anggota «mengikuti» ketua bila: bukan ketua, tidak disesuaikan manual, tidak mengirim sendiri
-   * (kecuali mewakili ketua),
-   * dan (belum punya nilai tersimpan ATAU nilai tersimpannya identik dengan ketua).
+   * PENENTU nilai kelompok = ketua + anggota yang mewakili ketua (wakil bukti). Mengisi nilai pada salah
+   * satunya = mengisi nilai kelompok: tersebar ke penentu lain dan ke pengikut, dan penentu tidak pernah
+   * «lepas». (Dulu hanya ketua yang menyebar, sehingga nilai yang diisi lewat baris wakil — pemilik bukti
+   * yang tampil di layar penilaian — tidak sampai ke kelompok.)
+   */
+  function adalahPenentuKelompok(id: string): boolean {
+    const k = kelompokDariSiswa(id)
+    return !!k && adalahPenentu(ctxKelompok(k), id)
+  }
+
+  /**
+   * PENGIKUT nilai kelompok: bukan penentu, tidak disesuaikan manual, tidak mengirim sendiri, dan
+   * (belum punya nilai tersimpan ATAU nilai tersimpannya identik dengan penentu yang sudah tersimpan).
    * Nilai tersimpan yang berbeda tidak pernah ditimpa otomatis (gunakan «Samakan anggota»).
    */
   function ikutKetua(id: string): boolean {
     const k = kelompokDariSiswa(id)
-    if (!k || k.ketuaId === id || lepasKelompok[id]) return false
-    // Pengirim mandiri dinilai sendiri, KECUALI ia mewakili ketua (ketua tak punya bukti) → ikut nilai ketua.
-    if (pengumpulanMap?.[id] && wakilBukti(k) !== id) return false
-    const r = barisNilai?.find((x) => x.siswaId === id)
-    if (!r) return false
-    if (!r.sudahAda) return true
-    const rk = barisNilai?.find((x) => x.siswaId === k.ketuaId)
-    if (!rk || !rk.sudahAda) return false
-    return (
-      r.nilaiAkhir === rk.nilaiAkhir && kategoriAktif.every((c) => (r.perKategori[c.id] ?? null) === (rk.perKategori[c.id] ?? null))
-    )
+    return !!k && ikutPenentu(ctxKelompok(k), id)
   }
 
-  /** Salin draf ketua ke anggota yang mengikuti. Murni: mengembalikan salinan `next`. */
-  function sebarDariKetua(next: Record<string, DraftBaris>, ketuaId: string): Record<string, DraftBaris> {
-    const k = kelompokList.find((x) => x.ketuaId === ketuaId)
-    const src = next[ketuaId]
+  /** Salin draf penentu (ketua/wakil) ke penentu lain & pengikut. Murni: mengembalikan salinan `next`. */
+  function sebarDariPenentu(next: Record<string, DraftBaris>, sumberId: string): Record<string, DraftBaris> {
+    const k = kelompokDariSiswa(sumberId)
+    const src = next[sumberId]
     if (!k || !src) return next
-    let out = next
-    for (const id of k.anggotaIds) {
-      if (id === ketuaId || !ikutKetua(id)) continue
-      if (out === next) out = { ...next }
-      out[id] = { perKategori: { ...src.perKategori }, nilaiAkhir: src.nilaiAkhir, predikat: src.predikat, komentar: src.komentar }
-    }
+    const target = targetSebar(ctxKelompok(k), sumberId)
+    if (!target.length) return next
+    const out = { ...next }
+    for (const id of target) out[id] = salinDraftNilai(src, next[id])
     return out
   }
 
-  /** Anggota diedit langsung → berhenti mengikuti ketua. */
+  /** Anggota (bukan penentu) diedit langsung → berhenti mengikuti kelompok. */
   function tandaiLepas(id: string) {
     const k = kelompokDariSiswa(id)
-    if (!k || k.ketuaId === id) return
+    if (!k || adalahPenentu(ctxKelompok(k), id)) return
     setLepasKelompok((p) => (p[id] ? p : { ...p, [id]: true }))
   }
 
-  /** Paksa seluruh anggota (yang tidak kirim mandiri) sama dengan ketua — hanya draf. */
-  function samakanAnggota(ketuaId: string, sumber?: DraftBaris) {
-    const k = kelompokList.find((x) => x.ketuaId === ketuaId)
+  /** Paksa seluruh anggota (yang tidak kirim mandiri) sama dengan penentu `sumberId` — hanya draf. */
+  function samakanAnggota(sumberId: string, sumber?: DraftBaris) {
+    const k = kelompokDariSiswa(sumberId)
     if (!k) return
-    const ada = new Set((barisNilai ?? []).map((r) => r.siswaId))
-    const wakil = wakilBukti(k)
-    const target = k.anggotaIds.filter(
-      (id) => id !== ketuaId && ada.has(id) && (!pengumpulanMap?.[id] || id === wakil),
-    )
+    const target = targetSamakan(ctxKelompok(k), sumberId)
     setLepasKelompok((p) => {
       const n = { ...p }
       for (const id of target) delete n[id]
       return n
     })
     setDraft((prev) => {
-      const src = sumber ?? prev[ketuaId]
+      const src = sumber ?? prev[sumberId]
       if (!src) return prev
       const out = { ...prev }
-      for (const id of target) {
-        out[id] = { perKategori: { ...src.perKategori }, nilaiAkhir: src.nilaiAkhir, predikat: src.predikat, komentar: src.komentar }
-      }
+      for (const id of target) out[id] = salinDraftNilai(src, prev[id])
       return out
     })
   }
@@ -778,26 +792,25 @@ export default function TugasDetail() {
       return n
     })
     setDraft((prev) => {
-      const src = prev[k.ketuaId]
+      const sumberId = sumberIkutiLagi(ctxKelompok(k), (x) => draftBerisiData(prev[x]))
+      const src = prev[sumberId]
       if (!src) return prev
-      return { ...prev, [id]: { perKategori: { ...src.perKategori }, nilaiAkhir: src.nilaiAkhir, predikat: src.predikat, komentar: src.komentar } }
+      return { ...prev, [id]: salinDraftNilai(src, prev[id]) }
     })
   }
 
-  /** Baris kelompok (ketua + pengikut) yang belum tersimpan, ketua lebih dulu. */
-  function barisKelompokBelumSimpan(ketuaId: string): string[] {
-    const k = kelompokList.find((x) => x.ketuaId === ketuaId)
+  /** Baris kelompok (penentu + pengikut) yang belum tersimpan, penentu lebih dulu. `id` = penentu mana pun. */
+  function barisKelompokBelumSimpan(id: string): string[] {
+    const k = kelompokDariSiswa(id)
     if (!k) return []
-    const ids = k.anggotaIds.filter((id) => {
-      const r = barisNilai?.find((x) => x.siswaId === id)
-      if (!r || statusBarisNilai(r) !== 'ubah') return false
-      return id === ketuaId || ikutKetua(id)
+    return idBelumSimpanKelompok(ctxKelompok(k), (sid) => {
+      const r = barisNilai?.find((x) => x.siswaId === sid)
+      return r ? statusBarisNilai(r) : undefined
     })
-    return ids.sort((a, b) => (a === ketuaId ? -1 : b === ketuaId ? 1 : 0))
   }
 
-  async function simpanKelompok(ketuaId: string): Promise<boolean> {
-    const ids = barisKelompokBelumSimpan(ketuaId)
+  async function simpanKelompok(penentuId: string): Promise<boolean> {
+    const ids = barisKelompokBelumSimpan(penentuId)
     if (!ids.length) return true
     for (const id of ids) {
       const r = barisNilai?.find((x) => x.siswaId === id)
@@ -875,7 +888,7 @@ export default function TugasDetail() {
         komentar: '',
       }
       const next = { ...prev, [siswaId]: { ...cur, ...patch } }
-      return sebarDariKetua(next, siswaId)
+      return sebarDariPenentu(next, siswaId)
     })
   }
 
@@ -904,7 +917,7 @@ export default function TugasDetail() {
           pred = predikatDariNilai(Math.round(rata), rentang)?.predikat || pred
         }
       }
-      return sebarDariKetua(
+      return sebarDariPenentu(
         { ...prev, [siswaId]: { ...cur, perKategori: per, nilaiAkhir: akhir, predikat: pred } },
         siswaId,
       )
@@ -1057,7 +1070,7 @@ export default function TugasDetail() {
   function terapkanUsulan(siswaId: string, u: UsulanNilaiAi | undefined, tanpaLepas = false) {
     if (!u) return
     if (!tanpaLepas) tandaiLepas(siswaId)
-    setDraft((prev) => sebarDariKetua({ ...prev, [siswaId]: draftDariUsulan(prev[siswaId], u) }, siswaId))
+    setDraft((prev) => sebarDariPenentu({ ...prev, [siswaId]: draftDariUsulan(prev[siswaId], u) }, siswaId))
     setAiTerapkan((p) => ({ ...p, [siswaId]: true }))
   }
 
@@ -2334,6 +2347,7 @@ export default function TugasDetail() {
                   sumberBukti={sumberBuktiSiswa}
                   kelompokList={kelompokList}
                   ikutKetua={ikutKetua}
+                  adalahPenentu={adalahPenentuKelompok}
                   jumlahBelumSimpanKelompok={(id) => barisKelompokBelumSimpan(id).length}
                   terpilih={menilaiId}
                   onPilih={setMenilaiId}
@@ -2859,7 +2873,15 @@ export default function TugasDetail() {
                                             if (pengumpulanMap?.[r.siswaId]) {
                                               return wakilBukti(kel) === r.siswaId ? (
                                                 <small className="td-kel-info td-kel-info--ikut">
-                                                  Mewakili ketua{ikutKetua(r.siswaId) ? ' · ikut nilai ketua' : ''}
+                                                  Mewakili ketua · nilai kelompok
+                                                  <button
+                                                    type="button"
+                                                    className="td-link-kecil"
+                                                    title="Salin nilai ini ke ketua dan semua anggota (hanya draf)"
+                                                    onClick={() => samakanAnggota(r.siswaId)}
+                                                  >
+                                                    Samakan anggota
+                                                  </button>
                                                 </small>
                                               ) : (
                                                 <small className="td-kel-info">Kirim mandiri</small>
@@ -3030,7 +3052,7 @@ export default function TugasDetail() {
                                       {(() => {
                                         const kel = kelompokDariSiswa(r.siswaId)
                                         const ketuaDenganPengikut =
-                                          !!kel && kel.ketuaId === r.siswaId && barisKelompokBelumSimpan(r.siswaId).length > 1
+                                          !!kel && adalahPenentuKelompok(r.siswaId) && barisKelompokBelumSimpan(r.siswaId).length > 1
                                         const ada = st === 'ubah' || ketuaDenganPengikut
                                         return (
                                           <button

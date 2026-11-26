@@ -45,6 +45,8 @@ type Props = {
   kelompokList: TugasKelompokDok[]
   /** Anggota kelompok yang sedang mengikuti nilai ketua. */
   ikutKetua: (siswaId: string) => boolean
+  /** Ketua atau anggota yang mewakili ketua: mengisi nilainya = mengisi nilai kelompok. */
+  adalahPenentu: (siswaId: string) => boolean
   /** Jumlah baris kelompok (ketua + pengikut) yang belum tersimpan. */
   jumlahBelumSimpanKelompok: (ketuaId: string) => number
   terpilih: string | null
@@ -121,11 +123,12 @@ export default function PenilaianTerpadu(p: Props) {
   const kel = row ? kelompokList.find((k) => k.anggotaIds.includes(row.siswaId)) : undefined
   const adalahKetua = !!kel && !!row && kel.ketuaId === row.siswaId
   const mengikuti = !!row && p.ikutKetua(row.siswaId)
+  const adalahPenentu = !!row && !!kel && p.adalahPenentu(row.siswaId)
   const mewakili = !!sb?.mewakili
   const namaPemilik = pemilikId ? (baris.find((r) => r.siswaId === pemilikId)?.siswaNama ?? 'anggota') : ''
   // Mengirim sendiri DAN dinilai terpisah; anggota yang mewakili ketua justru ikut nilai ketua.
   const kirimMandiri = !!row && !!pengumpulanMap?.[row.siswaId] && !(mewakili && !!kel)
-  const belumSimpanKel = adalahKetua && kel ? p.jumlahBelumSimpanKelompok(kel.ketuaId) : 0
+  const belumSimpanKel = adalahPenentu ? p.jumlahBelumSimpanKelompok(row.siswaId) : 0
   const u = pemilikId ? usulanAi[pemilikId] : undefined
   const sibukSimpan = menyimpan !== null
   // —— Tugas berulang (ANTIREGRESI §Tugas.Kesempatan) ——
@@ -255,7 +258,7 @@ export default function PenilaianTerpadu(p: Props) {
 
   async function simpan(lalu: boolean) {
     if (!row) return
-    if (adalahKetua && belumSimpanKel > 1) {
+    if (adalahPenentu && belumSimpanKel > 1) {
       if (!(await p.onSimpanKelompok(row.siswaId))) return
     } else if (st === 'ubah') {
       if (!(await p.onSimpan(row.siswaId, row.siswaNama))) return
@@ -438,14 +441,23 @@ export default function PenilaianTerpadu(p: Props) {
 
           {kel && (
             <div className="pt-kelompok">
-              {adalahKetua ? (
+              {adalahPenentu ? (
                 <p>
-                  <b>Ketua kelompok</b> · {kel.anggotaIds.length} anggota. Nilai di sini otomatis diikuti anggota yang belum
-                  disesuaikan.
-                  {mewakili && (
+                  {adalahKetua ? (
+                    <>
+                      <b>Ketua kelompok</b> · {kel.anggotaIds.length} anggota.
+                    </>
+                  ) : (
+                    <>
+                      <b>{row.siswaNama}</b> mengirim bukti mewakili ketua ({kel.ketuaNama}) · {kel.anggotaIds.length} anggota.
+                    </>
+                  )}{' '}
+                  Nilai di sini adalah nilai kelompok: otomatis diikuti ketua{adalahKetua ? ' dan wakilnya' : ''} serta anggota yang
+                  belum disesuaikan.
+                  {adalahKetua && mewakili && (
                     <>
                       {' '}
-                      Bukti dikirim <b>{namaPemilik}</b> mewakili ketua, jadi ia ikut nilai ketua.
+                      Bukti dikirim <b>{namaPemilik}</b> mewakili ketua.
                     </>
                   )}
                 </p>
@@ -453,7 +465,6 @@ export default function PenilaianTerpadu(p: Props) {
                 <p>Anggota ini mengirim sendiri; dinilai dari buktinya sendiri.</p>
               ) : mengikuti ? (
                 <p>
-                  {mewakili && row.siswaId === pemilikId ? 'Mengirim bukti mewakili ketua. ' : ''}
                   Mengikuti nilai ketua (<b>{kel.ketuaNama}</b>). Mengubah nilai di sini hanya berlaku untuk {row.siswaNama}.
                 </p>
               ) : (
@@ -483,9 +494,9 @@ export default function PenilaianTerpadu(p: Props) {
                   )
                 })}
               </div>
-              {adalahKetua && (
+              {adalahPenentu && (
                 <button type="button" className="td-link-kecil" onClick={() => p.onSamakan(row.siswaId)}>
-                  Samakan semua anggota dengan ketua
+                  {adalahKetua ? 'Samakan semua anggota dengan ketua' : 'Samakan ketua & semua anggota dengan nilai ini'}
                 </button>
               )}
             </div>
@@ -634,10 +645,10 @@ export default function PenilaianTerpadu(p: Props) {
               <button
                 type="button"
                 className="tg-btn"
-                disabled={sibukSimpan || (st !== 'ubah' && !(adalahKetua && belumSimpanKel > 0))}
+                disabled={sibukSimpan || (st !== 'ubah' && !(adalahPenentu && belumSimpanKel > 0))}
                 onClick={() => void simpan(false)}
               >
-                {menyimpan !== null ? 'Menyimpan…' : adalahKetua && belumSimpanKel > 1 ? `Simpan kelompok (${belumSimpanKel})` : 'Simpan'}
+                {menyimpan !== null ? 'Menyimpan…' : adalahPenentu && belumSimpanKel > 1 ? `Simpan kelompok (${belumSimpanKel})` : 'Simpan'}
               </button>
               {berulang && (
                 <button

@@ -93,3 +93,17 @@ export function statusDraftBaris(
   }
   return 'ubah'
 }
+
+/**
+ * Salinan nilai penentu kelompok ke anggota (skor, nilai akhir, predikat, komentar). Poin perbaikan
+ * milik anggota itu sendiri dibiarkan apa adanya (tidak ikut disalin, tidak ikut dihapus).
+ */
+export function salinDraftNilai(sumber: DraftBaris, tujuan?: DraftBaris): DraftBaris {
+  return {
+    perKategori: { ...sumber.perKategori },
+    nilaiAkhir: sumber.nilaiAkhir,
+    predikat: sumber.predikat,
+    komentar: sumber.komentar,
+    ...(tujuan?.poin !== undefined ? { poin: tujuan.poin } : {}),
+  }
+}
