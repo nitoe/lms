@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { collection, getDocs, onSnapshot, query, where } from 'firebase/firestore'
+import { collection, onSnapshot, query, where } from 'firebase/firestore'
 import { db } from '../../lib/firebase'
 import { useSiswa } from '../../context/SiswaContext'
 import { aksenMapel, inisialMapel } from '../../lib/uiAksen'
