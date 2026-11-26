@@ -1,3 +1,24 @@
+## 2026-11-26 — Perbaikan: baris «Daftar nilai» tidak lagi macet di «Belum disimpan»
+
+### Gejala
+Di Tugas → Input nilai → Daftar nilai, setelah guru menekan «Simpan» pada satu siswa, nilai memang tersimpan, tetapi status baris tetap «Belum disimpan» (baris tetap kuning), tombol «Simpan» tetap aktif dan tidak berubah menjadi «✓ Tersimpan». Tombol hanya sebentar berubah «…» lalu kembali «Simpan», sehingga terlihat berkedip. Paling sering pada siswa yang sudah punya poin perbaikan (mis. hasil «Nilai bukti dengan AI» atau poin yang diisi di Menilai per siswa) dan pada anggota kelompok yang «Ikut nilai ketua».
+
+### Penyebab
+Sejak poin perbaikan ditambahkan, penentu status baris membandingkan **poin di draf** dengan **poin di server**. Draf hasil muat/muat ulang dan draf salinan ketua tidak membawa poin (tersimpan sebagai «tidak disentuh»), sedangkan snapshot server membawa poin yang sudah tersimpan. Hasilnya draf selalu dianggap «berbeda»: menyimpan tidak menyentuh poin, jadi perbedaan itu tidak pernah hilang. Ada pula dua pembangun draf yang berbeda (`muatNilai` dan `draftDariServer`) sehingga selisih ini tak terlihat.
+
+### Perbaikan
+- Poin hanya dibandingkan bila draf memang membawa poin. Draf tanpa poin = «poin tidak diubah», tidak lagi dianggap berbeda dari server.
+- Satu pembangun draf untuk muat data dan penentu status (`src/lib/draftNilaiTugas.ts`, modul murni tanpa Firebase/React, ada skenario ujinya).
+- Poin yang sudah tersimpan kini ikut terisi di kotak «Poin perbaikan» setelah muat ulang (sebelumnya tampak kosong walau sudah tersimpan). Siswa tanpa poin tetap tidak menulis `poinPerbaikan: []` saat nilai disimpan.
+- Tidak ada perubahan data, `firestore.rules`, maupun Cloud Function.
+
+### Deploy
+Hosting LMS saja.
+
+### File
+- `src/lib/draftNilaiTugas.ts` (baru), `src/pages/TugasDetail.tsx`
+- CHANGELOG.md, ANTIREGRESI.md §Tugas.StatusSimpan
+
 ## 2026-11-26 — Multi-foto per bukti berlabel (siswa)
 
 ### Latar

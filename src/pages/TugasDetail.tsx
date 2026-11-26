@@ -64,6 +64,13 @@ import { getDaftarMapel } from '../lib/mapelData'
 import { getTpMultiMapelKelas } from '../lib/tpData'
 import { generateIsiTugasAi, generateKategoriTugasAi } from '../lib/tugasAi'
 import { sinkronNilaiTugasKePenilaian } from '../lib/sinkronNilaiTugas'
+import {
+  draftBerisiData,
+  draftDariBaris,
+  draftSamaDenganServer,
+  statusDraftBaris,
+  type DraftBaris,
+} from '../lib/draftNilaiTugas'
 import type {
   BuktiTugas,
   JenisPenilaianTugas,
@@ -110,15 +117,6 @@ function tabAwalUntuk(t: TugasLms): TabId {
   return 'pengaturan'
 }
 type SubNilai = 'pengaturan-nilai' | 'daftar-nilai' | 'menilai'
-
-type DraftBaris = {
-  perKategori: Record<string, string>
-  nilaiAkhir: string
-  predikat: string
-  komentar: string
-  /** Poin perbaikan untuk siswa, satu poin per baris. Opsional: draf lama/salinan ketua tidak membawa. */
-  poin?: string
-}
 
 function tenggatKeInput(tenggat: unknown): string {
   if (!tenggat) return ''
@@ -680,63 +678,14 @@ export default function TugasDetail() {
     }
   }
 
-  /** Apakah draf lokal berisi data yang perlu dipertahankan (belum disimpan). */
-  function draftBerisiData(d: DraftBaris | undefined): boolean {
-    if (!d) return false
-    if (String(d.nilaiAkhir || '').trim() !== '') return true
-    if (String(d.komentar || '').trim() !== '') return true
-    if (String(d.poin || '').trim() !== '') return true
-    if (String(d.predikat || '').trim() !== '') return true
-    return Object.values(d.perKategori || {}).some((v) => String(v || '').trim() !== '')
-  }
-
-  /** Bandingkan draf dengan snapshot server (string skor). */
-  function draftSamaDenganServer(d: DraftBaris, server: DraftBaris): boolean {
-    if (String(d.nilaiAkhir || '').trim() !== String(server.nilaiAkhir || '').trim()) return false
-    if (String(d.predikat || '').trim() !== String(server.predikat || '').trim()) return false
-    if (String(d.komentar || '').trim() !== String(server.komentar || '').trim()) return false
-    if (String(d.poin || '').trim() !== String(server.poin || '').trim()) return false
-    const ids = new Set([
-      ...Object.keys(d.perKategori || {}),
-      ...Object.keys(server.perKategori || {}),
-    ])
-    for (const id of ids) {
-      if (
-        String(d.perKategori?.[id] || '').trim() !==
-        String(server.perKategori?.[id] || '').trim()
-      ) {
-        return false
-      }
-    }
-    return true
-  }
-
   /**
    * Status baris: `ok` = sama dengan yang tersimpan; `ubah` = ada isian/perubahan yang belum
-   * disimpan; `kosong` = belum pernah dinilai dan belum diisi.
+   * disimpan; `kosong` = belum pernah dinilai dan belum diisi. ANTIREGRESI §Tugas.StatusSimpan.
    */
-  function draftDariServer(r: BarisNilaiTugas): DraftBaris {
-    const per: Record<string, string> = {}
-    for (const k of kategoriAktif) {
-      const v = r.perKategori[k.id]
-      per[k.id] = v === null || v === undefined ? '' : String(v)
-    }
-    let pred = r.predikat
-    if (!pred && r.nilaiAkhir !== null) pred = predikatOtomatis(r.nilaiAkhir, pengaturan.rentangPredikat)
-    return {
-      perKategori: per,
-      nilaiAkhir: r.nilaiAkhir === null ? '' : String(r.nilaiAkhir),
-      predikat: pred,
-      komentar: r.komentar || '',
-      poin: r.poin || '',
-    }
-  }
-
   function statusBarisNilai(r: BarisNilaiTugas): 'kosong' | 'ubah' | 'ok' {
-    const d = draft[r.siswaId]
-    if (!draftBerisiData(d)) return r.sudahAda ? 'ubah' : 'kosong'
-    if (draftSamaDenganServer(d as DraftBaris, draftDariServer(r))) return r.sudahAda ? 'ok' : 'ubah'
-    return 'ubah'
+    return statusDraftBaris(draft[r.siswaId], r, kategoriAktif, (n) =>
+      predikatOtomatis(n, pengaturan.rentangPredikat),
+    )
   }
 
   // ---- Tugas kelompok: nilai ketua otomatis diikuti anggota (ANTIREGRESI §Tugas.Terpadu) ----
@@ -879,23 +828,10 @@ export default function TugasDetail() {
         const rentang = normalisasiPengaturan(tugas.pengaturanPenilaian).rentangPredikat
         const rows = await muatBarisNilaiTugas(tugas.id, tugas.kelas, tugas.mapel, kat)
         setBarisNilai(rows)
+        // Pembangun draf yang SAMA dengan penentu status baris (termasuk poin tersimpan).
         const dariServer: Record<string, DraftBaris> = {}
         for (const r of rows) {
-          const per: Record<string, string> = {}
-          for (const k of kat) {
-            const v = r.perKategori[k.id]
-            per[k.id] = v === null || v === undefined ? '' : String(v)
-          }
-          let pred = r.predikat
-          if (!pred && r.nilaiAkhir !== null) {
-            pred = predikatOtomatis(r.nilaiAkhir, rentang)
-          }
-          dariServer[r.siswaId] = {
-            perKategori: per,
-            nilaiAkhir: r.nilaiAkhir === null ? '' : String(r.nilaiAkhir),
-            predikat: pred,
-            komentar: r.komentar || '',
-          }
+          dariServer[r.siswaId] = draftDariBaris(r, kat, (n) => predikatOtomatis(n, rentang))
         }
         setDraft((prev) => {
           if (opsi?.force) return dariServer
