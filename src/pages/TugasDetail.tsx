@@ -1101,7 +1101,20 @@ export default function TugasDetail() {
       akhir = String(Math.round(rata))
       pred = predikatDariNilai(Math.round(rata), pengaturan.rentangPredikat)?.predikat || pred
     }
-    return { perKategori: per, nilaiAkhir: akhir, predikat: pred, komentar: base.komentar.trim() ? base.komentar : u.komentarSiswa }
+    const poinAi = (u.poinPerbaikan ?? []).map((x) => x.trim()).filter(Boolean)
+    const poin =
+      base.poin?.trim()
+        ? base.poin
+        : poinAi.length
+          ? poinAi.join('\n')
+          : base.poin ?? ''
+    return {
+      perKategori: per,
+      nilaiAkhir: akhir,
+      predikat: pred,
+      komentar: base.komentar.trim() ? base.komentar : u.komentarSiswa,
+      poin,
+    }
   }
 
   /**
@@ -1253,7 +1266,16 @@ export default function TugasDetail() {
 
   /** «Minta perbaikan»: buka percobaan berikutnya untuk satu siswa (hanya tugas berulang). */
   async function mintaPerbaikanSiswa(siswaId: string, siswaNama: string): Promise<boolean> {
-    if (!tugas || !tugasBerulang(tugas)) return false
+    if (!tugas) {
+      setError('Tugas belum dimuat.')
+      return false
+    }
+    if (!tugasBerulang(tugas)) {
+      setError(
+        'Tugas ini diatur sekali mengerjakan. Ubah «Kesempatan mengerjakan» di pengaturan (2–5 atau tanpa batas) agar perbaikan bisa dibuka.',
+      )
+      return false
+    }
     setMenyimpanSiswaId(siswaId)
     setError('')
     setSukses('')
@@ -1268,10 +1290,28 @@ export default function TugasDetail() {
           r.siswaId === siswaId ? { ...r, bukaPerbaikan: true, dibukaMs: Date.now() } : r,
         ),
       )
-      setSukses(`Perbaikan dibuka untuk ${siswaNama}. Siswa akan melihat poin perbaikan dan bisa mengirim ulang.`)
+      setSukses(
+        `Perbaikan dibuka untuk ${siswaNama}. Siswa melihat poin perbaikan dan bisa mengirim ulang.`,
+      )
+      try {
+        window.scrollTo({ top: 0, behavior: 'smooth' })
+      } catch {
+        /* ignore */
+      }
       return true
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Gagal membuka perbaikan.')
+      const msg = e instanceof Error ? e.message : 'Gagal membuka perbaikan.'
+      const rendah = msg.toLowerCase()
+      const jelas =
+        rendah.includes('permission') || rendah.includes('missing or insufficient')
+          ? 'Tidak diizinkan membuka perbaikan (permission-denied). Pastikan Anda guru mapel tugas ini dan rules sudah memuat field bukaPerbaikan.'
+          : msg
+      setError(jelas)
+      try {
+        window.scrollTo({ top: 0, behavior: 'smooth' })
+      } catch {
+        /* ignore */
+      }
       return false
     } finally {
       setMenyimpanSiswaId(null)

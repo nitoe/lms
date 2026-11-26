@@ -196,6 +196,20 @@ export default function UsulanNilaiAiDialog({
               <h3 className="td-ai-subjudul">Draf komentar untuk siswa</h3>
               <p className="td-ai-komentar">{usulan.komentarSiswa}</p>
             </section>
+          {(usulan.poinPerbaikan?.length ?? 0) > 0 && (
+            <section aria-label="Poin perbaikan untuk siswa">
+              <h3 className="td-ai-subjudul">Poin perbaikan untuk siswa</h3>
+              <p className="td-ai-hint" style={{ marginTop: 0 }}>
+                Akan masuk ke kotak «Poin perbaikan» saat diterapkan (guru boleh mengedit sebelum menyimpan).
+              </p>
+              <ol className="td-ai-poin">
+                {usulan.poinPerbaikan!.map((x, i) => (
+                  <li key={i}>{x}</li>
+                ))}
+              </ol>
+            </section>
+          )}
+
           )}
 
           {(usulan.catatanKualitas.length > 0 || usulan.belumDikumpulkan.length > 0) && (

@@ -134,8 +134,31 @@ export default function PenilaianTerpadu(p: Props) {
   const kirimanBaru = !!row && row.bukaPerbaikan && (pengumpulanMap?.[row.siswaId]?.diubahMs ?? 0) > row.dibukaMs
   const menungguSiswa = !!row && row.bukaPerbaikan && !kirimanBaru
   const sisaKes = row ? sisaKesempatan(tugas.kesempatanMaks, row.percobaanKe) : 0
-  const bisaMintaPerbaikan = berulang && !!row && row.sudahAda && st === 'ok' && !row.bukaPerbaikan && sisaKes > 0 && !kel
+  const punyaPoinTersimpan = !!row && (row.poin || '').trim().length > 0
+  const bisaMintaPerbaikan =
+    berulang &&
+    !!row &&
+    row.sudahAda &&
+    st === 'ok' &&
+    !row.bukaPerbaikan &&
+    sisaKes > 0 &&
+    !kel &&
+    punyaPoinTersimpan
+  const alasanMintaPerbaikan = (() => {
+    if (!berulang) return 'Tugas ini hanya sekali mengerjakan (atur kesempatan > 1 di pengaturan).'
+    if (kel) return 'Tugas kelompok tidak mendukung perbaikan berulang.'
+    if (!row?.sudahAda) return 'Simpan nilai siswa ini dulu.'
+    if (st === 'ubah') return 'Ada perubahan di formulir yang belum disimpan. Klik «Simpan» dulu.'
+    if (st === 'kosong') return 'Isi dan simpan nilai dulu.'
+    if (row.bukaPerbaikan) return 'Perbaikan sudah dibuka — menunggu siswa mengirim ulang.'
+    if (sisaKes <= 0) return 'Kesempatan mengerjakan sudah habis.'
+    if (!punyaPoinTersimpan) {
+      return 'Isi minimal satu poin perbaikan, lalu klik «Simpan». Setelah tersimpan, tombol ini aktif.'
+    }
+    return ''
+  })()
   const sibukAi = !!pemilikId && aiBusyId === pemilikId
+  const sibukMintaIni = menyimpan === row?.siswaId
 
   // Muat foto/video bukti siswa terpilih (di-cache per pemilik bukti).
   useEffect(() => {
@@ -592,6 +615,16 @@ export default function PenilaianTerpadu(p: Props) {
               {kel ? ' · Tugas kelompok tidak mendukung perbaikan berulang.' : ''}
             </div>
           )}
+          {berulang && row && !bisaMintaPerbaikan && alasanMintaPerbaikan && !row.bukaPerbaikan && (
+            <p className="td-hint td-hint--warn" role="status">
+              «Minta perbaikan» belum aktif: {alasanMintaPerbaikan}
+            </p>
+          )}
+          {berulang && row && menungguSiswa && (
+            <p className="td-hint" role="status">
+              Perbaikan sudah dibuka untuk siswa ini. Menunggu kiriman ulang.
+            </p>
+          )}
 
           <div className="pt-aksi td-aksi--lekat">
             <span className="td-ubah td-ubah--teks">
@@ -611,14 +644,30 @@ export default function PenilaianTerpadu(p: Props) {
                   type="button"
                   className="tg-btn"
                   disabled={sibukSimpan || !bisaMintaPerbaikan}
-                  title={
-                    st !== 'ok'
-                      ? 'Simpan nilai dan poin perbaikan dulu.'
-                      : 'Buka percobaan berikutnya agar siswa bisa memperbaiki dan mengirim ulang.'
-                  }
-                  onClick={() => void p.onMintaPerbaikan(row.siswaId, row.siswaNama)}
+                  title={bisaMintaPerbaikan ? 'Buka percobaan berikutnya agar siswa bisa mengirim ulang.' : alasanMintaPerbaikan}
+                  onClick={() => {
+                    if (!row) return
+                    if (!bisaMintaPerbaikan) {
+                      window.alert(alasanMintaPerbaikan || 'Belum bisa meminta perbaikan.')
+                      return
+                    }
+                    void (async () => {
+                      const ok = await p.onMintaPerbaikan(row.siswaId, row.siswaNama)
+                      if (ok) {
+                        window.alert(
+                          `Perbaikan dibuka untuk ${row.siswaNama}.\nSiswa dapat melihat poin perbaikan dan mengirim ulang.`,
+                        )
+                      }
+                      // Gagal: parent setError — tetap alert ringkas agar terlihat di panel menilai
+                      else {
+                        window.alert(
+                          'Gagal membuka perbaikan. Periksa pesan merah di bagian atas halaman (poin perbaikan harus sudah disimpan, atau kesempatan habis).',
+                        )
+                      }
+                    })()
+                  }}
                 >
-                  Minta perbaikan
+                  {sibukMintaIni ? 'Membuka…' : 'Minta perbaikan'}
                 </button>
               )}
               <button type="button" className="tg-btn tg-btn--utama" disabled={sibukSimpan || idx >= nav.length - 1 && st !== 'ubah'} onClick={() => void simpan(true)}>

@@ -44,6 +44,11 @@ export type UsulanNilaiAi = {
   kategori: UsulanKategoriAi[]
   ringkasan: string
   komentarSiswa: string
+  /**
+   * Poin perbaikan untuk siswa (bahasa SD, siap ditempel ke form «Poin perbaikan»).
+   * Kosong bila model tidak mengisi — guru mengisi manual.
+   */
+  poinPerbaikan?: string[]
   catatanKualitas: string[]
   bukti: BuktiUsulanAi[]
   belumDikumpulkan: string[]
@@ -93,7 +98,15 @@ export async function usulkanNilaiTugasAi(tugasId: string, siswaId: string): Pro
     const res = await panggil({ tugasId, siswaId })
     const d = res.data
     if (!d || !Array.isArray(d.kategori)) throw new Error('Jawaban AI tidak lengkap. Coba lagi.')
-    return { ...d, dibuatMs: Date.now() }
+    const poinPerbaikan = (
+      Array.isArray(d.poinPerbaikan)
+        ? d.poinPerbaikan
+        : []
+    )
+      .map((x) => String(x || '').trim())
+      .filter(Boolean)
+      .slice(0, 8)
+    return { ...d, poinPerbaikan, dibuatMs: Date.now() }
   } catch (e) {
     throw new Error(pesan(e))
   }
