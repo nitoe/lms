@@ -6,7 +6,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { muatFotoBerslot, type PengumpulanDok } from '../lib/pengumpulan'
 import { urlVideoTugas } from '../lib/videoTugas'
-import type { UsulanNilaiAi } from '../lib/nilaiTugasAi'
+import { daftarPoinPerbaikanDariUsulan, type UsulanNilaiAi } from '../lib/nilaiTugasAi'
 
 type Props = {
   usulan: UsulanNilaiAi
@@ -196,19 +196,23 @@ export default function UsulanNilaiAiDialog({
               <h3 className="td-ai-subjudul">Draf komentar untuk siswa</h3>
               <p className="td-ai-komentar">{usulan.komentarSiswa}</p>
             </section>
-          {(usulan.poinPerbaikan?.length ?? 0) > 0 && (
-            <section aria-label="Poin perbaikan untuk siswa">
-              <h3 className="td-ai-subjudul">Poin perbaikan untuk siswa</h3>
-              <p className="td-ai-hint" style={{ marginTop: 0 }}>
-                Akan masuk ke kotak «Poin perbaikan» saat diterapkan (guru boleh mengedit sebelum menyimpan).
-              </p>
-              <ol className="td-ai-poin">
-                {usulan.poinPerbaikan!.map((x, i) => (
-                  <li key={i}>{x}</li>
-                ))}
-              </ol>
-            </section>
-          )}
+          {(() => {
+            const poinList = daftarPoinPerbaikanDariUsulan(usulan)
+            if (!poinList.length) return null
+            return (
+              <section aria-label="Poin perbaikan untuk siswa">
+                <h3 className="td-ai-subjudul">Poin perbaikan untuk siswa</h3>
+                <p className="td-ai-hint" style={{ marginTop: 0 }}>
+                  Daftar ini masuk ke kotak «Poin perbaikan» (satu baris per butir) saat diterapkan. Guru boleh mengedit sebelum menyimpan / minta perbaikan.
+                </p>
+                <ol className="td-ai-poin" style={{ margin: '0.5rem 0 0', paddingLeft: '1.25rem' }}>
+                  {poinList.map((x, i) => (
+                    <li key={i} style={{ marginBottom: '0.35rem' }}>{x}</li>
+                  ))}
+                </ol>
+              </section>
+            )
+          })()}
 
           )}
 

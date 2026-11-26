@@ -15,7 +15,7 @@ import BerbagiKelasDialog from '../components/BerbagiKelasDialog'
 import PengumpulanPanel from '../components/PengumpulanPanel'
 import UsulanNilaiAiDialog from '../components/UsulanNilaiAiDialog'
 import PenilaianTerpadu from '../components/PenilaianTerpadu'
-import { usulkanNilaiTugasAi, type UsulanNilaiAi } from '../lib/nilaiTugasAi'
+import { daftarPoinPerbaikanDariUsulan, usulkanNilaiTugasAi, type UsulanNilaiAi } from '../lib/nilaiTugasAi'
 import { daftarPengumpulanTugas, type PengumpulanDok } from '../lib/pengumpulan'
 import {
   daftarKelompokTugas,
@@ -1101,13 +1101,9 @@ export default function TugasDetail() {
       akhir = String(Math.round(rata))
       pred = predikatDariNilai(Math.round(rata), pengaturan.rentangPredikat)?.predikat || pred
     }
-    const poinAi = (u.poinPerbaikan ?? []).map((x) => x.trim()).filter(Boolean)
-    const poin =
-      base.poin?.trim()
-        ? base.poin
-        : poinAi.length
-          ? poinAi.join('\n')
-          : base.poin ?? ''
+    const poinAi = daftarPoinPerbaikanDariUsulan(u)
+    // Isi poin perbaikan dari AI bila kotak masih kosong; jangan timpa suntingan guru.
+    const poin = base.poin?.trim() ? base.poin : poinAi.length ? poinAi.join('\n') : ''
     return {
       perKategori: per,
       nilaiAkhir: akhir,

@@ -85,6 +85,52 @@ function pesan(err: unknown): string {
   return 'Gagal menilai dengan AI (galat server). Coba lagi atau periksa log Functions.'
 }
 
+
+/**
+ * Susun daftar poin perbaikan ramah anak SD dari usulan AI.
+ * Prioritas: field poinPerbaikan dari server; jika kosong, turunkan dari alasan kategori
+ * yang skornya rendah / perlu dicek agar kotak guru tidak kosong.
+ */
+export function daftarPoinPerbaikanDariUsulan(u: Pick<UsulanNilaiAi, 'poinPerbaikan' | 'kategori' | 'komentarSiswa'>): string[] {
+  const dariServer = (u.poinPerbaikan ?? [])
+    .map((x) => String(x || '').trim().replace(/^[-*•\d.)\s]+/, ''))
+    .filter((x) => x.length >= 8)
+    .slice(0, 8)
+  if (dariServer.length >= 2) return dariServer
+
+  const dariKat: string[] = []
+  for (const k of u.kategori ?? []) {
+    if (!k.dinilaiAi) continue
+    const lemah =
+      k.perluDicek ||
+      k.skor === null ||
+      (typeof k.skor === 'number' && k.skor < 85)
+    if (!lemah) continue
+    const alasan = (k.alasan || '').trim()
+    if (alasan.length < 12) continue
+    // Ubah nada guru → saran ke siswa (ringkas).
+    const saran = k.nama
+      ? `Perbaiki bagian «${k.nama}»: ${alasan}`
+      : alasan
+    if (saran.length > 200) saran = saran.slice(0, 197) + '…'
+    if (!dariKat.some((x) => x === saran)) dariKat.push(saran)
+    if (dariKat.length >= 5) break
+  }
+
+  const gabung = [...dariServer]
+  for (const x of dariKat) {
+    if (gabung.length >= 6) break
+    if (!gabung.some((y) => y.slice(0, 40) === x.slice(0, 40))) gabung.push(x)
+  }
+
+  if (gabung.length === 0 && (u.komentarSiswa || '').trim()) {
+    // Cadangan terakhir: pecah komentar jadi 1–2 butir pendek
+    const k = u.komentarSiswa.trim()
+    if (k.length >= 20) gabung.push(k.length > 180 ? k.slice(0, 177) + '…' : k)
+  }
+  return gabung.slice(0, 8)
+}
+
 export async function usulkanNilaiTugasAi(tugasId: string, siswaId: string): Promise<UsulanNilaiAi> {
   if (!bolehAiTugas(auth.currentUser?.uid)) {
     throw new Error('Fitur AI tugas tidak tersedia untuk akun Anda.')
@@ -98,7 +144,7 @@ export async function usulkanNilaiTugasAi(tugasId: string, siswaId: string): Pro
     const res = await panggil({ tugasId, siswaId })
     const d = res.data
     if (!d || !Array.isArray(d.kategori)) throw new Error('Jawaban AI tidak lengkap. Coba lagi.')
-    const poinPerbaikan = (
+    const mentah = (
       Array.isArray(d.poinPerbaikan)
         ? d.poinPerbaikan
         : []
@@ -106,6 +152,8 @@ export async function usulkanNilaiTugasAi(tugasId: string, siswaId: string): Pro
       .map((x) => String(x || '').trim())
       .filter(Boolean)
       .slice(0, 8)
+    const sementara = { ...d, poinPerbaikan: mentah, kategori: d.kategori, komentarSiswa: d.komentarSiswa || '' }
+    const poinPerbaikan = daftarPoinPerbaikanDariUsulan(sementara as UsulanNilaiAi)
     return { ...d, poinPerbaikan, dibuatMs: Date.now() }
   } catch (e) {
     throw new Error(pesan(e))
