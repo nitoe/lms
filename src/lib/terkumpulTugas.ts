@@ -5,8 +5,8 @@
  * - Tugas individual: hitung dokumen pengumpulan (agregat `count`, murah: ±1 baca per 1000 dokumen).
  * - Tugas kelompok: hitung SISWA yang tercakup — seluruh anggota kelompok yang buktinya dikirim
  *   ketua atau anggota yang mewakilinya (`siswaTercakupPengumpulan`), bukan jumlah pengirim.
- * - Dashboard memanggil ini untuk aktif_siswa, aktif_guru, dan selesai (non-arsip) agar angka
- *   tetap tampil setelah tugas ditutup/selesai penilaian.
+ * - Dashboard memanggil ini untuk aktif_siswa, aktif_guru, selesai, dan arsip agar angka
+ *   tetap tampil setelah tugas ditutup/selesai/diarsipkan.
  * Query guru WAJIB tugasId + mapel + kelas per rombel (§132.4); rombel yang ditolak rules dilewati.
  */
 import { collection, getCountFromServer, query, where } from 'firebase/firestore'
