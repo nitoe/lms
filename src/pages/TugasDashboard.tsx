@@ -184,10 +184,16 @@ export default function TugasDashboard() {
 
   useEffect(() => () => window.clearTimeout(infoTimer.current), [])
 
-  // Hitung siswa yang sudah mengumpulkan untuk tugas yang tampil ke siswa (3 paralel, cache 90 dtk).
+  // Hitung siswa yang sudah mengumpulkan untuk tugas non-arsip non-draf
+  // (aktif_siswa, aktif_guru, selesai). Field jumlahPengumpulan selalu 0 → jangan dipakai.
+  // 3 paralel, cache 90 dtk. ANTIREGRESI §Tugas.Terkumpul.
   useEffect(() => {
     if (!list) return
-    const target = list.filter((t) => !t.arsip && normalisasiStatusTugas(t.statusTugas, t.aktif) === 'aktif_siswa')
+    const target = list.filter((t) => {
+      if (t.arsip) return false
+      const st = normalisasiStatusTugas(t.statusTugas, t.aktif)
+      return st === 'aktif_siswa' || st === 'aktif_guru' || t.selesai === true
+    })
     const awal: Record<string, number | null> = {}
     for (const t of target) {
       const c = terkumpulDiCache(t.id)
@@ -215,9 +221,17 @@ export default function TugasDashboard() {
     }
   }, [list])
 
-  /** Angka «Terkumpul» sebuah tugas: number | undefined (menghitung) | null (gagal). */
-  const jumlahTerkumpul = (t: TugasLms): number | null | undefined =>
-    !t.arsip && normalisasiStatusTugas(t.statusTugas, t.aktif) === 'aktif_siswa' ? terkumpul[t.id] : (t.jumlahPengumpulan ?? 0)
+  /** Angka «Terkumpul» sebuah tugas: number | undefined (menghitung) | null (gagal).
+   * Dihitung untuk aktif_siswa, aktif_guru, dan selesai (non-arsip).
+   * Jangan fallback ke jumlahPengumpulan (selalu 0). */
+  const jumlahTerkumpul = (t: TugasLms): number | null | undefined => {
+    if (t.arsip) return t.jumlahPengumpulan ?? 0
+    const st = normalisasiStatusTugas(t.statusTugas, t.aktif)
+    if (st === 'aktif_siswa' || st === 'aktif_guru' || t.selesai === true) {
+      return terkumpul[t.id]
+    }
+    return t.jumlahPengumpulan ?? 0
+  }
 
   function tampilInfo(pesan: string) {
     setInfo(pesan)

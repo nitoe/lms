@@ -1,3 +1,11 @@
+## 2026-11-27 — Dashboard tugas: angka «Terkumpul» tetap tampil saat Aktif guru / Selesai
+
+- **Bug:** setelah tugas ditandai selesai atau status diubah ke «Aktif guru», kotak «Terkumpul» di kartu dashboard menjadi 0, padahal data pengumpulan dan daftar nilai masih ada.
+- **Sebab:** dashboard hanya memanggil `hitungTerkumpulTugasCache` untuk tugas berstatus `aktif_siswa`; selain itu memakai field `jumlahPengumpulan` yang selalu 0 (tidak pernah dinaikkan).
+- **Perbaikan:** hitung juga untuk `aktif_guru` dan tugas yang `selesai` (non-arsip). Draf dan arsip tetap 0.
+- File: `src/pages/TugasDashboard.tsx`.
+- Antiregresi: §Tugas.Terkumpul butir 4 diperbarui.
+
 ## 2026-11-26 — Baru: guru dapat membagikan nilai dan status tugas ke portal orang tua
 
 ## 2026-11-27 — Bagikan tugas ke ortu: tenggat + status pengumpulan
