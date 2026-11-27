@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useAuth } from '../context/AuthContext'
-import { bersihHtmlMateri, normalisasiHtmlPengumuman } from '../lib/html'
+import { normalisasiHtmlPengumuman } from '../lib/html'
 import {
   bolehGeneratePengumumanAi,
   generatePengumumanLmsAi,

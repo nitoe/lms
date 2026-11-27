@@ -14,7 +14,7 @@ import {
   where,
 } from 'firebase/firestore'
 import { auth, db } from './firebase'
-import { bersihHtmlMateri, htmlKosong, normalisasiHtmlPengumuman, teksPolos } from './html'
+import { htmlKosong, normalisasiHtmlPengumuman, teksPolos } from './html'
 import type { PengumumanLms } from '../types/pengumuman'
 import { BATAS_JUDUL_PENGUMUMAN, BATAS_KONTEN_PENGUMUMAN } from '../types/pengumuman'
 
