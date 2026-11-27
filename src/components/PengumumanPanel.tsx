@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useAuth } from '../context/AuthContext'
-import { bersihHtmlMateri } from '../lib/html'
+import { bersihHtmlMateri, normalisasiHtmlPengumuman } from '../lib/html'
 import {
   bolehGeneratePengumumanAi,
   generatePengumumanLmsAi,
@@ -179,7 +179,7 @@ export default function PengumumanPanel({ kelas, mapel }: Props) {
         variasi: String(Date.now()),
       })
       setJudul(h.judul)
-      setKontenHtml(bersihHtmlMateri(h.kontenHtml))
+      setKontenHtml(normalisasiHtmlPengumuman(h.kontenHtml))
       setInfo('Draf AI siap — tinjau lalu simpan.')
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Gagal generate AI.')
@@ -346,7 +346,7 @@ export default function PengumumanPanel({ kelas, mapel }: Props) {
               </p>
               <div
                 className="pg-isi"
-                dangerouslySetInnerHTML={{ __html: bersihHtmlMateri(p.kontenHtml) }}
+                dangerouslySetInnerHTML={{ __html: normalisasiHtmlPengumuman(p.kontenHtml) }}
               />
               <div className="pg-kartu-kaki">
                 <button type="button" className="pg-btn" disabled={busy} onClick={() => bukaEdit(p)}>

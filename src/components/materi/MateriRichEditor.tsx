@@ -38,7 +38,7 @@ export default function MateriRichEditor({
     extensions: [
       StarterKit.configure({
         heading: { levels: [2, 3] },
-        blockquote: false,
+        // blockquote aktif — dipakai pengumuman AI & materi (TAG_MATERI mengizinkan)
         codeBlock: false,
         code: false,
         horizontalRule: false,
@@ -104,6 +104,7 @@ export default function MateriRichEditor({
         <span className="mh-tb-sep" />
         {tombol(editor.isActive('bulletList'), '•', () => editor.chain().focus().toggleBulletList().run(), 'Daftar poin')}
         {tombol(editor.isActive('orderedList'), '1.', () => editor.chain().focus().toggleOrderedList().run(), 'Daftar bernomor')}
+        {tombol(editor.isActive('blockquote'), '“', () => editor.chain().focus().toggleBlockquote().run(), 'Kutipan')}
         <span className="mh-tb-sep" />
         <div className="mh-simbol" aria-label="Simbol">
           {SIMBOL.map((s) => (

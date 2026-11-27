@@ -93,6 +93,85 @@ export function bersihHtmlMateri(html: string | undefined): string {
   })
 }
 
+/**
+ * Rapikan HTML pengumuman dari AI / tempel:
+ * - buang fence markdown ```html
+ * - decode entitas bila seluruh konten ter-escape (&lt;p&gt;…)
+ * - teks polos / markdown ringan → paragraf & daftar HTML
+ * - lalu sanitasi bersihHtmlMateri
+ */
+export function normalisasiHtmlPengumuman(raw: string | undefined): string {
+  let s = String(raw ?? '').trim()
+  if (!s) return ''
+
+  // Fence code
+  s = s.replace(/^```(?:html|HTML)?\s*/i, '').replace(/\s*```$/i, '').trim()
+
+  // Konten HTML yang ter-escape penuh sebagai teks (&lt;p&gt;…)
+  if ((s.match(/&lt;/g) || []).length >= 2 && !/<[a-zA-Z]/.test(s)) {
+    s = s
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&quot;/g, '"')
+      .replace(/&#39;/g, "'")
+      .replace(/&amp;/g, '&')
+  }
+
+  const punyaTag = /<\/?[a-z][a-z0-9]*\b[^>]*>/i.test(s)
+  if (!punyaTag) {
+    // Markdown ringan → HTML
+    const esc = (x: string) =>
+      x.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    const inline = (x: string) => {
+      let y = esc(x)
+      y = y.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+      y = y.replace(/__(.+?)__/g, '<strong>$1</strong>')
+      y = y.replace(/(^|[^*])\*([^*]+)\*(?![*])/g, '$1<em>$2</em>')
+      y = y.replace(/_(.+?)_/g, '<em>$1</em>')
+      return y
+    }
+    const baris = s.replace(/\r\n?/g, '\n').split('\n')
+    const out: string[] = []
+    let list: string[] = []
+    let listOrdered = false
+    const flushList = () => {
+      if (!list.length) return
+      const tag = listOrdered ? 'ol' : 'ul'
+      out.push(`<${tag}>` + list.map((li) => `<li>${li}</li>`).join('') + `</${tag}>`)
+      list = []
+    }
+    for (const line of baris) {
+      const bullet = line.match(/^\s*[-*•]\s+(.+)$/)
+      const numbered = line.match(/^\s*\d+[.)]\s+(.+)$/)
+      if (bullet) {
+        if (list.length && listOrdered) flushList()
+        listOrdered = false
+        list.push(inline(bullet[1]))
+        continue
+      }
+      if (numbered) {
+        if (list.length && !listOrdered) flushList()
+        listOrdered = true
+        list.push(inline(numbered[1]))
+        continue
+      }
+      flushList()
+      const t = line.trim()
+      if (!t) continue
+      out.push(`<p>${inline(t)}</p>`)
+    }
+    flushList()
+    s = out.join('') || `<p>${inline(s)}</p>`
+  } else {
+    // Pastikan tidak hanya inline tanpa wrapper
+    if (!/<\s*(p|ul|ol|h2|h3|h4|blockquote|div)\b/i.test(s)) {
+      s = `<p>${s}</p>`
+    }
+  }
+
+  return bersihHtmlMateri(s)
+}
+
 /** Deteksi konten materi yang mungkin butuh KaTeX (tanda $). */
 export function materiPunyaRumus(html: string | undefined): boolean {
   return typeof html === 'string' && html.includes('$')

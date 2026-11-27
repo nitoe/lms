@@ -14,7 +14,7 @@ import {
   where,
 } from 'firebase/firestore'
 import { auth, db } from './firebase'
-import { bersihHtmlMateri, htmlKosong, teksPolos } from './html'
+import { bersihHtmlMateri, htmlKosong, normalisasiHtmlPengumuman, teksPolos } from './html'
 import type { PengumumanLms } from '../types/pengumuman'
 import { BATAS_JUDUL_PENGUMUMAN, BATAS_KONTEN_PENGUMUMAN } from '../types/pengumuman'
 
@@ -87,7 +87,7 @@ export async function tambahPengumuman(input: {
   if (!uid) throw new Error('Anda harus masuk terlebih dahulu.')
   const judul = String(input.judul || '').trim().slice(0, BATAS_JUDUL_PENGUMUMAN)
   if (!judul) throw new Error('Judul pengumuman wajib diisi.')
-  const html = bersihHtmlMateri(input.kontenHtml).slice(0, BATAS_KONTEN_PENGUMUMAN)
+  const html = normalisasiHtmlPengumuman(input.kontenHtml).slice(0, BATAS_KONTEN_PENGUMUMAN)
   if (htmlKosong(html)) throw new Error('Isi pengumuman masih kosong.')
   const ref = await addDoc(koleksi(), {
     kelas: String(input.kelas).trim(),
@@ -116,7 +116,7 @@ export async function ubahPengumuman(
     data.judul = judul
   }
   if (patch.kontenHtml !== undefined) {
-    const html = bersihHtmlMateri(patch.kontenHtml).slice(0, BATAS_KONTEN_PENGUMUMAN)
+    const html = normalisasiHtmlPengumuman(patch.kontenHtml).slice(0, BATAS_KONTEN_PENGUMUMAN)
     if (htmlKosong(html)) throw new Error('Isi pengumuman masih kosong.')
     data.kontenHtml = html
   }

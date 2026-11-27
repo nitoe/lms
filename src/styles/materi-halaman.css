@@ -501,6 +501,16 @@
   font-weight: 700;
   margin: 0.35em 0 0.3em;
 }
+.mh-rich-area blockquote {
+  margin: 0.45rem 0 0.65rem;
+  padding: 0.4rem 0.75rem;
+  border-left: 3px solid #c7d2fe;
+  background: #f8fafc;
+  color: #475569;
+}
+.mh-rich-area li {
+  margin: 0.15rem 0;
+}
 .mh-rich-area ul,
 .mh-rich-area ol {
   margin: 0.3em 0 0.5em 1.2em;
