@@ -1659,11 +1659,18 @@ export default function TugasDetail() {
     setError('')
     setSukses('')
     try {
+      const sudahKumpulBySiswa: Record<string, boolean> = {}
+      if (pengumpulanMap) {
+        for (const r of baris) {
+          sudahKumpulBySiswa[r.siswaId] = !!pengumpulanMap[r.siswaId]
+        }
+      }
       const h = await bagikanTugasKeOrtu({
         tugas,
         baris,
         rentang: pengaturan.rentangPredikat,
         namaGuru: profil?.nama,
+        sudahKumpulBySiswa: pengumpulanMap ? sudahKumpulBySiswa : undefined,
       })
       setSukses(
         `Dibagikan ke orang tua: ${h.dinilai + h.perbaikan} siswa bernilai, ${h.belum} belum ada nilai. ` +

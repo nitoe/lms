@@ -2027,3 +2027,11 @@ Jangan memaksa satu kolom sempit di desktop.
 9. **`firestore.rules` identik di repo LMS dan SDM01Penilaian**, selalu diberikan versi lengkap (§Tugas.Kesempatan butir 3).
 10. **Hanya kelas utama tugas (keterbatasan yang diketahui).** `muatBarisNilaiTugas` memuat roster `tugas.kelas`, jadi tombol hanya membagikan siswa kelas utama tugas. Tugas yang dibagikan ke beberapa kelas (`kelasList`) belum punya layar untuk membagikan kelas lain; bila dibutuhkan, tambahkan sebagai fitur terpisah.
 11. **Tes manual (wajib bila area ini diubah):** (a) tugas dengan 3 siswa bernilai + 1 belum → Bagikan → portal menampilkan 3 bernilai, 1 «Belum ada nilai»; (b) ubah nilai, Bagikan lagi → portal berubah; (c) tugas berulang mode «terbaik» dengan percobaan ke-2 lebih rendah → portal menampilkan nilai terbaik; (d) «Minta perbaikan» lalu Bagikan → status «Perlu perbaikan»; (e) Tarik → portal kosong untuk tugas itu; (f) guru mapel lain mencoba menulis dokumen kelas yang bukan miliknya → ditolak; (g) tulis dokumen berisi field `komentar` → ditolak (`hasOnly`).
+
+## §Tugas.Ortu.Tenggat — snapshot ortu membawa tenggat & status pengumpulan (2026-11-27)
+
+1. `bagikanTugasKeOrtu` wajib menyalin `tenggat` dari tugas (boleh null) dan, bila `pengumpulanMap` tersedia, menulis `statusKumpul` per siswa.
+2. Field ini opsional di rules (`hasOnly` mengizinkan; dokumen lama tanpa field tetap sah). Jangan memaksa `statusKumpul` bila map pengumpulan belum dimuat.
+3. Jangan menulis catatan guru, poin perbaikan, atau bukti ke `lms_tugas_hasil_ortu`.
+4. Deploy urutan: rules → LMS hosting → portal hosting.
+5. **Tes:** bagikan tugas yang punya tenggat + sebagian siswa sudah kumpul → dokumen ortu memuat `tenggat` dan `statusKumpul` yang sesuai; tarik dari portal tetap `published=false`.

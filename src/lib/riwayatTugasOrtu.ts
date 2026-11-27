@@ -1,24 +1,40 @@
 /**
- * Publikasi NILAI + STATUS tugas ke portal orang tua (ANTIREGRESI §Tugas.Ortu).
+ * Publikasi NILAI + STATUS + TENGGAT tugas ke portal orang tua (ANTIREGRESI §Tugas.Ortu).
  *
  * Pola sama dengan rapor_sts_ortu / lms_tka_hasil_ortu: guru menekan tombol → LMS menulis salinan
  * ke `lms_tugas_hasil_ortu/{tugasId_siswaId}`; portal hanya membaca salinan itu.
  *
- * Isi dokumen SENGAJA hanya nilai dan status. Catatan guru, poin perbaikan, riwayat percobaan,
+ * Isi dokumen SENGAJA terbatas. Catatan guru, poin perbaikan, riwayat percobaan,
  * nilai per rubrik, dan bukti siswa TIDAK pernah ditulis ke sini (rules juga membatasi lewat hasOnly).
  *
- * Status:
+ * Status nilai:
  *  - dinilai   : nilai yang dipakai ada
  *  - perbaikan : nilai ada, dan guru sedang membuka percobaan berikutnya (`bukaPerbaikan`)
  *  - belum     : belum ada nilai tersimpan
+ *
+ * Status pengumpulan (`statusKumpul`) — opsional, diisi saat bagikan bila data tersedia:
+ *  - belum_kumpul : belum ada dokumen pengumpulan
+ *  - sudah_kumpul : sudah ada pengumpulan
+ * Field `tenggat` (Timestamp | null) ikut disalin dari dokumen tugas agar portal bisa menampilkan
+ * tenggat waktu tanpa membaca `lms_tugas` mentah.
  */
-import { collection, doc, getDocs, query, serverTimestamp, where, writeBatch } from 'firebase/firestore'
+import {
+  collection,
+  doc,
+  getDocs,
+  query,
+  serverTimestamp,
+  Timestamp,
+  where,
+  writeBatch,
+} from 'firebase/firestore'
 import { auth, db } from './firebase'
 import type { BarisNilaiTugas } from './nilaiTugas'
 import { predikatDariNilai, RENTANG_PREDIKAT_DEFAULT } from './penilaianTugas'
 import type { RentangPredikat, TugasLms } from '../types/tugas'
 
 export type StatusTugasOrtu = 'dinilai' | 'perbaikan' | 'belum'
+export type StatusKumpulOrtu = 'belum_kumpul' | 'sudah_kumpul'
 
 /** ID sama dengan dokumen `lms_nilai_tugas` agar mudah ditelusuri. */
 export function idTugasHasilOrtu(tugasId: string, siswaId: string): string {
@@ -50,18 +66,41 @@ export function hitungRingkasanBagikan(baris: BarisNilaiTugas[]): RingkasanBagik
   return out
 }
 
+/** Normalisasi tenggat tugas → Timestamp | null untuk disimpan di snapshot ortu. */
+export function tenggatUntukOrtu(tenggat: unknown): Timestamp | null {
+  if (tenggat == null) return null
+  if (tenggat instanceof Timestamp) return tenggat
+  if (tenggat instanceof Date && !Number.isNaN(tenggat.getTime())) {
+    return Timestamp.fromDate(tenggat)
+  }
+  if (typeof tenggat === 'object' && tenggat !== null && 'seconds' in tenggat) {
+    const s = Number((tenggat as { seconds: unknown }).seconds)
+    if (Number.isFinite(s)) return new Timestamp(s, 0)
+  }
+  if (typeof tenggat === 'string' || typeof tenggat === 'number') {
+    const d = new Date(tenggat)
+    if (!Number.isNaN(d.getTime())) return Timestamp.fromDate(d)
+  }
+  return null
+}
+
 const CHUNK = 400
 
 /**
- * Bagikan (publikasi ulang) nilai + status seluruh siswa roster tugas ini.
+ * Bagikan (publikasi ulang) nilai + status + tenggat seluruh siswa roster tugas ini.
  * Memakai baris yang SUDAH TERSIMPAN di server (`barisNilai`), bukan draf yang belum disimpan.
  * Publikasi ulang menimpa dokumen lama (nilai terbaru); tidak ada dokumen baru selain per siswa.
+ *
+ * `sudahKumpulBySiswa` opsional: map siswaId → true bila sudah ada pengumpulan.
+ * Bila tidak diberi, field `statusKumpul` tidak ditulis (dokumen lama tetap valid).
  */
 export async function bagikanTugasKeOrtu(input: {
-  tugas: Pick<TugasLms, 'id' | 'judul' | 'kelas' | 'mapel'>
+  tugas: Pick<TugasLms, 'id' | 'judul' | 'kelas' | 'mapel' | 'tenggat'>
   baris: BarisNilaiTugas[]
   rentang?: RentangPredikat[]
   namaGuru?: string
+  /** Map siswaId → sudah mengumpulkan (dari `pengumpulanMap` di halaman detail). */
+  sudahKumpulBySiswa?: Record<string, boolean>
 }): Promise<RingkasanBagikanOrtu> {
   const uid = auth.currentUser?.uid
   if (!uid) throw new Error('Anda harus masuk terlebih dahulu.')
@@ -72,27 +111,36 @@ export async function bagikanTugasKeOrtu(input: {
   const kelas = String(tugas.kelas).toUpperCase()
   const rentang = input.rentang?.length ? input.rentang : RENTANG_PREDIKAT_DEFAULT
   const judul = String(tugas.judul || 'Tugas').trim().slice(0, 200) || 'Tugas'
+  const tenggat = tenggatUntukOrtu(tugas.tenggat)
+  const punyaMapKumpul = input.sudahKumpulBySiswa != null
 
   const ops = input.baris.map((r) => {
     const nilai = nilaiUntukOrtu(r)
     const predikat = nilai === null ? '' : (predikatDariNilai(nilai, rentang)?.predikat ?? '')
+    const data: Record<string, unknown> = {
+      tugasId: tugas.id,
+      siswaId: r.siswaId,
+      kelas,
+      mapel: String(tugas.mapel).trim(),
+      judul,
+      nilai,
+      predikat,
+      status: statusUntukOrtu(r),
+      tenggat,
+      published: true,
+      publishedAt: serverTimestamp(),
+      publishedBy: uid,
+      publishedByNama: input.namaGuru || '',
+      updatedAt: serverTimestamp(),
+    }
+    if (punyaMapKumpul) {
+      data.statusKumpul = input.sudahKumpulBySiswa![r.siswaId]
+        ? ('sudah_kumpul' as StatusKumpulOrtu)
+        : ('belum_kumpul' as StatusKumpulOrtu)
+    }
     return {
       ref: doc(db, 'lms_tugas_hasil_ortu', idTugasHasilOrtu(tugas.id, r.siswaId)),
-      data: {
-        tugasId: tugas.id,
-        siswaId: r.siswaId,
-        kelas,
-        mapel: String(tugas.mapel).trim(),
-        judul,
-        nilai,
-        predikat,
-        status: statusUntukOrtu(r),
-        published: true,
-        publishedAt: serverTimestamp(),
-        publishedBy: uid,
-        publishedByNama: input.namaGuru || '',
-        updatedAt: serverTimestamp(),
-      } as Record<string, unknown>,
+      data,
     }
   })
 

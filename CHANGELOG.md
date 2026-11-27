@@ -1,5 +1,16 @@
 ## 2026-11-26 — Baru: guru dapat membagikan nilai dan status tugas ke portal orang tua
 
+## 2026-11-27 — Bagikan tugas ke ortu: tenggat + status pengumpulan
+
+- Saat guru menekan «Bagikan ke orang tua», snapshot `lms_tugas_hasil_ortu` kini juga membawa:
+  - `tenggat` (Timestamp | null) dari dokumen tugas
+  - `statusKumpul` (`belum_kumpul` | `sudah_kumpul`) dari peta pengumpulan di halaman detail
+- Portal orang tua memakai field ini untuk menampilkan tenggat relatif dan membedakan «Belum dikumpulkan» vs «Menunggu penilaian».
+- File: `src/lib/riwayatTugasOrtu.ts`, `src/pages/TugasDetail.tsx`.
+- **Rules:** `firestore.rules` (repo SDM01Penilaian) — `hasOnly` + validasi field baru. Deploy rules dulu.
+- Antiregresi: §Tugas.Ortu diperluas (tenggat & statusKumpul).
+
+
 ### Latar
 Riwayat hasil tugas siswa belum bisa dilihat orang tua. Portal orang tua tidak memakai akun Firebase Auth (login kelas → nama anak → NISN), jadi portal tidak boleh membaca koleksi tugas mentah LMS. Dipakai pola yang sama dengan rapor STS dan Try Out TKA: guru menekan tombol, LMS menulis salinan, portal hanya membaca salinan itu.
 
