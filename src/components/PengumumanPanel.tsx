@@ -13,7 +13,8 @@ import {
   ubahPengumuman,
 } from '../lib/pengumuman'
 import type { PengumumanLms } from '../types/pengumuman'
-import MateriRichEditor from './materi/MateriRichEditor'
+import PengumumanEditor from './PengumumanEditor'
+import PengumumanIsi from './PengumumanIsi'
 import '../styles/pengumuman.css'
 import '../styles/materi-halaman.css'
 
@@ -279,16 +280,11 @@ export default function PengumumanPanel({ kelas, mapel }: Props) {
             />
           </label>
 
-          <label className="pg-label">
-            Isi pengumuman
-            <MateriRichEditor
-              value={kontenHtml}
-              onChange={setKontenHtml}
-              placeholder="Tulis paragraf, daftar, penekanan… Editor mendukung format profesional."
-              minRem={8}
-              ariaLabel="Isi pengumuman"
-            />
-          </label>
+          {/* div, BUKAN label: label mewariskan font-weight tebal ke isi editor (§Pengumuman.Tampilan) */}
+          <div className="pg-field">
+            <span className="pg-field-judul">Isi pengumuman</span>
+            <PengumumanEditor value={kontenHtml} onChange={setKontenHtml} disabled={busy || busyAi} />
+          </div>
 
           <div className="pg-baris">
             <label className="pg-cek">
@@ -344,10 +340,7 @@ export default function PengumumanPanel({ kelas, mapel }: Props) {
                 )}
                 {!p.aktif && <span title={cuplikanPengumuman(p.kontenHtml)}>Belum tampil di siswa</span>}
               </p>
-              <div
-                className="pg-isi"
-                dangerouslySetInnerHTML={{ __html: normalisasiHtmlPengumuman(p.kontenHtml) }}
-              />
+              <PengumumanIsi html={p.kontenHtml} />
               <div className="pg-kartu-kaki">
                 <button type="button" className="pg-btn" disabled={busy} onClick={() => bukaEdit(p)}>
                   Ubah

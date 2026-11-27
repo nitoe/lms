@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { normalisasiHtmlPengumuman } from '../../lib/html'
+import PengumumanIsi from '../../components/PengumumanIsi'
 import { daftarPengumumanSiswa } from '../../lib/pengumuman'
 import type { PengumumanLms } from '../../types/pengumuman'
 import '../../styles/pengumuman.css'
@@ -43,10 +43,7 @@ export default function SiswaPengumumanStrip({ kelas }: Props) {
               <span>{p.mapel}</span>
               {p.dibuatOlehNama && <span>{p.dibuatOlehNama}</span>}
             </p>
-            <div
-              className="pg-isi"
-              dangerouslySetInnerHTML={{ __html: normalisasiHtmlPengumuman(p.kontenHtml) }}
-            />
+            <PengumumanIsi html={p.kontenHtml} />
           </li>
         ))}
       </ul>

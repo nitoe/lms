@@ -1,3 +1,19 @@
+## 2026-11-28 — Pengumuman ruang kelas: tampilan rapi, editor Visual + HTML (gaya TKA/materi)
+
+- **Bug (tampilan editor & kartu):** isi pengumuman tampil serba tebal, bullet/nomor tidak terlihat (daftar hanya menjorok), dan paragraf terlihat berantakan.
+- **Sebab:**
+  1. Editor dibungkus `<label class="pg-label">` yang bertebal 650 → seluruh isi editor mewarisi tebal itu.
+  2. Tailwind preflight memberi `list-style: none` pada `ul`/`ol`; `.pg-isi` dan `.mh-rich-area` tidak mengembalikan `list-style`.
+  3. Editor memakai `MateriRichEditor` apa adanya (tanpa mode HTML), sehingga tabel/bagian lipat tidak bisa disunting, dan `normalisasiHtmlPengumuman` dijalankan pada SETIAP simpan/tampil sehingga paragraf tebal yang disengaja berubah menjadi poin.
+- **Perbaikan:**
+  - Editor baru `PengumumanEditor`: mode **Visual** (Tiptap) dan mode **HTML / tabel** (sumber + tombol sisip Judul, Poin, Urut, Tabel, Lipat, Garis + pratinjau tampilan siswa), mengikuti pola editor materi/TKA. Mode HTML otomatis dipakai bila isi memuat tabel, kunci lipat, hr, kode, dsb.
+  - Satu komponen tampilan `PengumumanIsi` dipakai guru & siswa: sanitasi lalu rumus KaTeX `$…$`.
+  - Satu set aturan CSS dipakai bersama oleh kartu dan area editor visual (bullet disc/decimal, heading, tabel, `details`, `hr`, `mark`, kode, `dl`) sehingga yang terlihat di editor = yang dilihat siswa.
+  - Pipeline baru `lib/pengumumanHtml.ts`: HTML ditulis guru hanya disanitasi (tidak ditulis ulang); heuristik «paragraf tebal → poin» hanya untuk keluaran AI. Isi > 50.000 karakter ditolak dengan pesan jelas (sebelumnya dipotong di tengah tag).
+- File: `src/components/PengumumanEditor.tsx` (baru), `src/components/PengumumanIsi.tsx` (baru), `src/lib/pengumumanHtml.ts` (baru), `src/components/PengumumanPanel.tsx`, `src/lib/pengumuman.ts`, `src/pages/siswa/SiswaPengumumanStrip.tsx`, `src/styles/pengumuman.css`.
+- Tidak ada perubahan `firestore.rules`, Cloud Function, maupun `lib/html.ts`. Deploy: hosting LMS saja.
+- Antiregresi: §Pengumuman.Tampilan.
+
 ## 2026-11-27 — Pengumuman ruang kelas + generate AI (ayah/bunda · ananda)
 
 - **Fitur baru:** tab Pengumuman di ruang kelas (kelas × mapel) aktif — bukan lagi placeholder.
