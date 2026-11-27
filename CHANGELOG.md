@@ -1,3 +1,16 @@
+## 2026-11-27 — Pengumuman ruang kelas + generate AI (ayah/bunda · ananda)
+
+- **Fitur baru:** tab Pengumuman di ruang kelas (kelas × mapel) aktif — bukan lagi placeholder.
+- **Isi:** judul + HTML kaya (paragraf, heading, daftar, penekanan) lewat editor TipTap (`MateriRichEditor`), disanitasi `bersihHtmlMateri`.
+- **Status:** draf / aktif (siswa hanya melihat aktif), opsi sematkan (pin) di atas daftar.
+- **Siswa:** strip pengumuman aktif di beranda (maks 5, pin di atas).
+- **AI (hanya `arif.azwar79@gmail.com` / UID yang sama dengan generate soal):** tombol «Tulis dengan AI» → Cloud Function `generatePengumumanLmsAi` menyusun pengumuman Islami hangat (sebutan ayah/bunda & ananda) dari informasi guru.
+- **Data:** koleksi `lms_pengumuman`. **Rules:** `firestore.rules` (deploy dulu). **CF:** `generatePengumumanLmsAi` di SDM01Penilaian.
+- File LMS: `src/types/pengumuman.ts`, `src/lib/pengumuman.ts`, `src/lib/generatePengumumanAi.ts`, `src/components/PengumumanPanel.tsx`, `src/styles/pengumuman.css`, `src/pages/KelasDetail.tsx`, `src/pages/siswa/SiswaPengumumanStrip.tsx`, `src/pages/siswa/SiswaBeranda.tsx`, `firestore.rules`.
+- File functions: `functions/generatePengumumanLmsAi.js`, `functions/index.js`.
+- Antiregresi: §Pengumuman.
+- **Deploy:** (1) `firestore:rules` (+ index komposit bila konsol meminta: `kelas+mapel+createdAt`, `kelas+aktif+createdAt`); (2) `functions:generatePengumumanLmsAi`; (3) hosting LMS.
+
 ## 2026-11-27 — Dashboard tugas: angka «Terkumpul» tetap tampil saat Aktif guru / Selesai / Arsip
 
 - **Bug:** setelah tugas ditandai selesai, status diubah ke «Aktif guru», atau diarsipkan, kotak «Terkumpul» di kartu dashboard menjadi 0, padahal data pengumpulan dan daftar nilai masih ada.

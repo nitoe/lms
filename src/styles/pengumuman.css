@@ -1,0 +1,392 @@
+/* Pengumuman ruang kelas — guru + siswa */
+
+.pg-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.pg-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.65rem;
+}
+
+.pg-toolbar h2 {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: #1a1d33;
+}
+
+.pg-toolbar p {
+  margin: 0.15rem 0 0;
+  font-size: 0.8rem;
+  color: var(--color-muted, #64748b);
+}
+
+.pg-aksi {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.pg-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  border-radius: 0.65rem;
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  color: #334155;
+  font-size: 0.8rem;
+  font-weight: 650;
+  padding: 0.42rem 0.85rem;
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s;
+}
+
+.pg-btn:hover:not(:disabled) {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+}
+
+.pg-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.pg-btn--utama {
+  background: var(--rg-a, #313083);
+  border-color: transparent;
+  color: #fff;
+}
+
+.pg-btn--utama:hover:not(:disabled) {
+  filter: brightness(1.06);
+  background: var(--rg-a, #313083);
+}
+
+.pg-btn--ai {
+  background: linear-gradient(135deg, #5b21b6, #7c3aed);
+  border-color: transparent;
+  color: #fff;
+}
+
+.pg-btn--ai:hover:not(:disabled) {
+  filter: brightness(1.08);
+  background: linear-gradient(135deg, #5b21b6, #7c3aed);
+}
+
+.pg-btn--bahaya {
+  color: #b91c1c;
+  border-color: #fecaca;
+}
+
+.pg-btn--bahaya:hover:not(:disabled) {
+  background: #fef2f2;
+}
+
+.pg-pesan {
+  border-radius: 0.7rem;
+  padding: 0.65rem 0.85rem;
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+.pg-pesan--err {
+  background: #fef2f2;
+  color: #991b1b;
+  border: 1px solid #fecaca;
+}
+
+.pg-pesan--ok {
+  background: #f0fdf4;
+  color: #166534;
+  border: 1px solid #bbf7d0;
+}
+
+/* Form */
+.pg-form {
+  border: 1px solid #e2e8f0;
+  border-radius: 1rem;
+  background: #fff;
+  padding: 1rem 1.1rem 1.15rem;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.pg-form h3 {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: #1e293b;
+}
+
+.pg-label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  font-size: 0.78rem;
+  font-weight: 650;
+  color: #475569;
+}
+
+.pg-input,
+.pg-textarea {
+  border: 1px solid #e2e8f0;
+  border-radius: 0.6rem;
+  padding: 0.5rem 0.7rem;
+  font-size: 0.9rem;
+  font-family: inherit;
+  color: #0f172a;
+  background: #fff;
+}
+
+.pg-input:focus,
+.pg-textarea:focus {
+  outline: none;
+  border-color: #a5b4fc;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+}
+
+.pg-textarea {
+  min-height: 5.5rem;
+  resize: vertical;
+  line-height: 1.5;
+}
+
+.pg-baris {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.85rem 1.25rem;
+  align-items: center;
+}
+
+.pg-cek {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #334155;
+  cursor: pointer;
+}
+
+.pg-cek input {
+  width: 1rem;
+  height: 1rem;
+  accent-color: var(--rg-a, #313083);
+}
+
+.pg-form-kaki {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  justify-content: flex-end;
+  padding-top: 0.25rem;
+}
+
+/* AI box */
+.pg-ai {
+  border: 1px dashed #c4b5fd;
+  border-radius: 0.85rem;
+  background: linear-gradient(180deg, #f5f3ff 0%, #faf5ff 100%);
+  padding: 0.85rem 0.95rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.pg-ai h4 {
+  margin: 0;
+  font-size: 0.82rem;
+  font-weight: 800;
+  color: #5b21b6;
+}
+
+.pg-ai p {
+  margin: 0;
+  font-size: 0.75rem;
+  color: #6b7280;
+  line-height: 1.45;
+}
+
+/* Daftar kartu */
+.pg-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.pg-kartu {
+  border: 1px solid #e2e8f0;
+  border-radius: 0.95rem;
+  background: #fff;
+  padding: 0.9rem 1rem;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
+}
+
+.pg-kartu--pin {
+  border-color: #c7d2fe;
+  background: linear-gradient(180deg, #f8faff 0%, #fff 55%);
+}
+
+.pg-kartu--draf {
+  opacity: 0.92;
+  border-style: dashed;
+}
+
+.pg-kartu-kepala {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem 0.75rem;
+  margin-bottom: 0.45rem;
+}
+
+.pg-kartu-judul {
+  margin: 0;
+  font-size: 0.98rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: #1e293b;
+  line-height: 1.3;
+}
+
+.pg-badge {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.68rem;
+  font-weight: 700;
+  border-radius: 999px;
+  padding: 0.15rem 0.55rem;
+  letter-spacing: 0.02em;
+}
+
+.pg-badge--aktif {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.pg-badge--draf {
+  background: #f1f5f9;
+  color: #64748b;
+}
+
+.pg-badge--pin {
+  background: #e0e7ff;
+  color: #3730a3;
+}
+
+.pg-meta {
+  margin: 0 0 0.55rem;
+  font-size: 0.72rem;
+  color: #94a3b8;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.65rem;
+}
+
+.pg-isi {
+  font-size: 0.9rem;
+  line-height: 1.6;
+  color: #334155;
+}
+
+.pg-isi h2 {
+  font-size: 1.05rem;
+  font-weight: 800;
+  margin: 0.6rem 0 0.35rem;
+  color: #1e293b;
+}
+
+.pg-isi h3 {
+  font-size: 0.95rem;
+  font-weight: 750;
+  margin: 0.5rem 0 0.3rem;
+  color: #1e293b;
+}
+
+.pg-isi p {
+  margin: 0 0 0.55rem;
+}
+
+.pg-isi ul,
+.pg-isi ol {
+  margin: 0 0 0.55rem;
+  padding-left: 1.25rem;
+}
+
+.pg-isi blockquote {
+  margin: 0.4rem 0 0.55rem;
+  padding: 0.4rem 0.75rem;
+  border-left: 3px solid #c7d2fe;
+  background: #f8fafc;
+  color: #475569;
+}
+
+.pg-kartu-kaki {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.75rem;
+  padding-top: 0.65rem;
+  border-top: 1px solid #f1f5f9;
+}
+
+.pg-kosong {
+  text-align: center;
+  padding: 2rem 1rem;
+  border: 1px dashed #e2e8f0;
+  border-radius: 1rem;
+  background: #fafbfc;
+}
+
+.pg-kosong b {
+  display: block;
+  font-size: 0.95rem;
+  color: #334155;
+  margin-bottom: 0.25rem;
+}
+
+.pg-kosong p {
+  margin: 0;
+  font-size: 0.82rem;
+  color: #94a3b8;
+}
+
+/* Siswa — strip di beranda */
+.pg-siswa {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.pg-siswa-judul {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: #1e293b;
+}
+
+.pg-siswa .pg-kartu {
+  padding: 0.8rem 0.9rem;
+}
+
+.pg-siswa .pg-kartu-judul {
+  font-size: 0.9rem;
+}
+
+.pg-siswa .pg-meta {
+  margin-bottom: 0.4rem;
+}

@@ -1,3 +1,13 @@
+## §Pengumuman — pengumuman ruang kelas + AI (2026-11-27)
+
+1. **Koleksi** `lms_pengumuman/{id}`: `kelas`, `mapel`, `judul`, `kontenHtml`, `aktif`, `pin?`, `dibuatOleh`, `dibuatOlehNama?`, timestamps. Bukan subkoleksi ruang.
+2. **Tulis** hanya lewat `lmsTulisMapelKelas(mapel, kelas)` (guru penugasan). **Baca siswa:** `aktif == true` dan `kelas == token.kelas`. Jangan membuka baca publik / portal tanpa Auth.
+3. **HTML** selalu lewat `bersihHtmlMateri` saat simpan dan tampil (`dangerouslySetInnerHTML` tanpa sanitasi dilarang — §9).
+4. **AI generate** hanya UID+email `arif.azwar79@gmail.com` (sama `bolehGenerateSoalAi` / `bolehPemanggilAi` di CF). UI disembunyikan untuk akun lain; CF menolak permission-denied. Jangan menambahkan akun lain tanpa mengubah CF + klien bersamaan.
+5. **CF** `generatePengumumanLmsAi` mengembalikan `{ judul, kontenHtml }` berbahasa ayah/bunda·ananda. Klien meninjau dulu; tidak auto-publish.
+6. **Index:** query guru `kelas+mapel+orderBy(createdAt)`; siswa `kelas+aktif+orderBy(createdAt)`. Buat index komposit bila Firebase Console meminta.
+7. **Tes:** (a) guru buat draf → siswa tidak melihat; (b) aktifkan → muncul di beranda siswa kelas itu; (c) pin di atas; (d) akun AI melihat tombol generate, akun lain tidak; (e) HTML berbahaya distabilkan sanitasi.
+
 ## §Tugas.Kelompok.Penentu — ketua dan wakil bukti sama-sama penentu nilai kelompok (2026-11-26)
 
 1. **Gejala yang dicegah:** pada kelompok dengan wakil bukti (ketua tidak upload, satu anggota upload), nilai yang diisi lewat baris wakil tidak sampai ke ketua dan anggota lain; suntingan wakil membuatnya «terlepas» sehingga nilai ketua pun tak lagi menyebar ke wakil; «Simpan kelompok» melewati wakil. Penyebab: penyebaran hanya mengenal ketua sebagai sumber (`sebarDariKetua`, `tandaiLepas`, `ikutKetua`, `barisKelompokBelumSimpan` semuanya berpatokan `ketuaId`).

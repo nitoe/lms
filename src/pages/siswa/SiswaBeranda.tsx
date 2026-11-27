@@ -7,6 +7,7 @@ import { formatTenggatRelatif, tenggatMs, type TugasSiswaRingkas } from '../../l
 import SiswaIcon, { type SiswaIconName } from './SiswaIcon'
 import type { SiswaTone } from './SiswaLayout'
 import KelompokBannerBeranda from './KelompokBannerBeranda'
+import SiswaPengumumanStrip from './SiswaPengumumanStrip'
 import { useBerandaSiswa } from './useBerandaSiswa'
 import { useLombaSiswa } from './useLombaSiswa'
 
@@ -264,6 +265,7 @@ export default function SiswaBeranda() {
       </section>
 
       <KelompokBannerBeranda kelas={sesi?.kelas ?? ''} siswaId={sesi?.id ?? ''} tugas={tugas} />
+      <SiswaPengumumanStrip kelas={sesi?.kelas ?? ''} />
 
       <div className="sw-beranda-grid">
         <section className="sw-area-menu">

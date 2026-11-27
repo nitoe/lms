@@ -9,6 +9,7 @@ import { aksenMapel, inisialMapel } from '../lib/uiAksen'
 import MateriPanel from '../components/MateriPanel'
 import KuisPanel from '../components/KuisPanel'
 import BankSoalPanel from '../components/BankSoalPanel'
+import PengumumanPanel from '../components/PengumumanPanel'
 import { IkonBankSoal, IkonKuis, IkonMateri, IkonPengumuman, IkonTugas } from '../components/ikonRuang'
 import '../styles/tka.css'
 import '../styles/ruang.css'
@@ -205,15 +206,7 @@ export default function KelasDetail() {
       </div>
 
       <div role="tabpanel" id={`panel-${tab}`} aria-labelledby={`tab-${tab}`} className="min-w-0">
-        {tab === 'pengumuman' && (
-          <div className="rg-kosong">
-            <span className="rg-kosong-ikon">
-              <IkonPengumuman size={22} />
-            </span>
-            <b>Belum ada pengumuman</b>
-            <p>Fitur pengumuman kelas akan ditambahkan kemudian.</p>
-          </div>
-        )}
+        {tab === 'pengumuman' && <PengumumanPanel kelas={judulKelas} mapel={judulMapel} />}
         {tab === 'materi' && <MateriPanel kelas={judulKelas} mapel={judulMapel} />}
         {tab === 'kuis' && <KuisPanel kelas={judulKelas} mapel={judulMapel} />}
         {tab === 'soal' && <BankSoalPanel kelas={judulKelas} mapel={judulMapel} ruangId={decoded} />}
