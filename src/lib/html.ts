@@ -169,6 +169,27 @@ export function normalisasiHtmlPengumuman(raw: string | undefined): string {
     }
   }
 
+  // Paragraf hanya <strong>…</strong> beruntun (≥2) → daftar poin
+  s = s.replace(
+    /(?:<p>\s*(?:<strong>|<b>)([\s\S]*?)(?:<\/strong>|<\/b>)\s*<\/p>\s*){2,}/gi,
+    (blok) => {
+      const items: string[] = []
+      const re = /<p>\s*(?:<strong>|<b>)([\s\S]*?)(?:<\/strong>|<\/b>)\s*<\/p>/gi
+      let m: RegExpExecArray | null
+      while ((m = re.exec(blok))) {
+        const isi = String(m[1] || '')
+          .replace(/<[^>]+>/g, '')
+          .replace(/\s+/g, ' ')
+          .trim()
+        if (isi) items.push(isi)
+      }
+      if (items.length < 2) return blok
+      return `<ul>${items.map((i) => `<li>${i}</li>`).join('')}</ul>`
+    },
+  )
+  s = s.replace(/<p>\s*[-•]\s+([^<]+)<\/p>/gi, '<ul><li>$1</li></ul>')
+  s = s.replace(/<\/ul>\s*<ul>/gi, '')
+
   return bersihHtmlMateri(s)
 }
 
