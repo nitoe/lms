@@ -1384,3 +1384,53 @@
   color: #475569;
   text-align: center;
 }
+
+/* ── Teks Arab / ayat Al-Qur'an (dir=rtl + lang=ar) ─────────────────
+ * Font Amiri Quran + Noto Naskh Arabic dimuat di index.html (Google Fonts).
+ * Sanitizer hanya mengizinkan dir & lang; gaya diatur di sini agar
+ * harakat, ligatur, dan tanda baca Uthmani tampil utuh (ANTIREGRESI §Materi.Arab).
+ */
+.mh-blok--teks [dir="rtl"],
+.mh-blok--teks [lang="ar"],
+.mh-blok--teks [lang="ar-SA"],
+.soal-rich-view [dir="rtl"],
+.soal-rich-view [lang="ar"],
+.soal-rich-view [lang="ar-SA"] {
+  font-family: "Amiri Quran", "Noto Naskh Arabic", "Scheherazade New",
+    "Traditional Arabic", "Arabic Typesetting", serif;
+  font-size: 1.65rem;
+  line-height: 2.35;
+  text-align: center;
+  direction: rtl;
+  unicode-bidi: isolate;
+  letter-spacing: 0;
+  word-spacing: 0.05em;
+}
+
+/* Ayat di dalam blockquote agar sedikit lebih lega dan menonjol */
+.mh-blok--teks blockquote [dir="rtl"],
+.mh-blok--teks blockquote [lang="ar"],
+.soal-rich-view blockquote [dir="rtl"],
+.soal-rich-view blockquote [lang="ar"] {
+  font-size: 1.75rem;
+  line-height: 2.4;
+  margin: 0.35rem 0;
+  padding: 0.25rem 0.5rem;
+}
+
+/* Sel tabel yang berisi ayat (mis. tabel hubungan ayat–makna) */
+.mh-blok--teks td [dir="rtl"],
+.mh-blok--teks td [lang="ar"],
+.mh-blok--teks th [dir="rtl"],
+.mh-blok--teks th [lang="ar"] {
+  font-size: 1.35rem;
+  line-height: 2.1;
+  text-align: center;
+}
+
+/* Pastikan elemen inline Arab tidak dipaksa LTR oleh parent */
+.mh-blok--teks [dir="rtl"] *,
+.mh-blok--teks [lang="ar"] * {
+  direction: inherit;
+  unicode-bidi: inherit;
+}

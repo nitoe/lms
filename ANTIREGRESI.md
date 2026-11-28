@@ -1,3 +1,18 @@
+## §Materi.Arab — font Quran + atribut dir/lang pada blok teks (2026-11-28)
+
+1. **Atribut yang diizinkan di `bersihHtmlMateri`:** `colspan`, `rowspan`, `scope`, **`dir`**, **`lang`**.  
+   - `dir="rtl"` dan `lang="ar"` (atau `ar-SA`) wajib dipertahankan agar teks Arab tampil kanan-ke-kiri dan memakai font Quran.  
+   - **Jangan** menambah `style`, `class`, `open`, atau `on*` — tetap ditolak (lihat §Materi.HtmlBlok & §9).
+2. **Font:** Amiri Quran + Noto Naskh Arabic dimuat di `index.html` (Google Fonts). Jangan menghapus link tersebut tanpa alternatif self-host yang mendukung harakat & tanda baca Uthmani.
+3. **CSS** di `materi-halaman.css` (kelas `.mh-blok--teks` dan `.soal-rich-view`) mengatur `font-family`, ukuran, `line-height`, `text-align: center`, dan `unicode-bidi: isolate` untuk `[dir="rtl"]` / `[lang="ar"]`. Jangan mengandalkan `style` inline di HTML materi.
+4. **Cara menulis ayat di JSON / mode HTML:**
+   ```html
+   <p dir="rtl" lang="ar">يَـٰٓأَيُّهَا ٱلَّذِينَ ءَامَنُوا۟ كُتِبَ عَلَيْكُمُ ٱلصِّيَامُ …</p>
+   ```
+   Field `style="font-family:…"` **tidak diperlukan** dan akan dibuang sanitizer.
+5. **Sumber teks ayat:** utamakan `text_uthmani` dari Quran.com API (atau sumber Uthmani terpercaya) agar harakat & tanda baca lengkap. Jangan memakai transliterasi Latin sebagai pengganti.
+6. **Uji:** (a) impor `Uji_Satu_Halaman_Al_Islam_TP4.json` → ayat QS 2:183 tampil dengan harakat, rata tengah, font Amiri Quran; (b) tabel yang berisi cuplikan ayat juga memakai font yang sama; (c) teks Indonesia di samping ayat tetap LTR; (d) `<script>`, `onclick`, `style`, `class` tetap dibuang; (e) pratinjau guru dan pembaca siswa sama.
+
 ## §Pengumuman.AiGaya — prompt AI pengumuman & verifikasi deploy tampilan (2026-11-28)
 
 1. **Dua jalur deploy terpisah.** Isi tulisan AI ada di `SDM01Penilaian/functions/generatePengumumanLmsAi.js` (deploy `functions:generatePengumumanLmsAi`); tampilan editor/kartu ada di repo LMS (deploy hosting). Mengubah satu tidak memperbaiki yang lain. Push ke GitHub BUKAN deploy.

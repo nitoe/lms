@@ -1,3 +1,22 @@
+## 2026-11-28 — Materi halaman: dukungan font Arab (Amiri Quran / Noto Naskh) + atribut dir/lang
+
+- **Masalah:** ayat Al-Qur'an di blok teks materi tampil tanpa harakat lengkap / ligatur yang benar, dan arah RTL tidak dihormati. Contoh: halaman uji Al-Islam «Puasa» (QS Al-Baqarah 2:183) terlihat datar meski JSON sudah menyertakan `dir="rtl" lang="ar"` dan `font-family: 'Amiri Quran'…`.
+- **Sebab:**
+  1. `bersihHtmlMateri` hanya mengizinkan atribut `colspan|rowspan|scope` → `dir`, `lang`, dan seluruh `style` dibuang (kebijakan §Materi.HtmlBlok / §9).
+  2. Tidak ada font Arab yang dimuat di aplikasi (hanya Inter & Nunito Latin).
+- **Perbaikan:**
+  - `ALLOWED_ATTR` ditambah `dir` dan `lang` (tetap **tanpa** `style`/`class`/`on*`).
+  - Font **Amiri Quran** + **Noto Naskh Arabic** dimuat lewat Google Fonts di `index.html`.
+  - Aturan CSS di `materi-halaman.css`: elemen `[dir="rtl"]` / `[lang="ar"]` otomatis memakai font Quran, ukuran lega, rata tengah, dan `unicode-bidi: isolate`. Berlaku juga di `.soal-rich-view` (stimulus/soal) dan di dalam tabel/blockquote.
+- **Cara pakai di JSON/import:**
+  ```html
+  <p dir="rtl" lang="ar">يَـٰٓأَيُّهَا ٱلَّذِينَ ءَامَنُوا۟ …</p>
+  ```
+  Tidak perlu lagi menuliskan `style="font-family:…"` (akan dibuang sanitizer).
+- File: `src/lib/html.ts`, `src/styles/materi-halaman.css`, `index.html`.
+- Deploy: hosting LMS saja. Tidak ada perubahan `firestore.rules` / Cloud Function.
+- Antiregresi: §Materi.Arab.
+
 ## 2026-11-28 — Pengumuman AI: ringkas, spesifik, tanpa kalimat klise
 
 - **Masalah:** hasil «Tulis dengan AI» terasa generik: pembuka «Tidak terasa kita sudah semakin dekat…», «pendampingan hangat… semakin bersemangat dan percaya diri», «kerja sama yang tulus selama ini», dan butir materi dijelaskan ulang padahal tidak diminta.

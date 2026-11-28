@@ -89,7 +89,9 @@ export function bersihHtmlMateri(html: string | undefined): string {
   if (!html) return ''
   return DOMPurify.sanitize(html, {
     ALLOWED_TAGS: TAG_MATERI,
-    ALLOWED_ATTR: ['colspan', 'rowspan', 'scope'],
+    // dir + lang diizinkan agar ayat Arab / teks RTL memakai font Quran & arah benar.
+    // style & class tetap ditolak (ANTIREGRESI §Materi.HtmlBlok, §9).
+    ALLOWED_ATTR: ['colspan', 'rowspan', 'scope', 'dir', 'lang'],
   })
 }
 
