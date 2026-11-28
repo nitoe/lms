@@ -1380,8 +1380,21 @@ export default function MateriHalamanEditor({
                               <code>&lt;details&gt;&lt;summary&gt;Lihat kunci jawaban&lt;/summary&gt;…&lt;/details&gt;</code>;
                               rumus <code>$…$</code> / <code>$$…$$</code>. Tanpa style/class/script.
                             </p>
+                            <div className="mh-html-preview-wrap">
+                              <p className="mh-html-preview-label">Pratinjau bacaan</p>
+                              {bersihHtmlMateri(b.html) ? (
+                                <div
+                                  className="mh-blok mh-blok--teks soal-rich-view mh-html-preview"
+                                  dangerouslySetInnerHTML={{
+                                    __html: bersihHtmlMateri(b.html),
+                                  }}
+                                />
+                              ) : (
+                                <p className="mh-html-preview-empty">Belum ada isi — ketik HTML di atas.</p>
+                              )}
+                            </div>
                           </>
-                        ) : (
+                                                ) : (
                           <MateriRichEditor
                             value={b.html}
                             onChange={(html) =>

@@ -497,9 +497,15 @@
   margin: 0.4em 0 0.35em;
 }
 .mh-rich-area h3 {
-  font-size: 1.02rem;
+  font-size: 1.05rem;
   font-weight: 700;
-  margin: 0.35em 0 0.3em;
+  margin: 0.45em 0 0.35em;
+}
+.mh-rich-area h4 {
+  font-size: 0.98rem;
+  font-weight: 700;
+  margin: 0.4em 0 0.3em;
+  color: #1e293b;
 }
 .mh-rich-area blockquote {
   margin: 0.45rem 0 0.65rem;
@@ -665,6 +671,12 @@
   font-size: 1.05rem;
   font-weight: 700;
   margin: 0.45em 0 0.35em;
+}
+.mh-blok--teks h4 {
+  font-size: 0.98rem;
+  font-weight: 700;
+  margin: 0.4em 0 0.3em;
+  color: #1e293b;
 }
 .mh-blok--teks ul,
 .mh-blok--teks ol {
@@ -912,6 +924,39 @@
   background: #fff;
   color: #047857;
   box-shadow: 0 0 0 1px #a7f3d0;
+}
+.mh-mode-toggle button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  text-decoration: line-through;
+}
+/* Pratinjau bacaan di mode HTML — selaras .mh-blok--teks viewer */
+.mh-html-preview-wrap {
+  margin-top: 0.55rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.55rem;
+  background: #f8fafc;
+  padding: 0.45rem 0.55rem 0.65rem;
+}
+.mh-html-preview-label {
+  margin: 0 0 0.35rem;
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+.mh-html-preview {
+  background: #fff;
+  border-radius: 0.4rem;
+  padding: 0.55rem 0.7rem;
+  min-height: 2.5rem;
+}
+.mh-html-preview-empty {
+  margin: 0;
+  font-size: 0.78rem;
+  color: #94a3b8;
+  font-style: italic;
 }
 .mh-html-hint {
   margin: 0.35rem 0 0;

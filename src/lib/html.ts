@@ -209,15 +209,17 @@ export function materiPunyaTabel(html: string | undefined): boolean {
 }
 
 /**
- * Apakah blok memuat elemen yang TIDAK dikenal editor visual (Tiptap StarterKit):
- * tabel, kunci jawaban lipat (details/summary), kutipan, garis, kode, daftar definisi, h4, mark.
- * Blok seperti ini hanya aman disunting di mode «HTML / tabel»; editor visual akan
- * membuang elemen tersebut saat blok diubah (ANTIREGRESI §Materi.HtmlBlok).
+ * Apakah blok memuat elemen yang TIDAK dikenal editor visual (Tiptap):
+ * tabel, kunci jawaban lipat (details/summary), garis, kode, daftar definisi, mark.
+ *
+ * Sengaja TIDAK mengunci: blockquote, h2–h4 (didukung MateriRichEditor).
+ * Blok dengan elemen di bawah wajib disunting di mode «HTML / tabel» agar tidak hilang
+ * saat dibuka di Tiptap (ANTIREGRESI §Materi.HtmlBlok).
  */
 export function materiPunyaStrukturLanjut(html: string | undefined): boolean {
   return (
     typeof html === 'string' &&
-    /<\s*(table|details|summary|blockquote|hr|pre|code|dl|h4|mark)[\s>/]/i.test(html)
+    /<\s*(table|details|summary|hr|pre|code|dl|mark)[\s>/]/i.test(html)
   )
 }
 

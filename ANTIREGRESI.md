@@ -2093,3 +2093,12 @@ Jangan memaksa satu kolom sempit di desktop.
 3. Jangan menulis catatan guru, poin perbaikan, atau bukti ke `lms_tugas_hasil_ortu`.
 4. Deploy urutan: rules → LMS hosting → portal hosting.
 5. **Tes:** bagikan tugas yang punya tenggat + sebagian siswa sudah kumpul → dokumen ortu memuat `tenggat` dan `statusKumpul` yang sesuai; tarik dari portal tetap `published=false`.
+
+
+## §Materi.HtmlBlok.Koreksi (Nov 2026) — Visual vs HTML
+
+1. **Tombol Visual tidak lagi dikunci** hanya karena `h4` atau `blockquote`. Keduanya didukung `MateriRichEditor` (heading level 2–4 + blockquote). Daftar kunci `materiPunyaStrukturLanjut` hanya: `table`, `details`, `summary`, `hr`, `pre`, `code`, `dl`, `mark`.
+2. **Mode «HTML / tabel» menampilkan pratinjau bacaan** di bawah textarea, memakai `bersihHtmlMateri` + kelas `.mh-blok--teks.soal-rich-view` yang sama dengan viewer siswa. Jangan menghapus pratinjau itu — itu yang mencegah bolak-balik edit ↔ baca.
+3. **Tipografi editor visual** (`.mh-rich-area h2–h4`) diselaraskan dengan `.mh-blok--teks` agar pratinjau di kanvas mendekati bacaan setelah simpan.
+4. Tombol Visual tetap **disabled** bila masih ada elemen kunci di atas; tooltip menjelaskan alasannya. Jangan mengizinkan Tiptap membuka konten tabel/details (akan hilang).
+

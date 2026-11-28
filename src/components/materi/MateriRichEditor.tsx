@@ -37,7 +37,7 @@ export default function MateriRichEditor({
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
-        heading: { levels: [2, 3] },
+        heading: { levels: [2, 3, 4] },
         // blockquote aktif — dipakai pengumuman AI & materi (TAG_MATERI mengizinkan)
         codeBlock: false,
         code: false,
@@ -94,6 +94,8 @@ export default function MateriRichEditor({
           editor.chain().focus().toggleHeading({ level: 2 }).run(), 'Judul bagian')}
         {tombol(editor.isActive('heading', { level: 3 }), 'H3', () =>
           editor.chain().focus().toggleHeading({ level: 3 }).run(), 'Subjudul')}
+        {tombol(editor.isActive('heading', { level: 4 }), 'H4', () =>
+          editor.chain().focus().toggleHeading({ level: 4 }).run(), 'Judul kecil')}
         <span className="mh-tb-sep" />
         {tombol(editor.isActive('bold'), 'B', () => editor.chain().focus().toggleBold().run(), 'Tebal', 'font-bold')}
         {tombol(editor.isActive('italic'), 'I', () => editor.chain().focus().toggleItalic().run(), 'Miring', 'italic')}
