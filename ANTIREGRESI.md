@@ -1,3 +1,13 @@
+## §Pengumuman.AiGaya — prompt AI pengumuman & verifikasi deploy tampilan (2026-11-28)
+
+1. **Dua jalur deploy terpisah.** Isi tulisan AI ada di `SDM01Penilaian/functions/generatePengumumanLmsAi.js` (deploy `functions:generatePengumumanLmsAi`); tampilan editor/kartu ada di repo LMS (deploy hosting). Mengubah satu tidak memperbaiki yang lain. Push ke GitHub BUKAN deploy.
+2. **Cara memastikan hosting terbaru sudah tampil:** di form pengumuman harus ada tombol «Visual | HTML / tabel» di atas toolbar. Bila tidak ada, yang terbuka masih bundel lama (belum `npm run deploy` atau cache) — lakukan muat ulang keras dulu sebelum menyimpulkan perbaikan gagal.
+3. **Jangan menaruh contoh bertopik sama dengan pemakaian nyata di prompt** (mis. sumatif IPAS 5A, pencernaan & pernapasan). Model menyalin kalimat dan butirnya. Contoh harus topik netral dan diberi tanda «bentuk saja, jangan ditiru».
+4. **Daftar frasa klise terlarang di prompt dipertahankan.** Bila muncul klise baru di hasil AI, tambahkan ke daftar itu, jangan hanya menyuruh «lebih natural». Frasa «hangat, mengalir» tanpa batas isi memicu basa-basi — jangan dikembalikan.
+5. **Prinsip isi:** hanya fakta dari guru, panjang mengikuti informasi, tanpa penjelasan butir materi, ajakan ke orang tua hanya bila disebut guru. Suhu 0,6 (0,85 membuat gaya melantur).
+6. **Normalisasi HTML di CF dan di klien tetap selaras** (`normalisasiHtmlDariAi` ↔ `normalisasiHtmlPengumuman`: heuristik paragraf tebal → daftar hanya untuk keluaran AI). Ubah keduanya bersamaan.
+7. **Tes:** (a) info 1–2 kalimat → pengumuman pendek tanpa basa-basi; (b) daftar materi tetap daftar, tidak dijelaskan ulang; (c) tidak ada frasa dalam daftar terlarang; (d) judul menyebut mapel/hal + waktu; (e) jalankan 3× dengan info sama → pembuka bervariasi; (f) jadwal ≥3 baris tampil sebagai tabel di kartu.
+
 ## §Pengumuman.Tampilan — editor Visual/HTML, list-style eksplisit, tanpa label pembungkus (2026-11-28)
 
 1. **Jangan membungkus editor rich text di `<label>`** (apalagi `.pg-label` yang bertebal 650). Label mewariskan `font-weight`/warna ke seluruh isi editor (semua teks tampak tebal) dan klik pada label memindahkan fokus. Pakai `div.pg-field` + `span.pg-field-judul` (§Pengumuman.Tampilan). Gejala lama: «Isi pengumuman» serba tebal.

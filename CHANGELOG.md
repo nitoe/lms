@@ -1,3 +1,12 @@
+## 2026-11-28 — Pengumuman AI: ringkas, spesifik, tanpa kalimat klise
+
+- **Masalah:** hasil «Tulis dengan AI» terasa generik: pembuka «Tidak terasa kita sudah semakin dekat…», «pendampingan hangat… semakin bersemangat dan percaya diri», «kerja sama yang tulus selama ini», dan butir materi dijelaskan ulang padahal tidak diminta.
+- **Sebab:** prompt meminta «hangat, mengalir» tanpa batas isi, tanpa larangan frasa klise, dan memuat contoh (sumatif IPAS 5A, pencernaan & pernapasan) yang ikut disalin model.
+- **Perbaikan:** prompt ditulis ulang — hanya memakai fakta dari guru, panjang mengikuti informasi (±50–130 kata), inti di kalimat pertama setelah salam, judul spesifik, daftar klise terlarang, penutup satu kalimat, tabel diizinkan untuk jadwal, contoh diganti topik netral yang ditandai «jangan ditiru». Suhu model 0,85 → 0,6.
+- File (repo **SDM01Penilaian**): `functions/generatePengumumanLmsAi.js`. Repo LMS: `CHANGELOG.md`, `ANTIREGRESI.md`.
+- **Deploy:** `firebase deploy --only functions:generatePengumumanLmsAi` dari SDM01Penilaian. Perbaikan tampilan editor (entri sebelumnya) membutuhkan deploy hosting LMS terpisah.
+- Antiregresi: §Pengumuman.AiGaya.
+
 ## 2026-11-28 — Pengumuman ruang kelas: tampilan rapi, editor Visual + HTML (gaya TKA/materi)
 
 - **Bug (tampilan editor & kartu):** isi pengumuman tampil serba tebal, bullet/nomor tidak terlihat (daftar hanya menjorok), dan paragraf terlihat berantakan.
