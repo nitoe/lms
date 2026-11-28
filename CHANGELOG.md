@@ -1,3 +1,18 @@
+## 2026-11-28 — Fix video pengumpulan gagal dibuka di OPPO/Android (HEVC)
+
+- **Gejala:** siswa (HP OPPO) memilih video bukti → pesan merah «Video ini tidak bisa dibuka di perangkatmu. Coba rekam ulang, atau kumpulkan dengan foto.» Padahal video bisa diputar di galeri HP.
+- **Sebab:** elemen `<video>` di peramban/WebView sering gagal memuat metadata video rekaman kamera dengan kodek HEVC/H.265 («Efisiensi Tinggi» / High efficiency — default di banyak OPPO/Realme/Vivo). Timeout 15 dtk juga kadang terlalu singkat untuk berkas galeri.
+- **Perbaikan** (`src/lib/videoTugas.ts`):
+  1. Deteksi HEVC lewat byte (`hvc1`/`hev1`) **sebelum** memuat elemen video, agar pesan galat spesifik.
+  2. Elemen video disiapkan dengan `playsInline` + `webkit-playsinline` + `muted` + `load()` eksplisit.
+  3. Timeout metadata dinaikkan 15 → 25 detik.
+  4. Pesan galat menjelaskan «kualitas standar (bukan Efisiensi Tinggi)», saran buka di Chrome, plus baris `(rincian: …; peramban; OS)` agar bisa dilacak dari foto layar (§Kirim.Diagnostik).
+  5. Petunjuk di kartu video siswa (`VideoBukti.tsx`) menambahkan saran yang sama.
+- **Bukan perbaikan kodek:** jika browser HP sama sekali tidak bisa mendekode HEVC, konversi MediaRecorder juga gagal. Solusi praktis untuk ananda: rekam ulang dengan kualitas standar, atau kumpulkan foto.
+- File: `src/lib/videoTugas.ts`, `src/pages/siswa/VideoBukti.tsx`.
+- Deploy: hosting LMS saja. Tidak ubah rules/storage/functions.
+- Antiregresi: §Tugas.Video.Opens.
+
 ## 2026-11-28 — Materi halaman: dukungan font Arab (Amiri Quran / Noto Naskh) + atribut dir/lang
 
 - **Masalah:** ayat Al-Qur'an di blok teks materi tampil tanpa harakat lengkap / ligatur yang benar, dan arah RTL tidak dihormati. Contoh: halaman uji Al-Islam «Puasa» (QS Al-Baqarah 2:183) terlihat datar meski JSON sudah menyertakan `dir="rtl" lang="ar"` dan `font-family: 'Amiri Quran'…`.

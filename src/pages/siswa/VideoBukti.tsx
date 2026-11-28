@@ -119,7 +119,8 @@ export default function VideoBukti({
           </label>
           <p className="sw-kat-hint">
             Tidak ada batas lama video, yang dibatasi hanya ukurannya (maksimal {formatUkuran(BATAS_UKURAN_VIDEO)}). Video
-            lebih dari {formatUkuran(UKURAN_LANGSUNG)} diperkecil otomatis di HP-mu.
+            lebih dari {formatUkuran(UKURAN_LANGSUNG)} diperkecil otomatis di HP-mu. Jika gagal dibuka, rekam ulang dengan
+            kualitas standar (bukan Efisiensi Tinggi / HEVC) dan buka LMS di Chrome.
           </p>
         </>
       )}

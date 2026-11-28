@@ -1,3 +1,16 @@
+## §Tugas.Video.Opens — video gagal dibuka di OPPO/Android (HEVC) (2026-11-28)
+
+1. **Gejala:** pesan «Video ini tidak bisa dibuka di perangkatmu…» saat siswa memilih video dari kamera/galeri, padahal galeri HP memutarnya normal. Sering dilaporkan di OPPO (juga Realme/Vivo) dengan mode kamera «Efisiensi Tinggi» (HEVC/H.265).
+2. **Sebab teknis:** elemen `<video>` di Chrome/WebView Android sering tidak menembakkan `loadedmetadata` untuk berkas HEVC; `periksaVideo` dan `kompresVideo` sama-sama bergantung pada metadata itu. Deteksi HEVC lewat byte dulu (tanpa elemen video) agar pesan bisa spesifik.
+3. **Yang HARUS tetap di `videoTugas.ts`:**
+   - `mp4Hevc` membaca 2 MB awal + 2 MB akhir (moov bisa di depan/belakang); jangan `arrayBuffer()` seluruh berkas.
+   - `siapkanElemenVideo`: `playsInline`, `webkit-playsinline`, `muted`, `load()` eksplisit.
+   - Timeout metadata ≥ 25 dtk (`BATAS_METADATA_MS`).
+   - `pesanTakBisaDibuka({ hevc, ukuran })` memuat saran «kualitas standar / bukan Efisiensi Tinggi», saran Chrome, dan `ringkasPerangkat()` (§Kirim.Diagnostik). Jangan mengembalikan pesan generik tanpa rincian.
+4. **Bukan bug Storage/rules:** kegagalan terjadi sebelum unggah. Jangan mengubah `storage.rules` atau batas ukuran untuk «memperbaiki» kasus ini.
+5. **Batasan yang disengaja:** jika peramban HP tidak bisa mendekode HEVC sama sekali, konversi ke webm lewat kanvas juga gagal. Jangan menambahkan pustaka WASM/ffmpeg di klien hanya untuk kasus ini (berat, memori HP siswa terbatas). Solusi operasional: instruksikan rekam ulang kualitas standar atau kumpulkan foto.
+6. **Uji:** (a) HP Android Chrome, video H.264 standar → lolos periksa, bisa dikumpulkan; (b) video HEVC kecil yang browser masih bisa baca metadata → `hevc=true`, masuk jalur konversi bila didukung; (c) video HEVC yang browser gagal metadata → pesan spesifik HEVC + rincian perangkat, bukan hang; (d) petunjuk di kartu «Rekam / pilih video» menyebut Efisiensi Tinggi dan Chrome.
+
 ## §Materi.Arab — font Quran + atribut dir/lang pada blok teks (2026-11-28)
 
 1. **Atribut yang diizinkan di `bersihHtmlMateri`:** `colspan`, `rowspan`, `scope`, **`dir`**, **`lang`**.  

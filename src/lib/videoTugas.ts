@@ -1,4 +1,5 @@
 import { deleteObject, getDownloadURL, ref, uploadBytesResumable } from 'firebase/storage'
+import { ringkasPerangkat } from './diagnostik'
 import { storage } from './firebase'
 
 /**
@@ -25,6 +26,8 @@ const BITRATE_AUDIO = 64_000
 const FPS = 24
 /** Unggahan video dianggap macet bila tak ada kemajuan selama ini. */
 const BATAS_MACET_UNGGAH_MS = 90_000
+/** Batas tunggu metadata video (OPPO/Android kadang lambat membuka berkas galeri). */
+const BATAS_METADATA_MS = 25_000
 
 export type TipeVideo = 'video/webm' | 'video/mp4'
 
@@ -76,14 +79,32 @@ export function dukungKonversiVideo(): boolean {
   )
 }
 
-const PESAN_TAK_BISA_DIBUKA =
-  'Video ini tidak bisa dibuka di perangkatmu. Coba rekam ulang, atau kumpulkan dengan foto.'
+/**
+ * Pesan saat elemen &lt;video&gt; gagal memuat metadata (sering di OPPO/Realme/Vivo dengan
+ * rekaman «Efisiensi Tinggi» / HEVC, atau WebView dalam aplikasi chat).
+ * Sertakan ringkas perangkat agar bisa dilacak dari foto layar (ANTIREGRESI §Kirim.Diagnostik).
+ */
+function pesanTakBisaDibuka(opsi?: { hevc?: boolean; ukuran?: number }): string {
+  const hevc = opsi?.hevc === true
+  const inti = hevc
+    ? 'Video ini memakai format Efisiensi Tinggi (HEVC) yang tidak bisa dibuka di peramban HP-mu. ' +
+      'Rekam ulang dengan kualitas standar (bukan Efisiensi Tinggi / High efficiency), atau kumpulkan dengan foto.'
+    : 'Video ini tidak bisa dibuka di perangkatmu. Coba rekam ulang dengan kualitas standar ' +
+      '(bukan Efisiensi Tinggi), buka LMS di Chrome (bukan dari aplikasi chat), atau kumpulkan dengan foto.'
+  const ukuran =
+    typeof opsi?.ukuran === 'number' && opsi.ukuran > 0 ? `, ${formatUkuran(opsi.ukuran)}` : ''
+  return `${inti} (rincian: metadata gagal${ukuran}; ${ringkasPerangkat()})`
+}
 
-function tungguEvent(el: HTMLMediaElement, ok: string, ms: number): Promise<void> {
+/** Alias lama untuk kompatibilitas internal; selalu pakai pesanTakBisaDibuka di titik baru. */
+const PESAN_TAK_BISA_DIBUKA = pesanTakBisaDibuka()
+
+function tungguEvent(el: HTMLMediaElement, ok: string, ms: number, pesan?: string): Promise<void> {
+  const pesanGalat = pesan ?? PESAN_TAK_BISA_DIBUKA
   return new Promise((resolve, reject) => {
     const t = window.setTimeout(() => {
       bersih()
-      reject(new Error(PESAN_TAK_BISA_DIBUKA))
+      reject(new Error(pesanGalat))
     }, ms)
     const onOk = () => {
       bersih()
@@ -91,7 +112,7 @@ function tungguEvent(el: HTMLMediaElement, ok: string, ms: number): Promise<void
     }
     const onErr = () => {
       bersih()
-      reject(new Error(PESAN_TAK_BISA_DIBUKA))
+      reject(new Error(pesanGalat))
     }
     function bersih() {
       window.clearTimeout(t)
@@ -101,6 +122,22 @@ function tungguEvent(el: HTMLMediaElement, ok: string, ms: number): Promise<void
     el.addEventListener(ok, onOk)
     el.addEventListener('error', onErr)
   })
+}
+
+/** Siapkan elemen video agar lebih kompatibel di Android/OPPO (playsInline + muted). */
+function siapkanElemenVideo(video: HTMLVideoElement, url: string, preload: 'metadata' | 'auto' = 'metadata') {
+  video.playsInline = true
+  video.setAttribute('playsinline', 'true')
+  video.setAttribute('webkit-playsinline', 'true')
+  video.muted = true
+  video.preload = preload
+  video.crossOrigin = 'anonymous'
+  video.src = url
+  try {
+    video.load()
+  } catch {
+    /* beberapa WebView menolak load() — abaikan */
+  }
 }
 
 const TIPE_DARI_EKSTENSI: Record<string, string> = {
@@ -125,16 +162,19 @@ export function tipeVideoDari(file: File): string {
 }
 
 /**
- * mp4 kecil berkodek HEVC (H.265, kamera «efisiensi tinggi») bisa diputar di HP tetapi sering hitam di
- * PC guru. Dicari penanda `hvc1`/`hev1` pada byte (hanya untuk berkas ≤ UKURAN_LANGSUNG).
+ * Deteksi mp4 berkodek HEVC (H.265, kamera «efisiensi tinggi»).
+ * Bisa diputar di HP native tetapi sering gagal di elemen &lt;video&gt; peramban (OPPO/Realme/Vivo)
+ * dan hitam di PC guru. Penanda `hvc1`/`hev1` dibaca dari potongan 2 MB awal + 2 MB akhir
+ * (moov box bisa di depan atau belakang). Tidak membatasi ukuran file agar diagnosis tetap jalan
+ * saat metadata gagal (ANTIREGRESI §Tugas.Video.Opens).
  */
 async function mp4Hevc(file: File): Promise<boolean> {
-  if (tipeVideoDari(file) !== 'video/mp4' || file.size > UKURAN_LANGSUNG) return false
-  // Penanda kodek ada di kotak `moov` (di awal atau akhir berkas): cukup baca 2 MB pertama + 2 MB terakhir.
+  const tipe = tipeVideoDari(file)
+  if (tipe !== 'video/mp4' && tipe !== 'video/quicktime') return false
   const IRIS = 2 * 1024 * 1024
   try {
     const potongan =
-      file.size <= 2 * IRIS ? [file] : [file.slice(0, IRIS), file.slice(file.size - IRIS)]
+      file.size <= 2 * IRIS ? [file] : [file.slice(0, IRIS), file.slice(Math.max(0, file.size - IRIS))]
     for (const bagian of potongan) {
       const b = new Uint8Array(await bagian.arrayBuffer())
       for (let i = 0; i + 4 <= b.length; i++) {
@@ -158,25 +198,32 @@ export type HasilPeriksa = { durasi: number; lebar: number; tinggi: number; hevc
 /** Baca durasi & ukuran gambar video. Melempar Error berbahasa siswa bila tak layak (mis. hasil konversi pasti > batas ukuran). */
 export async function periksaVideo(file: File): Promise<HasilPeriksa> {
   if (!tipeVideoDari(file)) throw new Error('File yang kamu pilih bukan video.')
-  if (file.size > BATAS_FILE_ASAL) throw new Error('Videomu terlalu besar (lebih dari 2 GB). Rekam ulang dengan kualitas lebih rendah atau lebih singkat.')
+  if (file.size > BATAS_FILE_ASAL) {
+    throw new Error(
+      'Videomu terlalu besar (lebih dari 2 GB). Rekam ulang dengan kualitas lebih rendah atau lebih singkat.',
+    )
+  }
+
+  // Deteksi HEVC dulu (tanpa elemen video) agar pesan galat spesifik bila metadata gagal.
+  const hevcAwal = await mp4Hevc(file)
+  const pesanGagal = pesanTakBisaDibuka({ hevc: hevcAwal, ukuran: file.size })
+
   const url = URL.createObjectURL(file)
   const video = document.createElement('video')
-  video.preload = 'metadata'
-  video.muted = true
-  video.src = url
+  siapkanElemenVideo(video, url, 'metadata')
   try {
-    await tungguEvent(video, 'loadedmetadata', 15000)
+    await tungguEvent(video, 'loadedmetadata', BATAS_METADATA_MS, pesanGagal)
     let durasi = video.duration
     if (!Number.isFinite(durasi)) {
       // Beberapa webm tanpa durasi: paksa loncat ke akhir agar browser menghitung.
       video.currentTime = 1e6
-      await tungguEvent(video, 'timeupdate', 8000)
+      await tungguEvent(video, 'timeupdate', 8000, pesanGagal)
       durasi = video.duration
     }
     if (!Number.isFinite(durasi) || durasi <= 0 || !video.videoWidth || !video.videoHeight) {
-      throw new Error(PESAN_TAK_BISA_DIBUKA)
+      throw new Error(pesanGagal)
     }
-    const hevc = await mp4Hevc(file)
+    const hevc = hevcAwal || (await mp4Hevc(file))
     // Hanya video yang HARUS dikonversi yang diperiksa perkiraan ukurannya (hemat waktu siswa:
     // tolak di awal, bukan setelah menunggu konversi sepanjang durasi video).
     const perluKonversi = file.size > UKURAN_LANGSUNG || hevc
@@ -186,7 +233,11 @@ export async function periksaVideo(file: File): Promise<HasilPeriksa> {
     return { durasi, lebar: video.videoWidth, tinggi: video.videoHeight, hevc }
   } finally {
     video.removeAttribute('src')
-    video.load()
+    try {
+      video.load()
+    } catch {
+      /* abaikan */
+    }
     URL.revokeObjectURL(url)
   }
 }
@@ -224,11 +275,11 @@ export async function kompresVideo(
     throw new Error('Perangkat ini belum bisa memperkecil video. Kumpulkan dengan foto ya.')
   }
   const mime = pilihMime()
+  const hevcAwal = await mp4Hevc(file)
+  const pesanGagal = pesanTakBisaDibuka({ hevc: hevcAwal, ukuran: file.size })
   const url = URL.createObjectURL(file)
   const video = document.createElement('video')
-  video.playsInline = true
-  video.preload = 'auto'
-  video.src = url
+  siapkanElemenVideo(video, url, 'auto')
 
   let ac: AudioContext | null = null
   let rec: MediaRecorder | null = null
@@ -248,14 +299,18 @@ export async function kompresVideo(
     void kunci?.release().catch(() => undefined)
     video.pause()
     video.removeAttribute('src')
-    video.load()
+    try {
+      video.load()
+    } catch {
+      /* abaikan */
+    }
     URL.revokeObjectURL(url)
   }
 
   try {
-    await tungguEvent(video, 'loadedmetadata', 15000)
+    await tungguEvent(video, 'loadedmetadata', BATAS_METADATA_MS, pesanGagal)
     const durasi = video.duration
-    if (!Number.isFinite(durasi) || durasi <= 0) throw new Error(PESAN_TAK_BISA_DIBUKA)
+    if (!Number.isFinite(durasi) || durasi <= 0) throw new Error(pesanGagal)
     if (perkiraanUkuranKonversi(durasi) > BATAS_UKURAN_VIDEO) throw new Error(pesanTerlaluBesar(durasi))
 
     const skala = Math.min(1, SISI_PENDEK_MAKS / Math.min(video.videoWidth, video.videoHeight))
@@ -265,7 +320,7 @@ export async function kompresVideo(
     kanvas.width = lebar
     kanvas.height = tinggi
     const ctx = kanvas.getContext('2d')
-    if (!ctx) throw new Error(PESAN_TAK_BISA_DIBUKA)
+    if (!ctx) throw new Error(pesanGagal)
 
     // Suara lewat WebAudio (tidak disambung ke speaker → senyap saat konversi).
     ac = new AudioContext()
@@ -316,7 +371,7 @@ export async function kompresVideo(
         resolve(new Blob(potongan, { type: 'video/webm' }))
       }
       rec!.onerror = () => gagal('Video gagal diperkecil. Coba lagi atau kumpulkan dengan foto.')
-      video.onerror = () => gagal(PESAN_TAK_BISA_DIBUKA)
+      video.onerror = () => gagal(pesanGagal)
       video.onended = () => {
         berhenti = true
         onProgress(1)
