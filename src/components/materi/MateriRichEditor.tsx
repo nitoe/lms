@@ -1,11 +1,7 @@
-import { Fragment, useEffect } from 'react'
+import { Fragment, useEffect, useMemo } from 'react'
 import { EditorContent, useEditor } from '@tiptap/react'
-import StarterKit from '@tiptap/starter-kit'
-import Subscript from '@tiptap/extension-subscript'
-import Superscript from '@tiptap/extension-superscript'
-import Underline from '@tiptap/extension-underline'
-import { Placeholder } from '@tiptap/extensions'
 import { bersihHtmlMateri } from '../../lib/html'
+import { buatEkstensiMateri } from './materiTiptap'
 
 type Props = {
   value: string
@@ -13,19 +9,36 @@ type Props = {
   placeholder?: string
   minRem?: number
   ariaLabel?: string
+  /**
+   * Editor materi halaman: area ketik memakai kelas YANG SAMA dengan pembaca
+   * (`mh-blok mh-blok--teks soal-rich-view`) sehingga tampilan saat menulis = tampilan baca,
+   * dan menambah tabel, bagian lipat, garis, kode, sorot (ANTIREGRESI §Materi.VisualHtml).
+   * Pengumuman tidak memakai ini (gayanya diatur pengumuman.css).
+   */
+  gayaBaca?: boolean
 }
 
 const SIMBOL = ['½', '¼', '¾', '×', '÷', '²', '³', '√', 'π', '°', '≤', '≥', '≠', '±', '→']
 
+/**
+ * Tiptap menambah paragraf kosong di akhir bila dokumen berakhir dengan tabel / bagian lipat /
+ * garis / kode (agar kursor bisa menulis setelahnya). Paragraf itu tidak perlu ikut tersimpan,
+ * jadi dibuang saat emit dan saat membandingkan (kalau tidak, isi editor ≠ isi props → setContent
+ * berulang dan kursor melompat).
+ */
+function buangParagrafAkhirKosong(html: string): string {
+  return html.replace(/(?:<p>\s*<\/p>\s*)+$/i, '')
+}
+
 function normHtml(html: string): string {
-  const t = bersihHtmlMateri(html || '').trim()
+  const t = buangParagrafAkhirKosong(bersihHtmlMateri(html || '').trim()).trim()
   if (!t || t === '<p></p>') return ''
   return t
 }
 
 /**
  * Editor teks kaya untuk blok materi halaman.
- * Mirip RichEditor soal, ditambah heading h2/h3 untuk struktur bacaan.
+ * Mirip RichEditor soal, ditambah heading h2–h4 untuk struktur bacaan.
  */
 export default function MateriRichEditor({
   value,
@@ -33,34 +46,33 @@ export default function MateriRichEditor({
   placeholder,
   minRem = 5,
   ariaLabel,
+  gayaBaca = false,
 }: Props) {
+  const ekstensi = useMemo(
+    () => buatEkstensiMateri({ lanjutan: gayaBaca, placeholder }),
+    // placeholder tetap per instans editor; useEditor tidak membuat ulang editor saat berubah
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [gayaBaca],
+  )
+
   const editor = useEditor({
-    extensions: [
-      StarterKit.configure({
-        heading: { levels: [2, 3, 4] },
-        // blockquote aktif — dipakai pengumuman AI & materi (TAG_MATERI mengizinkan)
-        codeBlock: false,
-        code: false,
-        horizontalRule: false,
-        link: false,
-        strike: false,
-        underline: false,
-      }),
-      Subscript,
-      Superscript,
-      Underline,
-      Placeholder.configure({ placeholder: placeholder ?? 'Tulis isi halaman…' }),
-    ],
+    extensions: ekstensi,
     content: bersihHtmlMateri(value),
     shouldRerenderOnTransaction: true,
     editorProps: {
       attributes: {
-        class: 'mh-rich-area',
+        class: gayaBaca
+          ? 'mh-rich-baca mh-blok mh-blok--teks soal-rich-view'
+          : 'mh-rich-area',
         style: `min-height:${minRem}rem`,
         ...(ariaLabel ? { 'aria-label': ariaLabel } : {}),
       },
     },
-    onUpdate: ({ editor: e }) => onChange(e.isEmpty ? '' : e.getHTML()),
+    onUpdate: ({ editor: e }) => {
+      if (e.isEmpty) return onChange('')
+      const html = e.getHTML()
+      onChange(gayaBaca ? buangParagrafAkhirKosong(html) : html)
+    },
   })
 
   useEffect(() => {
@@ -87,6 +99,8 @@ export default function MateriRichEditor({
     </button>
   )
 
+  const dalamTabel = gayaBaca && editor.isActive('table')
+
   return (
     <div className="mh-rich">
       <div className="mh-rich-bar" role="toolbar" aria-label="Format teks">
@@ -100,6 +114,13 @@ export default function MateriRichEditor({
         {tombol(editor.isActive('bold'), 'B', () => editor.chain().focus().toggleBold().run(), 'Tebal', 'font-bold')}
         {tombol(editor.isActive('italic'), 'I', () => editor.chain().focus().toggleItalic().run(), 'Miring', 'italic')}
         {tombol(editor.isActive('underline'), 'U', () => editor.chain().focus().toggleUnderline().run(), 'Garis bawah', 'underline')}
+        {gayaBaca && (
+          <>
+            {tombol(editor.isActive('strike'), 'S', () => editor.chain().focus().toggleStrike().run(), 'Coret', 'line-through')}
+            {tombol(editor.isActive('highlight'), 'Sorot', () => editor.chain().focus().toggleHighlight().run(), 'Sorot teks penting')}
+            {tombol(editor.isActive('code'), '</>', () => editor.chain().focus().toggleCode().run(), 'Kode sebaris')}
+          </>
+        )}
         <span className="mh-tb-sep" />
         {tombol(editor.isActive('subscript'), 'x₂', () => editor.chain().focus().toggleSubscript().run(), 'Subskrip')}
         {tombol(editor.isActive('superscript'), 'x²', () => editor.chain().focus().toggleSuperscript().run(), 'Superskrip')}
@@ -107,6 +128,20 @@ export default function MateriRichEditor({
         {tombol(editor.isActive('bulletList'), '•', () => editor.chain().focus().toggleBulletList().run(), 'Daftar poin')}
         {tombol(editor.isActive('orderedList'), '1.', () => editor.chain().focus().toggleOrderedList().run(), 'Daftar bernomor')}
         {tombol(editor.isActive('blockquote'), '“', () => editor.chain().focus().toggleBlockquote().run(), 'Kutipan')}
+        {gayaBaca && (
+          <>
+            <span className="mh-tb-sep" />
+            {tombol(editor.isActive('table'), 'Tabel', () =>
+              editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run(),
+              'Sisipkan tabel 3×3 (baris pertama judul kolom)')}
+            {tombol(editor.isActive('details'), 'Lipat', () => {
+              if (editor.isActive('details')) editor.chain().focus().unsetDetails().run()
+              else editor.chain().focus().setDetails().run()
+            }, 'Bagian lipat (mis. kunci jawaban) — siswa menekan judul untuk membuka')}
+            {tombol(false, '―', () => editor.chain().focus().setHorizontalRule().run(), 'Garis pemisah')}
+            {tombol(editor.isActive('codeBlock'), 'Blok kode', () => editor.chain().focus().toggleCodeBlock().run(), 'Blok kode')}
+          </>
+        )}
         <span className="mh-tb-sep" />
         <div className="mh-simbol" aria-label="Simbol">
           {SIMBOL.map((s) => (
@@ -115,6 +150,18 @@ export default function MateriRichEditor({
             </Fragment>
           ))}
         </div>
+        {dalamTabel && (
+          <div className="mh-rich-bar-tabel" role="group" aria-label="Ubah tabel">
+            <span className="mh-rich-bar-tabel-label">Tabel:</span>
+            {tombol(false, '+ Baris', () => editor.chain().focus().addRowAfter().run(), 'Tambah baris di bawah')}
+            {tombol(false, '+ Kolom', () => editor.chain().focus().addColumnAfter().run(), 'Tambah kolom di kanan')}
+            {tombol(false, '− Baris', () => editor.chain().focus().deleteRow().run(), 'Hapus baris ini')}
+            {tombol(false, '− Kolom', () => editor.chain().focus().deleteColumn().run(), 'Hapus kolom ini')}
+            {tombol(false, 'Judul baris', () => editor.chain().focus().toggleHeaderRow().run(), 'Jadikan / lepas baris pertama sebagai judul kolom')}
+            {tombol(false, 'Gabung/pisah sel', () => editor.chain().focus().mergeOrSplit().run(), 'Gabung sel terpilih (seret untuk memilih beberapa sel) atau pisahkan sel gabungan')}
+            {tombol(false, 'Hapus tabel', () => editor.chain().focus().deleteTable().run(), 'Hapus seluruh tabel', 'mh-tb--bahaya')}
+          </div>
+        )}
       </div>
       <EditorContent editor={editor} />
     </div>

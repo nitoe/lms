@@ -209,18 +209,28 @@ export function materiPunyaTabel(html: string | undefined): boolean {
 }
 
 /**
- * Apakah blok memuat elemen yang TIDAK dikenal editor visual (Tiptap):
- * tabel, kunci jawaban lipat (details/summary), garis, kode, daftar definisi, mark.
- *
- * Sengaja TIDAK mengunci: blockquote, h2–h4 (didukung MateriRichEditor).
- * Blok dengan elemen di bawah wajib disunting di mode «HTML / tabel» agar tidak hilang
- * saat dibuka di Tiptap (ANTIREGRESI §Materi.HtmlBlok).
+ * LAMA (tetap ada untuk jalur pengumuman): elemen yang TIDAK dikenal editor visual ringkas
+ * (tanpa ekstensi tabel/lipat). Editor materi halaman TIDAK lagi memakai ini —
+ * lihat materiTakBisaVisual di bawah (ANTIREGRESI §Materi.VisualHtml).
  */
 export function materiPunyaStrukturLanjut(html: string | undefined): boolean {
   return (
     typeof html === 'string' &&
     /<\s*(table|details|summary|hr|pre|code|dl|mark)[\s>/]/i.test(html)
   )
+}
+
+/**
+ * Elemen yang masih TIDAK bisa dipertahankan editor visual materi halaman
+ * (Tiptap + ekstensi tabel/lipat/garis/kode/sorot, lihat materiTiptap.ts):
+ * - dl/dt/dd (daftar definisi) → diratakan menjadi paragraf,
+ * - caption (keterangan tabel) → berubah menjadi sel tabel.
+ * Bila blok memuatnya, tombol Visual TETAP bisa dipilih, tetapi guru diminta
+ * konfirmasi dulu karena bagian itu akan berubah (bukan dikunci).
+ * Bila menambah tag baru ke TAG_MATERI yang tak dikenal Tiptap, tambahkan juga ke regex ini.
+ */
+export function materiTakBisaVisual(html: string | undefined): boolean {
+  return typeof html === 'string' && /<\s*(dl|dt|dd|caption)[\s>/]/i.test(html)
 }
 
 /**

@@ -1479,3 +1479,110 @@
   direction: inherit;
   unicode-bidi: inherit;
 }
+
+/* ── Editor Visual materi «gaya baca» (ANTIREGRESI §Materi.VisualHtml) ──────────────
+ * Area ketik Tiptap memakai kelas yang SAMA dengan pembaca: `mh-blok mh-blok--teks soal-rich-view`
+ * sehingga tipografi, daftar, tabel, kutipan, mark, kode, dan teks Arab identik dengan tampilan
+ * siswa. Aturan di bawah HANYA menambah hal khusus editor (bingkai, placeholder, kursor,
+ * tombol lipat, sel terpilih). JANGAN menambah aturan font/margin teks di sini — ubah di
+ * `.mh-blok--teks` / `.soal-rich-view` agar editor dan pembaca tetap sama. */
+.mh-rich-baca {
+  padding: 0.55rem 0.7rem;
+  outline: none;
+  background: #fff;
+}
+.mh-rich-baca p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  color: #9aa1b2;
+  float: left;
+  height: 0;
+  pointer-events: none;
+}
+.mh-rich-baca hr.ProseMirror-selectednode {
+  border-top-color: #10b981;
+}
+.mh-rich-baca .tableWrapper {
+  overflow-x: auto;
+}
+.mh-rich-baca td,
+.mh-rich-baca th {
+  position: relative;
+}
+.mh-rich-baca .selectedCell::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(16, 185, 129, 0.18);
+  pointer-events: none;
+}
+/* Bagian lipat di editor: tombol ▸ di kiri, judul + isi di kanan (isi tampil saat dibuka) */
+.mh-rich-baca [data-type='details'] {
+  display: flex;
+  align-items: flex-start;
+  margin: 0.75rem 0;
+  border: 1px solid #bfdbfe;
+  border-radius: 0.65rem;
+  background: #eff6ff;
+  overflow: hidden;
+}
+.mh-rich-baca [data-type='details'] > button {
+  flex: none;
+  width: 2.25rem;
+  min-height: 2.5rem;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  color: #1d4ed8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.mh-rich-baca [data-type='details'] > button::before {
+  content: '▸';
+  display: inline-block;
+  transition: transform 0.15s ease;
+}
+.mh-rich-baca [data-type='details'].is-open > button::before {
+  transform: rotate(90deg);
+}
+.mh-rich-baca [data-type='details'] > div {
+  flex: 1;
+  min-width: 0;
+  padding-right: 0.85rem;
+}
+.mh-rich-baca [data-type='details'] summary {
+  display: block;
+  list-style: none;
+  padding: 0.6rem 0;
+  font-weight: 600;
+  color: #1d4ed8;
+}
+.mh-rich-baca [data-type='detailsContent'] > :last-child {
+  margin-bottom: 0.75rem;
+}
+.mh-rich-baca [data-type='detailsContent'][hidden] {
+  display: none;
+}
+/* Baris alat tabel (muncul saat kursor di dalam tabel) */
+.mh-rich-bar-tabel {
+  flex: 1 0 100%;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.2rem;
+  margin-top: 0.15rem;
+  padding-top: 0.3rem;
+  border-top: 1px dashed #e5e7eb;
+}
+.mh-rich-bar-tabel-label {
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: #64748b;
+  padding: 0 0.2rem;
+}
+.mh-tb--bahaya {
+  color: #b91c1c;
+}
+.mh-tb--bahaya:hover {
+  background: #fee2e2;
+}

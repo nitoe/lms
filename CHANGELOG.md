@@ -1,3 +1,23 @@
+## 2026-11-28 — Materi halaman: editor Visual = tampilan baca, Visual ↔ HTML bebas bolak-balik
+
+- **Bug 1 — tampilan saat menulis ≠ tampilan setelah disimpan:** di editor Visual daftar poin tanpa bullet, huruf lebih kecil, jarak paragraf/judul lain, tabel & kunci jawaban lipat tidak tampak, dan rumus `$…$` tampil mentah. Setelah simpan, pembaca menampilkannya berbeda sehingga guru harus bolak-balik simpan → lihat → edit.
+- **Bug 2 — tombol «Visual» tidak bisa dipilih setelah membuka «HTML / tabel»:** tombol dikunci (`disabled`) selama blok memuat `table`, `details`, `hr`, `code`, `pre`, `mark`, atau `dl`; karena sebagian besar materi memuat salah satunya, guru terjebak di mode HTML.
+- **Sebab:**
+  1. Area ketik editor memakai kelas sendiri (`.mh-rich-area`, 0,9 rem, margin & list tanpa `list-style`) sedangkan pembaca memakai `.mh-blok--teks` + `.soal-rich-view`.
+  2. Editor Visual (Tiptap StarterKit) tidak punya tabel/lipat/garis/kode/sorot, dan membuang `dir`/`lang` (ayat Arab) serta `<s>`; solusi sebelumnya hanya mengunci tombol Visual.
+  3. Pratinjau di mode HTML tidak merender rumus KaTeX.
+- **Perbaikan:**
+  - Area ketik Visual kini memakai kelas **yang sama dengan pembaca** (`mh-blok mh-blok--teks soal-rich-view`) → tipografi, daftar, kutipan, tabel, `mark`, kode, teks Arab identik. CSS khusus editor hanya bingkai/placeholder/tombol lipat/sel terpilih (`.mh-rich-baca`).
+  - Editor Visual materi kini mendukung **tabel** (sisip 3×3, tambah/hapus baris & kolom, judul kolom, gabung/pisah sel, hapus tabel), **bagian lipat** (kunci jawaban), garis pemisah, blok kode & kode sebaris, sorot, coret, H4, serta mempertahankan `dir`/`lang`.
+  - Tombol «Visual» **tidak pernah dikunci lagi**. Hanya blok dengan `dl/dt/dd` (daftar definisi) atau `caption` (keterangan tabel) — yang belum bisa dipertahankan Visual — meminta konfirmasi sebelum pindah ke Visual, dan dibuka di mode HTML saat pertama dimuat.
+  - Komponen baru `MateriTeksPratinjau`: pratinjau identik pembaca (termasuk rumus KaTeX) di mode HTML, dan muncul di bawah editor Visual bila blok berisi `$…$`.
+  - Paragraf kosong otomatis di akhir (Tiptap menambahkannya setelah tabel/lipat) tidak ikut tersimpan.
+- Dependensi baru: `@tiptap/extension-details`, `@tiptap/extension-highlight` (versi 3.32.2, sama dengan Tiptap lain) → `package.json` + `package-lock.json` ikut berubah; jalankan `npm install` / `npm ci` sebelum build.
+- Catatan: commit sebelumnya (`lms-fix-materi-visual-html`) hanya menambah pratinjau di mode HTML dan melonggarkan kunci untuk `h4`/`blockquote`; entri ini menggantikan pendekatan kunci tersebut.
+- File: `src/components/materi/MateriRichEditor.tsx`, `src/components/materi/materiTiptap.ts` (baru), `src/components/materi/MateriTeksPratinjau.tsx` (baru), `src/components/materi/MateriHalamanEditor.tsx`, `src/lib/html.ts`, `src/styles/materi-halaman.css`, `package.json`, `package-lock.json`.
+- Tidak ada perubahan `firestore.rules`, Cloud Function, maupun data tersimpan. Deploy: hosting LMS saja. Editor pengumuman tidak berubah (masih memakai mode ringkas dan kuncinya sendiri).
+- Antiregresi: §Materi.VisualHtml.
+
 ## 2026-11-28 — Fix video pengumpulan gagal dibuka di OPPO/Android (HEVC)
 
 - **Gejala:** siswa (HP OPPO) memilih video bukti → pesan merah «Video ini tidak bisa dibuka di perangkatmu. Coba rekam ulang, atau kumpulkan dengan foto.» Padahal video bisa diputar di galeri HP.

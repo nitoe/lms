@@ -31,9 +31,10 @@ import {
   BATAS_HALAMAN_PER_MATERI,
   BATAS_UKURAN,
 } from '../../types/materi'
-import { bersihHtmlMateri, materiPunyaStrukturLanjut } from '../../lib/html'
+import { bersihHtmlMateri, materiPunyaRumus, materiTakBisaVisual } from '../../lib/html'
 import { ambilGambarDariClipboardApi } from '../../lib/gambar'
 import MateriRichEditor from './MateriRichEditor'
+import MateriTeksPratinjau from './MateriTeksPratinjau'
 import { MateriMediaEditor } from './MateriMediaBlok'
 import { cetakMateriPdf } from '../../lib/exportMateriCetak'
 import MateriHalamanViewer from './MateriHalamanViewer'
@@ -135,16 +136,18 @@ export default function MateriHalamanEditor({
    */
   const [blokSiapTempel, setBlokSiapTempel] = useState<string | null>(null)
   /**
-   * Mode sumber HTML per blok teks (untuk tabel / kunci jawaban lipat / rumus mentah).
-   * Otomatis aktif jika konten berisi elemen yang tak dikenal editor visual
-   * (<table>, <details>, <blockquote>, …) agar tidak hilang saat disunting.
+   * Mode sumber HTML per blok teks.
+   * Mode Visual (Tiptap + ekstensi tabel/lipat/garis/kode/sorot) memuat hampir semua elemen
+   * materi, jadi blok TIDAK lagi dikunci ke HTML. Hanya blok yang memuat elemen yang belum
+   * didukung Visual (dl/dt/dd, caption — lihat materiTakBisaVisual) dibuka di mode HTML,
+   * dan itu pun tombol Visual tetap bisa dipilih (dengan konfirmasi). ANTIREGRESI §Materi.VisualHtml.
    */
   const [modeHtmlBlok, setModeHtmlBlok] = useState<Record<string, boolean>>(() => {
     const awal: Record<string, boolean> = {}
     const list = materiAwal?.halaman || []
     for (const h of list) {
       for (const b of h.blok || []) {
-        if (b.tipe === 'teks' && materiPunyaStrukturLanjut(b.html)) awal[b.id] = true
+        if (b.tipe === 'teks' && materiTakBisaVisual(b.html)) awal[b.id] = true
       }
     }
     return awal
@@ -592,11 +595,11 @@ export default function MateriHalamanEditor({
           deskripsi: m.deskripsi.trim() ? m.deskripsi : draf.deskripsiMateri!,
         }))
       }
-      // Blok dengan tabel / details / elemen lanjutan → buka mode HTML
+      // Hanya blok dengan elemen yang tak bisa ditampung Visual (dl/dt/dd, caption) → mode HTML
       setModeHtmlBlok((m) => {
         const next = { ...m }
         for (const b of blok) {
-          if (b.tipe === 'teks' && materiPunyaStrukturLanjut(b.html)) next[b.id] = true
+          if (b.tipe === 'teks' && materiTakBisaVisual(b.html)) next[b.id] = true
         }
         return next
       })
@@ -1334,21 +1337,27 @@ export default function MateriHalamanEditor({
                           <button
                             type="button"
                             className={!modeHtmlBlok[b.id] ? 'mh-mode-on' : ''}
-                            disabled={materiPunyaStrukturLanjut(b.html)}
-                            title={
-                              materiPunyaStrukturLanjut(b.html)
-                                ? 'Blok ini memuat tabel / kunci jawaban lipat / elemen lanjutan. Sunting lewat mode HTML agar tidak hilang.'
-                                : undefined
-                            }
-                            onClick={() =>
+                            aria-pressed={!modeHtmlBlok[b.id]}
+                            title="Tampilan sama dengan yang dibaca siswa"
+                            onClick={() => {
+                              const bersihSekarang = bersihHtmlMateri(b.html)
+                              if (
+                                materiTakBisaVisual(bersihSekarang) &&
+                                !confirm(
+                                  'Blok ini memuat daftar definisi (dl/dt/dd) atau keterangan tabel (caption) yang belum didukung mode Visual. Jika dilanjutkan, bagian itu berubah menjadi paragraf/sel biasa. Lanjutkan ke mode Visual?',
+                                )
+                              ) {
+                                return
+                              }
                               setModeHtmlBlok((m) => ({ ...m, [b.id]: false }))
-                            }
+                            }}
                           >
                             Visual
                           </button>
                           <button
                             type="button"
                             className={modeHtmlBlok[b.id] ? 'mh-mode-on' : ''}
+                            aria-pressed={!!modeHtmlBlok[b.id]}
                             onClick={() =>
                               setModeHtmlBlok((m) => ({ ...m, [b.id]: true }))
                             }
@@ -1380,29 +1389,29 @@ export default function MateriHalamanEditor({
                               <code>&lt;details&gt;&lt;summary&gt;Lihat kunci jawaban&lt;/summary&gt;…&lt;/details&gt;</code>;
                               rumus <code>$…$</code> / <code>$$…$$</code>. Tanpa style/class/script.
                             </p>
-                            <div className="mh-html-preview-wrap">
-                              <p className="mh-html-preview-label">Pratinjau bacaan</p>
-                              {bersihHtmlMateri(b.html) ? (
-                                <div
-                                  className="mh-blok mh-blok--teks soal-rich-view mh-html-preview"
-                                  dangerouslySetInnerHTML={{
-                                    __html: bersihHtmlMateri(b.html),
-                                  }}
-                                />
-                              ) : (
-                                <p className="mh-html-preview-empty">Belum ada isi — ketik HTML di atas.</p>
-                              )}
-                            </div>
+                            <MateriTeksPratinjau
+                              html={b.html}
+                              kosong="Belum ada isi — ketik HTML di atas."
+                            />
                           </>
-                                                ) : (
-                          <MateriRichEditor
-                            value={b.html}
-                            onChange={(html) =>
-                              updateBlok(b.id, { html } as Partial<MateriBlok>)
-                            }
-                            placeholder="Tulis materi di sini… Rumus: $x^2$ atau $$\\frac{a}{b}$$"
-                            minRem={5}
-                          />
+                        ) : (
+                          <>
+                            <MateriRichEditor
+                              value={b.html}
+                              onChange={(html) =>
+                                updateBlok(b.id, { html } as Partial<MateriBlok>)
+                              }
+                              placeholder="Tulis materi di sini… Rumus: $x^2$ atau $$\\frac{a}{b}$$"
+                              minRem={5}
+                              gayaBaca
+                            />
+                            {materiPunyaRumus(b.html) && (
+                              <MateriTeksPratinjau
+                                html={b.html}
+                                label="Pratinjau rumus (seperti di pembaca)"
+                              />
+                            )}
+                          </>
                         )}
                       </div>
                     ) : b.tipe === 'gambar' ? (

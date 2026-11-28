@@ -12,6 +12,8 @@
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.3.3",
+    "@tiptap/extension-details": "^3.32.2",
+    "@tiptap/extension-highlight": "^3.32.2",
     "@tiptap/extension-subscript": "^3.32.2",
     "@tiptap/extension-superscript": "^3.32.2",
     "@tiptap/extension-table": "^3.32.2",
